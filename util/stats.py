@@ -1,8 +1,11 @@
-#####
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this file,
-# You can obtain one at http://mozilla.org/MPL/2.0/.
-#####
+################################################################################
+## This Source Code Form is subject to the terms of the Mozilla Public
+## License, v. 2.0. If a copy of the MPL was not distributed with this file,
+## You can obtain one at http://mozilla.org/MPL/2.0/.
+################################################################################
+## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+################################################################################
+
 from math import sqrt
 
 
@@ -58,3 +61,14 @@ class Moments():
         return Moments(self.S[0]-other.S[0], self.S[1]-other.S[1], self.S[2]-other.S[2])
 
 
+    @staticmethod
+    def new_instance(values):
+        values=[float(v) for v in values]
+
+        return Moments(*[
+            len(values),
+            sum([n for n in values]),
+            sum([pow(n, 2) for n in values]),
+            sum([pow(n, 3) for n in values]),
+            sum([pow(n, 4) for n in values])
+        ])
