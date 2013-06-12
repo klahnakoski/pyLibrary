@@ -18,22 +18,24 @@ class CNV:
 
     @staticmethod
     def object2JSON(obj):
+        if isinstance(obj, Map):
+            return json.dumps(obj.dict)
         return json.dumps(obj)
 
     @staticmethod
     def JSON2object(json_string, flexible=False):
         #REMOVE COMMENTS AND \n
-        if flexible: json_string=re.sub(r"\"\"\".*?\"\"\"|#.*?\n|\n", r" ", json)  #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
+        if flexible: json_string=re.sub(r"\"\"\".*?\"\"\"|#.*?\n|\n", r" ", json_string)  #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
         return Map(**json.loads(json_string))
 
 
 
     @staticmethod
-    def datetime2unix(cls, d):
+    def datetime2unix(d):
         return time.mktime(d.timetuple())
 
     @staticmethod
-    def unix2datetime(cls, u):
+    def unix2datetime(u):
         return datetime.datetime.fromtimestamp(u)
 
 

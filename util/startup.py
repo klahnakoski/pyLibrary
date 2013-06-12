@@ -17,10 +17,13 @@ class startup():
     #metavar - A name for the argument in usage messages.
     #dest - The name of the attribute to be added to the object returned by parse_args().
     @staticmethod
-    def arg_parse(defs):
+    def argparse(defs):
         parser = argparse.ArgumentParser()
         for d in defs:
-            parser.add_argument(**d)
+            args=dict([(k,v) for k,v in d.items()])
+            name=args.pop("name")
+            if not isinstance(name, list): name=[name]
+            parser.add_argument(*name, **args)
         return parser.parse_args()
 
 
@@ -35,10 +38,10 @@ class startup():
                 {
                     "name":["--settings", "--settings-file", "--settings_file"],
                     "help":"path to JSON file with settings",
-                    "nargs":1,
-                    "type":"string",
+                    #"nargs":1,
+                    "type":str,
                     "dest":"filename",
-                    "default":"settings.json"
+                    "default":"./settings.json"
                 }
             ])
             filename=args.filename

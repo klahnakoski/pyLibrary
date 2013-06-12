@@ -10,7 +10,7 @@
 
 import copy
 import functools
-from util.debug import D
+
 
 class Map(dict):
 #ACCESS dict AND OBJECTS LIKE JAVASCRIPT a.b==a["b"]
@@ -21,7 +21,7 @@ class Map(dict):
 
     def __str__(self):
         return dict.__str__(object.__getattribute__(self, "__dict__"))
-
+    
     def __getitem__(self, key):
         d=object.__getattribute__(self, "__dict__")
 
@@ -41,9 +41,11 @@ class Map(dict):
         if key in ["keys", "values"]:
             d=object.__getattribute__(self, "__dict__")
             return dict.__getattribute__(d, key)
-
+        if key=="dict":
+            return object.__getattribute__(self, "__dict__")
         if key=="copy":
             return functools.partial(object.__getattribute__(Map, "copy"), self)
+
 
         return Map.__getitem__(self, key)
 
@@ -81,6 +83,9 @@ class MapList():
         i=self.list.__iter__()
         while True:
             yield wrap(i.next())
+
+    def __len__(self):
+        return len(self.list)
 
 
 
