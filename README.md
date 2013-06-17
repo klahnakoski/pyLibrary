@@ -38,12 +38,15 @@ April 2013:
         CALL easy_install pip
         CALL easy_install virtualenv
 
-################################################################################
-## MANY "PYTHON POWERED" NATIVE INSTALLS REQUIRE A POINTER TO THE PYTHON INSTALL
-## BUT THEY HAVE NO IDEA WHERE TO LOOK ON A 64bit WINDOWS
+  * Many "Python Powered" native installs require a pointer to the python installation, but they have no idea where to look in 64bit windows.  You must alter the registry([http://stackoverflow.com/questions/3652625/installing-setuptools-on-64-bit-windows](http://stackoverflow.com/questions/3652625/installing-setuptools-on-64-bit-windows)):
+  
+        SET HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Python\PythonCore\2.7\InstallPath = "C:\Python27"
 
-## ALTER REGISTRY (SEE http://stackoverflow.com/questions/3652625/installing-setuptools-on-64-bit-windows)
-## SET HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Python\PythonCore\2.7\InstallPath = "C:\Python27"
+  * Install MySqldb from [http://sourceforge.net/projects/mysql-python/files/mysql-python/](http://sourceforge.net/projects/mysql-python/files/mysql-python/)
+  * Download from Github:
 
-## INSTALL MySqldb 
-## http://sourceforge.net/projects/mysql-python/files/mysql-python/
+ 		git clone https://github.com/klahnakoski/pyLibrary.git
+
+  * Download requirements:
+
+		pip install -r requirements.txt

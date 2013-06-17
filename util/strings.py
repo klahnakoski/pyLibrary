@@ -5,7 +5,8 @@
 ################################################################################
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
-
+import re
+from string import _TemplateMetaclass
 
 
 def indent(value, prefix=None):

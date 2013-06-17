@@ -24,8 +24,8 @@ class CNV:
 
     @staticmethod
     def JSON2object(json_string, flexible=False):
-        #REMOVE COMMENTS AND \n
-        if flexible: json_string=re.sub(r"\"\"\".*?\"\"\"|#.*?\n|\n", r" ", json_string)  #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
+        #REMOVE """COMMENTS""", #COMMENTS, //COMMENTS, AND \n
+        if flexible: json_string=re.sub(r"\"\"\".*?\"\"\"|^\s*//\n|#.*?\n|\n", r" ", json_string)  #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
         return Map(**json.loads(json_string))
 
 

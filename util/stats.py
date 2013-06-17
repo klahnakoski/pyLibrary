@@ -13,7 +13,7 @@ from util.debug import D
 DEBUG=True
 
 
-def stats2moments(stats):
+def stats2cumulant(stats):
     free=stats.free
 
     m = (
@@ -22,18 +22,18 @@ def stats2moments(stats):
         (stats.count-free)(stats.std*stats.std) + stats.mean*stats.mean*stats.count
     )
     if DEBUG:
-        v = moments2stats(m, unbiased=False)
+        v = cumulant2stats(m, unbiased=False)
         if v.count!=stats.count or v.std!=stats.std: D.error("convertion error")
 
 
-def moments2stats(moments, unbiased):
+def cumulant2stats(cumulant, unbiased):
     free=0
     if unbiased: free=1
-    N=moments.S[0]
+    N=cumulant.S[0]
     return Stats(
         count=N,
-        mean=moments.S[1]/N,
-        std=sqrt((moments.S[2]-(moments.S[1]**2)/N)/(N-free))
+        mean=cumulant.S[1]/N,
+        std=sqrt((cumulant.S[2]-(cumulant.S[1]**2)/N)/(N-free))
     )
 
 
@@ -51,7 +51,7 @@ class Stats():
 
 
 
-class Moments():
+class Cumulant():
     def __init__(self, *args):
         self.S=tuple(args)
 
