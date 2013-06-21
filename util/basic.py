@@ -6,12 +6,8 @@
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
 
-def nvl(a, b):
+def nvl(*args):
     #pick the first none-null value
-    if a is None:
-        return b
-    return a
-
-
-
-
+    for a in args:
+        if a is not None: return a
+    return None

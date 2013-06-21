@@ -6,25 +6,39 @@
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
 
-from itertools import groupby
+import itertools
+import datazilla.util.debug
 
 class Q:
-    @classmethod
-    def groupby(cls, data, keys):
+    @staticmethod
+    def groupby(data, keys=None, size=None):
     #return list of (keys, values) pairs where
     #group by the set of set of keys
     #values is list of all data that has those keys
-        def keys2string(x): return "|".join([str(x[k]) for k in keys])
-        def get_keys(d): return dict([(k, str(d[k])) for k in keys])
+        if size is not None: return groupby_size(data, size)
+        try:
+            def keys2string(x): return "|".join([str(x[k]) for k in keys])
+            def get_keys(d): return dict([(k, str(d[k])) for k in keys])
 
-        output=[(get_keys(values[0]), values) for key, values in groupby(data, keyfunc=keys2string)]
+            #MUST BE SORTED, OR groupby WILL NOT WORK
+            data=sorted(data, key=keys2string)
+            #groupby RETURNS valueIter, WHICH IS NO GOOD FOR PICKING THE FIRST
+            #ELEMENT (SO I CAN GET THE MULTI-KEY)
+            output=[(get_keys(values[0]), values) for values in [list(valueIter) for key, valueIter in itertools.groupby(data, keys2string)]]
 
-        return output
+            return output
+        except Exception, e:
+            datazilla.util.debug.D.error("Problem grouping", e)
 
 
-    @classmethod
-    def select(cls, data, field_name):
+
+
+    @staticmethod
+    def select(data, field_name):
     #return list with values from field_name
        return [d[field_name] for d in data]
 
 
+
+def groupby_size(data, size):
+    return [data[i:i+size] for i in range(0, len(data), size)]

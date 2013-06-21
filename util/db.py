@@ -47,8 +47,10 @@ class DB():
         try:
             self.commit()
         except Exception, e:
-            D.warning("Problems with exiting db", e)
-        self.close()
+            self.rollback()
+            D.error("Problems while connected to db", e)
+        finally:
+            self.close()
 
 
     def begin(self):
@@ -177,14 +179,15 @@ class DB():
     def execute_backlog(self):
         if len(self.backlog)==0: return
 
-        sql=";\n".join(self.backlog)
-        try:
-            if self.debug: D.println("Execute block of SQL:\n"+indent(sql))
-            self.cursor.execute(sql)
-            self.cursor.close()
-            self.cursor = self.db.cursor()
-        except Exception, e:
-            D.error("Problem executing SQL:\n"+indent(sql.strip()), e, offset=1)
+        for g in Q.groupby(self.backlog, size=100):
+            sql=";\n".join(g)
+            try:
+                if self.debug: D.println("Execute block of SQL:\n"+indent(sql))
+                self.cursor.execute(sql)
+                self.cursor.close()
+                self.cursor = self.db.cursor()
+            except Exception, e:
+                D.error("Problem executing SQL:\n"+indent(sql.strip()), e, offset=1)
 
         self.backlog=[]
 

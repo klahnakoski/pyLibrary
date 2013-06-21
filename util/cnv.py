@@ -12,7 +12,8 @@ import json
 import re
 import time
 import datetime
-from util.map import Map
+from datazilla.util.debug import D
+from datazilla.util.map import Map
 
 class CNV:
 
@@ -27,6 +28,21 @@ class CNV:
         #REMOVE """COMMENTS""", #COMMENTS, //COMMENTS, AND \n
         if flexible: json_string=re.sub(r"\"\"\".*?\"\"\"|^\s*//\n|#.*?\n|\n", r" ", json_string)  #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
         return Map(**json.loads(json_string))
+
+    @staticmethod
+    def string2datetime(value, format):
+        try:
+            return datetime.datetime.strptime(value, format)
+        except Exception, e:
+            D.error("Can not format ${value} with ${format}", {"value":value, "format":format}, e)
+
+
+    @staticmethod
+    def datetime2string(value, format):
+        try:
+            return value.strftime(format)
+        except Exception, e:
+            D.error("Can not format ${value} with ${format}", {"value":value, "format":format}, e)
 
 
 

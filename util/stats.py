@@ -7,33 +7,54 @@
 ################################################################################
 
 from math import sqrt
-from util.debug import D
-
+from datazilla.util.basic import nvl
+from datazilla.util.debug import D
+from datazilla.util.map import Map
 
 DEBUG=True
+EPSILON=0.000001
 
+def stats2z_moment(stats):
+    # MODIFIED FROM http://statsmodels.sourceforge.net/devel/_modules/statsmodels/stats/moment_helpers.html
+    # ADDED count
+    # FIXED ERROR IN COEFFICIENTS
+    mc0, mc1, mc2, skew, kurt = (stats.count, stats.mean, stats.variance, stats.skew, stats.kurtosis)
 
-def stats2cumulant(stats):
-    free=stats.free
+    mz0 = mc0
+    mz1 = mc1 * mc0
+    mz2 = (mc2 + mc1*mc1)*mc0
+    mc3 = skew*(mc2**1.5) # 3rd central moment
+    mz3 = (mc3 + 3*mc1*mc2 - mc1**3)*mc0  # 3rd non-central moment
+    mc4 = (kurt+3.0)*(mc2**2.0) # 4th central moment
+    mz4 = (mc4 + 4*mc1*mc3 + 6*mc1*mc1*mc2 + mc1**4) * mc0
 
-    m = (
-        stats.count,
-        stats.mean*stats.count,
-        (stats.count-free)(stats.std*stats.std) + stats.mean*stats.mean*stats.count
-    )
+    m=Z_moment(stats.count, mz1, mz2, mz3, mz4)
     if DEBUG:
-        v = cumulant2stats(m, unbiased=False)
-        if v.count!=stats.count or v.std!=stats.std: D.error("convertion error")
+        v = z_moment2stats(m, unbiased=False)
+        if not closeEnough(v.count, stats.count): D.error("convertion error")
+        if not closeEnough(v.mean, stats.mean): D.error("convertion error")
+        if not closeEnough(v.variance, stats.variance):
+            D.error("convertion error")
+
+    return m
+
+def closeEnough(a, b):
+    if abs(a-b)<=EPSILON*(abs(a)+abs(b)+1): return True
+    return False
 
 
-def cumulant2stats(cumulant, unbiased):
+def z_moment2stats(z_moment, unbiased=True):
     free=0
     if unbiased: free=1
-    N=cumulant.S[0]
+    N=z_moment.S[0]
+
+    if N==0: return Stats()
+
     return Stats(
         count=N,
-        mean=cumulant.S[1]/N,
-        std=sqrt((cumulant.S[2]-(cumulant.S[1]**2)/N)/(N-free))
+        mean=z_moment.S[1]/N,
+        variance=(z_moment.S[2]-(z_moment.S[1]**2)/N)/(N-free),
+        unbiased=unbiased
     )
 
 
@@ -41,25 +62,35 @@ def cumulant2stats(cumulant, unbiased):
 class Stats():
 
     def __init__(self, **args):
-        self.count=args["count"]
-        self.mean=args["mean"]
-        self.std=args["std"]
-        self.unbiased=args["unbiased"]
+        args=Map(**args)
+        self.count=nvl(args.count, 0)
+        self.mean=nvl(args.mean, 0)
+        self.variance=nvl(args.variance, nvl(args.std, 0)**2)
+        self.skew=nvl(args.skew, 0)
+        self.kurtosis=nvl(args.kurtosis, 0)
+        self.unbiased=nvl(args.unbiased, not args.biased, False)     #DEFAULT FOR MAXIMUM VARIANCE
+
+
+
+    @property
+    def std(self):
+        return sqrt(self.variance)
 
 
 
 
-
-
-class Cumulant():
+################################################################################
+## ZERO-CENTERED MOMENTS
+################################################################################
+class Z_moment():
     def __init__(self, *args):
         self.S=tuple(args)
 
     def __add__(self, other):
-        return Moments(self.S[0]+other.S[0], self.S[1]+other.S[1], self.S[2]+other.S[2])
+        return Z_moment(*map(add, self.S, other.S))
 
     def __sub__(self, other):
-        return Moments(self.S[0]-other.S[0], self.S[1]-other.S[1], self.S[2]-other.S[2])
+        return Z_moment(*map(sub, self.S, other.S))
 
     @property
     def tuple(self):
@@ -70,10 +101,18 @@ class Cumulant():
     def new_instance(values):
         values=[float(v) for v in values]
 
-        return Moments(*[
+        return Z_moment(*[
             len(values),
             sum([n for n in values]),
             sum([pow(n, 2) for n in values]),
             sum([pow(n, 3) for n in values]),
             sum([pow(n, 4) for n in values])
         ])
+
+
+
+def add(a,b):
+    return nvl(a, 0)+nvl(b,0)
+
+def sub(a,b):
+    return nvl(a, 0)-nvl(b,0)

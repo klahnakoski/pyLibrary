@@ -8,6 +8,7 @@
 
 
 #from string import Template
+from datetime import datetime
 from string import Template
 import sys
 
@@ -20,10 +21,19 @@ class D(object):
 
     @staticmethod
     def println(template, params=None):
+#        meta={
+#            "timestamp":datetime.utcnow(),
+#            "message":Template(template).safe_substitute(params),
+#            "template":template,
+#            "params":nvl(params, {})
+#        }
+
+        timestamp=datetime.utcnow().strftime("%H:%M:%S")
+
         if params is None:
-            sys.stdout.write(template+"\n")
+            sys.stdout.write(timestamp+" - "+template+"\n")
         else:
-            sys.stdout.write(Template(template).safe_substitute(params)+"\n")
+            sys.stdout.write(timestamp+": "+Template(template).safe_substitute(params)+"\n")
 
     @staticmethod
     def warning(template, params=None, cause=None):

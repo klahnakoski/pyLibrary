@@ -11,7 +11,6 @@
 import copy
 import functools
 
-
 class Map(dict):
 #ACCESS dict AND OBJECTS LIKE JAVASCRIPT a.b==a["b"]
 

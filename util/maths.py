@@ -5,6 +5,8 @@
 ################################################################################
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
+from math import log10, floor
+import math
 
 from util.debug import D
 
@@ -31,3 +33,12 @@ def is_number(s):
         return True
     except ValueError:
         return False
+
+
+def round_sci(value, decimal=None, digits=None):
+
+    if digits is not None:
+        m=pow(10, floor(log10(digits)))
+        return round(value/m, digits)*m
+
+    return round(value, decimal)
