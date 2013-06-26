@@ -37,7 +37,7 @@ class Map(dict):
 
     def __getattribute__(self, key):
         #SOME dict FUNCTIONS
-        if key in ["keys", "values"]:
+        if key in ["keys", "values", "items"]:
             d=object.__getattribute__(self, "__dict__")
             return dict.__getattribute__(d, key)
         if key=="dict":

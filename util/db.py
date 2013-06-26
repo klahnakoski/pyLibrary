@@ -215,6 +215,21 @@ class DB():
             self.insert(table_name, l)
 
 
+    def update(self, table_name, where, new_values):
+        def quote(value):
+            return "`"+value+"`"    #MY SQL QUOTE OF COLUMN NAMES
+
+        where=self.quote(where)
+        new_values=self.quote(new_values)
+
+        command="UPDATE "+quote(table_name)+"\n"+\
+                "SET "+\
+                ",\n".join([quote(k)+"="+v for k,v in new_values.items()])+"\n"+\
+                "WHERE "+\
+                " AND\n".join([quote(k)+"="+v for k,v in where.items()])
+        self.execute(command, {})
+
+
     #convert values to mysql code for the same
     #mostly delegate directly to the mysql lib, but some exceptions exist
     def quote(self, param):

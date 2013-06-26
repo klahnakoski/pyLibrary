@@ -12,7 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import smtplib
 import sys
-from datazilla.model.utils import nvl
+from model.utils import nvl
 
 
 class Emailer:

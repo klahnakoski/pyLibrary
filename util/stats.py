@@ -7,9 +7,9 @@
 ################################################################################
 
 from math import sqrt
-from datazilla.util.basic import nvl
-from datazilla.util.debug import D
-from datazilla.util.map import Map
+from util.basic import nvl
+from util.debug import D
+from util.map import Map
 
 DEBUG=True
 EPSILON=0.000001
@@ -94,11 +94,18 @@ class Z_moment():
 
     @property
     def tuple(self):
+    #RETURN AS ORDERED TUPLE
         return self.S
+
+    @property
+    def dict(self):
+    #RETURN HASH OF SUMS
+        return dict([("s"+str(i), m) for i, m in enumerate(self.S)])
 
 
     @staticmethod
     def new_instance(values):
+        if values is None: return Z_moment()
         values=[float(v) for v in values]
 
         return Z_moment(*[

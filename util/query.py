@@ -7,7 +7,7 @@
 ################################################################################
 
 import itertools
-import datazilla.util.debug
+import util.debug
 
 class Q:
     @staticmethod
