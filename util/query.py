@@ -7,7 +7,7 @@
 ################################################################################
 
 import itertools
-import util.debug
+from util.debug import D
 
 class Q:
     @staticmethod
@@ -28,7 +28,7 @@ class Q:
 
             return output
         except Exception, e:
-            datazilla.util.debug.D.error("Problem grouping", e)
+            D.error("Problem grouping", e)
 
 
 

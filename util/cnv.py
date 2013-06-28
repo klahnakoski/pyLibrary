@@ -8,8 +8,10 @@
 
 
 #DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
+import StringIO
 import json
 import re
+import string
 import time
 import datetime
 from util.debug import D
@@ -63,3 +65,28 @@ class CNV:
         rows          #list of tuples
     ):
         return [Map(**dict(zip(column_names, r))) for r in rows]
+
+
+    #RETURN PRETTY PYTHON CODE FOR THE SAME
+    @staticmethod
+    def value2quote(value):
+        if isinstance(value, str):
+            return "\""+value.replace("\"", "\\\"")+"\""
+        else:
+            return str(value)
+
+    #RETURN PYTHON CODE FOR THE SAME
+    @staticmethod
+    def value2code(value):
+        return repr(value)
+
+
+
+    @staticmethod
+    def DataFrame2string(df):
+        output = StringIO.StringIO()
+        try:
+            df.to_csv(output, sep="\t")
+            return output.getvalue()
+        finally:
+            output.close()
