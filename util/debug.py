@@ -16,6 +16,7 @@ import sys
 # are easily searchable, keep it for now)
 import traceback
 from util.strings import indent
+from util.map import Map
 
 class D(object):
 
@@ -28,12 +29,11 @@ class D(object):
 
     @staticmethod
     def println(template, params=None):
-        if not isinstance(template, Template): template=Template("${log.timestamp} - "+template)
+        if not isinstance(template, Template): template=Template("${log_timestamp} - "+template)
         if params is None: params={}
 
-        #NIE TO GATHER MANY MORE ITEMS FOR LOGGING (LIKE STACK TRACES AND LINE NUMBERS)
-        params.log={}
-        params.log.timestamp=datetime.utcnow().strftime("%H:%M:%S")
+        #NICE TO GATHER MANY MORE ITEMS FOR LOGGING (LIKE STACK TRACES AND LINE NUMBERS)
+        params["log_timestamp"]=datetime.utcnow().strftime("%H:%M:%S")
 
         for l in D.logs:
             l.println(template, params)
@@ -153,7 +153,10 @@ class Log_usingStream():
 
 
     def println(self, template, params):
-        self.stream.write(template.substitute(params)+"\n")
+        try:
+            self.stream.write(template.substitute(params)+"\n")
+        except Exception, e:
+            pass
 
 
 

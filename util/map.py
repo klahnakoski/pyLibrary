@@ -27,7 +27,7 @@ class Map(dict):
         if key.find(".")>=0:
             for n in key.split("."):
                 d=d[n]
-            return Map(**d)
+            return wrap(d)
 
         if key not in d: return None
         return wrap(d[key])
