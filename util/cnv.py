@@ -70,10 +70,10 @@ class CNV:
     #RETURN PRETTY PYTHON CODE FOR THE SAME
     @staticmethod
     def value2quote(value):
-        if isinstance(value, str):
+        if isinstance(value, basestring):
             return "\""+value.replace("\"", "\\\"")+"\""
         else:
-            return str(value)
+            return repr(value)
 
     #RETURN PYTHON CODE FOR THE SAME
     @staticmethod

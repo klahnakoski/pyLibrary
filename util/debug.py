@@ -19,21 +19,24 @@ from util.strings import indent
 
 class D(object):
 
+
+
+    @classmethod
+    def add_log(cls, log):
+        cls.logs.append(log)
+
+
     @staticmethod
     def println(template, params=None):
-#        meta={
-#            "timestamp":datetime.utcnow(),
-#            "message":Template(template).safe_substitute(params),
-#            "template":template,
-#            "params":nvl(params, {})
-#        }
+        if not isinstance(template, Template): template=Template("${log.timestamp} - "+template)
+        if params is None: params={}
 
-        timestamp=datetime.utcnow().strftime("%H:%M:%S")
+        #NIE TO GATHER MANY MORE ITEMS FOR LOGGING (LIKE STACK TRACES AND LINE NUMBERS)
+        params.log={}
+        params.log.timestamp=datetime.utcnow().strftime("%H:%M:%S")
 
-        if params is None:
-            sys.stdout.write(timestamp+" - "+template+"\n")
-        else:
-            sys.stdout.write(timestamp+": "+Template(template).safe_substitute(params)+"\n")
+        for l in D.logs:
+            l.println(template, params)
 
     @staticmethod
     def warning(template, params=None, cause=None):
@@ -63,7 +66,6 @@ class D(object):
             cause=Except(str(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), offset))
 
         raise Except(template, params, cause, format_trace(traceback.extract_stack(), 1+offset))
-
 
 
 
@@ -116,3 +118,46 @@ class Except(Exception):
             output+="\ncaused by\n\t"+self.cause.__str__()
 
         return output+"\n"
+
+
+
+
+
+class Log():
+    @classmethod
+    def new_instance(cls, file=None, stream=None):
+        if file is not None: return Log_usingFile(file)
+        if stream is not None: return Log_usingStream(stream)
+
+
+        
+
+class Log_usingFile():
+
+    def __init__(self, file):
+        assert file is not None
+        self.file_name=file
+
+
+    def println(self, template, params):
+        with open(self.file_name, "w") as output_file:
+            output_file.write(template.substitute(params))
+
+
+            
+class Log_usingStream():
+
+    def __init__(self, stream):
+        assert stream is not None
+        self.stream=stream
+
+
+    def println(self, template, params):
+        self.stream.write(template.substitute(params)+"\n")
+
+
+
+
+
+D.logs=[Log.new_instance(stream=sys.stdout)]
+
