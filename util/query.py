@@ -9,7 +9,7 @@
 import itertools
 from util.debug import D
 from util.basic import nvl
-from util.map import Map
+from util.map import Map, MapList
 
 class Q:
 
@@ -112,7 +112,7 @@ class Q:
     #UNSTACKING CUBES WILL BE SIMPLER BECAUSE THE keys ARE IMPLIED (edges-column)
     @staticmethod
     def unstack(data, keys=None, column=None, value=None):
-        assert id is None
+        assert keys is not None
         assert column is not None
         assert value is not None
         if isinstance(data, Cube): D.error("Do not know how to deal with cubes yet")
@@ -123,7 +123,7 @@ class Q:
                 key[v[column]]=v[value]
             output.append(key)
             
-        return output
+        return MapList(output)
 
 
 

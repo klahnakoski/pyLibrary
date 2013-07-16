@@ -16,11 +16,13 @@ from util.basic import nvl
 from util.cnv import CNV
 from util.debug import D
 from util.map import Map
+from util.query import Q
 from util.strings import indent
 from util.strings import outdent
 
 
 DEBUG = False
+MAX_BATCH_SIZE=100
 
 class DB():
 
@@ -78,6 +80,10 @@ class DB():
 
         self.transaction_level-=1
 
+    def flush(self):
+        self.commit()
+        self.begin()
+
     def rollback(self):
         self.backlog=[]     #YAY! FREE!
         if self.transaction_level==0:
@@ -134,6 +140,8 @@ class DB():
         if param is not None: sql=Template(sql).substitute(self.quote(param))
         sql=outdent(sql)
         self.backlog.append(sql)
+        if len(self.backlog)>=MAX_BATCH_SIZE:
+            self.execute_backlog()
 
         
     def execute_file(self, filename, param=None):
@@ -179,7 +187,7 @@ class DB():
     def execute_backlog(self):
         if len(self.backlog)==0: return
 
-        for g in Q.groupby(self.backlog, size=100):
+        for g in Q.groupby(self.backlog, size=MAX_BATCH_SIZE):
             sql=";\n".join(g)
             try:
                 if self.debug: D.println("Execute block of SQL:\n"+indent(sql))
@@ -190,6 +198,7 @@ class DB():
                 D.error("Problem executing SQL:\n"+indent(sql.strip()), e, offset=1)
 
         self.backlog=[]
+
 
 
     ## Insert dictionary of values into table
@@ -253,7 +262,8 @@ class DB():
             D.error("problem quoting SQL", e)
 
 
-            
+
+
 #ACTUAL SQL, DO NOT QUOTE THIS STRING
 class SQL(str):
 
