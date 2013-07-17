@@ -11,3 +11,4 @@ def nvl(*args):
     for a in args:
         if a is not None: return a
     return None
+

@@ -38,3 +38,12 @@ def right(value, len):
     if len<=0: return ""
     return value[-len:]
 
+def find_first(value, find_arr, start=0):
+    i=len(value)
+    for f in find_arr:
+        temp=value.find(f, start)
+        if temp==-1: continue
+        i=min(i, temp)
+    if i==len(value): return -1
+    return i
+

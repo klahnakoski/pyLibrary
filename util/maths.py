@@ -9,6 +9,7 @@ from math import log10, floor
 import math
 
 from util.debug import D
+from util.strings import find_first
 
 
 def bayesian_add(a, b):
@@ -42,3 +43,15 @@ def round_sci(value, decimal=None, digits=None):
         return round(value/m, digits)*m
 
     return round(value, decimal)
+
+#RETURN A VALUE CLOSE TO value, BUT WITH SHORTER len(str(value))<len(str(value)):
+def approx_str(value):
+    v=str(value)
+    d=v.find(".")
+    if d==-1: return value
+
+    i=find_first(v, ["9999", "0000"], d)
+    if i==-1: return value
+
+    return round_sci(value, decimal=i-d-1)
+
