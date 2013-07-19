@@ -133,7 +133,40 @@ class DB():
         except Exception, e:
             D.error("Problem executing SQL:\n"+indent(sql.strip()), e, offset=1)
 
+            
+    # EXECUTE GIVEN METHOD FOR ALL ROWS RETURNED
+    def foreach(self, sql, param=None, execute=None):
+        assert execute is not None
 
+        num=0
+
+        self.execute_backlog()
+        try:
+            old_cursor=self.cursor
+            if old_cursor is None: #ALLOW NON-TRANSACTIONAL READS
+                self.cursor=self.db.cursor()
+
+            if param is not None: sql=Template(sql).substitute(self.quote(param))
+            sql=outdent(sql)
+            if self.debug: D.println("Execute SQL:\n"+indent(sql))
+
+            self.cursor.execute(sql)
+
+            columns = tuple( [d[0].decode('utf8') for d in self.cursor.description] )
+            for r in self.cursor:
+                num+=1
+                execute(Map(**dict(zip(columns, r))))
+
+            if old_cursor is None:   #CLEANUP AFTER NON-TRANSACTIONAL READS
+                self.cursor.close()
+                self.cursor=None
+
+        except Exception, e:
+            D.error("Problem executing SQL:\n"+indent(sql.strip()), e, offset=1)
+
+        return num
+
+    
     def execute(self, sql, param=None):
         if self.transaction_level==0: D.error("Expecting transation to be started before issuing queries")
 
