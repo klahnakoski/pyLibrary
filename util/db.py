@@ -5,10 +5,10 @@
 ################################################################################
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
-
-
+import base64
 
 from datetime import datetime
+import os
 from string import Template
 import subprocess
 import MySQLdb
@@ -37,7 +37,7 @@ class DB():
         self.cursor=None
         self.partial_rollback=False
         self.transaction_level=0
-        self.debug=DEBUG
+        self.debug=settings.debug is not None or DEBUG
         self.backlog=[]     #accumulate the write commands so they are sent at once
 
 
@@ -220,7 +220,7 @@ class DB():
     def execute_backlog(self):
         if len(self.backlog)==0: return
 
-        for g in Q.groupby(self.backlog, size=MAX_BATCH_SIZE):
+        for i, g in Q.groupby(self.backlog, size=MAX_BATCH_SIZE):
             sql=";\n".join(g)
             try:
                 if self.debug: D.println("Execute block of SQL:\n"+indent(sql))

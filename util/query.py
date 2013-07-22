@@ -22,19 +22,25 @@ class Q:
     def groupby(data, keys=None, size=None):
     #return list of (keys, values) pairs where
     #group by the set of set of keys
-    #values is list of all data that has those keys
+    #values IS LIST OF ALL data that has those keys
         if size is not None: return groupby_size(data, size)
         try:
-            def keys2string(x): return "|".join([str(x[k]) for k in keys])
+            def keys2string(x):
+                #REACH INTO dict TO GET PROPERTY VALUE
+                return "|".join([str(object.__getattribute__(x, "__dict__")[k]) for k in keys])
             def get_keys(d): return dict([(k, str(d[k])) for k in keys])
 
-            #MUST BE SORTED, OR groupby WILL NOT WORK
-            data=sorted(data, key=keys2string)
-            #groupby RETURNS valueIter, WHICH IS NO GOOD FOR PICKING THE FIRST
-            #ELEMENT (SO I CAN GET THE MULTI-KEY)
-            output=[(get_keys(values[0]), values) for values in [list(valueIter) for key, valueIter in itertools.groupby(data, keys2string)]]
+            agg={}
+            for d in data:
+                key=keys2string(d)
+                if key in agg:
+                    pair=agg[key]
+                else:
+                    pair=(get_keys(d), list())
+                    agg[key]=pair
+                pair[1].append(d)
 
-            return output
+            return agg.values()
         except Exception, e:
             D.error("Problem grouping", e)
 
@@ -130,7 +136,7 @@ class Q:
 
 
 def groupby_size(data, size):
-    return [data[i:i+size] for i in range(0, len(data), size)]
+    return [(i, data[i:i+size]) for i in range(0, len(data), size)]
 
 
 
