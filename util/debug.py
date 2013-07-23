@@ -16,10 +16,9 @@ import sys
 # are easily searchable, keep it for now)
 import traceback
 from util.strings import indent
-from util.map import Map
+
 
 class D(object):
-
 
 
     @classmethod

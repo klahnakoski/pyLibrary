@@ -62,13 +62,47 @@ def z_moment2stats(z_moment, unbiased=True):
 class Stats():
 
     def __init__(self, **args):
-        args=Map(**args)
-        self.count=nvl(args.count, 0)
-        self.mean=nvl(args.mean, 0)
-        self.variance=nvl(args.variance, nvl(args.std, 0)**2)
-        self.skew=nvl(args.skew, 0)
-        self.kurtosis=nvl(args.kurtosis, 0)
-        self.unbiased=nvl(args.unbiased, not args.biased, False)     #DEFAULT FOR MAXIMUM VARIANCE
+        if "count" not in args:
+            self.count=0
+            self.mean=0
+            self.variance=0
+            self.skew=0
+            self.kurtosis=0
+        elif "mean" not in args:
+            self.count=args["count"]
+            self.mean=0
+            self.variance=0
+            self.skew=0
+            self.kurtosis=0
+        elif "variance" not in args and "std" not in args:
+            self.count=args["count"]
+            self.mean=args["mean"]
+            self.variance=0
+            self.skew=0
+            self.kurtosis=0
+        elif "skew" not in args:
+            self.count=args["count"]
+            self.mean=args["mean"]
+            self.variance=args["variance"] if "variance" in args else args["std"]**2
+            self.skew=0
+            self.kurtosis=0
+        elif "kurtosis" not in args:
+            self.count=args["count"]
+            self.mean=args["mean"]
+            self.variance=args["variance"] if "variance" in args else args["std"]**2
+            self.skew=args["skew"]
+            self.kurtosis=0
+        else:
+            self.count=args["count"]
+            self.mean=args["mean"]
+            self.variance=args["variance"] if "variance" in args else args["std"]**2
+            self.skew=args["skew"]
+            self.kurtosis=args["kurtosis"]
+
+        self.unbiased=\
+            args["unbiased"] if "unbiased" in args else \
+            not args["biased"] if "biased" in args else \
+            False
 
 
 

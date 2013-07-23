@@ -64,7 +64,7 @@ class CNV:
         column_names, #tuple of columns names
         rows          #list of tuples
     ):
-        return [Map(**dict(zip(column_names, r))) for r in rows]
+        return MapList([dict(zip(column_names, r)) for r in rows])
 
 
     #RETURN PRETTY PYTHON CODE FOR THE SAME
