@@ -65,7 +65,9 @@ class D(object):
         if not isinstance(cause, Except):
             cause=Except(str(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), offset))
 
-        raise Except(template, params, cause, format_trace(traceback.extract_stack(), 1+offset))
+        trace=format_trace(traceback.extract_stack(), 1+offset)
+        e=Except(template, params, cause, trace)
+        raise e
 
 
 
