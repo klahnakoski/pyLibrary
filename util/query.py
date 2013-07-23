@@ -45,6 +45,24 @@ class Q:
             D.error("Problem grouping", e)
 
 
+    @staticmethod
+    def index(data, keys=None):
+    #return dict that uses keys to index data
+        if not isinstance(keys, list): keys=[keys]
+
+        output=dict()
+        for d in data:
+            o=output
+            for k in keys[:-1]:
+                v=d[k]
+                if v not in o: o[v]=dict()
+                o=o[v]
+            v=d[keys[-1]]
+            if v not in o: o[v]=list()
+            o=o[v]
+            o.append(d)
+        return output
+
 
     @staticmethod
     def select(data, field_name):
