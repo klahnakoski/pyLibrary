@@ -27,13 +27,16 @@ MAX_BATCH_SIZE=100
 class DB():
 
     def __init__(self, settings):
-        self.db=MySQLdb.connect(
-            host=settings.host,
-            port=settings.port,
-            user=nvl(settings.username, settings.user),
-            passwd=nvl(settings.password, settings.passwd),
-            db=nvl(settings.schema, settings.db)
-        )
+        try:
+            self.db=MySQLdb.connect(
+                host=settings.host,
+                port=settings.port,
+                user=nvl(settings.username, settings.user),
+                passwd=nvl(settings.password, settings.passwd),
+                db=nvl(settings.schema, settings.db)
+            )
+        except Exception, e:
+            D.error("Failure to connect", e)
         self.cursor=None
         self.partial_rollback=False
         self.transaction_level=0
