@@ -26,12 +26,18 @@ class CNV:
         return json.dumps(obj)
 
     @staticmethod
-    def JSON2object(json_string, flexible=False):
+    def JSON2object(json_string, params=None, flexible=False):
         #REMOVE """COMMENTS""", #COMMENTS, //COMMENTS, AND \n
         if flexible: json_string=re.sub(r"\"\"\".*?\"\"\"|^\s*//\n|#.*?\n|\n", r" ", json_string)  #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
+
+        if params is not None:
+            params=dict([(k,CNV.value2quote(v)) for k,v in params.items()])
+            json_string= string.Template(json_string).substitute(params)
+
         obj=json.loads(json_string)
         if isinstance(obj, list): return MapList(obj)
         return Map(**obj)
+
 
     @staticmethod
     def string2datetime(value, format):
