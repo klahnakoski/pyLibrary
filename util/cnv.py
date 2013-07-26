@@ -27,20 +27,24 @@ class CNV:
 
     @staticmethod
     def JSON2object(json_string, params=None, flexible=False):
-        #REMOVE """COMMENTS""", #COMMENTS, //COMMENTS, AND \n
-        if flexible: json_string=re.sub(r"\"\"\".*?\"\"\"|^\s*//\n|#.*?\n|\n", r" ", json_string)  #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
+        try:
+            #REMOVE """COMMENTS""", #COMMENTS, //COMMENTS, AND \n
+            if flexible: json_string=re.sub(r"\"\"\".*?\"\"\"|^\s*//\n|#.*?\n|\n", r" ", json_string)  #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
 
-        if params is not None:
-            params=dict([(k,CNV.value2quote(v)) for k,v in params.items()])
-            json_string= string.Template(json_string).substitute(params)
+            if params is not None:
+                params=dict([(k,CNV.value2quote(v)) for k,v in params.items()])
+                json_string= string.Template(json_string).substitute(params)
 
-        obj=json.loads(json_string)
-        if isinstance(obj, list): return MapList(obj)
-        return Map(**obj)
+            obj=json.loads(json_string)
+            if isinstance(obj, list): return MapList(obj)
+            return Map(**obj)
+        except Exception, e:
+            D.error("Can not decode JSON:\n\t"+json_string, e)
 
 
     @staticmethod
     def string2datetime(value, format):
+        ## http://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
         try:
             return datetime.datetime.strptime(value, format)
         except Exception, e:
