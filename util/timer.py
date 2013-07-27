@@ -14,3 +14,9 @@ class Timer:
         self.end = time.clock()
         self.interval = self.end - self.start
         D.println(self.description + " took %.03f sec"%self.interval)
+
+
+        
+    @property
+    def duration(self):
+        return self.interval
