@@ -14,6 +14,7 @@ import functools
 class Map(dict):
 #ACCESS dict AND OBJECTS LIKE JAVASCRIPT a.b==a["b"]
 
+    
     def __init__(self, **map):
         dict.__init__(self)
         object.__setattr__(self, "__dict__", map)  #map IS A COPY OF THE PARAMETERS
@@ -92,6 +93,8 @@ class MapList():
 def wrap(v):
     if v is None:
         return None
+    if isinstance(v, Map):
+        return v
     if isinstance(v, dict):
         m = Map()
         object.__setattr__(m, "__dict__", v) #INJECT m.__dict__=v SO THERE IS NO COPY

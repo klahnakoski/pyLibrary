@@ -9,13 +9,19 @@
 
 #from string import Template
 from datetime import datetime
+import inspect
+from logging import LogRecord
 from string import Template
 import sys
 
 #for debugging (do I even want an object in Python? - at least these methods
 # are easily searchable, keep it for now)
+import threading
 import traceback
+import logging
 from util.strings import indent
+from util.map import Map, MapList
+import util
 
 
 class D(object):
@@ -69,6 +75,15 @@ class D(object):
         raise e
 
 
+    @staticmethod
+    def settings(settings):
+        ##http://victorlin.me/2012/08/good-logging-practice-in-python/
+        if settings.log is not None:
+            if not isinstance(settings.log, MapList): settings.log=[settings.log]
+            for log in settings.log:
+                D.add_log(Log.new_instance(log))
+
+            
 
 
 D.info=D.println
@@ -126,9 +141,12 @@ class Except(Exception):
 
 class Log():
     @classmethod
-    def new_instance(cls, file=None, stream=None):
-        if file is not None: return Log_usingFile(file)
-        if stream is not None: return Log_usingStream(stream)
+    def new_instance(cls, settings):
+        settings=util.map.wrap(settings)
+        if settings["class"] is not None: return Log_usingLogger(settings)
+        if settings.file is not None: return Log_usingFile(file)
+        if settings.filename is not None: return Log_usingFile(settings.filename)
+        if settings.stream is not None: return Log_usingStream(settings.stream)
 
 
         
@@ -138,11 +156,37 @@ class Log_usingFile():
     def __init__(self, file):
         assert file is not None
         self.file_name=file
+        self.file_lock=threading.Lock()
 
 
     def println(self, template, params):
-        with open(self.file_name, "w") as output_file:
-            output_file.write(template.substitute(params))
+        with self.file_lock:
+            with open(self.file_name, "a") as output_file:
+                output_file.write(template.substitute(params))
+
+
+
+
+class Log_usingLogger():
+    def __init__(self, settings):
+        assert settings["class"] is not None
+        self.logger=logging.Logger("unique name", level=logging.INFO)
+
+
+        # IMPORT MODULE FOR HANDLER
+        path=settings["class"].split(".")
+        class_name=path[-1]
+        path=".".join(path[:-1])
+        temp=__import__(path, globals(), locals(), [class_name], -1)
+        constructor=object.__getattribute__(temp, class_name)
+
+        params = settings.dict
+        del params['class']
+        self.logger.addHandler(constructor(**params))
+
+    def println(self, template, params):
+        # http://docs.python.org/2/library/logging.html#logging.LogRecord
+        self.logger.info(template.substitute(params))
 
 
             
@@ -163,5 +207,5 @@ class Log_usingStream():
 
 
 
-D.logs=[Log.new_instance(stream=sys.stdout)]
+D.logs=[Log.new_instance({"stream":sys.stdout})]
 
