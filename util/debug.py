@@ -78,10 +78,12 @@ class D(object):
     @staticmethod
     def settings(settings):
         ##http://victorlin.me/2012/08/good-logging-practice-in-python/
-        if settings.log is not None:
-            if not isinstance(settings.log, MapList): settings.log=[settings.log]
-            for log in settings.log:
-                D.add_log(Log.new_instance(log))
+        if settings is None: return
+        if settings.log is None: return
+
+        if not isinstance(settings.log, MapList): settings.log=[settings.log]
+        for log in settings.log:
+            D.add_log(Log.new_instance(log))
 
             
 
