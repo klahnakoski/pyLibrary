@@ -91,12 +91,12 @@ class CNV:
         return repr(value)
 
 
-
     @staticmethod
-    def DataFrame2string(df):
+    def DataFrame2string(df, columns=None):
         output = StringIO.StringIO()
         try:
-            df.to_csv(output, sep="\t")
+            df.to_csv(output, sep="\t", header=True, cols=columns, engine='python')
             return output.getvalue()
         finally:
             output.close()
+
