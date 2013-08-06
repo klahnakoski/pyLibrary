@@ -64,6 +64,7 @@ class CNV:
     def datetime2unix(d):
         return time.mktime(d.timetuple())
 
+
     @staticmethod
     def datetime2unixmilli(d):
         return int(time.mktime(d.timetuple())*1000)
