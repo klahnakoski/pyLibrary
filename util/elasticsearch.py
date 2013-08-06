@@ -18,6 +18,7 @@ class ElasticSearch():
         assert settings.index is not None
         assert settings.type is not None
 
+        self.metadata=None
         if settings.port is None: settings.port=9200
         
         self.settings=settings
@@ -47,17 +48,29 @@ class ElasticSearch():
         )
 
     #RETURN LIST OF {"alias":a, "index":i} PAIRS
+    #ALL INDEXES INCLUDED, EVEN IF NO ALIAS {"alias":None}
     def get_aliases(self):
-        response=requests.get(self.settings.host+":"+str(self.settings.port)+"/_aliases")
-        data=CNV.JSON2object(response.content)
+        data=self.get_metadata().indices
         output=[]
         for index, desc in data.items():
-            if desc["aliases"] is None or len(desc["aliases"].items())==0:
+            if desc["aliases"] is None or len(desc["aliases"])==0:
                 output.append({"index":index, "alias":None})
             else:
-                for a, v in desc["aliases"].items():
+                for a in desc["aliases"]:
                     output.append({"index":index, "alias":a})
         return MapList(output)
+
+
+    
+    def get_metadata(self):
+        if self.metadata is None:
+            response=self.get(self.settings.host+":"+str(self.settings.port)+"/_cluster/state")
+            self.metadata=response.metadata
+        return self.metadata
+
+
+    def get_schema(self):
+        return self.get_metadata().indicies[self.settings.index]
 
 
     #DELETE ALL INDEXES WITH GIVEN PREFIX, EXCEPT name
@@ -130,6 +143,18 @@ class ElasticSearch():
     def post(*list, **args):
         try:
             response=requests.post(*list, **args)
+            if DEBUG: D.println(response.content[:130])
+            details=CNV.JSON2object(response.content)
+            if details.error is not None:
+                D.error(details.error)
+            return details
+        except Exception, e:
+            D.error("Problem with call to ${url}", {"url":list[0]}, e)
+
+    @staticmethod
+    def get(*list, **args):
+        try:
+            response=requests.get(*list, **args)
             if DEBUG: D.println(response.content[:130])
             details=CNV.JSON2object(response.content)
             if details.error is not None:

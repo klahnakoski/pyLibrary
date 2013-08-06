@@ -7,9 +7,11 @@
 ################################################################################
 
 import itertools
+import sys
 from util.debug import D
 from util.basic import nvl
 from util.map import Map, MapList
+from util.mutiset import mutiset
 
 class Q:
 
@@ -19,11 +21,14 @@ class Q:
 
     
     @staticmethod
-    def groupby(data, keys=None, size=None):
+    def groupby(data, keys=None, size=None, min_size=None, max_size=None):
     #return list of (keys, values) pairs where
     #group by the set of set of keys
     #values IS LIST OF ALL data that has those keys
-        if size is not None: return groupby_size(data, size)
+        if size is not None or min_size is not None or max_size is not None:
+            if size is not None: max_size=size
+            return groupby_size(data, min_size=min_size, max_size=max_size)
+        
         try:
             def keys2string(x):
                 #REACH INTO dict TO GET PROPERTY VALUE
@@ -152,13 +157,26 @@ class Q:
 
 
 
+def groupby_size(data, max_size=sys.maxint, min_size=0):
+    if isinstance(data, list):
+        return [(i, data[i:i+max_size]) for i in range(0, len(data), max_size)]
+    elif isinstance(data, mutiset):
+        # GROUP MUTISET BASED ON POPULATION OF EACH KEY, TRYING TO STAY IN min/max LIMITS
+        output=[]
 
-def groupby_size(data, size):
-    return [(i, data[i:i+size]) for i in range(0, len(data), size)]
-
-
-
-
+        total=0
+        g=[]
+        for k,c in data.items():
+            if total<min_size:
+                total+=k,
+                g.append(k)
+            else:
+                output.append((len(output), g))
+                total=0
+                g=[]
+            if total>=max_size:
+                D.error("(${min}, ${max}) range is too strict", {"min":min_size, "max":max_size})
+        return output
 
 
 
