@@ -1,5 +1,6 @@
 import argparse
 from util.cnv import CNV
+from util.files import File
 
 class startup():
 
@@ -46,6 +47,5 @@ class startup():
             ])
             filename=args.filename
 
-        with open(filename) as f:  json=f.read()
-
+        json=File(filename).read()
         return CNV.JSON2object(json, flexible=True)

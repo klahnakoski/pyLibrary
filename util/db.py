@@ -19,6 +19,7 @@ from util.map import Map
 from util.query import Q
 from util.strings import indent
 from util.strings import outdent
+from util.files import File
 
 
 DEBUG = False
@@ -181,8 +182,7 @@ class DB():
 
         
     def execute_file(self, filename, param=None):
-        with open(filename) as f:
-            content = f.read()
+        content=File(filename).read()
         self.execute(content, param)
 
     @staticmethod
@@ -215,8 +215,7 @@ class DB():
     def execute_file(settings, filename, param=None):
         # MySQLdb provides no way to execute an entire SQL file in bulk, so we
         # have to shell out to the commandline client.
-        with open(filename) as f:
-            sql = f.read()
+        sql=File(filename).read()
         DB.execute_sql(settings, sql, param)
 
 

@@ -1,6 +1,14 @@
+################################################################################
+## This Source Code Form is subject to the terms of the Mozilla Public
+## License, v. 2.0. If a copy of the MPL was not distributed with this file,
+## You can obtain one at http://mozilla.org/MPL/2.0/.
+################################################################################
+## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+################################################################################
+
 from util.debug import D
 
-class mutiset():
+class multiset():
 
     def __init__(self, list=None, key_field=None, count_field=None):
         if list is None:
@@ -27,7 +35,7 @@ class mutiset():
 
     def remove(self, value):
         if value not in self.dic:
-            D.error("${value} is not in mutiset", {"value":value})
+            D.error("${value} is not in multiset", {"value":value})
 
         count=self.dic[value]
         count-=1

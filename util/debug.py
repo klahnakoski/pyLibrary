@@ -22,6 +22,7 @@ import logging
 from util.strings import indent
 from util.map import Map, MapList
 import util
+from util.files import File
 
 
 class D(object):
@@ -163,8 +164,7 @@ class Log_usingFile():
 
     def println(self, template, params):
         with self.file_lock:
-            with open(self.file_name, "a") as output_file:
-                output_file.write(template.substitute(params))
+            File(self.filename).append(template.substitute(params))
 
 
 

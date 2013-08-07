@@ -110,3 +110,14 @@ class CNV:
         finally:
             output.close()
 
+    @staticmethod
+    def ascii2char(ascii):
+        return chr(ascii)
+
+    @staticmethod
+    def char2ascii(char):
+        return ord(char)
+
+    @staticmethod
+    def int2hex(value, size):
+        return (("0"*size)+hex(value)[2:])[-size:]

@@ -11,7 +11,7 @@ import sys
 from util.debug import D
 from util.basic import nvl
 from util.map import Map, MapList
-from util.mutiset import mutiset
+from util.multiset import multiset
 
 class Q:
 
@@ -27,7 +27,7 @@ class Q:
     #values IS LIST OF ALL data that has those keys
         if size is not None or min_size is not None or max_size is not None:
             if size is not None: max_size=size
-            return groupby_size(data, min_size=min_size, max_size=max_size)
+            return groupby_min_max_size(data, min_size=min_size, max_size=max_size)
         
         try:
             def keys2string(x):
@@ -156,24 +156,51 @@ class Q:
 
 
 
+def groupby_size(data, size):
+    iterator=data.__iter__()
+    def more():
+        output=[]
+        for i in range(size):
+            try:
+                output.append(iterator.next())
+            except StopIteration, s:
+                break
+        return output
 
-def groupby_size(data, max_size=sys.maxint, min_size=0):
+    #THIS IS LAZY
+    i=0
+    output=more()
+    while len(output)==size:
+        yield (i, output)
+        i+=1
+        output=more()
+    yield (i,output)
+
+
+
+
+
+def groupby_min_max_size(data, max_size=None, min_size=0):
+    if max_size is None: max_size=sys.maxint
+
     if isinstance(data, list):
         return [(i, data[i:i+max_size]) for i in range(0, len(data), max_size)]
-    elif isinstance(data, mutiset):
-        # GROUP MUTISET BASED ON POPULATION OF EACH KEY, TRYING TO STAY IN min/max LIMITS
+    elif not isinstance(data, multiset):
+        return groupby_size(data, max_size)
+    else:
+        # GROUP multiset BASED ON POPULATION OF EACH KEY, TRYING TO STAY IN min/max LIMITS
         output=[]
 
         total=0
-        g=[]
+        g=list()
         for k,c in data.items():
             if total<min_size:
-                total+=k,
+                total+=c
                 g.append(k)
-            else:
+            elif total+c>max_size:
                 output.append((len(output), g))
                 total=0
-                g=[]
+                g=list()
             if total>=max_size:
                 D.error("(${min}, ${max}) range is too strict", {"min":min_size, "max":max_size})
         return output
