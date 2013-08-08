@@ -154,6 +154,24 @@ class Q:
             
         return MapList(output)
 
+    
+    @staticmethod
+    def sort(data, fieldnames):
+        if not isinstance(fieldnames, list):
+            fieldnames=[fieldnames]
+
+        def comparer(left, right):
+            for func in [lambda(x): x[col] for col in fieldnames]:
+                result = cmp(func(left), func(right))
+                if result!=0:
+                    return result
+            else:
+                return 0
+            
+        return sorted(data, cmp=comparer)
+
+        
+
 
 
 def groupby_size(data, size):
@@ -177,10 +195,33 @@ def groupby_size(data, size):
     yield (i,output)
 
 
+def groupby_multiset(data, min_size, max_size):
+    # GROUP multiset BASED ON POPULATION OF EACH KEY, TRYING TO STAY IN min/max LIMITS
+    if min_size is None: min_size=0
+
+    total = 0
+    i = 0
+    g = list()
+    for k, c in data.items():
+        if total<min_size or total + c < max_size:
+            total += c
+            g.append(k)
+        elif total<max_size:
+            yield (i, g)
+            i += 1
+            total = c
+            g = [k]
+
+        if total >= max_size:
+            D.error("(${min}, ${max}) range is too strict given step of ${increment}", {
+                "min": min_size, "max": max_size, "increment":c
+            })
+
+    if len(g) > 0:
+        yield(i, g)
 
 
-
-def groupby_min_max_size(data, max_size=None, min_size=0):
+def groupby_min_max_size(data, min_size=0, max_size=None,):
     if max_size is None: max_size=sys.maxint
 
     if isinstance(data, list):
@@ -188,22 +229,7 @@ def groupby_min_max_size(data, max_size=None, min_size=0):
     elif not isinstance(data, multiset):
         return groupby_size(data, max_size)
     else:
-        # GROUP multiset BASED ON POPULATION OF EACH KEY, TRYING TO STAY IN min/max LIMITS
-        output=[]
-
-        total=0
-        g=list()
-        for k,c in data.items():
-            if total<min_size:
-                total+=c
-                g.append(k)
-            elif total+c>max_size:
-                output.append((len(output), g))
-                total=0
-                g=list()
-            if total>=max_size:
-                D.error("(${min}, ${max}) range is too strict", {"min":min_size, "max":max_size})
-        return output
+        return groupby_multiset(data, min_size, max_size)
 
 
 

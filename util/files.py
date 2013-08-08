@@ -18,6 +18,12 @@ class File():
         with open(self.filename, "w") as file:
             file.write(content)
 
+    def write(self, data):
+        with open(self.filename, "w") as file:
+            if not isinstance(data, list): data=[data]
+            for d in data:
+                file.write(d)
+
     def iter(self):
         return codecs.open(self.filename, "r")
 
