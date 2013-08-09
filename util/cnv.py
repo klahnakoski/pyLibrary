@@ -121,3 +121,17 @@ class CNV:
     @staticmethod
     def int2hex(value, size):
         return (("0"*size)+hex(value)[2:])[-size:]
+
+    @staticmethod
+    def value2intlist(value):
+        if value is None:
+            return None
+        elif hasattr(value, '__iter__'):
+            output=[int(d) for d in value if d!=""]
+            if len(output)==0: return None
+            return output
+        elif value.strip()=="":
+            return None
+        else:
+            return [int(value)]
+

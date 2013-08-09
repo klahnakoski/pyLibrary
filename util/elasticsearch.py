@@ -90,19 +90,17 @@ class ElasticSearch():
             })
         )
 
-
-    def load(self, records, id_field=None):
+    # RECORDS MUST HAVE id AND json
+    def load(self, records):
         # ADD LINE WITH COMMAND
         lines=[]
         for r in records:
-            json=CNV.object2JSON(r)
+            id=r.id
+            json=CNV.object2JSON(r.json)
+            if id is None: id=sha.new(json).hexdigest()
 
-            if id_field is None:
-                id=sha.new(json).hexdigest()
-            else:
-                id=str(r[id_field])
-            
-            lines.extend('{"index":{"_id":"'+id+'"}}\n'+json+"\n")
+            lines.append('{"index":{"_id":"'+id+'"}}\n')
+            lines.append(json+"\n")
 
         if len(lines)==0: return
         response=ElasticSearch.post(

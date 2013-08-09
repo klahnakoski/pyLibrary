@@ -6,10 +6,10 @@
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
 
-from multiprocessing import Queue
 import threading
 from util.basic import nvl
 from util.debug import D
+from util.threads import Queue
 
 
 class etl_worker_thread(threading.Thread):
@@ -71,7 +71,7 @@ class Multithread():
         try:
             #SEND ENOUGH STOPS
             for t in self.threads:
-                self.inbound.put("stop")
+                self.inbound.add("stop")
 
             #WAIT FOR FINISH
             for t in self.threads:
@@ -91,11 +91,11 @@ class Multithread():
     def execute(self, parameters):
         #FILL QUEUE WITH WORK
         for param in parameters:
-            self.inbound.put(param)
+            self.inbound.add(param)
 
         num=len(parameters)
         for i in xrange(num):
-            result=self.outbound.get()
+            result=self.outbound.pop()
             yield result
 
     def stop(self):
