@@ -1,31 +1,58 @@
 import thread
-from multiprocessing import Queue as _Queue
+import threading
 from util.debug import D
 
+
+#SIMPLE LOCK (ACTUALLY, A PYTHON threadind.Condition() WITH notify() BEFORE EVERY RELEASE)
+class Lock():
+    def __init__(self):
+        self.monitor=threading.Condition()
+
+    def __enter__(self):
+        self.monitor.acquire()
+        return self
+
+    def __exit__(self, a, b, c):
+        self.monitor.notify()
+        self.monitor.release()
+
+    def wait(self):
+        self.monitor.wait()
+
+
+# SIMPLE MESSAGE QUEUE, multiprocessing.Queue REQUIRES SERIALIZATION, WHICH IS HARD TO USE JUST BETWEEN THREADS
 class Queue():
     def __init__(self):
         self.keep_running=True
-        self.queue=_Queue()
+        self.lock=Lock()
+        self.queue=[]
 
     def __iter__(self):
         while self.keep_running:
             try:
                 yield self.pop()
+            except StopIteration:
+                pass
             except Exception, e:
-                D.warning("Tell me about what appends here", e)
+                D.warning("Tell me about what happends here", e)
                 return
 
     def add(self, value):
-        self.queue.put(value)
+        with self.lock:
+            if self.keep_running:
+                self.queue.append(value)
 
     def pop(self):
-        self.queue.get()
+        with self.lock:
+            while self.keep_running:
+                if len(self.queue)!=0:
+                    self.queue.pop(0)
+                self.lock.wait()
+            raise StopIteration()
 
     def close(self):
-        self.keep_running=False
-        self.queue.close()
-
-
+        with self.lock:
+            self.keep_running=False
 
 
 

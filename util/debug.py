@@ -9,14 +9,12 @@
 
 #from string import Template
 from datetime import datetime
-import inspect
-from logging import LogRecord
 from string import Template
 import sys
 
 #for debugging (do I even want an object in Python? - at least these methods
 # are easily searchable, keep it for now)
-import threading
+import util.threads
 import traceback
 import logging
 from util.strings import indent
@@ -159,7 +157,7 @@ class Log_usingFile():
     def __init__(self, file):
         assert file is not None
         self.file_name=file
-        self.file_lock=threading.Lock()
+        self.file_lock=threads.Lock()
 
 
     def println(self, template, params):

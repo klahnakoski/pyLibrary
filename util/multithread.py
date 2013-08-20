@@ -12,6 +12,10 @@ from util.debug import D
 from util.threads import Queue
 
 
+
+STOP="stop"
+
+
 class etl_worker_thread(threading.Thread):
 
     #in_queue MUST CONTAIN HASH OF PARAMETERS FOR load()
@@ -31,16 +35,16 @@ class etl_worker_thread(threading.Thread):
 
     def run(self):
         while self.keep_running:
-            params=self.in_queue.get()
-            if params=="stop": return
+            params=self.in_queue.pop()
+            if params==STOP: return
             try:
                 result=self.function(**params)
                 if self.keep_running:
-                    self.out_queue.put(result)
+                    self.out_queue.add(result)
             except Exception, e:
                 D.warning("Can not load data for params=${params}", {"params": params})
                 if self.keep_running:
-                    self.out_queue.put([])
+                    self.out_queue.add([])
 
 
 
@@ -52,14 +56,15 @@ class etl_worker_thread(threading.Thread):
 #PASS AN (ITERATOR/LIST) OF PARAMETERS TO BE ISSUED TO NEXT AVAILABLE THREAD
 class Multithread():
 
+
     def __init__(self, functions):
         self.outbound=Queue()
         self.inbound=Queue()
 
         #MAKE THREADS
         self.threads=[]
-        for t in range(len(functions)):
-            thread=etl_worker_thread("worker "+str(t), self.inbound, self.outbound, functions[t])
+        for t, f in enumerate(functions):
+            thread=etl_worker_thread("worker "+str(t), self.inbound, self.outbound, f)
             self.threads.append(thread)
 
 
@@ -71,7 +76,7 @@ class Multithread():
         try:
             #SEND ENOUGH STOPS
             for t in self.threads:
-                self.inbound.add("stop")
+                self.inbound.add(STOP)
 
             #WAIT FOR FINISH
             for t in self.threads:
@@ -94,9 +99,11 @@ class Multithread():
             self.inbound.add(param)
 
         num=len(parameters)
-        for i in xrange(num):
-            result=self.outbound.pop()
-            yield result
+        def output():
+            for i in xrange(num):
+                result=self.outbound.pop()
+                yield result
+        return output()
 
     def stop(self):
         for t in self.threads:
@@ -104,4 +111,5 @@ class Multithread():
         self.threads=[]
         self.inbound.close()
         self.outbound.close()
+
 
