@@ -9,7 +9,7 @@
 from math import sqrt
 from util.basic import nvl
 from util.debug import D
-from util.map import Map
+from util.struct import Struct
 
 DEBUG=True
 EPSILON=0.000001

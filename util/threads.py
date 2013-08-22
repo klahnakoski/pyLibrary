@@ -45,8 +45,8 @@ class Queue():
     def pop(self):
         with self.lock:
             while self.keep_running:
-                if len(self.queue)!=0:
-                    self.queue.pop(0)
+                if len(self.queue)>0:
+                    return self.queue.pop(0)
                 self.lock.wait()
             raise StopIteration()
 
@@ -60,3 +60,17 @@ class Thread():
     @staticmethod
     def run(func):
         thread.start_new_thread(func, ())
+
+
+
+
+
+
+
+
+
+
+
+
+
+        

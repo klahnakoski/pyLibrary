@@ -5,17 +5,17 @@
 ################################################################################
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
-import base64
+
 
 from datetime import datetime
-import os
-from string import Template
+from util.strings import expand_template
+
 import subprocess
 import MySQLdb
 from util.basic import nvl
 from util.cnv import CNV
 from util.debug import D
-from util.map import Map
+from util.struct import Struct
 from util.query import Q
 from util.strings import indent
 from util.strings import outdent
@@ -28,13 +28,19 @@ MAX_BATCH_SIZE=100
 class DB():
 
     def __init__(self, settings):
+        if isinstance(settings, DB):
+            settings=settings.settings
+
+        self.settings=settings
         try:
             self.db=MySQLdb.connect(
                 host=settings.host,
                 port=settings.port,
                 user=nvl(settings.username, settings.user),
                 passwd=nvl(settings.password, settings.passwd),
-                db=nvl(settings.schema, settings.db)
+                db=nvl(settings.schema, settings.db),
+                charset="utf8",
+                use_unicode=True
             )
         except Exception, e:
             D.error("Failure to connect", e)
@@ -120,7 +126,7 @@ class DB():
             if old_cursor is None: #ALLOW NON-TRANSACTIONAL READS
                 self.cursor=self.db.cursor()
 
-            if param is not None: sql=Template(sql).substitute(self.quote(param))
+            if param is not None: sql=expand_template(sql, self.quote(param))
             sql=outdent(sql)
             if self.debug: D.println("Execute SQL:\n"+indent(sql))
 
@@ -150,7 +156,7 @@ class DB():
             if old_cursor is None: #ALLOW NON-TRANSACTIONAL READS
                 self.cursor=self.db.cursor()
 
-            if param is not None: sql=Template(sql).substitute(self.quote(param))
+            if param is not None: sql=expand_template(sql,self.quote(param))
             sql=outdent(sql)
             if self.debug: D.println("Execute SQL:\n"+indent(sql))
 
@@ -159,7 +165,7 @@ class DB():
             columns = tuple( [d[0].decode('utf8') for d in self.cursor.description] )
             for r in self.cursor:
                 num+=1
-                execute(Map(**dict(zip(columns, r))))
+                execute(Struct(**dict(zip(columns, r))))
 
             if old_cursor is None:   #CLEANUP AFTER NON-TRANSACTIONAL READS
                 self.cursor.close()
@@ -174,7 +180,7 @@ class DB():
     def execute(self, sql, param=None):
         if self.transaction_level==0: D.error("Expecting transation to be started before issuing queries")
 
-        if param is not None: sql=Template(sql).substitute(self.quote(param))
+        if param is not None: sql=expand_template(sql,self.quote(param))
         sql=outdent(sql)
         self.backlog.append(sql)
         if len(self.backlog)>=MAX_BATCH_SIZE:
@@ -189,7 +195,7 @@ class DB():
     def execute_sql(settings, sql, param=None):
         # MySQLdb provides no way to execute an entire SQL file in bulk, so we
         # have to shell out to the commandline client.
-        if param is not None: sql=Template(sql).substitute(param)
+        if param is not None: sql=expand_template(sql,param)
         
         args = [
             "mysql",
@@ -286,7 +292,7 @@ class DB():
                     v=SQL("("+",".join([self.db.literal(vv) for vv in v])+")")
                 elif isinstance(v, SQL):
                     pass
-                elif isinstance(v, Map):
+                elif isinstance(v, Struct):
                     self.db.literal(None)
                 else:
                     v=SQL(self.db.literal(v))
@@ -304,3 +310,6 @@ class SQL(str):
 
     def __init__(self, string=''):
         str.__init__(self, string)
+
+    def __str__(self):
+        return self

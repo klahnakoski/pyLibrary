@@ -11,7 +11,7 @@
 import copy
 import functools
 
-class Map(dict):
+class Struct(dict):
 #ACCESS dict AND OBJECTS LIKE JAVASCRIPT a.b==a["b"]
 
     
@@ -34,7 +34,7 @@ class Map(dict):
         return wrap(d[key])
 
     def __setitem__(self, key, value):
-        return Map.__setattr__(self, key, value)
+        return Struct.__setattr__(self, key, value)
 
     def __getattribute__(self, key):
         #SOME dict FUNCTIONS
@@ -44,20 +44,28 @@ class Map(dict):
         if key=="dict":
             return object.__getattribute__(self, "__dict__")
         if key=="copy":
-            return functools.partial(object.__getattribute__(Map, "copy"), self)
+            return functools.partial(object.__getattribute__(Struct, "copy"), self)
 
 
-        return Map.__getitem__(self, key)
+        return Struct.__getitem__(self, key)
 
 
     def __setattr__(self, key, value):
-        d=object.__getattribute__(self, "__dict__")
+        try:
+            d=object.__getattribute__(self, "__dict__")
 
-        if key.find(".")>=0:
-            seq=key.split(".")
-            for k in seq[0,-1]: d=d[k]
-            d[seq[-1]]=value
-        d[key]=value
+            if key.find(".")>=0:
+                seq=key.split(".")
+                for k in seq[0,-1]: d=d[k]
+                d[seq[-1]]=value
+            d[key]=value
+        except Exception, e:
+            if key.find(".")>=0:
+                seq=key.split(".")
+                for k in seq[0,-1]: d=d[k]
+                d[seq[-1]]=value
+            d[key]=value
+            raise e
 
     def keys(self):
         d=object.__getattribute__(self, "__dict__")
@@ -65,27 +73,26 @@ class Map(dict):
 
     def copy(self):
         d=object.__getattribute__(self, "__dict__")
-        return Map(**copy.deepcopy(d))
+        return Struct(**copy.deepcopy(d))
 
 
 
 
-class MapList():
+class StructList(list):
 
-    def __init__(self, list):
-        self.list=list
+    def __init__(self, vals):
+        list.__init__(self)
+        self.extend(vals)
+        #self.list=list
 
     def __getitem__(self, index):
-        v = self.list[index]
+        v=list.__getitem__(self, index)
         return wrap(v)
 
     def __iter__(self):
-        i=self.list.__iter__()
+        i=list.__iter__(self)
         while True:
             yield wrap(i.next())
-
-    def __len__(self):
-        return len(self.list)
 
 
 
@@ -93,12 +100,12 @@ class MapList():
 def wrap(v):
     if v is None:
         return None
-    if isinstance(v, Map):
+    if isinstance(v, Struct):
         return v
     if isinstance(v, dict):
-        m = Map()
+        m = Struct()
         object.__setattr__(m, "__dict__", v) #INJECT m.__dict__=v SO THERE IS NO COPY
         return m
     if isinstance(v, list):
-        return MapList(v)
+        return StructList(v)
     return v

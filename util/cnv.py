@@ -9,21 +9,28 @@
 
 #DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
 import StringIO
+from decimal import Decimal
 import json
 import re
 import string
 import time
 import datetime
 from util.debug import D
-from util.map import Map, MapList
+from util.strings import expand_template
+from util.struct import Struct, StructList
+
+
 
 class CNV:
 
     @staticmethod
     def object2JSON(obj):
-        if isinstance(obj, Map):
-            return json.dumps(obj.dict)
-        return json.dumps(obj)
+        try:
+            if isinstance(obj, Struct):
+                return json.dumps(obj.dict, cls=NewJSONEncoder)
+            return json.dumps(obj, cls=NewJSONEncoder)
+        except Exception, e:
+            D.error("Can not decode ${value}", {"value":repr(obj)})
 
     @staticmethod
     def JSON2object(json_string, params=None, flexible=False):
@@ -33,11 +40,11 @@ class CNV:
 
             if params is not None:
                 params=dict([(k,CNV.value2quote(v)) for k,v in params.items()])
-                json_string= string.Template(json_string).substitute(params)
+                json_string=expand_template(json_string, params)
 
             obj=json.loads(json_string)
-            if isinstance(obj, list): return MapList(obj)
-            return Map(**obj)
+            if isinstance(obj, list): return StructList(obj)
+            return Struct(**obj)
         except Exception, e:
             D.error("Can not decode JSON:\n\t"+json_string, e)
 
@@ -84,16 +91,20 @@ class CNV:
         column_names, #tuple of columns names
         rows          #list of tuples
     ):
-        return MapList([dict(zip(column_names, r)) for r in rows])
+        return StructList([dict(zip(column_names, r)) for r in rows])
 
 
     #RETURN PRETTY PYTHON CODE FOR THE SAME
     @staticmethod
     def value2quote(value):
         if isinstance(value, basestring):
-            return "\""+value.replace("\"", "\\\"")+"\""
+            return string2quote(value)
         else:
             return repr(value)
+
+    @staticmethod
+    def string2quote(value):
+        return "\""+value.replace("\\", "\\\\").replace("\"", "\\\"")+"\""
 
     #RETURN PYTHON CODE FOR THE SAME
     @staticmethod
@@ -135,3 +146,15 @@ class CNV:
         else:
             return [int(value)]
 
+
+
+
+class NewJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        elif isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, datetime.datetime):
+            return CNV.datetime2unixmilli(obj)
+        return json.JSONEncoder.default(self, obj)

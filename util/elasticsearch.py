@@ -4,7 +4,7 @@ import time
 from util.cnv import CNV
 from util.debug import D
 from util.basic import nvl
-from util.map import Map, MapList
+from util.struct import Struct, StructList
 
 DEBUG=True
 
@@ -58,7 +58,7 @@ class ElasticSearch():
             else:
                 for a in desc["aliases"]:
                     output.append({"index":index, "alias":a})
-        return MapList(output)
+        return StructList(output)
 
 
     
@@ -90,13 +90,18 @@ class ElasticSearch():
             })
         )
 
-    # RECORDS MUST HAVE id AND json
-    def load(self, records):
+    # RECORDS MUST HAVE id AND json AS A STRING OR
+    # HAVE id AND value AS AN OBJECT
+    def add(self, records):
         # ADD LINE WITH COMMAND
         lines=[]
         for r in records:
-            id=r.id
-            json=CNV.object2JSON(r.json)
+            id=r["id"]
+            if "json" in r:
+                json=r["json"]
+            else:
+                json=CNV.object2JSON(r["value"])
+                
             if id is None: id=sha.new(json).hexdigest()
 
             lines.append('{"index":{"_id":"'+id+'"}}\n')
@@ -114,7 +119,7 @@ class ElasticSearch():
             if not item.index.ok:
                 D.error(item.index.error+" while loading line:\n"+lines[i])
 
-        if DEBUG: D.println("${num} items added", {"num":len(records)})
+        if DEBUG: D.println("${num} items added", {"num":len(lines)/2})
 
 
     # -1 FOR NO REFRESH

@@ -7,18 +7,16 @@
 ################################################################################
 
 
-#from string import Template
+#
 from datetime import datetime
-from string import Template
 import sys
 
 #for debugging (do I even want an object in Python? - at least these methods
 # are easily searchable, keep it for now)
-import util.threads
 import traceback
 import logging
-from util.strings import indent
-from util.map import Map, MapList
+from util.strings import indent, expand_template
+from util.struct import Struct, StructList
 import util
 from util.files import File
 
@@ -33,7 +31,7 @@ class D(object):
 
     @staticmethod
     def println(template, params=None):
-        if not isinstance(template, Template): template=Template("${log_timestamp} - "+template)
+        template="${log_timestamp} - "+template
         if params is None: params={}
 
         #NICE TO GATHER MANY MORE ITEMS FOR LOGGING (LIKE STACK TRACES AND LINE NUMBERS)
@@ -41,6 +39,7 @@ class D(object):
 
         for l in D.logs:
             l.println(template, params)
+
 
     @staticmethod
     def warning(template, params=None, cause=None):
@@ -80,7 +79,7 @@ class D(object):
         if settings is None: return
         if settings.log is None: return
 
-        if not isinstance(settings.log, MapList): settings.log=[settings.log]
+        if not isinstance(settings.log, StructList): settings.log=[settings.log]
         for log in settings.log:
             D.add_log(Log.new_instance(log))
 
@@ -126,7 +125,7 @@ class Except(Exception):
 
     def __str__(self):
         output=self.template
-        if self.params is not None: output=Template(output).safe_substitute(self.params)
+        if self.params is not None: output=expand_template(output, self.params)
 
         if self.trace is not None:
             output+="\n"+indent(self.trace)
@@ -143,7 +142,7 @@ class Except(Exception):
 class Log():
     @classmethod
     def new_instance(cls, settings):
-        settings=util.map.wrap(settings)
+        settings=util.struct.wrap(settings)
         if settings["class"] is not None: return Log_usingLogger(settings)
         if settings.file is not None: return Log_usingFile(file)
         if settings.filename is not None: return Log_usingFile(settings.filename)
@@ -162,7 +161,7 @@ class Log_usingFile():
 
     def println(self, template, params):
         with self.file_lock:
-            File(self.filename).append(template.substitute(params))
+            File(self.filename).append(expand_template(template, params))
 
 
 
@@ -186,7 +185,7 @@ class Log_usingLogger():
 
     def println(self, template, params):
         # http://docs.python.org/2/library/logging.html#logging.LogRecord
-        self.logger.info(template.substitute(params))
+        self.logger.info(expand_template(template, params))
 
 
             
@@ -199,7 +198,7 @@ class Log_usingStream():
 
     def println(self, template, params):
         try:
-            self.stream.write(template.substitute(params)+"\n")
+            self.stream.write(expand_template(template, params)+"\n")
         except Exception, e:
             pass
 

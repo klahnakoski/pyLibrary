@@ -6,11 +6,11 @@
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
 
-import itertools
 import sys
+from util.cnv import CNV
 from util.debug import D
 from util.basic import nvl
-from util.map import Map, MapList
+from util.struct import Struct, StructList
 from util.multiset import multiset
 
 class Q:
@@ -135,7 +135,7 @@ class Q:
 
 
 
-        edge=Map(**{"domain":{"type":"set", "partitions":parts}})
+        edge=Struct(**{"domain":{"type":"set", "partitions":parts}})
 
 
     #UNSTACKING CUBES WILL BE SIMPLER BECAUSE THE keys ARE IMPLIED (edges-column)
@@ -152,47 +152,53 @@ class Q:
                 key[v[column]]=v[value]
             output.append(key)
             
-        return MapList(output)
+        return StructList(output)
 
     
+    # PASS A FIELD NAME, OR LIST OF FIELD NAMES, OR LIST OF STRUCTS WITH {"field":field_name, "sort":direction}
     @staticmethod
     def sort(data, fieldnames):
-        if not isinstance(fieldnames, list):
-            fieldnames=[fieldnames]
+        if not isinstance(fieldnames, list): fieldnames=[fieldnames]
 
-        def comparer(left, right):
-            for func in [lambda(x): x[col] for col in fieldnames]:
-                result = cmp(func(left), func(right))
-                if result!=0:
-                    return result
-            else:
-                return 0
-            
+        formal=[]
+        for f in fieldnames:
+            if isinstance(f, basestring):
+                f={"field":f, "sort":1}
+            formal.append(f)
+
+        code="def comparer(left, right):\n"
+        first=True
+        for col in formal:
+            if not first: code+="    if result!=0: return result\n"
+            first=False
+            code+="    result="+str(col["sort"])+" * cmp(left["+CNV.string2quote(col["field"])+"], right["+CNV.string2quote(col["field"])+"])\n"
+        code+="    return result"
+        exec(code)
+
         return sorted(data, cmp=comparer)
-
-        
 
 
 
 def groupby_size(data, size):
     iterator=data.__iter__()
+    done=[]
     def more():
         output=[]
         for i in range(size):
             try:
                 output.append(iterator.next())
-            except StopIteration, s:
+            except StopIteration:
+                done.append(True)
                 break
         return output
 
     #THIS IS LAZY
     i=0
-    output=more()
-    while len(output)==size:
-        yield (i, output)
-        i+=1
+    while True:
         output=more()
-    yield (i,output)
+        yield (i, output)
+        if len(done)>0: break
+        i+=1
 
 
 def groupby_multiset(data, min_size, max_size):

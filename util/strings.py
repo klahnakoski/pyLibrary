@@ -6,7 +6,7 @@
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
 import re
-from string import _TemplateMetaclass
+from util.struct import Struct
 
 
 def indent(value, prefix=None):
@@ -46,4 +46,22 @@ def find_first(value, find_arr, start=0):
         i=min(i, temp)
     if i==len(value): return -1
     return i
+
+
+pattern=re.compile(r"(\$\{[\w_.]+\})")
+def expand_template(template, values):
+    values=Struct(**values)
+    
+    def replacer(found):
+        var=found.group(1)
+        try:
+            val=values[var[2:-1]]
+            return str(val)
+        except Exception, e:
+            raise Exception("Can not find "+var[2:-1]+" in template:\n"+indent(template))
+        
+    return pattern.sub(replacer, template)
+
+
+
 

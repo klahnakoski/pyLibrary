@@ -6,8 +6,8 @@ class File():
         self.filename=filename
 
 
-    def read(self):
-        with codecs.open(self.filename, "r", "utf-8") as file:
+    def read(self, encoding="utf-8"):
+        with codecs.open(self.filename, "r", encoding=encoding) as file:
             return file.read()
 
     def read_ascii(self):
