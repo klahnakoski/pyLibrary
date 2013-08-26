@@ -11,6 +11,10 @@
 import copy
 import functools
 
+SPECIAL=["keys", "values", "items", "dict",  "copy"]
+
+
+
 class Struct(dict):
 #ACCESS dict AND OBJECTS LIKE JAVASCRIPT a.b==a["b"]
 
@@ -38,6 +42,9 @@ class Struct(dict):
 
     def __getattribute__(self, key):
         #SOME dict FUNCTIONS
+        if key not in SPECIAL:
+            return Struct.__getitem__(self, key)
+
         if key in ["keys", "values", "items"]:
             d=object.__getattribute__(self, "__dict__")
             return dict.__getattribute__(d, key)
@@ -47,13 +54,12 @@ class Struct(dict):
             return functools.partial(object.__getattribute__(Struct, "copy"), self)
 
 
-        return Struct.__getitem__(self, key)
-
 
     def __setattr__(self, key, value):
         try:
             d=object.__getattribute__(self, "__dict__")
-
+            value=unwrap(value)
+            
             if key.find(".")>=0:
                 seq=key.split(".")
                 for k in seq[0,-1]: d=d[k]
@@ -80,21 +86,26 @@ class Struct(dict):
 
 class StructList(list):
 
-    def __init__(self, vals):
-        list.__init__(self)
-        self.extend(vals)
-        #self.list=list
+    def __init__(self, vals=[]):
+        if isinstance(vals, StructList):
+            self.list=vals.list
+        else:
+            self.list=vals
 
     def __getitem__(self, index):
-        v=list.__getitem__(self, index)
-        return wrap(v)
+        return wrap(self.list[index])
 
     def __iter__(self):
-        i=list.__iter__(self)
+        i=self.list.__iter__()
         while True:
             yield wrap(i.next())
 
+    def append(self, val):
+        self.list.append(unwrap(val))
+        return self
 
+    def __str__(self):
+        return self.list.__str__()
 
 
 def wrap(v):
@@ -108,4 +119,9 @@ def wrap(v):
         return m
     if isinstance(v, list):
         return StructList(v)
+    return v
+
+def unwrap(v):
+    if isinstance(v, Struct):
+        return v.dict
     return v

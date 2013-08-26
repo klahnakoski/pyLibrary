@@ -157,7 +157,10 @@ class Q:
     
     # PASS A FIELD NAME, OR LIST OF FIELD NAMES, OR LIST OF STRUCTS WITH {"field":field_name, "sort":direction}
     @staticmethod
-    def sort(data, fieldnames):
+    def sort(data, fieldnames=None):
+        if fieldnames is None:
+            return sorted(data)
+
         if not isinstance(fieldnames, list): fieldnames=[fieldnames]
 
         formal=[]

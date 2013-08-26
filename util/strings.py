@@ -5,12 +5,15 @@
 ################################################################################
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
+import datetime
+from decimal import Decimal
+import json
 import re
+import time
 from util.struct import Struct
 
 
-def indent(value, prefix=None):
-    if prefix is None: prefix="\t"
+def indent(value, prefix="\t"):
     return prefix+("\n"+prefix).join(value.rstrip().splitlines())
 
 
@@ -51,17 +54,78 @@ def find_first(value, find_arr, start=0):
 pattern=re.compile(r"(\$\{[\w_.]+\})")
 def expand_template(template, values):
     values=Struct(**values)
-    
+
     def replacer(found):
         var=found.group(1)
         try:
             val=values[var[2:-1]]
+            val=toString(val)
             return str(val)
         except Exception, e:
-            raise Exception("Can not find "+var[2:-1]+" in template:\n"+indent(template))
-        
+            try:
+                if e.message.find("is not JSON serializable"):
+                    #WORK HARDER
+                    val=scrub(val)
+                    val=toString(val)
+                    return val
+            except Exception:
+                raise Exception("Can not find "+var[2:-1]+" in template:\n"+indent(template))
+
     return pattern.sub(replacer, template)
 
 
 
 
+class NewJSONEncoder(json.JSONEncoder):
+
+    def __init__(self):
+        json.JSONEncoder.__init__(self, sort_keys=True)
+
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        elif isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, datetime.datetime):
+            return int(time.mktime(obj.timetuple())*1000)
+        return json.JSONEncoder.default(self, obj)
+
+json_encoder=NewJSONEncoder()
+json_decoder=json._default_decoder
+
+
+def toString(val):
+    if isinstance(val, Struct):
+        return json_encoder.encode(val.dict)
+    elif isinstance(val, dict) or isinstance(val, list) or isinstance(val, set):
+        val=json_encoder.encode(val)
+        return val
+    return str(val)
+
+#REMOVE VALUES THAT CAN NOT BE JSON-IZED
+def scrub(r):
+    return Struct(**_scrub(r))
+
+def _scrub(r):
+    if isinstance(r, dict):
+        output={}
+        for k, v in r.items():
+            v=_scrub(v)
+            output[k]=v
+        if len(output)==0: return None
+        return output
+    elif hasattr(r, '__iter__'):
+        output=[]
+        for v in r:
+            v=_scrub(v)
+            output.append(v)
+        if len(output)==0: return None
+        return output
+    elif r is None:
+        return None
+    else:
+        try:
+            json.dumps(r, cls=NewJSONEncoder)
+            return r
+        except Exception, e:
+            return None

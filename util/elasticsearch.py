@@ -28,13 +28,18 @@ class ElasticSearch():
 
     @staticmethod
     def create_index(settings, schema):
+        if isinstance(schema, basestring):
+            schema=CNV.JSON2object(schema)
+
         ElasticSearch.post(
             settings.host+":"+str(settings.port)+"/"+settings.index,
             data=CNV.object2JSON(schema),
             headers={"Content-Type":"application/json"}
         )
         time.sleep(2)
-        return ElasticSearch(settings)
+        es=ElasticSearch(settings)
+        es.add_alias(settings.alias)
+        return es
 
 
 
@@ -104,20 +109,23 @@ class ElasticSearch():
                 
             if id is None: id=sha.new(json).hexdigest()
 
-            lines.append('{"index":{"_id":"'+id+'"}}\n')
-            lines.append(json+"\n")
+            lines.append('{"index":{"_id":"'+id+'"}}')
+            lines.append(json)
 
         if len(lines)==0: return
         response=ElasticSearch.post(
             self.path+"/_bulk",
-            data="".join(lines),
+            data="\n".join(lines)+"\n",
             headers={"Content-Type":"text"}
         )
         items=response["items"]
 
         for i, item in enumerate(items):
             if not item.index.ok:
-                D.error(item.index.error+" while loading line:\n"+lines[i])
+                D.error("${error} while loading line:\n${line}", {
+                    "error":item.index.error,
+                    "line":lines[i*2+1]
+                })
 
         if DEBUG: D.println("${num} items added", {"num":len(lines)/2})
 

@@ -1,6 +1,6 @@
 import thread
 import threading
-from util.debug import D
+
 
 
 #SIMPLE LOCK (ACTUALLY, A PYTHON threadind.Condition() WITH notify() BEFORE EVERY RELEASE)
@@ -46,7 +46,11 @@ class Queue():
         with self.lock:
             while self.keep_running:
                 if len(self.queue)>0:
-                    return self.queue.pop(0)
+                    value=self.queue.pop(0)
+                    if value==Thread.STOP:  #SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
+                        self.keep_running=False
+                        raise StopIteration()
+                    return value
                 self.lock.wait()
             raise StopIteration()
 
@@ -62,8 +66,7 @@ class Thread():
         thread.start_new_thread(func, ())
 
 
-
-
+Thread.STOP="stop"
 
 
 

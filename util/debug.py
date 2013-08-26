@@ -5,28 +5,32 @@
 ################################################################################
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
+from _functools import partial
 
-
-#
 from datetime import datetime
 import sys
 
-#for debugging (do I even want an object in Python? - at least these methods
-# are easily searchable, keep it for now)
 import traceback
 import logging
+from mock import self
 from util.strings import indent, expand_template
-from util.struct import Struct, StructList
-import util
+from util import struct, threads
+from util.threads import Thread
+
+from util.struct import StructList
 from util.files import File
 
+
+#for debugging
+logging_thread=None
+Logging_multi=None
 
 class D(object):
 
 
     @classmethod
     def add_log(cls, log):
-        cls.logs.append(log)
+        logging_multi.add_log(log)
 
 
     @staticmethod
@@ -37,8 +41,7 @@ class D(object):
         #NICE TO GATHER MANY MORE ITEMS FOR LOGGING (LIKE STACK TRACES AND LINE NUMBERS)
         params["log_timestamp"]=datetime.utcnow().strftime("%H:%M:%S")
 
-        for l in D.logs:
-            l.println(template, params)
+        logging_thread.println(template, params)
 
 
     @staticmethod
@@ -73,8 +76,16 @@ class D(object):
         raise e
 
 
-    @staticmethod
-    def settings(settings):
+    #RUN ME FIRST TO WARM UP THE LOGGING
+    @classmethod
+    def start(cls, settings):
+        #START THE THREADED LOGGING
+        from util.multithread import worker_thread
+        from threads import Queue
+        logging_thread.queue=Queue()
+        logging_thread.thread=worker_thread("log thread", logging_thread.queue, None, partial(Log_usingMulti.println, logging_multi))
+
+
         ##http://victorlin.me/2012/08/good-logging-practice-in-python/
         if settings is None: return
         if settings.log is None: return
@@ -83,8 +94,9 @@ class D(object):
         for log in settings.log:
             D.add_log(Log.new_instance(log))
 
-            
-
+    @classmethod
+    def stop(cls):
+        logging_thread.stop()
 
 D.info=D.println
 
@@ -142,14 +154,15 @@ class Except(Exception):
 class Log():
     @classmethod
     def new_instance(cls, settings):
-        settings=util.struct.wrap(settings)
+        settings=struct.wrap(settings)
         if settings["class"] is not None: return Log_usingLogger(settings)
         if settings.file is not None: return Log_usingFile(file)
         if settings.filename is not None: return Log_usingFile(settings.filename)
         if settings.stream is not None: return Log_usingStream(settings.stream)
 
 
-        
+
+
 
 class Log_usingFile():
 
@@ -203,8 +216,54 @@ class Log_usingStream():
             pass
 
 
+class Log_usingThread():
+    def __init__(self, logger):
+        self.logger=logger  #for later
+        self.thread=None
+        self.queue=None
+
+    def println(self, template, params):
+        self.queue.add({"template":template, "params":params})
+        return self
+
+    def stop(self):
+        try:
+            self.thread.stop()
+            self.queue.add(Thread.STOP)
+            self.thread.join()
+        except Exception, e:
+            pass
+
+        try:
+            self.queue.close()
+        except Exception, f:
+            pass
 
 
 
-D.logs=[Log.new_instance({"stream":sys.stdout})]
+class Log_usingMulti():
+    def __init__(self):
+        self.many=[]
 
+    def println(self, template, params):
+        for m in self.many:
+            try:
+                m.println(template, params)
+            except Exception, e:
+                pass
+        return self
+
+    def add_log(self, logger):
+        self.many.append(logger)
+        return self
+
+    def remove_log(self, logger):
+        self.many.remove(logger)
+        return self
+
+
+
+
+logging_multi=Log_usingMulti()
+logging_multi.add_log(Log_usingStream(sys.stdout))
+logging_thread=Log_usingThread(logging_multi)

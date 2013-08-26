@@ -9,14 +9,10 @@
 import threading
 from util.basic import nvl
 from util.debug import D
-from util.threads import Queue
+from util.threads import Queue, Thread
 
 
-
-STOP="stop"
-
-
-class etl_worker_thread(threading.Thread):
+class worker_thread(threading.Thread):
 
     #in_queue MUST CONTAIN HASH OF PARAMETERS FOR load()
     def __init__(self, name, in_queue, out_queue, function):
@@ -36,15 +32,19 @@ class etl_worker_thread(threading.Thread):
     def run(self):
         while self.keep_running:
             params=self.in_queue.pop()
-            if params==STOP: return
+            if params==Thread.STOP: return
             try:
                 result=self.function(**params)
-                if self.keep_running:
+                if self.keep_running and self.out_queue is not None:
                     self.out_queue.add(result)
             except Exception, e:
-                D.warning("Can not load data for params=${params}", {"params": params})
-                if self.keep_running:
-                    self.out_queue.add([])
+                D.warning("Can not execute with params=${params}", {"params": params}, e)
+                if self.keep_running and self.out_queue is not None:
+                    self.out_queue.add(e)
+
+    def stop(self):
+        self.keep_running=False
+
 
 
 
@@ -64,7 +64,7 @@ class Multithread():
         #MAKE THREADS
         self.threads=[]
         for t, f in enumerate(functions):
-            thread=etl_worker_thread("worker "+str(t), self.inbound, self.outbound, f)
+            thread=worker_thread("worker "+str(t), self.inbound, self.outbound, f)
             self.threads.append(thread)
 
 
@@ -72,12 +72,21 @@ class Multithread():
     def __enter__(self):
         return self
 
+    #WAIT FOR ALL QUEUED WORK TO BE DONE BEFORE RETURNING
     def __exit__(self, a, b, c):
         try:
             #SEND ENOUGH STOPS
             for t in self.threads:
-                self.inbound.add(STOP)
+                self.inbound.add(Thread.STOP)
+        except Exception, e:
+            D.warning("Problem adding to inbound", e)
 
+        self.join()
+
+
+    #IF YOU SENT A stop(), OR STOP, YOU MAY WAIT FOR SHUTDOWN
+    def join(self):
+        try:
             #WAIT FOR FINISH
             for t in self.threads:
                 t.join()
@@ -105,6 +114,7 @@ class Multithread():
                 yield result
         return output()
 
+    #EXTERNAL COMMAND THAT RETURNS IMMEDIATELY
     def stop(self):
         for t in self.threads:
             t.keep_running=False

@@ -9,14 +9,12 @@
 
 #DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
 import StringIO
-from decimal import Decimal
 import json
 import re
-import string
 import time
 import datetime
 from util.debug import D
-from util.strings import expand_template
+from util.strings import expand_template, NewJSONEncoder, json_encoder, json_decoder
 from util.struct import Struct, StructList
 
 
@@ -27,10 +25,11 @@ class CNV:
     def object2JSON(obj):
         try:
             if isinstance(obj, Struct):
-                return json.dumps(obj.dict, cls=NewJSONEncoder)
-            return json.dumps(obj, cls=NewJSONEncoder)
+                return json_encoder.encode(obj.dict)
+            else:
+                return json_encoder.encode(obj)
         except Exception, e:
-            D.error("Can not decode ${value}", {"value":repr(obj)})
+            D.error("Can not decode ${value}", {"value":repr(obj)}, e)
 
     @staticmethod
     def JSON2object(json_string, params=None, flexible=False):
@@ -42,7 +41,7 @@ class CNV:
                 params=dict([(k,CNV.value2quote(v)) for k,v in params.items()])
                 json_string=expand_template(json_string, params)
 
-            obj=json.loads(json_string)
+            obj=json_decoder.decode(json_string)
             if isinstance(obj, list): return StructList(obj)
             return Struct(**obj)
         except Exception, e:
@@ -94,11 +93,17 @@ class CNV:
         return StructList([dict(zip(column_names, r)) for r in rows])
 
 
+    #PROPER NULL HANDLING
+    @staticmethod
+    def value2string(value):
+        return str(value) if value is not None else None
+
+
     #RETURN PRETTY PYTHON CODE FOR THE SAME
     @staticmethod
     def value2quote(value):
         if isinstance(value, basestring):
-            return string2quote(value)
+            return CNV.string2quote(value)
         else:
             return repr(value)
 
@@ -149,12 +154,4 @@ class CNV:
 
 
 
-class NewJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, set):
-            return list(obj)
-        elif isinstance(obj, Decimal):
-            return float(obj)
-        elif isinstance(obj, datetime.datetime):
-            return CNV.datetime2unixmilli(obj)
-        return json.JSONEncoder.default(self, obj)
+
