@@ -41,10 +41,10 @@ class Struct(dict):
         return Struct.__setattr__(self, key, value)
 
     def __getattribute__(self, key):
-        #SOME dict FUNCTIONS
         if key not in SPECIAL:
             return Struct.__getitem__(self, key)
 
+        #SOME dict FUNCTIONS
         if key in ["keys", "values", "items"]:
             d=object.__getattribute__(self, "__dict__")
             return dict.__getattribute__(d, key)

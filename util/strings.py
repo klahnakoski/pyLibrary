@@ -90,8 +90,18 @@ class NewJSONEncoder(json.JSONEncoder):
             return int(time.mktime(obj.timetuple())*1000)
         return json.JSONEncoder.default(self, obj)
 
-json_encoder=NewJSONEncoder()
-json_decoder=json._default_decoder
+
+import ujson
+
+class json_encoder():
+    @classmethod
+    def encode(self, value):
+        return ujson.dumps(value)
+
+class json_decoder():
+    @classmethod
+    def decode(cls, value):
+        return ujson.loads(value)
 
 
 def toString(val):

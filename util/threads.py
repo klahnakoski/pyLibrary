@@ -30,12 +30,15 @@ class Queue():
     def __iter__(self):
         while self.keep_running:
             try:
-                yield self.pop()
+                value=self.queue.pop(0)
+                if value==Thread.STOP:  #SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
+                    self.keep_running=False
+                    raise StopIteration()
+                yield value
             except StopIteration:
                 pass
             except Exception, e:
                 D.warning("Tell me about what happends here", e)
-                return
 
     def add(self, value):
         with self.lock:
@@ -49,10 +52,9 @@ class Queue():
                     value=self.queue.pop(0)
                     if value==Thread.STOP:  #SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                         self.keep_running=False
-                        raise StopIteration()
                     return value
                 self.lock.wait()
-            raise StopIteration()
+            return Thread.STOP
 
     def close(self):
         with self.lock:

@@ -1,2 +1,3 @@
 MySQL-python
+ujson
 
