@@ -104,6 +104,9 @@ class json_decoder():
         return ujson.loads(value)
 
 
+#json_encoder=NewJSONEncoder()
+#json_decoder=json._default_decoder
+
 def toString(val):
     if isinstance(val, Struct):
         return json_encoder.encode(val.dict)
@@ -135,7 +138,7 @@ def _scrub(r):
         return None
     else:
         try:
-            json.dumps(r, cls=NewJSONEncoder)
+            json_encoder.encode(r)
             return r
         except Exception, e:
             return None

@@ -41,15 +41,16 @@ class Struct(dict):
         return Struct.__setattr__(self, key, value)
 
     def __getattribute__(self, key):
+        d=object.__getattribute__(self, "__dict__")
         if key not in SPECIAL:
-            return Struct.__getitem__(self, key)
+            if key not in d: return None
+            return wrap(d[key])
 
         #SOME dict FUNCTIONS
         if key in ["keys", "values", "items"]:
-            d=object.__getattribute__(self, "__dict__")
             return dict.__getattribute__(d, key)
         if key=="dict":
-            return object.__getattribute__(self, "__dict__")
+            return d
         if key=="copy":
             return functools.partial(object.__getattribute__(Struct, "copy"), self)
 

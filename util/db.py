@@ -9,9 +9,6 @@
 
 from datetime import datetime
 from util.strings import expand_template
-
-import subprocess
-import MySQLdb
 from util.basic import nvl
 from util.cnv import CNV
 from util.debug import D
@@ -20,6 +17,12 @@ from util.query import Q
 from util.strings import indent
 from util.strings import outdent
 from util.files import File
+
+import subprocess
+try:
+    import MySQLdb
+except Exception, e:
+    D.error("no mysql", e)
 
 
 DEBUG = False

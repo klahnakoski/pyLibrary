@@ -43,6 +43,7 @@ April 2013:
         SET HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Python\PythonCore\2.7\InstallPath = "C:\Python27"
 
   * Install MySqldb from [http://sourceforge.net/projects/mysql-python/files/mysql-python/](http://sourceforge.net/projects/mysql-python/files/mysql-python/)
+  * If you are using PyPy try the pure Python version: [http://dev.mysql.com/downloads/connector/python/](http://dev.mysql.com/downloads/connector/python/)
   * Install ujson from [http://www.lfd.uci.edu/~gohlke/pythonlibs/#ujson](http://www.lfd.uci.edu/~gohlke/pythonlibs/#ujson)
   * Download from Github:
 
