@@ -72,7 +72,7 @@ class CNV:
 
 
     @staticmethod
-    def datetime2unixmilli(d):
+    def datetime2milli(d):
         return int(time.mktime(d.timetuple())*1000)
 
     @staticmethod

@@ -10,6 +10,7 @@ import sys
 from util.cnv import CNV
 from util.debug import D
 from util.basic import nvl
+from util.strings import indent, expand_template
 from util.struct import Struct, StructList
 from util.multiset import multiset
 
@@ -67,6 +68,27 @@ class Q:
             o=o[v]
             o.append(d)
         return output
+
+
+    @staticmethod
+    def unique_index(data, keys=None):
+    #return dict that uses keys to index data
+    #ONLY ONE VALUE ALLLOWED PER UNIQUE KEY
+        if not isinstance(keys, list): keys=[keys]
+        o=Index(keys)
+
+        for d in data:
+            try:
+                o[d]=d
+            except Exception, e:
+                D.error("index {{index}} is not unique {{key}} maps to both {{value1}} and {{value2}}", {
+                    "index":keys,
+                    "key":Q.select([d], keys)[0],
+                    "value1":o[d],
+                    "value2":d
+                })
+        return o
+
 
 
     @staticmethod
@@ -289,5 +311,95 @@ class Domain():
 
 
 
+# SIMPLE TUPLE-OF-STRINGS LOOKUP TO LIST
+class Index(object):
+
+    def __init__(self, keys):
+        self._data = Struct()
+        self._keys=keys
+
+        #THIS ONLY DEPENDS ON THE len(keys), SO WE COULD SHARED lookup
+        #BETWEEN ALL n-key INDEXES.  FOR NOW, JUST MAKE lookup()
+        code="def lookup(d0):"
+        for i, k in enumerate(self._keys):
+            code=code+indent(expand_template(
+                "for k{{next}}, d{{next}} in d{{curr}}.items():\n",{
+                    "next":i+1,
+                    "curr":1
+                }), i+1)
+        i=len(self._keys)
+        code=code+indent(expand_template(
+            "yield d{{curr}}", {"curr":i}), i+1)
+        exec(code)
+        self.lookup=lookup
+
+
+    def __getitem__(self, key):
+        if not isinstance(key, dict): key={(self._keys[0], key)}
+        d=self._data
+        for k in self._keys:
+            v=key[k]
+            if v is None:
+                D.error("can not handle when {{key}} is None", {"key":k})
+            d=d[v]
+            if d is None: return None
+
+        if len(key)!=len(self._keys):
+            #NOT A COMPLETE INDEXING, SO RETURN THE PARTIAL INDEX
+            output=Index(self._keys[-len(key):])
+            output._data=d
+            return output
+
+        return d
+
+
+    def add(self, val):
+        if not isinstance(val, dict): val={(self._keys[0], val)}
+        d=self._data
+        for k in self._keys[0:-1]:
+            v=val[k]
+            if v is None:
+                D.error("can not handle when {{key}} is None", {"key":k})
+            e=d[v]
+            if e is None:
+                e=Struct()
+                d[v]=e
+            d=e
+        v=val[self._keys[-1]]
+        if d[v] is not None:
+            D.error("key already filled")
+        d[v]=val
+
+
+
+    def __contains__(self, key):
+        return self[key] is not None
+
+    def __iter__(self):
+        return self.lookup(self._data)
+
+    def __sub__(self, other):
+        output=Index(self._keys)
+        for v in self:
+            if v not in other: output.add(v)
+        return output
+
+    def __and__(self, other):
+        output=Index(self._keys)
+        for v in self:
+            if v in other: output.add(v)
+        return output
+
+    def __or__(self, other):
+        output=Index(self._keys)
+        for v in self: output.add(v)
+        for v in other: output.add(v)
+        return output
+
+    def subtract(self, other):
+        return self.__sub__(other)
+
+    def intersect(self, other):
+        return self.__and__(other)
 
 
