@@ -12,6 +12,8 @@ from util.debug import D
 from util.threads import Queue, Thread
 
 
+DEBUG=True
+
 class worker_thread(threading.Thread):
 
     #in_queue MUST CONTAIN HASH OF PARAMETERS FOR load()
@@ -27,20 +29,24 @@ class worker_thread(threading.Thread):
     #REQUIRED TO DETECT KEYBOARD, AND OTHER, INTERRUPTS
     def join(self, timeout=None):
         while self.isAlive():
+            D.println("Waiting on thread {{thread}}", {"thread":self.name})
             threading.Thread.join(self, nvl(timeout, 0.5))
 
     def run(self):
         while self.keep_running:
             params=self.in_queue.pop()
-            if params==Thread.STOP: return
+            if params==Thread.STOP: break
             try:
+                if not self.keep_running: break
                 result=self.function(**params)
                 if self.keep_running and self.out_queue is not None:
                     self.out_queue.add(result)
             except Exception, e:
-                D.warning("Can not execute with params=${params}", {"params": params}, e)
+                D.warning("Can not execute with params={{params}}", {"params": params}, e)
                 if self.keep_running and self.out_queue is not None:
                     self.out_queue.add(e)
+        if DEBUG: D.println("{{thread}} DONE", {"thread":self.name})
+
 
     def stop(self):
         self.keep_running=False
@@ -75,9 +81,7 @@ class Multithread():
     #WAIT FOR ALL QUEUED WORK TO BE DONE BEFORE RETURNING
     def __exit__(self, a, b, c):
         try:
-            #SEND ENOUGH STOPS
-            for t in self.threads:
-                self.inbound.add(Thread.STOP)
+            self.inbound.close() #SEND STOPS TO WAKE UP THE WORKERS WAITING ON inbound.pop()
         except Exception, e:
             D.warning("Problem adding to inbound", e)
 
@@ -99,6 +103,8 @@ class Multithread():
                 t.keep_running=False
             for t in self.threads:
                 t.join()
+            self.inbound.close()
+            self.outbound.close()
 
 
     #RETURN A GENERATOR THAT HAS len(parameters) RESULTS (ANY ORDER)
@@ -116,10 +122,9 @@ class Multithread():
 
     #EXTERNAL COMMAND THAT RETURNS IMMEDIATELY
     def stop(self):
+        self.inbound.close() #SEND STOPS TO WAKE UP THE WORKERS WAITING ON inbound.pop()
         for t in self.threads:
             t.keep_running=False
-        self.threads=[]
-        self.inbound.close()
-        self.outbound.close()
+
 
 

@@ -9,19 +9,37 @@ A library of general functions
   * **cnv.py** - Convert between types, methods are in the form of {from_type} "2" {to_type} so
 I am better able to remember them
 
-  * **db.py** - Simplify the MySQL client API, specifically to parametrize SQL easier
+  * **db.py** - Simplify the MySQL client API, specifically to parameterize SQL easier
+
+  * **debug.py** - Exception chaining, threaded and structured logging
+
+  * **elasticsearch.py** - Interact with Elasticsearch
 
   * **emailer.py** - Simple email
 
-  * **map.py** - Allow dictionary access vis dot operator
+  * **files.py** - Default utf8, and becasue I can not remember the builtin file functions
 
   * **maths.py** - Extra math functions
 
+  * **multiset.py** - who doesn't need a multiset?
+
+  * **multithread.py** - optimized for symetric multithreading (not real threads, for course)
+
   * **query.py** - Named methods for very common list comprehensions
+
+  * **randoms.py** - Because random should be easy to remember
+
+  * **startup.py** - because application parameters should all be in one place and NOT HIDING IN ENVIRONMENT VARIABLES!!
 
   * **stats.py** - Statistical functions
 
   * **strings.py** - String functions:  Mostly giving names I am familiar with to Python equivalent.
+
+  * **struct.py** - Allow dictionary access vis dot operator
+
+  * **threads.py** - Becasue, somehow, the standard lib go it wrong
+
+  * **timer.py** - The way timers are meant to be (using with clause)
   
   
 Windows 7 Install Instructions 

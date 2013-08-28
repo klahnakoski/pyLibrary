@@ -29,13 +29,13 @@ class CNV:
             else:
                 return json_encoder.encode(obj)
         except Exception, e:
-            D.error("Can not decode ${value}", {"value":repr(obj)}, e)
+            D.error("Can not decode {{value}}", {"value":repr(obj)}, e)
 
     @staticmethod
     def JSON2object(json_string, params=None, flexible=False):
         try:
-            #REMOVE """COMMENTS""", #COMMENTS, //COMMENTS, AND \n
-            if flexible: json_string=re.sub(r"\"\"\".*?\"\"\"|^\s*//\n|#.*?\n|\n", r" ", json_string)  #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
+            #REMOVE """COMMENTS""", #COMMENTS, //COMMENTS, AND \n \r
+            if flexible: json_string=re.sub(r"\"\"\".*?\"\"\"|^\s*//\n|#.*?\n|\n|\r", r" ", json_string)  #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
 
             if params is not None:
                 params=dict([(k,CNV.value2quote(v)) for k,v in params.items()])
@@ -54,7 +54,7 @@ class CNV:
         try:
             return datetime.datetime.strptime(value, format)
         except Exception, e:
-            D.error("Can not format ${value} with ${format}", {"value":value, "format":format}, e)
+            D.error("Can not format {{value}} with {{format}}", {"value":value, "format":format}, e)
 
 
     @staticmethod
@@ -62,7 +62,7 @@ class CNV:
         try:
             return value.strftime(format)
         except Exception, e:
-            D.error("Can not format ${value} with ${format}", {"value":value, "format":format}, e)
+            D.error("Can not format {{value}} with {{format}}", {"value":value, "format":format}, e)
 
 
 

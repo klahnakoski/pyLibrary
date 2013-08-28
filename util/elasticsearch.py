@@ -122,12 +122,12 @@ class ElasticSearch():
 
         for i, item in enumerate(items):
             if not item.index.ok:
-                D.error("${error} while loading line:\n${line}", {
+                D.error("{{error}} while loading line:\n{{line}}", {
                     "error":item.index.error,
                     "line":lines[i*2+1]
                 })
 
-        if DEBUG: D.println("${num} items added", {"num":len(lines)/2})
+        if DEBUG: D.println("{{num}} items added", {"num":len(lines)/2})
 
 
     # -1 FOR NO REFRESH
@@ -160,7 +160,7 @@ class ElasticSearch():
                 D.error(details.error)
             return details
         except Exception, e:
-            D.error("Problem with call to ${url}", {"url":list[0]}, e)
+            D.error("Problem with call to {{url}}", {"url":list[0]}, e)
 
     @staticmethod
     def get(*list, **args):
@@ -172,7 +172,7 @@ class ElasticSearch():
                 D.error(details.error)
             return details
         except Exception, e:
-            D.error("Problem with call to ${url}", {"url":list[0]}, e)
+            D.error("Problem with call to {{url}}", {"url":list[0]}, e)
 
     @staticmethod
     def put(*list, **args):
@@ -181,7 +181,7 @@ class ElasticSearch():
             if DEBUG: D.println(response.content)
             return response
         except Exception, e:
-            D.error("Problem with call to ${url}", {"url":list[0]}, e)
+            D.error("Problem with call to {{url}}", {"url":list[0]}, e)
 
     @staticmethod
     def delete(*list, **args):
@@ -190,6 +190,6 @@ class ElasticSearch():
             if DEBUG: D.println(response.content)
             return response
         except Exception, e:
-            D.error("Problem with call to ${url}", {"url":list[0]}, e)
+            D.error("Problem with call to {{url}}", {"url":list[0]}, e)
 
 

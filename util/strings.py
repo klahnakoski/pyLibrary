@@ -10,6 +10,7 @@ from decimal import Decimal
 import json
 import re
 import time
+import pystache
 from util.struct import Struct
 
 
@@ -51,28 +52,8 @@ def find_first(value, find_arr, start=0):
     return i
 
 
-pattern=re.compile(r"(\$\{[\w_.]+\})")
 def expand_template(template, values):
-    values=Struct(**values)
-
-    def replacer(found):
-        var=found.group(1)
-        try:
-            val=values[var[2:-1]]
-            val=toString(val)
-            return str(val)
-        except Exception, e:
-            try:
-                if e.message.find("is not JSON serializable"):
-                    #WORK HARDER
-                    val=scrub(val)
-                    val=toString(val)
-                    return val
-            except Exception:
-                raise Exception("Can not find "+var[2:-1]+" in template:\n"+indent(template))
-
-    return pattern.sub(replacer, template)
-
+    return pystache.render(template, values)
 
 
 

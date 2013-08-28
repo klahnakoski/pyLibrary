@@ -222,7 +222,7 @@ def groupby_multiset(data, min_size, max_size):
             g = [k]
 
         if total >= max_size:
-            D.error("(${min}, ${max}) range is too strict given step of ${increment}", {
+            D.error("({{min}}, {{max}}) range is too strict given step of {{increment}}", {
                 "min": min_size, "max": max_size, "increment":c
             })
 

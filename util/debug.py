@@ -12,12 +12,11 @@ import sys
 
 import traceback
 import logging
-from mock import self
 from util.strings import indent, expand_template
 from util import struct, threads
 from util.threads import Thread
 
-from util.struct import StructList
+from util.struct import StructList, Struct
 from util.files import File
 
 
@@ -35,7 +34,7 @@ class D(object):
 
     @staticmethod
     def println(template, params=None):
-        template="${log_timestamp} - "+template
+        template="{{log_timestamp}} - "+template
         if params is None: params={}
 
         #NICE TO GATHER MANY MORE ITEMS FOR LOGGING (LIKE STACK TRACES AND LINE NUMBERS)
@@ -78,8 +77,12 @@ class D(object):
 
     #RUN ME FIRST TO WARM UP THE LOGGING
     @classmethod
-    def start(cls, settings):
-        #START THE THREADED LOGGING
+    def start(cls, settings=None):
+        if settings is None:
+            settings=Struct(**{"log":{"stream":sys.stdout}})
+        
+        #PART 2 OF 2 SETUP OF THREADED LOGGING
+        #WE NOW CAN LOAD THE threads MODULE
         from util.multithread import worker_thread
         from threads import Queue
         logging_thread.queue=Queue()
@@ -155,7 +158,10 @@ class Log():
     @classmethod
     def new_instance(cls, settings):
         settings=struct.wrap(settings)
-        if settings["class"] is not None: return Log_usingLogger(settings)
+        if settings["class"] is not None:
+            if settings["class"].startswith("util."):
+                return make_log_from_settings(settings)
+            return Log_usingLogger(settings)
         if settings.file is not None: return Log_usingFile(file)
         if settings.filename is not None: return Log_usingFile(settings.filename)
         if settings.stream is not None: return Log_usingStream(settings.stream)
@@ -178,34 +184,42 @@ class Log_usingFile():
 
 
 
-
+#WRAP PYTHON CLASSIC logger OBJECTS
 class Log_usingLogger():
     def __init__(self, settings):
-        assert settings["class"] is not None
         self.logger=logging.Logger("unique name", level=logging.INFO)
-
-
-        # IMPORT MODULE FOR HANDLER
-        path=settings["class"].split(".")
-        class_name=path[-1]
-        path=".".join(path[:-1])
-        temp=__import__(path, globals(), locals(), [class_name], -1)
-        constructor=object.__getattribute__(temp, class_name)
-
-        params = settings.dict
-        del params['class']
-        self.logger.addHandler(constructor(**params))
+        self.logger.addHandler(make_log_from_settings(settings))
 
     def println(self, template, params):
         # http://docs.python.org/2/library/logging.html#logging.LogRecord
         self.logger.info(expand_template(template, params))
 
 
-            
+def make_log_from_settings(settings):
+    assert settings["class"] is not None
+
+    # IMPORT MODULE FOR HANDLER
+    path=settings["class"].split(".")
+    class_name=path[-1]
+    path=".".join(path[:-1])
+    temp=__import__(path, globals(), locals(), [class_name], -1)
+    constructor=object.__getattribute__(temp, class_name)
+
+    params = settings.dict
+    del params['class']
+    return constructor(**params)
+
+
+
+
 class Log_usingStream():
 
+    #stream CAN BE AN OBJCET WITH write() METHOD, OR A STRING
+    #WHICH WILL eval() TO ONE
     def __init__(self, stream):
         assert stream is not None
+        if isinstance(stream, basestring):
+            stream=eval(stream)
         self.stream=stream
 
 
@@ -223,13 +237,16 @@ class Log_usingThread():
         self.queue=None
 
     def println(self, template, params):
-        self.queue.add({"template":template, "params":params})
-        return self
+        try:
+            self.queue.add({"template":template, "params":params})
+            return self
+        except Exception, e:
+            sys.stdout.write("IF YOU SEE THIS, IT IS LIKELY YOU FORGOT TO RUN D.start() FIRST")
+            raise e  #OH NO!
 
     def stop(self):
         try:
-            self.thread.stop()
-            self.queue.add(Thread.STOP)
+            self.queue.add(Thread.STOP)  #BE PATIENT, LET REST OF MESSAGE BE SENT
             self.thread.join()
         except Exception, e:
             pass
@@ -263,7 +280,8 @@ class Log_usingMulti():
 
 
 
-
+#PART 1 OF 2 FOR SETTING UP THREADED LOGGING
+#DEPENDS ON THE threads MODULE, SO WE WILL SETUP THE REST AFTER IT IS LOADED
 logging_multi=Log_usingMulti()
-logging_multi.add_log(Log_usingStream(sys.stdout))
+#logging_multi.add_log(Log_usingStream(sys.stdout))
 logging_thread=Log_usingThread(logging_multi)

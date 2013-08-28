@@ -4,9 +4,11 @@ import threading
 
 
 #SIMPLE LOCK (ACTUALLY, A PYTHON threadind.Condition() WITH notify() BEFORE EVERY RELEASE)
+
 class Lock():
-    def __init__(self):
+    def __init__(self, name=""):
         self.monitor=threading.Condition()
+        self.name=name
 
     def __enter__(self):
         self.monitor.acquire()
@@ -24,7 +26,7 @@ class Lock():
 class Queue():
     def __init__(self):
         self.keep_running=True
-        self.lock=Lock()
+        self.lock=Lock("lock for queue")
         self.queue=[]
 
     def __iter__(self):
@@ -38,12 +40,18 @@ class Queue():
             except StopIteration:
                 pass
             except Exception, e:
+                from util.debug import D
                 D.warning("Tell me about what happends here", e)
 
     def add(self, value):
         with self.lock:
             if self.keep_running:
                 self.queue.append(value)
+
+    def extend(self, values):
+        with self.lock:
+            if self.keep_running:
+                self.queue.extend(values)
 
     def pop(self):
         with self.lock:

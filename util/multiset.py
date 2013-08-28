@@ -35,7 +35,7 @@ class multiset():
 
     def remove(self, value):
         if value not in self.dic:
-            D.error("${value} is not in multiset", {"value":value})
+            D.error("{{value}} is not in multiset", {"value":value})
 
         count=self.dic[value]
         count-=1

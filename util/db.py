@@ -8,6 +8,7 @@
 
 
 from datetime import datetime
+from pymysql import connect
 from util.strings import expand_template
 from util.basic import nvl
 from util.cnv import CNV
@@ -18,11 +19,6 @@ from util.strings import indent
 from util.strings import outdent
 from util.files import File
 
-import subprocess
-try:
-    import MySQLdb
-except Exception, e:
-    D.error("no mysql", e)
 
 
 DEBUG = False
@@ -36,7 +32,7 @@ class DB():
 
         self.settings=settings
         try:
-            self.db=MySQLdb.connect(
+            self.db=connect(
                 host=settings.host,
                 port=settings.port,
                 user=nvl(settings.username, settings.user),
@@ -79,7 +75,11 @@ class DB():
         self.db.close()
 
     def commit(self):
-        self.execute_backlog()
+        try:
+            self.execute_backlog()
+        except Exception, e:
+            D.error("Unexpected error", e)
+            
         if self.transaction_level==0:
             D.error("No transaction has begun")
         elif self.transaction_level==1:
@@ -217,7 +217,7 @@ class DB():
         (output, _) = proc.communicate(sql)
 
         if proc.returncode:
-            D.error("Unable to execute sql: return code ${return_code}, ${output}:\n ${sql}\n",
+            D.error("Unable to execute sql: return code {{return_code}}, {{output}}:\n {{sql}}\n",
                     {"sql":indent(sql), "return_code":proc.returncode, "output":output})
 
     @staticmethod
@@ -239,7 +239,7 @@ class DB():
                 self.cursor.close()
                 self.cursor = self.db.cursor()
             except Exception, e:
-                D.error("Problem executing SQL:\n"+indent(sql.strip()), e, offset=1)
+                D.error("Problem executing SQL:\n{{sql}}", {"sql":indent(sql.strip())}, e, offset=1)
 
         self.backlog=[]
 
