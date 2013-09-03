@@ -14,22 +14,24 @@ import re
 import time
 import datetime
 from util.debug import D
-from util.strings import expand_template, NewJSONEncoder, json_encoder, json_decoder
+from util.strings import expand_template, NewJSONEncoder, json_decoder, json_scrub
 from util.struct import Struct, StructList
+from util.threads import Lock
 
-
+json_lock=Lock()
+json_encoder=NewJSONEncoder()
 
 class CNV:
 
     @staticmethod
     def object2JSON(obj):
         try:
-            if isinstance(obj, Struct):
-                return json_encoder.encode(obj.dict)
-            else:
+            obj=json_scrub(obj)
+            with json_lock:
                 return json_encoder.encode(obj)
+            
         except Exception, e:
-            D.error("Can not decode {{value}}", {"value":repr(obj)}, e)
+            D.error("Can not encode into JSON: {{value}}", {"value":repr(obj)}, e)
 
     @staticmethod
     def JSON2object(json_string, params=None, flexible=False):
@@ -80,7 +82,7 @@ class CNV:
         return datetime.datetime.fromtimestamp(u)
 
     @staticmethod
-    def unixmilli2datetime(u):
+    def milli2datetime(u):
         return datetime.datetime.fromtimestamp(u/1000)
 
 
@@ -144,13 +146,23 @@ class CNV:
             return None
         elif hasattr(value, '__iter__'):
             output=[int(d) for d in value if d!=""]
-            if len(output)==0: return None
+#            if len(output)==0: return None
             return output
         elif value.strip()=="":
             return None
         else:
             return [int(value)]
 
+    @staticmethod
+    def value2number(v):
+        try:
+            #IF LOOKS LIKE AN INT, RETURN AN INT
+            return int(v)
+        except Exception:
+            try:
+                return float(v)
+            except Exception, e:
+                D.error("Not a number ({{value}})", {"value":v}, e)
 
 
 

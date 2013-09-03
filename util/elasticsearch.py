@@ -6,7 +6,9 @@ from util.debug import D
 from util.basic import nvl
 from util.struct import Struct, StructList
 
-DEBUG=True
+
+DEBUG=False
+
 
 class ElasticSearch():
 
@@ -20,6 +22,8 @@ class ElasticSearch():
 
         self.metadata=None
         if settings.port is None: settings.port=9200
+        self.debug=nvl(settings.debug, DEBUG)
+        globals()["DEBUG"]=DEBUG or self.debug
         
         self.settings=settings
         self.path=settings.host+":"+str(settings.port)+"/"+settings.index+"/"+settings.type
@@ -104,8 +108,10 @@ class ElasticSearch():
             id=r["id"]
             if "json" in r:
                 json=r["json"]
-            else:
+            elif "value" in r:
                 json=CNV.object2JSON(r["value"])
+            else:
+                D.error("Expecting every record given to have \"value\" or \"json\" property")
                 
             if id is None: id=sha.new(json).hexdigest()
 
@@ -127,7 +133,7 @@ class ElasticSearch():
                     "line":lines[i*2+1]
                 })
 
-        if DEBUG: D.println("{{num}} items added", {"num":len(lines)/2})
+        if self.debug: D.println("{{num}} items added", {"num":len(lines)/2})
 
 
     # -1 FOR NO REFRESH
