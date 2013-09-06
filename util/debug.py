@@ -11,12 +11,12 @@ from datetime import datetime
 import traceback
 import logging
 import sys
-from dzAlerts.util import struct, threads
+import struct, threads
 from .files import File
 from .strings import indent, expand_template
 from .threads import Thread
 
-from .struct import StructList, Struct
+from .struct import StructList
 
 
 

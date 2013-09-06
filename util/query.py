@@ -7,13 +7,11 @@
 ################################################################################
 
 import sys
-from .cnv import CNV
 from .debug import D
 from .basic import nvl
-from dzAlerts.util import struct
-from dzAlerts.util.struct import unwrap
+import struct
 from .strings import indent, expand_template
-from .struct import Struct, StructList
+from .struct import StructList
 from .multiset import multiset
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)

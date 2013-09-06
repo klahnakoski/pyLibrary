@@ -11,7 +11,7 @@ import json
 import re
 from threading import Lock
 import time
-from dzAlerts.util import struct
+import struct
 
 from .struct import Struct, StructList
 
