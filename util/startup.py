@@ -1,6 +1,16 @@
+################################################################################
+## This Source Code Form is subject to the terms of the Mozilla Public
+## License, v. 2.0. If a copy of the MPL was not distributed with this file,
+## You can obtain one at http://mozilla.org/MPL/2.0/.
+################################################################################
+## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+################################################################################
+
+
+
 import argparse
-from util.cnv import CNV
-from util.files import File
+from .cnv import CNV
+from .files import File
 
 class startup():
 

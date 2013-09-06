@@ -9,17 +9,18 @@
 
 #DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
 import StringIO
-import json
 import re
 import time
 import datetime
-from util.debug import D
-from util.strings import expand_template, NewJSONEncoder, json_decoder, json_scrub
-from util.struct import Struct, StructList
-from util.threads import Lock
+from .debug import D
+from dzAlerts.util import struct
+from .strings import expand_template, NewJSONEncoder, json_decoder, json_scrub
+from .struct import Struct, StructList
+from .threads import Lock
 
 json_lock=Lock()
 json_encoder=NewJSONEncoder()
+
 
 class CNV:
 
@@ -45,7 +46,7 @@ class CNV:
 
             obj=json_decoder.decode(json_string)
             if isinstance(obj, list): return StructList(obj)
-            return Struct(**obj)
+            return struct.wrap(obj)
         except Exception, e:
             D.error("Can not decode JSON:\n\t"+json_string, e)
 
@@ -146,12 +147,20 @@ class CNV:
             return None
         elif hasattr(value, '__iter__'):
             output=[int(d) for d in value if d!=""]
-#            if len(output)==0: return None
             return output
         elif value.strip()=="":
             return None
         else:
             return [int(value)]
+
+
+    @staticmethod
+    def value2int(value):
+        if value is None:
+            return None
+        else:
+            return int(value)
+
 
     @staticmethod
     def value2number(v):

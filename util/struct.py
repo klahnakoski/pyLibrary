@@ -16,7 +16,16 @@ SPECIAL=["keys", "values", "items", "dict",  "copy"]
 
 
 class Struct(dict):
-#ACCESS dict AND OBJECTS LIKE JAVASCRIPT a.b==a["b"]
+    """
+    Struct is an anonymous class with some properties good for manipulating JSON
+
+    0) a.b==a["b"]
+    1) the IDE does tab completion, so my spelling mistakes do not get found at runtime
+    2) it deals with missing keys gracefully, so I can put it into set operations (database operations) without choking
+    2b) missing keys is important when dealing with JSON, which is often almost anything
+    3) also, which I hardly use, is storing JSON paths in a variable, so :   a["b.c"]==a.b.c
+
+    """
 
     
     def __init__(self, **map):
@@ -94,20 +103,25 @@ class Struct(dict):
 
     def copy(self):
         d=object.__getattribute__(self, "__dict__")
-        return Struct(**copy.deepcopy(d))
+        return wrap(copy.deepcopy(d))
 
 
 
 
 class StructList(list):
 
-    def __init__(self, vals=[]):
-        if isinstance(vals, StructList):
+    def __init__(self, vals=None):
+        """ USE THE vals, NOT A COPY """
+        if vals is None:
+            self.list=[]
+        elif isinstance(vals, StructList):
             self.list=vals.list
         else:
             self.list=vals
 
     def __getitem__(self, index):
+        if index >= len(self.list):
+            return None
         return wrap(self.list[index])
 
     def __iter__(self):
@@ -124,6 +138,9 @@ class StructList(list):
 
     def __len__(self):
         return self.list.__len__()
+
+    def __getslice__(self, i, j):
+        return wrap(self.list[i:j])
 
     def remove(self, x):
         self.list.remove(x)

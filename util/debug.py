@@ -8,24 +8,36 @@
 from _functools import partial
 
 from datetime import datetime
-import sys
-
 import traceback
 import logging
-from util.files import File
-from util.strings import indent, expand_template
-from util import struct, threads
-from util.threads import Thread
+import sys
+from dzAlerts.util import struct, threads
+from .files import File
+from .strings import indent, expand_template
+from .threads import Thread
 
-from util.struct import StructList, Struct
+from .struct import StructList, Struct
 
 
-#for debugging
+
+
+
+ERROR="ERROR"
+WARNING="WARNING"
+NOTE="NOTE"
+
+
 logging_thread=None
 Logging_multi=None
 
-class D(object):
 
+
+
+
+class D(object):
+    """
+    FOR STRUCTURED LOGGING AND EXCEPTION CHAINING
+    """
 
     @classmethod
     def add_log(cls, log):
@@ -50,11 +62,12 @@ class D(object):
             params=None
 
         if not isinstance(cause, Except):
-            cause=Except(str(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), 0))
+            cause=Except(WARNING, str(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), 0))
 
-        e = Except(template, params, cause, format_trace(traceback.extract_stack(), 1))
+        e = Except(WARNING, template, params, cause, format_trace(traceback.extract_stack(), 1))
         D.println(str(e))
 
+        
     #raise an exception with a trace for the cause too
     @staticmethod
     def error(
@@ -68,10 +81,10 @@ class D(object):
             params=None
 
         if not isinstance(cause, Except):
-            cause=Except(str(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), offset))
+            cause=Except(ERROR, str(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), offset))
 
         trace=format_trace(traceback.extract_stack(), 1+offset)
-        e=Except(template, params, cause, trace)
+        e=Except(ERROR, template, params, cause, trace)
         raise e
 
 
@@ -79,11 +92,11 @@ class D(object):
     @classmethod
     def start(cls, settings=None):
         if settings is None:
-            settings=Struct(**{"log":{"stream":sys.stdout}})
+            settings=struct.wrap({"log":{"stream":sys.stdout}})
         
         #PART 2 OF 2 SETUP OF THREADED LOGGING
         #WE NOW CAN LOAD THE threads MODULE
-        from util.multithread import worker_thread
+        from multithread import worker_thread
         from threads import Queue
         logging_thread.queue=Queue()
         logging_thread.thread=worker_thread("log thread", logging_thread.queue, None, partial(Log_usingMulti.println, logging_multi))
@@ -127,8 +140,9 @@ def format_trace(tbs, trim=0):
 
 
 class Except(Exception):
-    def __init__(self, template=None, params=None, cause=None, trace=None):
+    def __init__(self, type=ERROR, template=None, params=None, cause=None, trace=None):
         super(Exception, self).__init__(self)
+        self.type=type
         self.template=template
         self.params=params
         self.cause=cause
@@ -152,15 +166,14 @@ class Except(Exception):
 
 
 
-
-
 class Log():
     @classmethod
     def new_instance(cls, settings):
         settings=struct.wrap(settings)
         if settings["class"] is not None:
-            if settings["class"].startswith("util."):
+            if not settings["class"].startswith("logging.handlers."):
                 return make_log_from_settings(settings)
+            else:
             return Log_usingLogger(settings)
         if settings.file is not None: return Log_usingFile(file)
         if settings.filename is not None: return Log_usingFile(settings.filename)

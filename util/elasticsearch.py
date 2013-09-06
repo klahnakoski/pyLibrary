@@ -1,11 +1,11 @@
 import sha
+
 import requests
 import time
-from util.cnv import CNV
-from util.debug import D
-from util.basic import nvl
-from util.struct import Struct, StructList
-
+from .cnv import CNV
+from .debug import D
+from .basic import nvl
+from .struct import Struct, StructList
 
 DEBUG=False
 
@@ -134,6 +134,7 @@ class ElasticSearch():
                 })
 
         if self.debug: D.println("{{num}} items added", {"num":len(lines)/2})
+
 
 
     # -1 FOR NO REFRESH
