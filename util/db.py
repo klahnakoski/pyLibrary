@@ -8,10 +8,10 @@
 
 
 from datetime import datetime
+from decimal import Decimal
 from pymysql import connect
-from .util import struct
-from .util.maths import Math
-
+from . import struct
+from .maths import Math
 from .strings import expand_template
 from .basic import nvl
 from .cnv import CNV
@@ -282,8 +282,10 @@ class DB():
         if self.db.__module__.startswith("pymysql"):
             #BUG IN PYMYSQL: CAN NOT HANDLE MULTIPLE STATEMENTS
             for b in backlog:
-                self.cursor.execute(b)
-
+                try:
+                    self.cursor.execute(b)
+                except Exception, e:
+                    D.error("Can not execute sql:\n{{sql}}", {"sql":b}, e)
             self.cursor.close()
             self.cursor = self.db.cursor()
         else:
@@ -362,16 +364,18 @@ class DB():
     #mostly delegate directly to the mysql lib, but some exceptions exist
     def quote_value(self, value):
         try:
-            if isinstance(value, datetime):
+            if isinstance(value, basestring):
+                return self.db.literal(value)
+            elif isinstance(value, datetime):
                 return "str_to_date('"+value.strftime("%Y%m%d%H%M%S")+"', '%Y%m%d%H%i%s')"
             elif isinstance(value, list):
                 return "("+",".join([self.db.literal(vv) for vv in value])+")"
             elif isinstance(value, SQL):
                 return value.value
-            elif isinstance(value, Struct):
+            elif isinstance(value, dict):
                 return self.db.literal(None)
             elif Math.is_number(value):
-                return str(value)
+                return unicode(value)
             else:
                 return self.db.literal(value)
         except Exception, e:

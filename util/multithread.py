@@ -74,7 +74,7 @@ class Multithread():
         #MAKE THREADS
         self.threads=[]
         for t, f in enumerate(functions):
-            thread=worker_thread("worker "+str(t), self.inbound, self.outbound, f)
+            thread=worker_thread("worker "+unicode(t), self.inbound, self.outbound, f)
             self.threads.append(thread)
 
 

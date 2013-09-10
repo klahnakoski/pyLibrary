@@ -10,14 +10,13 @@
 #DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
 import StringIO
 import datetime
-import json
 import re
 import time
 
 from .debug import D
-from .util import struct
+import struct
 from .strings import expand_template, NewJSONEncoder, json_decoder, json_scrub
-from .struct import Struct, StructList
+from .struct import StructList
 from .threads import Lock
 
 json_lock=Lock()
@@ -101,7 +100,7 @@ class CNV:
     #PROPER NULL HANDLING
     @staticmethod
     def value2string(value):
-        return str(value) if value is not None else None
+        return unicode(value) if value is not None else None
 
 
     #RETURN PRETTY PYTHON CODE FOR THE SAME

@@ -124,6 +124,9 @@ class StructList(list):
             return None
         return wrap(self.list[index])
 
+    def __setitem__(self, i, y):
+        self.list[i]=y
+
     def __iter__(self):
         i=self.list.__iter__()
         while True:

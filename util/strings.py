@@ -15,8 +15,13 @@ import struct
 
 from .struct import Struct, StructList
 
+import sys
+reload(sys)
+sys.setdefaultencoding("utf-8")
 
-def indent(value, prefix="\t", indent=None):
+
+
+def indent(value, prefix=u"\t", indent=None):
     if indent is not None:
         prefix=prefix*indent
         
@@ -24,9 +29,9 @@ def indent(value, prefix="\t", indent=None):
         content=value.rstrip()
         suffix=value[len(content):]
         lines=content.splitlines()
-        return prefix+("\n"+prefix).join(lines)+suffix
+        return prefix+(u"\n"+prefix).join(lines)+suffix
     except Exception, e:
-        raise Exception("Problem with indent of value ("+e.message+")\n"+str(value))
+        raise Exception(u"Problem with indent of value ("+e.message+u")\n"+unicode(value))
 
 
 def outdent(value):
@@ -35,7 +40,7 @@ def outdent(value):
     for l in lines:
         trim=len(l.lstrip())
         if trim>0: num=min(num, len(l)-len(l.lstrip()))
-    return "\n".join([l[num:] for l in lines])
+    return u"\n".join([l[num:] for l in lines])
 
 def between(value, prefix, suffix):
     s = value.find(prefix)
@@ -51,7 +56,7 @@ def between(value, prefix, suffix):
 
 
 def right(value, len):
-    if len<=0: return ""
+    if len<=0: return u""
     return value[-len:]
 
 def find_first(value, find_arr, start=0):
@@ -81,13 +86,13 @@ def expand_template(template, values):
             return val
         except Exception, e:
             try:
-                if e.message.find("is not JSON serializable"):
+                if e.message.find(u"is not JSON serializable"):
                     #WORK HARDER
                     val=json_scrub(val)
                     val=toString(val)
                     return val
             except Exception:
-                raise Exception("Can not find "+var[2:-2]+" in template:\n"+indent(template))
+                raise Exception(u"Can not find "+var[2:-2]+u" in template:\n"+indent(template))
 
     return pattern.sub(replacer, template)
 
@@ -137,7 +142,7 @@ def toString(val):
         elif isinstance(val, dict) or isinstance(val, list) or isinstance(val, set):
             val=json_encoder.encode(val)
             return val
-    return str(val)
+    return unicode(val)
 
 #REMOVE VALUES THAT CAN NOT BE JSON-IZED
 def json_scrub(r):

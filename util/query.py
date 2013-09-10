@@ -11,7 +11,7 @@ from .debug import D
 from .basic import nvl
 import struct
 from .strings import indent, expand_template
-from .struct import StructList
+from .struct import StructList, Struct
 from .multiset import multiset
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)
@@ -34,7 +34,7 @@ class Q:
         try:
             def keys2string(x):
                 #REACH INTO dict TO GET PROPERTY VALUE
-                return "|".join([str(x[k]) for k in keys])
+                return "|".join([unicode(x[k]) for k in keys])
             def get_keys(d): return struct.wrap({k:d[k] for k in keys})
 
             agg={}
@@ -89,7 +89,7 @@ class Q:
                     "key":Q.select([d], keys)[0],
                     "value1":o[d],
                     "value2":d
-                })
+                }, e)
         return o
 
 
@@ -105,7 +105,7 @@ class Q:
 
 
     @staticmethod
-    def get_columns(self, data):
+    def get_columns(data):
         output={}
         for d in data:
             for k, v in d.items():
@@ -120,25 +120,29 @@ class Q:
 
         return [{"name":n} for n in output]
 
-    # STACK ALL CUBE DATA TO A SINGLE COLUMN, WITH ONE COLUMN PER DIMENSION
-    #>>> s
-    #      a   b
-    # one  1   2
-    # two  3   4
-    #
-    #>>> Q.stack(s)
-    # one a    1
-    # one b    2
-    # two a    3
-    # two b    4
 
-    # STACK LIST OF HASHES, OR 'MERGE' SEPARATE CUBES
-    # data - expected to be a list of hashes
-    # name - give a name to the new column
-    # value_column - Name given to the new, single value column
-    # columns - explicitly list the value columns (USE SELECT INSTEAD)
     @staticmethod
     def stack(data, name=None, value_column=None, columns=None):
+        """
+        STACK ALL CUBE DATA TO A SINGLE COLUMN, WITH ONE COLUMN PER DIMENSION
+        >>> s
+              a   b
+         one  1   2
+         two  3   4
+
+        >>> Q.stack(s)
+         one a    1
+         one b    2
+         two a    3
+         two b    4
+
+        STACK LIST OF HASHES, OR 'MERGE' SEPARATE CUBES
+        data - expected to be a list of hashes
+        name - give a name to the new column
+        value_column - Name given to the new, single value column
+        columns - explicitly list the value columns (USE SELECT INSTEAD)
+        """
+
         assert value_column is not None
         if isinstance(data, Cube): D.error("Do not know how to deal with cubes yet")
 
@@ -193,12 +197,12 @@ class Q:
                 #SPECIAL CASE, ONLY ONE FIELD TO SORT BY
                 if isinstance(fieldnames, basestring):
                     def comparer(left, right):
-                        return cmp(left[fieldnames], right[fieldnames])
+                        return cmp(nvl(left, Struct())[fieldnames], nvl(right, Struct())[fieldnames])
                     return sorted(data, cmp=comparer)
                 else:
                     #EXPECTING {"field":f, "sort":i} FORMAT
                     def comparer(left, right):
-                       return fieldnames["sort"]*cmp(left[fieldnames["field"]], right[fieldnames["field"]])
+                        return fieldnames["sort"]*cmp(nvl(left, Struct())[fieldnames["field"]],  nvl(right, Struct())[fieldnames["field"]])
                     return sorted(data, cmp=comparer)
 
             formal=[]
@@ -213,11 +217,13 @@ class Q:
     #        for col in formal:
     #            if not first: code+="    if result!=0: return result\n"
     #            first=False
-    #            code+="    result="+str(col["sort"])+" * cmp(left["+CNV.string2quote(col["field"])+"], right["+CNV.string2quote(col["field"])+"])\n"
+    #            code+="    result="+unicode(col["sort"])+" * cmp(left["+CNV.string2quote(col["field"])+"], right["+CNV.string2quote(col["field"])+"])\n"
     #        code+="    return result"
     #        exec(code)
 
             def comparer(left, right):
+                left=nvl(left, Struct())
+                right=nvl(right, Struct())
                 for f in formal:
                     result=f["sort"]*cmp(left[f["field"]], right[f["field"]])
                     if result!=0: return result
@@ -375,13 +381,13 @@ class Index(object):
                     return None
                 d=d[v]
 
-        if len(key)!=len(self._keys):
-            #NOT A COMPLETE INDEXING, SO RETURN THE PARTIAL INDEX
-            output=Index(self._keys[-len(key):])
-            output._data=d
-            return output
+            if len(key)!=len(self._keys):
+                #NOT A COMPLETE INDEXING, SO RETURN THE PARTIAL INDEX
+                output=Index(self._keys[-len(key):])
+                output._data=d
+                return output
 
-            return struct.wrap(d)
+                return struct.wrap(d)
         except Exception, e:
             D.error("something went wrong", e)
     

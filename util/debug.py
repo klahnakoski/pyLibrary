@@ -5,17 +5,17 @@
 ################################################################################
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
-from _functools import partial
 
+from _functools import partial
 from datetime import datetime
 import traceback
 import logging
 import sys
+
 import struct, threads
 from .files import File
 from .strings import indent, expand_template
 from .threads import Thread
-
 from .struct import StructList
 
 
@@ -27,8 +27,8 @@ WARNING="WARNING"
 NOTE="NOTE"
 
 
-logging_thread=None
-Logging_multi=None
+main_log=None
+logging_multi=None
 
 
 
@@ -52,7 +52,7 @@ class D(object):
         #NICE TO GATHER MANY MORE ITEMS FOR LOGGING (LIKE STACK TRACES AND LINE NUMBERS)
         params["log_timestamp"]=datetime.utcnow().strftime("%H:%M:%S")
 
-        logging_thread.println(template, params)
+        main_log.println(template, params)
 
 
     @staticmethod
@@ -61,11 +61,11 @@ class D(object):
             cause=params
             params=None
 
-        if not isinstance(cause, Except):
-            cause=Except(WARNING, str(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), 0))
+        if cause is not None and not isinstance(cause, Except):
+            cause=Except(WARNING, unicode(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), 0))
 
         e = Except(WARNING, template, params, cause, format_trace(traceback.extract_stack(), 1))
-        D.println(str(e))
+        D.println(unicode(e))
 
         
     #raise an exception with a trace for the cause too
@@ -80,8 +80,8 @@ class D(object):
             cause=params
             params=None
 
-        if not isinstance(cause, Except):
-            cause=Except(ERROR, str(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), offset))
+        if cause is not None and not isinstance(cause, Except):
+            cause=Except(ERROR, unicode(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), offset))
 
         trace=format_trace(traceback.extract_stack(), 1+offset)
         e=Except(ERROR, template, params, cause, trace)
@@ -91,28 +91,20 @@ class D(object):
     #RUN ME FIRST TO WARM UP THE LOGGING
     @classmethod
     def start(cls, settings=None):
-        if settings is None:
-            settings=struct.wrap({"log":{"stream":sys.stdout}})
-        
-        #PART 2 OF 2 SETUP OF THREADED LOGGING
-        #WE NOW CAN LOAD THE threads MODULE
-        from multithread import worker_thread
-        from threads import Queue
-        logging_thread.queue=Queue()
-        logging_thread.thread=worker_thread("log thread", logging_thread.queue, None, partial(Log_usingMulti.println, logging_multi))
-
-
         ##http://victorlin.me/2012/08/good-logging-practice-in-python/
         if settings is None: return
         if settings.log is None: return
 
-        if not isinstance(settings.log, StructList): settings.log=[settings.log]
+        globals()["logging_multi"]=Log_usingMulti()
+        globals()["main_log"]=Log_usingThread(logging_multi)
+
+        if not isinstance(settings.log, list): settings.log=[settings.log]
         for log in settings.log:
             D.add_log(Log.new_instance(log))
 
     @classmethod
     def stop(cls):
-        logging_thread.stop()
+        main_log.stop()
 
 D.info=D.println
 
@@ -150,7 +142,7 @@ class Except(Exception):
 
     @property
     def message(self):
-        return str(self)
+        return unicode(self)
 
     def __str__(self):
         output=self.template
@@ -174,7 +166,7 @@ class Log():
             if not settings["class"].startswith("logging.handlers."):
                 return make_log_from_settings(settings)
             else:
-            return Log_usingLogger(settings)
+                return Log_usingLogger(settings)
         if settings.file is not None: return Log_usingFile(file)
         if settings.filename is not None: return Log_usingFile(settings.filename)
         if settings.stream is not None: return Log_usingStream(settings.stream)
@@ -242,12 +234,18 @@ class Log_usingStream():
         except Exception, e:
             pass
 
+    def stop(self):
+        pass
+
 
 class Log_usingThread():
     def __init__(self, logger):
-        self.logger=logger  #for later
-        self.thread=None
-        self.queue=None
+        #DELAYED LOAD FOR THREADS MODULE
+        from multithread import worker_thread
+        from threads import Queue
+
+        self.queue=Queue()
+        self.thread=worker_thread("log thread", self.queue, None, partial(Log_usingMulti.println, logger))
 
     def println(self, template, params):
         try:
@@ -291,10 +289,10 @@ class Log_usingMulti():
         self.many.remove(logger)
         return self
 
+    def clear_log(self):
+        self.many=[]
 
 
-#PART 1 OF 2 FOR SETTING UP THREADED LOGGING
-#DEPENDS ON THE threads MODULE, SO WE WILL SETUP THE REST AFTER IT IS LOADED
-logging_multi=Log_usingMulti()
-#logging_multi.add_log(Log_usingStream(sys.stdout))
-logging_thread=Log_usingThread(logging_multi)
+
+if main_log is None:
+    main_log=Log_usingStream(sys.stdout)
