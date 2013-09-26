@@ -13,7 +13,7 @@ from threading import Lock
 import time
 import struct
 
-from .struct import Struct, StructList
+from .struct import Struct, StructList, Null
 
 import sys
 reload(sys)
@@ -21,8 +21,8 @@ sys.setdefaultencoding("utf-8")
 
 
 
-def indent(value, prefix=u"\t", indent=None):
-    if indent is not None:
+def indent(value, prefix=u"\t", indent=Null):
+    if indent != Null:
         prefix=prefix*indent
         
     try:
@@ -35,21 +35,25 @@ def indent(value, prefix=u"\t", indent=None):
 
 
 def outdent(value):
-    num=100
-    lines=value.splitlines()
-    for l in lines:
-        trim=len(l.lstrip())
-        if trim>0: num=min(num, len(l)-len(l.lstrip()))
-    return u"\n".join([l[num:] for l in lines])
+    try:
+        num=100
+        lines=value.splitlines()
+        for l in lines:
+            trim=len(l.lstrip())
+            if trim>0: num=min(num, len(l)-len(l.lstrip()))
+        return u"\n".join([l[num:] for l in lines])
+    except Exception, e:
+        from .logs import Log
+        Log.error("can not outdent value", e)
 
 def between(value, prefix, suffix):
     s = value.find(prefix)
-    if s==-1: return None
+    if s==-1: return Null
     s+=len(prefix)
 
     e=value.find(suffix, s)
     if e==-1:
-        return None
+        return Null
 
     s=value.rfind(prefix, 0, e)+len(prefix) #WE KNOW THIS EXISTS, BUT THERE MAY BE A RIGHT-MORE ONE
     return value[s:e]
@@ -70,12 +74,12 @@ def find_first(value, find_arr, start=0):
 
 #TURNS OUT PYSTACHE MANGLES CHARS FOR HTML
 #def expand_template(template, values):
-#    if values is None: values={}
+#    if values == Null: values={}
 #    return pystache.render(template, values)
 
 pattern=re.compile(r"(\{\{[\w_\.]+\}\})")
 def expand_template(template, values):
-    if values is None: values={}
+    if values == Null: values={}
     values=struct.wrap(values)
 
     def replacer(found):
@@ -148,19 +152,20 @@ def toString(val):
 def json_scrub(r):
     return _scrub(r)
 
+
 def _scrub(r):
-    if r is None:# or type(r).__name__=="long" or type(r).__name__ in ["str", "bool", "int", "basestring", "float", "boolean"]:
-        return r
+    if r == Null:# or type(r).__name__=="long" or type(r).__name__ in ["str", "bool", "int", "basestring", "float", "boolean"]:
+        return None
     elif isinstance(r, dict):
-        output={}
+        output = {}
         for k, v in r.items():
-            v=_scrub(v)
-            output[k]=v
+            v = _scrub(v)
+            output[k] = v
         return output
     elif hasattr(r, '__iter__'):
-        output=[]
+        output = []
         for v in r:
-            v=_scrub(v)
+            v = _scrub(v)
             output.append(v)
         return output
     else:

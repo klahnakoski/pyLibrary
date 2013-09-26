@@ -8,11 +8,13 @@
 
 import threading
 from .basic import nvl
-from .debug import D
+from dzAlerts.util import struct
+from dzAlerts.util.struct import Null
+from .logs import Log
 from .threads import Queue, Thread
 
 
-DEBUG=True
+DEBUG = True
 
 class worker_thread(threading.Thread):
 
@@ -27,9 +29,9 @@ class worker_thread(threading.Thread):
         self.start()
 
     #REQUIRED TO DETECT KEYBOARD, AND OTHER, INTERRUPTS
-    def join(self, timeout=None):
+    def join(self, timeout=Null):
         while self.isAlive():
-            D.println("Waiting on thread {{thread}}", {"thread":self.name})
+            Log.note("Waiting on thread {{thread}}", {"thread":self.name})
             threading.Thread.join(self, nvl(timeout, 0.5))
 
     def run(self):
@@ -40,16 +42,16 @@ class worker_thread(threading.Thread):
             try:
                 if not self.keep_running: break
                 result=self.function(**params)
-                if self.keep_running and self.out_queue is not None:
-                    self.out_queue.add(result)
+                if self.keep_running and self.out_queue != Null:
+                    self.out_queue.add({"response":result})
             except Exception, e:
-                D.warning("Can not execute with params={{params}}", {"params": params}, e)
-                if self.keep_running and self.out_queue is not None:
-                    self.out_queue.add(e)
+                Log.warning("Can not execute with params={{params}}", {"params": params}, e)
+                if self.keep_running and self.out_queue != Null:
+                    self.out_queue.add({"exception":e})
 
         self.keep_running=False
         if DEBUG:
-            D.println("{{thread}} DONE", {"thread":self.name})
+            Log.note("{{thread}} DONE", {"thread":self.name})
 
 
     def stop(self):
@@ -85,9 +87,9 @@ class Multithread():
     #WAIT FOR ALL QUEUED WORK TO BE DONE BEFORE RETURNING
     def __exit__(self, a, b, c):
         try:
-            self.inbound.close() #SEND STOPS TO WAKE UP THE WORKERS WAITING ON inbound.pop()
+            self.inbound.close() # SEND STOPS TO WAKE UP THE WORKERS WAITING ON inbound.pop()
         except Exception, e:
-            D.warning("Problem adding to inbound", e)
+            Log.warning("Problem adding to inbound", e)
 
         self.join()
 
@@ -99,9 +101,9 @@ class Multithread():
             for t in self.threads:
                 t.join()
         except (KeyboardInterrupt, SystemExit):
-            D.println("Shutdow Started, please be patient")
+            Log.note("Shutdow Started, please be patient")
         except Exception, e:
-            D.error("Unusual shutdown!", e)
+            Log.error("Unusual shutdown!", e)
         finally:
             for t in self.threads:
                 t.keep_running=False
@@ -120,7 +122,10 @@ class Multithread():
         def output():
             for i in xrange(num):
                 result=self.outbound.pop()
-                yield result
+                if "exception" in result:
+                    raise result["exception"]
+                else:
+                    yield result["response"]
         return output()
 
     #EXTERNAL COMMAND THAT RETURNS IMMEDIATELY

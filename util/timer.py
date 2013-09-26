@@ -6,21 +6,23 @@
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
 import time
-from .debug import D
+from dzAlerts.util.struct import Null
+from .strings import expand_template
+from .logs import Log
 
-
-## USAGE:
-## with Timer("doing hard time"):
-##     something_that_takes_long()
-##
-## OUTPUT:
-##     doing hard time took 45.468 sec
 
 
 class Timer:
+    """
+    USAGE:
+    with Timer("doing hard time"):
+        something_that_takes_long()
+    OUTPUT:
+        doing hard time took 45.468 sec
+    """
 
-    def __init__(self, description):
-        self.description=description
+    def __init__(self, description, param=Null):
+        self.description=expand_template(description, param)  #WE WOULD LIKE TO KEEP THIS TEMPLATE, AND PASS IT TO THE LOGGER ON __exit__(), WE FAKE IT FOR NOW
 
     def __enter__(self):
         self.start = time.clock()
@@ -29,7 +31,7 @@ class Timer:
     def __exit__(self, type, value, traceback):
         self.end = time.clock()
         self.interval = self.end - self.start
-        D.println("{{description}} took {{duration}} sec", {
+        Log.note("{{description}} took {{duration}} sec", {
             "description":self.description,
             "duration":round(self.interval, 3)
         })

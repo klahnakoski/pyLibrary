@@ -6,14 +6,16 @@
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
 import math
-from .debug import D
+from dzAlerts.util import struct
+from dzAlerts.util.struct import Null
+from .logs import Log
 from .strings import find_first
 
 class Math():
 
     @staticmethod
     def bayesian_add(a, b):
-        if a>=1 or b>=1 or a<=0 or b<=0: D.error("Only allowed values *between* zero and one")
+        if a>=1 or b>=1 or a<=0 or b<=0: Log.error("Only allowed values *between* zero and one")
         return a*b/(a*b+(1-a)*(1-b))
 
 
@@ -47,9 +49,9 @@ class Math():
             return False
 
     @staticmethod
-    def round_sci(value, decimal=None, digits=None):
+    def round_sci(value, decimal=Null, digits=Null):
 
-        if digits is not None:
+        if digits != Null:
             m=pow(10, math.floor(math.log10(digits)))
             return round(value/m, digits)*m
 
@@ -69,12 +71,28 @@ class Math():
 
 
     @staticmethod
-    def min(*values):
-        output=None
+    def min(values):
+        output=Null
         for v in values:
-            if v is None: continue
-            if output is None:
+            if v == Null: continue
+            if output == Null:
                 output=v
                 continue
             output=min(output, v)
         return output
+
+
+
+    @staticmethod
+    def max(values):
+        output = Null
+        for v in values:
+            if v == Null:
+                continue
+            if output == Null:
+                output = v
+                continue
+            output = max(output, v)
+        return output
+
+

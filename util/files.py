@@ -9,6 +9,7 @@
 
 
 import codecs
+from datetime import datetime
 import os
 import shutil
 
@@ -16,7 +17,8 @@ import shutil
 class File():
 
     def __init__(self, filename):
-        self.filename=filename
+        #USE UNIX STANDARD
+        self.filename = "/".join(filename.split(os.sep))
 
 
     def read(self, encoding="utf-8"):
@@ -50,20 +52,29 @@ class File():
 
     def delete(self):
         try:
-            shutil.rmtree(self.filename)
+            if os.path.isdir(self.filename):
+                shutil.rmtree(self.filename)
+            elif os.path.isfile(self.filename):
+                os.remove(self.filename)
             return self
         except Exception, e:
             if e.strerror=="The system cannot find the path specified":
                 return
-            from .debug import D
-            D.warning("Could not remove file", e)
+            from .logs import Log
+            Log.warning("Could not remove file", e)
+
+    def backup(self):
+        names=self.filename.split("/")[-1].split(".")
+        if len(names)==1:
+            backup=File(self.filename+".backup "+datetime.utcnow().strftime("%Y%m%d %H%i%s"))
+
 
     def create(self):
         try:
             os.makedirs(self.filename)
         except Exception, e:
-            from .debug import D
-            D.error("Could not make directory {{dir_name}}", {"dir_name":self.filename}, e)
+            from .logs import Log
+            Log.error("Could not make directory {{dir_name}}", {"dir_name":self.filename}, e)
 
 
     @property

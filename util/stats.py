@@ -8,8 +8,9 @@
 
 from math import sqrt
 from .basic import nvl
-from .debug import D
-from .struct import Struct
+from dzAlerts.util.maths import Math
+from .logs import Log
+
 
 DEBUG=True
 EPSILON=0.000001
@@ -31,10 +32,10 @@ def stats2z_moment(stats):
     m=Z_moment(stats.count, mz1, mz2, mz3, mz4)
     if DEBUG:
         v = z_moment2stats(m, unbiased=False)
-        if not closeEnough(v.count, stats.count): D.error("convertion error")
-        if not closeEnough(v.mean, stats.mean): D.error("convertion error")
+        if not closeEnough(v.count, stats.count): Log.error("convertion error")
+        if not closeEnough(v.mean, stats.mean): Log.error("convertion error")
         if not closeEnough(v.variance, stats.variance):
-            D.error("convertion error")
+            Log.error("convertion error")
 
     return m
 
@@ -52,8 +53,8 @@ def z_moment2stats(z_moment, unbiased=True):
 
     return Stats(
         count=N,
-        mean=z_moment.S[1]/N,
-        variance=(z_moment.S[2]-(z_moment.S[1]**2)/N)/(N-free),
+        mean=z_moment.S[1] / N if N > 0 else float('nan'),
+        variance=(z_moment.S[2] - (z_moment.S[1] ** 2) / N) / (N - free) if N - free > 0 else float('nan'),
         unbiased=unbiased
     )
 
@@ -113,10 +114,11 @@ class Stats():
 
 
 
-################################################################################
-## ZERO-CENTERED MOMENTS
-################################################################################
+
 class Z_moment():
+    """
+    ZERO-CENTERED MOMENTS
+    """
     def __init__(self, *args):
         self.S=tuple(args)
 
@@ -139,7 +141,7 @@ class Z_moment():
 
     @staticmethod
     def new_instance(values):
-        if values is None: return Z_moment()
+        if values == Null: return Z_moment()
         values=[float(v) for v in values]
 
         return Z_moment(*[

@@ -10,7 +10,9 @@
 
 import argparse
 from .cnv import CNV
-from .debug import D
+from dzAlerts.util import struct
+from dzAlerts.util.struct import Null
+from .logs import Log
 from .files import File
 
 class startup():
@@ -43,9 +45,9 @@ class startup():
 
 
     @staticmethod
-    def read_settings(filename=None):
+    def read_settings(filename=Null):
         # READ SETTINGS
-        if filename is None:
+        if filename == Null:
             args=startup.argparse([
                 {
                     "name":["--settings", "--settings-file", "--settings_file"],
@@ -60,6 +62,6 @@ class startup():
 
         settings_file=File(filename)
         if not settings_file.exists:
-            D.error("Can not file settings file {{filename}}", {"filename":filename})
+            Log.error("Can not file settings file {{filename}}", {"filename":filename})
         json=settings_file.read()
         return CNV.JSON2object(json, flexible=True)
