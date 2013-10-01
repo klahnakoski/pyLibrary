@@ -8,8 +8,8 @@
 
 import threading
 from .basic import nvl
-from dzAlerts.util import struct
-from dzAlerts.util.struct import Null
+from . import struct
+from .struct import Null
 from .logs import Log
 from .threads import Queue, Thread
 

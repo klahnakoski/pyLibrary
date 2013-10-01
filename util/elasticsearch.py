@@ -8,7 +8,7 @@ from .query import Q
 from .cnv import CNV
 from .logs import Log
 from .basic import nvl
-from .struct import Struct, StructList
+from .struct import Struct, StructList, Null
 
 DEBUG=False
 
@@ -232,7 +232,7 @@ class ElasticSearch():
 
 def _scrub(r):
     try:
-        if r == Null:
+        if r is None or r == Null:
             return Null
         elif isinstance(r, basestring):
             if r == "":

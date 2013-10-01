@@ -1,9 +1,9 @@
-from dzAlerts.util import struct
-from dzAlerts.util.logs import Log
-from dzAlerts.util.maths import Math
-from dzAlerts.util.multiset import multiset
-from dzAlerts.util.stats import Z_moment, stats2z_moment, z_moment2stats
-from dzAlerts.util.struct import Null
+from . import struct
+from .logs import Log
+from .maths import Math
+from .multiset import multiset
+from .stats import Z_moment, stats2z_moment, z_moment2stats
+from .struct import Null
 
 
 class AggregationFunction(object):
@@ -55,6 +55,7 @@ class WindowFunction(AggregationFunction):
 class Stats(WindowFunction):
 
     def __init__(self):
+        object.__init__(self)
         self.total=Z_moment(0,0,0)
 
 
@@ -78,6 +79,7 @@ class Stats(WindowFunction):
 
 class Min(WindowFunction):
     def __init__(self):
+        object.__init__(self)
         self.total = multiset()
 
 
@@ -93,3 +95,64 @@ class Min(WindowFunction):
 
     def end(self):
         return Math.min(self.total)
+
+
+class Max(WindowFunction):
+    def __init__(self):
+        object.__init__(self)
+        self.total = multiset()
+
+
+    def add(self, value):
+        if value == Null:
+            return
+        self.total.add(value)
+
+    def sub(self, value):
+        if value == Null:
+            return
+        self.total.remove(value)
+
+    def end(self):
+        return Math.max(self.total)
+
+
+class Count(WindowFunction):
+    def __init__(self):
+        object.__init__(self)
+        self.total = 0
+
+
+    def add(self, value):
+        if value == Null:
+            return
+        self.total += 1
+
+    def sub(self, value):
+        if value == Null:
+            return
+        self.total -= 1
+
+    def end(self):
+        return self.total
+
+
+class Sum(WindowFunction):
+
+    def __init__(self):
+        object.__init__(self)
+        self.total = 0
+
+
+    def add(self, value):
+        if value == Null:
+            return
+        self.total += value
+
+    def sub(self, value):
+        if value == Null:
+            return
+        self.total -= value
+
+    def end(self):
+        return self.total

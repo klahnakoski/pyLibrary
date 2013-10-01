@@ -108,7 +108,9 @@ class NewJSONEncoder(json.JSONEncoder):
         json.JSONEncoder.__init__(self, sort_keys=True)
 
     def default(self, obj):
-        if isinstance(obj, set):
+        if obj == Null:
+            return None
+        elif isinstance(obj, set):
             return list(obj)
         elif isinstance(obj, Struct):
             return obj.dict
@@ -122,18 +124,6 @@ class NewJSONEncoder(json.JSONEncoder):
 
 #OH HUM, cPython with uJSON, OR pypy WITH BUILTIN JSON?
 #http://liangnuren.wordpress.com/2012/08/13/python-json-performance/
-
-#import ujson
-
-#class json_encoder():
-#    @classmethod
-#    def encode(self, value):
-#        return ujson.dumps(value)
-
-#class json_decoder():
-#    @classmethod
-#    def decode(cls, value):
-#        return ujson.loads(value)
 
 json_lock=Lock()
 json_encoder=NewJSONEncoder()
@@ -154,8 +144,8 @@ def json_scrub(r):
 
 
 def _scrub(r):
-    if r == Null:# or type(r).__name__=="long" or type(r).__name__ in ["str", "bool", "int", "basestring", "float", "boolean"]:
-        return None
+    if r == Null:
+        return Null
     elif isinstance(r, dict):
         output = {}
         for k, v in r.items():

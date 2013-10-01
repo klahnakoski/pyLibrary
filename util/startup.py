@@ -10,8 +10,8 @@
 
 import argparse
 from .cnv import CNV
-from dzAlerts.util import struct
-from dzAlerts.util.struct import Null
+from . import struct
+from .struct import Null
 from .logs import Log
 from .files import File
 

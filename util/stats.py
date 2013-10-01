@@ -8,7 +8,7 @@
 
 from math import sqrt
 from .basic import nvl
-from dzAlerts.util.maths import Math
+from .maths import Math
 from .logs import Log
 
 

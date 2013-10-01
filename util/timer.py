@@ -6,7 +6,7 @@
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
 import time
-from dzAlerts.util.struct import Null
+from .struct import Null
 from .strings import expand_template
 from .logs import Log
 
@@ -25,13 +25,18 @@ class Timer:
         self.description=expand_template(description, param)  #WE WOULD LIKE TO KEEP THIS TEMPLATE, AND PASS IT TO THE LOGGER ON __exit__(), WE FAKE IT FOR NOW
 
     def __enter__(self):
+        Log.note("Timer start: {{description}}", {
+            "description":self.description
+        })
+
+
         self.start = time.clock()
         return self
 
     def __exit__(self, type, value, traceback):
         self.end = time.clock()
         self.interval = self.end - self.start
-        Log.note("{{description}} took {{duration}} sec", {
+        Log.note("Timer end  : {{description}} (took {{duration}} sec)", {
             "description":self.description,
             "duration":round(self.interval, 3)
         })

@@ -11,7 +11,7 @@ from datetime import datetime
 import subprocess
 from pymysql import connect
 from . import struct
-from dzAlerts.util.struct import Null
+from .struct import Null
 from .maths import Math
 from .strings import expand_template
 from .basic import nvl
@@ -90,6 +90,7 @@ class DB():
     def begin(self):
         if self.transaction_level==0: self.cursor=self.db.cursor()
         self.transaction_level+=1
+        self.execute("SET TIME_ZONE='+00:00'")
 
 
     def close(self):
@@ -263,7 +264,8 @@ class DB():
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            )
+            bufsize=-1
+        )
         (output, _) = proc.communicate(sql)
 
         if proc.returncode:
@@ -288,12 +290,14 @@ class DB():
 
         (backlog, self.backlog)=(self.backlog, [])
         if self.db.__module__.startswith(u"pymysql"):
-            #BUG IN PYMYSQL: CAN NOT HANDLE MULTIPLE STATEMENTS
+            # BUG IN PYMYSQL: CAN NOT HANDLE MULTIPLE STATEMENTS
+            # https://github.com/PyMySQL/PyMySQL/issues/157
             for b in backlog:
                 try:
                     self.cursor.execute(b)
                 except Exception, e:
                     Log.error(u"Can not execute sql:\n{{sql}}", {u"sql":b}, e)
+
             self.cursor.close()
             self.cursor = self.db.cursor()
         else:

@@ -6,8 +6,8 @@
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
 import math
-from dzAlerts.util import struct
-from dzAlerts.util.struct import Null
+from . import struct
+from .struct import Null
 from .logs import Log
 from .strings import find_first
 

@@ -5,7 +5,7 @@
 ################################################################################
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
-from dzAlerts.util.struct import Null
+from .struct import Null
 
 
 def nvl(*args):

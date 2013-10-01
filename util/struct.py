@@ -63,7 +63,7 @@ class Struct(dict):
                     d[key] = value
                 return self
 
-            key=key.replace("\\.", "\a")
+            key=key.replace("\.", "\a")
             seq=[k.replace("\a", ".") for k in key.split(".")]
             for k in seq[:-1]: d=d[k]
             if value == Null:
@@ -107,7 +107,6 @@ class Struct(dict):
             return
         del d[key]
 
-
     def keys(self):
         d=object.__getattribute__(self, "__dict__")
         return d.keys()
@@ -134,11 +133,30 @@ class NullStruct(object):
     def __nonzero__(self):
         return False
 
-    def __str__(self):
-        return "None"
+    def __gt__(self, other):
+        return False
+
+    def __ge__(self, other):
+        return False
+
+    def __le__(self, other):
+        return False
+
+    def __lt__(self, other):
+        return False
+
+    def __eq__(self, other):
+        return id(Null) == id(other)
+
+    def __ne__(self, other):
+        return id(Null) != id(other)
+
 
     def __getitem__(self, key):
         return self
+
+
+
 
     def __getattribute__(self, key):
         requested.add(key)
@@ -146,6 +164,9 @@ class NullStruct(object):
 
     def keys(self):
         return set()
+
+    def __str__(self):
+        return "None"
 
 
 Null = NullStruct()
