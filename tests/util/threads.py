@@ -23,6 +23,6 @@ class test_thread():
 
 
 
-D.start()
+Log.start()
 test_thread().test_many_threads_on_lock()
-D.stop()
+Log.stop()

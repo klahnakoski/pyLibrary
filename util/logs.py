@@ -11,6 +11,7 @@ from datetime import datetime
 import traceback
 import logging
 import sys
+from .basic import listwrap
 
 import struct, threads
 from .files import File
@@ -117,8 +118,7 @@ class Log(object):
         globals()["logging_multi"]=Log_usingMulti()
         globals()["main_log"]=Log_usingThread(logging_multi)
 
-        if not isinstance(settings.log, list): settings.log=[settings.log]
-        for log in settings.log:
+        for log in listwrap(settings.log):
             Log.add_log(Log.new_instance(log))
 
 
@@ -221,6 +221,11 @@ def make_log_from_settings(settings):
     path=".".join(path[:-1])
     temp=__import__(path, globals(), locals(), [class_name], -1)
     constructor=object.__getattribute__(temp, class_name)
+
+    if settings.filename != Null:
+        f = File(settings.filename)
+        if not f.parent.exists:
+            f.parent.create()
 
     params = settings.dict
     del params['class']

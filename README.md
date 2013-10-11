@@ -65,7 +65,7 @@ there are a few gotchas you can avoid by following these instructions.
         CALL easy_install virtualenv
 
   * Many "Python Powered" native installs require a pointer to the python installation, but they have no idea where to
-  look in 64bit windows.  You must alter the registry([http://stackoverflow.com/questions/3652625/installing-setuptools-on-64-bit-windows](http://stackoverflow.com/questions/3652625/installing-setuptools-on-64-bit-windows)):
+  look in 64bit windows.  You must alter the registry ([http://stackoverflow.com/questions/3652625/installing-setuptools-on-64-bit-windows](http://stackoverflow.com/questions/3652625/installing-setuptools-on-64-bit-windows)):
   
         SET HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Python\PythonCore\2.7\InstallPath = "C:\Python27"
 

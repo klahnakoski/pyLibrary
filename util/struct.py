@@ -6,7 +6,7 @@
 ## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 ################################################################################
 
-SPECIAL=["keys", "values", "items", "dict",  "copy"]
+SPECIAL=["keys", "values", "items", "iteritems", "dict",  "copy"]
 
 
 
@@ -57,8 +57,9 @@ class Struct(dict):
             d=object.__getattribute__(self, "__dict__")
             value=unwrap(value)
             if key.find(".") == -1:
-                if value == Null:
-                    del d[key]
+                if value is None:
+                    if key in d:
+                        del d[key]
                 else:
                     d[key] = value
                 return self
@@ -77,12 +78,29 @@ class Struct(dict):
     def __getattribute__(self, key):
         d=object.__getattribute__(self, "__dict__")
         if key not in SPECIAL:
-            if key not in d: return Null
+            if key not in d:
+                return Null
             return wrap(d[key])
 
         #SOME dict FUNCTIONS
-        if key in ["keys", "values", "items"]:
-            return dict.__getattribute__(d, key)
+        if key == "items":
+            def temp():
+                _is = dict.__getattribute__(d, "items")
+                return [(k, wrap(v)) for k, v in _is()]
+            return temp
+        if key == "iteritems":
+            #LOW LEVEL ITERATION
+            return d.iteritems
+        if key=="keys":
+            def temp():
+                k=dict.__getattribute__(d, "keys")
+                return set(k())
+            return temp
+        if key=="values":
+            def temp():
+                vs=dict.__getattribute__(d, "values")
+                return [wrap(v) for v in vs()]
+            return temp
         if key=="dict":
             return d
         if key=="copy":
@@ -94,7 +112,8 @@ class Struct(dict):
 
 
     def __setattr__(self, key, value):
-        dict.__setattr__(self, unicode(key), value)
+        Struct.__setitem__(self, key, value)
+        # dict.__setattr__(self, unicode(key), value)
 
 
     def __delitem__(self, key):
@@ -155,8 +174,11 @@ class NullStruct(object):
     def __getitem__(self, key):
         return self
 
+    def __len__(self):
+        return 0
 
-
+    def __iter__(self):
+        return ZeroList.__iter__()
 
     def __getattribute__(self, key):
         requested.add(key)
@@ -170,6 +192,8 @@ class NullStruct(object):
 
 
 Null = NullStruct()
+
+ZeroList=[]
 
 
 class StructList(list):
@@ -221,7 +245,7 @@ class StructList(list):
 def wrap(v):
     if v is None or v == Null:
         return Null
-    if isinstance(v, Struct):
+    if isinstance(v, (Struct, StructList)):
         return v
     if isinstance(v, dict):
         m = Struct()
@@ -233,7 +257,7 @@ def wrap(v):
 
 def unwrap(v):
     if isinstance(v, Struct):
-        return v.dict
+        return object.__getattribute__(v, "__dict__")
     if v == Null:
         return None
     return v
