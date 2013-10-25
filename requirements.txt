@@ -1,6 +1,5 @@
 pymysql
 requests
-pystache
 
 
 

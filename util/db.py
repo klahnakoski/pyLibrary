@@ -1,23 +1,22 @@
-################################################################################
-## This Source Code Form is subject to the terms of the Mozilla Public
-## License, v. 2.0. If a copy of the MPL was not distributed with this file,
-## You can obtain one at http://mozilla.org/MPL/2.0/.
-################################################################################
-## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
-################################################################################
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
 
 
 from datetime import datetime
 import subprocess
 from pymysql import connect
 from . import struct
-from .struct import Null
 from .maths import Math
 from .strings import expand_template
-from .basic import nvl
+from .struct import nvl
 from .cnv import CNV
-from .logs import Log
-from .query import Q
+from .logs import Log, Except
+from .queries import Q
 from .strings import indent
 from .strings import outdent
 from .files import File
@@ -29,12 +28,12 @@ MAX_BATCH_SIZE=100
 
 all_db=[]
 
-class DB():
+class DB(object):
     """
 
     """
 
-    def __init__(self, settings, schema=Null):
+    def __init__(self, settings, schema=None):
         """OVERRIDE THE settings.schema WITH THE schema PARAMETER"""
         all_db.append(self)
 
@@ -61,7 +60,7 @@ class DB():
             )
         except Exception, e:
             Log.error(u"Failure to connect", e)
-        self.cursor = Null
+        self.cursor = None
         self.partial_rollback=False
         self.transaction_level=0
         self.backlog=[]     #accumulate the write commands so they are sent at once
@@ -75,7 +74,7 @@ class DB():
         if isinstance(value, BaseException):
             try:
                 if self.cursor: self.cursor.close()
-                self.cursor=Null
+                self.cursor = None
                 self.rollback()
             except Exception, e:
                 Log.warning(u"can not rollback()", e)
@@ -100,7 +99,7 @@ class DB():
     def close(self):
         if self.transaction_level>0:
             Log.error(u"expecting commit() or rollback() before close")
-        self.cursor=Null  #NOT NEEDED
+        self.cursor = None  #NOT NEEDED
         try:
             self.db.close()
         except Exception, e:
@@ -132,7 +131,7 @@ class DB():
                 Log.error(u"Commit after nested rollback is not allowed")
             else:
                 if self.cursor: self.cursor.close()
-                self.cursor=Null
+                self.cursor = None
                 self.db.commit()
 
         self.transaction_level-=1
@@ -155,9 +154,9 @@ class DB():
             Log.error(u"No transaction has begun")
         elif self.transaction_level==1:
             self.transaction_level-=1
-            if self.cursor!=Null:
+            if self.cursor!=None:
                 self.cursor.close()
-            self.cursor=Null
+            self.cursor = None
             self.db.rollback()
         else:
             self.transaction_level-=1
@@ -177,14 +176,14 @@ class DB():
 
 
 
-    def query(self, sql, param=Null):
+    def query(self, sql, param=None):
         self._execute_backlog()
         try:
             old_cursor=self.cursor
-            if old_cursor == Null: #ALLOW NON-TRANSACTIONAL READS
+            if not old_cursor: #ALLOW NON-TRANSACTIONAL READS
                 self.cursor=self.db.cursor()
 
-            if param != Null: sql=expand_template(sql, self.quote_param(param))
+            if param: sql=expand_template(sql, self.quote_param(param))
             sql=outdent(sql)
             if self.debug: Log.note(u"Execute SQL:\n{{sql}}", {u"sql":indent(sql)})
 
@@ -194,9 +193,9 @@ class DB():
             fixed=[[utf8_to_unicode(c) for c in row] for row in self.cursor]
             result=CNV.table2list(columns, fixed)
 
-            if old_cursor == Null:   #CLEANUP AFTER NON-TRANSACTIONAL READS
+            if not old_cursor:   #CLEANUP AFTER NON-TRANSACTIONAL READS
                 self.cursor.close()
-                self.cursor=Null
+                self.cursor = None
 
             return result
         except Exception, e:
@@ -206,18 +205,17 @@ class DB():
 
             
     # EXECUTE GIVEN METHOD FOR ALL ROWS RETURNED
-    def foreach(self, sql, param=Null, execute=Null):
-        assert execute != Null
-
+    def execute(self, sql, param=None, execute=None):
+        assert execute
         num=0
 
         self._execute_backlog()
         try:
             old_cursor=self.cursor
-            if old_cursor == Null: #ALLOW NON-TRANSACTIONAL READS
+            if not old_cursor: #ALLOW NON-TRANSACTIONAL READS
                 self.cursor=self.db.cursor()
 
-            if param != Null: sql=expand_template(sql,self.quote_param(param))
+            if param: sql=expand_template(sql,self.quote_param(param))
             sql=outdent(sql)
             if self.debug: Log.note(u"Execute SQL:\n{{sql}}", {u"sql":indent(sql)})
 
@@ -228,9 +226,9 @@ class DB():
                 num+=1
                 execute(struct.wrap(dict(zip(columns, [utf8_to_unicode(c) for c in r]))))
 
-            if old_cursor == Null:   #CLEANUP AFTER NON-TRANSACTIONAL READS
+            if not old_cursor:   #CLEANUP AFTER NON-TRANSACTIONAL READS
                 self.cursor.close()
-                self.cursor=Null
+                self.cursor = None
 
         except Exception, e:
             Log.error(u"Problem executing SQL:\n"+indent(sql.strip()), e, offset=1)
@@ -238,25 +236,25 @@ class DB():
         return num
 
     
-    def execute(self, sql, param=Null):
+    def execute(self, sql, param=None):
         if self.transaction_level==0: Log.error(u"Expecting transaction to be started before issuing queries")
 
-        if param != Null: sql=expand_template(sql, self.quote_param(param))
+        if param: sql=expand_template(sql, self.quote_param(param))
         sql=outdent(sql)
         self.backlog.append(sql)
         if len(self.backlog)>=MAX_BATCH_SIZE:
             self._execute_backlog()
 
         
-    def execute_file(self, filename, param=Null):
+    def execute_file(self, filename, param=None):
         content=File(filename).read()
         self.execute(content, param)
 
     @staticmethod
-    def execute_sql(settings, sql, param=Null):
+    def execute_sql(settings, sql, param=None):
         """EXECUTE MANY LINES OF SQL (FROM SQLDUMP FILE, MAYBE?"""
 
-        if param != Null:
+        if param:
             with DB(settings) as temp:
                 sql=expand_template(sql, temp.quote_param(param))
         
@@ -289,7 +287,7 @@ class DB():
             })
 
     @staticmethod
-    def execute_file(settings, filename, param=Null):
+    def execute_file(settings, filename, param=None):
         # MySQLdb provides no way to execute an entire SQL file in bulk, so we
         # have to shell out to the commandline client.
         sql=File(filename).read()
@@ -297,7 +295,7 @@ class DB():
 
 
     def _execute_backlog(self):
-        if len(self.backlog)==0: return
+        if not self.backlog: return
 
         (backlog, self.backlog)=(self.backlog, [])
         if self.db.__module__.startswith(u"pymysql"):
@@ -343,9 +341,9 @@ class DB():
     # candidate_key IS LIST OF COLUMNS THAT CAN BE USED AS UID (USUALLY PRIMARY KEY)
     # ONLY INSERT IF THE candidate_key DOES NOT EXIST YET
     def insert_new(self, table_name, candidate_key, new_record):
-        candidate_key=listwrap(candidate_key)
+        candidate_key=struct.listwrap(candidate_key)
 
-        condition=u" AND\n".join([self.quote_column(k)+u"="+self.quote_value(new_record[k]) if new_record[k] != Null else self.quote_column(k)+u" IS Null"  for k in candidate_key])
+        condition=u" AND\n".join([self.quote_column(k)+u"="+self.quote_value(new_record[k]) if new_record[k] != None else self.quote_column(k)+u" IS Null"  for k in candidate_key])
         command=u"INSERT INTO "+self.quote_column(table_name)+u" ("+\
                 u",".join([self.quote_column(k) for k in new_record.keys()])+\
                 u")\n"+\
@@ -362,9 +360,23 @@ class DB():
 
 
     def insert_list(self, table_name, records):
-        #PROBABLY CAN BE BETTER DONE WITH executeMany()
+        keys = set()
         for r in records:
-            self.insert(table_name, r)
+            keys |= set(r.keys())
+        keys = Q.sort(keys)
+
+        try:
+            command = \
+                u"INSERT INTO " + self.quote_column(table_name) + u"(" + \
+                u",".join([self.quote_column(k) for k in keys]) + \
+                u") VALUES " + ",".join([
+                    "(" + u",".join([self.quote_value(r[k]) for k in keys]) + u")"
+                    for r in records
+                ])
+            self.execute(command)
+        except Exception, e:
+            Log.error(u"problem with record: {{record}}", {u"record": records}, e)
+
 
 
     def update(self, table_name, where_slice, new_values):
@@ -374,7 +386,7 @@ class DB():
         new_values = self.quote_param(new_values)
 
         where_clause = u" AND\n".join([
-            self.quote_column(k) + u"=" + self.quote_value(v) if v != Null else self.quote_column(k) + " IS NULL"
+            self.quote_column(k) + u"=" + self.quote_value(v) if v != None else self.quote_column(k) + " IS NULL"
             for k, v in where_slice.items()]
         )
 
@@ -395,10 +407,10 @@ class DB():
         mostly delegate directly to the mysql lib, but some exceptions exist
         """
         try:
-            if value == Null:
+            if value == None:
                 return "NULL"
             elif isinstance(value, SQL):
-                if value.param == Null:
+                if not value.param:
                     #value.template CAN BE MORE THAN A TEMPLATE STRING
                     return self.quote_sql(value.template)
                 param = {k: self.quote_sql(v) for k, v in value.param.items()}
@@ -419,13 +431,13 @@ class DB():
             Log.error(u"problem quoting SQL", e)
 
 
-    def quote_sql(self, value, param=Null):
+    def quote_sql(self, value, param=None):
         """
         USED TO EXPAND THE PARAMETERS TO THE SQL() OBJECT
         """
         try:
             if isinstance(value, SQL):
-                if param == Null:
+                if not param:
                     return value
                 param = {k: self.quote_sql(v) for k, v in param.items()}
                 return expand_template(value, param)
@@ -440,16 +452,16 @@ class DB():
         except Exception, e:
             Log.error(u"problem quoting SQL", e)
 
-    def quote_column(self, column_name, table=Null):
+    def quote_column(self, column_name, table=None):
 
 
 
         if isinstance(column_name, basestring):
-            if table != Null:
+            if table:
                 column_name = table + "." + column_name
             return SQL(u"`" + column_name.replace(u".", u"`.`") + u"`")    #MY SQL QUOTE OF COLUMN NAMES
         elif isinstance(column_name, list):
-            if table != Null:
+            if table:
                 return SQL(u", ".join([self.quote_column(table + "." + c) for c in column_name]))
             return SQL(u", ".join([self.quote_column(c) for c in column_name]))
         else:
@@ -466,15 +478,25 @@ class DB():
     def _filter2where(self, esfilter):
         esfilter=struct.wrap(esfilter)
 
-        if esfilter[u"and"] != Null:
+        if esfilter[u"and"] != None:
             return u"("+u" AND ".join([self._filter2where(a) for a in esfilter[u"and"]])+u")"
-        elif esfilter[u"or"] != Null:
+        elif esfilter[u"or"] != None:
             return u"("+u" OR ".join([self._filter2where(a) for a in esfilter[u"or"]])+u")"
-        elif esfilter.term != Null:
+        elif esfilter[u"not"]:
+            return u"NOT ("+self._filter2where(esfilter[u"not"])+u")"
+        elif esfilter.term != None:
             return u"("+u" AND ".join([self.quote_column(col)+u"="+self.quote_value(val) for col, val in esfilter.term.items()])+u")"
-        elif esfilter.script != Null:
+        elif esfilter.terms:
+            for col, v in esfilter.terms.items():
+                try:
+                    int_list=CNV.value2intlist(v)
+                    filter=int_list_packer(col, int_list)
+                    return self._filter2where(filter)
+                except Exception, e:
+                    return self.quote_column(col)+u" in ("+", ".join([self.quote_value(val) for val in v])+")"
+        elif esfilter.script != None:
             return u"("+esfilter.script+u")"
-        elif esfilter.range != Null:
+        elif esfilter.range != None:
             name2sign={
                 u"gt": u">",
                 u"gte": u">=",
@@ -488,7 +510,7 @@ class DB():
                 ])
                 for col, ranges in esfilter.range.items()
             ]) + u")"
-        elif esfilter.exists != Null:
+        elif esfilter.exists != None:
             if isinstance(esfilter.exists, basestring):
                 return u"("+self.quote_column(esfilter.exists)+u" IS NOT Null)"
             else:
@@ -511,10 +533,76 @@ def utf8_to_unicode(v):
 class SQL(unicode):
 
 
-    def __init__(self, template='', param=Null):
+    def __init__(self, template='', param=None):
         unicode.__init__(self)
         self.template=template
         self.param=param
 
     def __str__(self):
         Log.error(u"do not do this")
+
+
+
+def int_list_packer(term, values):
+    """
+    return singletons, ranges and exclusions
+    """
+
+    singletons=set()
+    ranges=[]
+    exclude=set()
+
+    sorted=Q.sort(values)
+
+    last=sorted[0]
+    curr_start=last
+    curr_excl=set()
+
+    for v in sorted[1:]:
+        if v<=last+1:
+            pass
+        elif v-last > 3:
+            if last==curr_start:
+                singletons.add(last)
+            elif last-curr_start - len(curr_excl) < 4 or ((last-curr_start) < len(curr_excl)*3):
+                #small ranges are singletons, sparse ranges are singletons
+                singletons |= set(range(curr_start, last+1))
+                singletons -= curr_excl
+            else:
+                ranges.append({"gte":curr_start, "lte":last})
+                exclude |= curr_excl
+            curr_start=v
+            curr_excl=set()
+        else:
+            if v-curr_start >= len(curr_excl)*3:
+                add_me = set(range(last + 1, v))
+                curr_excl |= add_me
+            else:
+                ranges.append({"range":{term:{"gte":curr_start, "lte":last}}})
+                exclude |= curr_excl
+                curr_start=v
+                curr_excl=set()
+        last=v
+
+    if last==curr_start:
+        singletons.add(last)
+    else:
+        ranges.append({"gte":curr_start, "lte":last})
+
+
+    if ranges:
+        r={"or":[{"range":{term:r}} for r in ranges]}
+        if exclude:
+            r = {"and":[r, {"not":{"terms":{term:Q.sort(exclude)}}}]}
+        if singletons:
+            return {"or":[
+                {"terms":{term: Q.sort(singletons)}},
+                r
+            ]}
+        else:
+            return r
+    else:
+        raise Except("no packing possible")
+
+
+

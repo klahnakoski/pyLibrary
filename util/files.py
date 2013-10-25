@@ -1,10 +1,10 @@
-################################################################################
-## This Source Code Form is subject to the terms of the Mozilla Public
-## License, v. 2.0. If a copy of the MPL was not distributed with this file,
-## You can obtain one at http://mozilla.org/MPL/2.0/.
-################################################################################
-## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
-################################################################################
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
 
 
 
@@ -12,14 +12,16 @@ import codecs
 from datetime import datetime
 import os
 import shutil
-from .basic import listwrap
-from .struct import Null
+from .struct import listwrap, nvl
+from .cnv import CNV
 
 
-class File():
+class File(object):
 
     def __init__(self, filename):
-        assert filename != Null
+        if filename == None:
+            from .logs import Log
+            Log.error("File must be given a filename")
         #USE UNIX STANDARD
         self._filename = "/".join(filename.split(os.sep))
 
@@ -31,6 +33,22 @@ class File():
     @property
     def abspath(self):
         return os.path.abspath(self._filename)
+
+    def backup_name(self, timestamp=None):
+        """
+        RETURN A FILENAME THAT CAN SERVE AS A BACKUP FOR THIS FILE
+        """
+        suffix = CNV.datetime2string(nvl(timestamp, datetime.now()), "%Y%m%d_%H%M%S")
+        parts = self._filename.split(".")
+        if len(parts) == 1:
+            output = self._filename + "." + suffix
+        elif len(parts) > 1 and parts[-2][-1] == "/":
+            output = self._filename + "." + suffix
+        else:
+            parts.insert(-1, suffix)
+            output = ".".join(parts)
+        return output
+
 
     def read(self, encoding="utf-8"):
         with codecs.open(self._filename, "r", encoding=encoding) as file:

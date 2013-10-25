@@ -1,16 +1,16 @@
-################################################################################
-## This Source Code Form is subject to the terms of the Mozilla Public
-## License, v. 2.0. If a copy of the MPL was not distributed with this file,
-## You can obtain one at http://mozilla.org/MPL/2.0/.
-################################################################################
-## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
-################################################################################
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
 
 import re
 from .jsons import json_encoder
 import struct
 
-from .struct import Null, Struct
+from .struct import Struct
 
 import sys
 reload(sys)
@@ -18,8 +18,8 @@ sys.setdefaultencoding("utf-8")
 
 
 
-def indent(value, prefix=u"\t", indent=Null):
-    if indent != Null:
+def indent(value, prefix=u"\t", indent=None):
+    if indent != None:
         prefix=prefix*indent
         
     try:
@@ -45,12 +45,12 @@ def outdent(value):
 
 def between(value, prefix, suffix):
     s = value.find(prefix)
-    if s==-1: return Null
+    if s==-1: return None
     s+=len(prefix)
 
     e=value.find(suffix, s)
     if e==-1:
-        return Null
+        return None
 
     s=value.rfind(prefix, 0, e)+len(prefix) #WE KNOW THIS EXISTS, BUT THERE MAY BE A RIGHT-MORE ONE
     return value[s:e]
@@ -69,14 +69,13 @@ def find_first(value, find_arr, start=0):
     if i==len(value): return -1
     return i
 
-#TURNS OUT PYSTACHE MANGLES CHARS FOR HTML
-#def expand_template(template, values):
-#    if values == Null: values={}
-#    return pystache.render(template, values)
+
+
+
+
 
 pattern=re.compile(r"(\{\{[\w_\.]+\}\})")
 def expand_template(template, values):
-    if values == Null: values={}
     values=struct.wrap(values)
 
     def replacer(found):
@@ -92,7 +91,7 @@ def expand_template(template, values):
                     val=toString(val)
                     return val
             except Exception:
-                raise Exception(u"Can not find "+var[2:-2]+u" in template:\n"+indent(template))
+                raise Exception(u"Can not find "+var[2:-2]+u" in template:\n"+indent(template), e)
 
     return pattern.sub(replacer, template)
 
@@ -104,3 +103,29 @@ def toString(val):
         val=json_encoder.encode(val)
         return val
     return unicode(val)
+
+
+
+def edit_distance(s1, s2):
+    """
+    FROM http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Python
+    LICENCE http://creativecommons.org/licenses/by-sa/3.0/
+    """
+    if len(s1) < len(s2):
+        return edit_distance(s2, s1)
+
+    # len(s1) >= len(s2)
+    if len(s2) == 0:
+        return 1.0
+
+    previous_row = xrange(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1 # j+1 instead of j since previous_row and current_row are one character longer
+            deletions = current_row[j] + 1       # than s2
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+
+    return float(previous_row[-1])/len(s1)

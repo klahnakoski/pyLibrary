@@ -10,7 +10,7 @@ def test_lock(num, lock):
 
 
 
-class test_thread():
+class test_thread(object):
 
 
     @staticmethod

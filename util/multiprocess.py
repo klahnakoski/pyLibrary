@@ -2,7 +2,7 @@ from multiprocessing.queues import Queue
 from .logs import Log
 
 
-class worker():
+class worker(object):
     def __init__(func, inbound, outbound, logging):
         logger = Log_usingInterProcessQueue(logging)
 
@@ -16,7 +16,7 @@ class Log_usingInterProcessQueue(Log):
         self.outbound.put({"template": template, "param": params})
 
 
-class Multiprocess():
+class Multiprocess(object):
     def __init__(self, functions):
         self.outbound = Queue()
         self.inbound = Queue()

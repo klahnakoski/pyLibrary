@@ -55,8 +55,8 @@ Windows 7 Install Instructions
 Python was really made for Linux, and installation will be easier there.  Technically, Python works on Windows too, but
 there are a few gotchas you can avoid by following these instructions.
 
-  * Install Python 2.7 (32bit ONLY!!! Many native libs are 32 bit)
-  * Install Python at c:\Python27 (The space in the "Program Files" may screw up installs of nativ libs)
+  * Download Python 2.7 (32bit ONLY!!! Many native libs are 32 bit)
+  * Install Python at c:\Python27 (The space in the "Program Files" may screw up installs of native libs)
   * Add to you path: ```c:\Python27;c:\Python27\scripts;```
   * Download ```http://python-distribute.org/distribute_setup.py```
  
@@ -69,9 +69,6 @@ there are a few gotchas you can avoid by following these instructions.
   
         SET HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Python\PythonCore\2.7\InstallPath = "C:\Python27"
 
-  * Install MySqldb from [http://sourceforge.net/projects/mysql-python/files/mysql-python/](http://sourceforge.net/projects/mysql-python/files/mysql-python/)
-  * If you are using PyPy try the pure Python version: [http://dev.mysql.com/downloads/connector/python/](http://dev.mysql.com/downloads/connector/python/)
-  * Install ujson from [http://www.lfd.uci.edu/~gohlke/pythonlibs/#ujson](http://www.lfd.uci.edu/~gohlke/pythonlibs/#ujson)
   * Download from Github:
 
      	git clone https://github.com/klahnakoski/pyLibrary.git
@@ -79,3 +76,11 @@ there are a few gotchas you can avoid by following these instructions.
   * Download requirements:
 
 		pip install -r requirements.txt
+
+Optional
+--------
+
+pyLibrary does not use these, but maybe you will find the useful:
+
+  * Install MySqldb from [http://sourceforge.net/projects/mysql-python/files/mysql-python/](http://sourceforge.net/projects/mysql-python/files/mysql-python/)
+  * Install ujson from [http://www.lfd.uci.edu/~gohlke/pythonlibs/#ujson](http://www.lfd.uci.edu/~gohlke/pythonlibs/#ujson)

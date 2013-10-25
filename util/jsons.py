@@ -1,17 +1,17 @@
-################################################################################
-## This Source Code Form is subject to the terms of the Mozilla Public
-## License, v. 2.0. If a copy of the MPL was not distributed with this file,
-## You can obtain one at http://mozilla.org/MPL/2.0/.
-################################################################################
-## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
-################################################################################
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
 
 
 from datetime import datetime, time
 from decimal import Decimal
 import json
 import re
-from .struct import Null
+
 
 try:
     # StringBuilder IS ABOUT 2x FASTER THAN list()
@@ -33,21 +33,27 @@ class PyPyJSONEncoder(object):
     """
     pypy DOES NOT OPTIMIZE GENERATOR CODE WELL
     """
-
     def __init__(self):
         object.__init__(self)
 
-    def encode(self, value):
+    def encode(self, value, pretty=False):
+        if pretty:
+            return json.dumps(json_scrub(value), indent=4, sort_keys=True, separators=(',', ': '))
+
         _buffer = StringBuilder(1024)
         _value2json(value, _buffer.append)
         output = _buffer.build()
         return output
 
+
 class cPythonJSONEncoder(object):
     def __init__(self):
         object.__init__(self)
 
-    def encode(self, value):
+    def encode(self, value, pretty=False):
+        if pretty:
+            return json.dumps(json_scrub(value), indent=4, sort_keys=True, separators=(',', ': '))
+
         return json.dumps(json_scrub(value))
 
 
@@ -69,7 +75,7 @@ else:
 def _value2json(value, appender):
     if isinstance(value, basestring):
         _string2json(value, appender)
-    elif value == Null or value is None:
+    elif value == None:
         appender("null")
     elif value is True:
         appender('true')
@@ -93,9 +99,10 @@ def _list2json(value, appender):
     appender("[")
     first = True
     for v in value:
-        if not first:
-            appender(", ")
+        if first:
             first = False
+        else:
+            appender(", ")
         _value2json(v, appender)
     appender("]")
 
@@ -106,9 +113,10 @@ def _dict2json(value, appender):
     appender("{")
     first = True
     for k, v in value.iteritems():
-        if not first:
-            appender(", ")
+        if first:
             first = False
+        else:
+            appender(", ")
         _string2json(unicode(k), appender)
         appender(": ")
         _value2json(v, appender)
@@ -147,7 +155,7 @@ def json_scrub(r):
 
 
 def _scrub(r):
-    if r == Null:
+    if r == None:
         return None
     elif isinstance(r, dict):
         output = {}

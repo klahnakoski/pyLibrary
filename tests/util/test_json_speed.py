@@ -91,18 +91,28 @@ def main(num):
         Log.start()
         test_json("util.jsons.json_encoder", json_encoder.encode, num)
         test_json("scrub-then-encode", cPythonJSONEncoder().encode, num)
-        test_json("python json.dumps", EnhancedJSONEncoder().encode, num)
-        test_json("default json.dumps", json.dumps, num)
+        # test_json("python json.dumps", EnhancedJSONEncoder().encode, num)
+        # test_json("default json.dumps", json.dumps, num)
     finally:
         Log.stop()
 
 
+
 def profile_main():
     import profile
-    profile.run("main(1)")
+    import pstats
+    filename="profile_stats.txt"
+
+    profile.run("""
+try:
+    main(1)
+except Exception, e:
+    pass
+    """, filename)
+    p = pstats.Stats(filename)
+    p.strip_dirs().sort_stats("tottime").print_stats(40)
 
 
-
-if __name__=="__main__":
-    # profile_main()
-    main(10)
+if __name__ == "__main__":
+    profile_main()
+    # main(10)

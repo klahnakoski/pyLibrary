@@ -1,34 +1,29 @@
-################################################################################
-## This Source Code Form is subject to the terms of the Mozilla Public
-## License, v. 2.0. If a copy of the MPL was not distributed with this file,
-## You can obtain one at http://mozilla.org/MPL/2.0/.
-################################################################################
-## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
-################################################################################
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
 
-from _functools import partial
-from datetime import datetime
+
+from datetime import datetime, timedelta
 import traceback
 import logging
 import sys
-from .basic import listwrap
+from .struct import listwrap, nvl
 
 import struct, threads
-from .files import File
 from .strings import indent, expand_template
 from .threads import Thread
-from .struct import Null
-
-
 
 
 ERROR="ERROR"
 WARNING="WARNING"
 NOTE="NOTE"
 
-
-main_log=Null
-logging_multi=Null
+main_log = None
+logging_multi = None
 
 
 
@@ -40,34 +35,38 @@ class Log(object):
     @classmethod
     def new_instance(cls, settings):
         settings=struct.wrap(settings)
-        if settings["class"] != Null:
+        if settings["class"]:
             if not settings["class"].startswith("logging.handlers."):
                 return make_log_from_settings(settings)
+            # elif settings["class"]=="sys.stdout":
+                #CAN BE SUPER SLOW
             else:
                 return Log_usingLogger(settings)
-        if settings.file != Null: return Log_usingFile(file)
-        if settings.filename != Null: return Log_usingFile(settings.filename)
-        if settings.stream != Null: return Log_usingStream(settings.stream)
+        if settings.file: return Log_usingFile(file)
+        if settings.filename: return Log_usingFile(settings.filename)
+        if settings.stream: return Log_usingStream(settings.stream)
 
     @classmethod
     def add_log(cls, log):
         logging_multi.add_log(log)
 
 
-
+    @staticmethod
+    def debug(template=None, params=None):
+        """
+        USE THIS FOR DEBUGGING (AND EVENTUAL REMOVAL)
+        """
+        Log.note(nvl(template, ""), params)
 
 
     @staticmethod
-    def println(template, params=Null):
+    def println(template, params=None):
         Log.note(template, params)
 
     @staticmethod
-    def note(template, params=Null):
+    def note(template, params=None):
         template="{{log_timestamp}} - "+template
-        if params == Null:
-            params = {}
-        else:
-            params = params.copy()
+        params = nvl(params, {}).copy()
 
         #NICE TO GATHER MANY MORE ITEMS FOR LOGGING (LIKE STACK TRACES AND LINE NUMBERS)
         params["log_timestamp"]=datetime.utcnow().strftime("%H:%M:%S")
@@ -76,12 +75,12 @@ class Log(object):
 
 
     @staticmethod
-    def warning(template, params=Null, cause=Null):
+    def warning(template, params=None, cause=None):
         if isinstance(params, BaseException):
             cause=params
-            params=Null
+            params = None
 
-        if cause != Null and not isinstance(cause, Except):
+        if cause and not isinstance(cause, Except):
             cause=Except(WARNING, unicode(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), 0))
 
         e = Except(WARNING, template, params, cause, format_trace(traceback.extract_stack(), 1))
@@ -92,16 +91,18 @@ class Log(object):
     @staticmethod
     def error(
         template,       #human readable template
-        params=Null,    #parameters for template
-        cause=Null,     #pausible cause
+        params=None,    #parameters for template
+        cause=None,     #pausible cause
         offset=0        #stack trace offset (==1 if you do not want to report self)
     ):
-        if isinstance(params, BaseException):
+        if params and isinstance(struct.listwrap(params)[0], BaseException):
             cause=params
-            params=Null
+            params = None
 
-        if cause != Null and not isinstance(cause, Except):
-            cause=Except(ERROR, unicode(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), offset))
+        if cause and not isinstance(cause, Except):
+            cause=[Except(ERROR, unicode(cause), trace=format_trace(traceback.extract_tb(sys.exc_info()[2]), offset))]
+        else:
+            cause=listwrap(cause)
 
         trace=format_trace(traceback.extract_stack(), 1+offset)
         e=Except(ERROR, template, params, cause, trace)
@@ -109,21 +110,21 @@ class Log(object):
 
 
     #RUN ME FIRST TO SETUP THE THREADED LOGGING
-    @classmethod
-    def start(cls, settings=Null):
+    @staticmethod
+    def start(settings=None):
         ##http://victorlin.me/2012/08/good-logging-practice-in-python/
-        if settings == Null: return
-        if settings.log == Null: return
+        if not settings: return
+        if not settings.log: return
 
         globals()["logging_multi"]=Log_usingMulti()
-        globals()["main_log"]=Log_usingThread(logging_multi)
+        globals()["main_log"]=logging_multi
 
         for log in listwrap(settings.log):
             Log.add_log(Log.new_instance(log))
 
 
-    @classmethod
-    def stop(cls):
+    @staticmethod
+    def stop():
         main_log.stop()
 
 
@@ -155,7 +156,7 @@ def format_trace(tbs, trim=0):
 
 
 class Except(Exception):
-    def __init__(self, type=ERROR, template=Null, params=Null, cause=Null, trace=Null):
+    def __init__(self, type=ERROR, template=None, params=None, cause=None, trace=None):
         super(Exception, self).__init__(self)
         self.type=type
         self.template=template
@@ -169,13 +170,14 @@ class Except(Exception):
 
     def __str__(self):
         output=self.template
-        if self.params != Null: output=expand_template(output, self.params)
+        if self.params: output=expand_template(output, self.params)
 
-        if self.trace != Null:
+        if self.trace:
             output+="\n"+indent(self.trace)
 
-        if self.cause != Null:
-            output+="\ncaused by\n\t"+self.cause.__str__()
+
+        if self.cause:
+            output+="\ncaused by\n\t"+"\nand caused by\n\t".join([c.__str__() for c in self.cause])
 
         return output+"\n"
 
@@ -183,10 +185,24 @@ class Except(Exception):
 
 
 
-class Log_usingFile(Log):
+
+
+
+class BaseLog(object):
+    def write(self, template, params):
+        pass
+
+    def stop(self):
+        pass
+
+
+
+class Log_usingFile(BaseLog):
 
     def __init__(self, file):
-        assert file != Null
+        assert file
+
+        from files import File
         self.file=File(file)
         if self.file.exists:
             self.file.backup()
@@ -196,13 +212,14 @@ class Log_usingFile(Log):
 
 
     def write(self, template, params):
+        from files import File
         with self.file_lock:
             File(self.filename).append(expand_template(template, params))
 
 
 
 #WRAP PYTHON CLASSIC logger OBJECTS
-class Log_usingLogger(Log):
+class Log_usingLogger(BaseLog):
     def __init__(self, settings):
         self.logger=logging.Logger("unique name", level=logging.INFO)
         self.logger.addHandler(make_log_from_settings(settings))
@@ -213,7 +230,7 @@ class Log_usingLogger(Log):
 
 
 def make_log_from_settings(settings):
-    assert settings["class"] != Null
+    assert settings["class"]
 
     # IMPORT MODULE FOR HANDLER
     path=settings["class"].split(".")
@@ -222,7 +239,9 @@ def make_log_from_settings(settings):
     temp=__import__(path, globals(), locals(), [class_name], -1)
     constructor=object.__getattribute__(temp, class_name)
 
-    if settings.filename != Null:
+    #IF WE NEED A FILE, MAKE SURE DIRECTORY EXISTS
+    if settings.filename:
+        from files import File
         f = File(settings.filename)
         if not f.parent.exists:
             f.parent.create()
@@ -234,35 +253,88 @@ def make_log_from_settings(settings):
 
 
 
-class Log_usingStream(Log):
-
+class Log_usingStream(BaseLog):
     #stream CAN BE AN OBJCET WITH write() METHOD, OR A STRING
     #WHICH WILL eval() TO ONE
     def __init__(self, stream):
-        assert stream != Null
-        if isinstance(stream, basestring):
-            stream=eval(stream)
-        self.stream=stream
+        assert stream
 
+        if isinstance(stream, basestring):
+            self.stream=eval(stream)
+            name=stream
+        else:
+            self.stream=stream
+            name="stream"
+
+        #WRITE TO STREAMS CAN BE *REALLY* SLOW, WE WILL USE A THREAD
+        from threads import Queue
+        self.queue=Queue()
+
+        def worker(please_stop):
+            queue=self.queue
+
+            while not please_stop:
+                next_run = datetime.utcnow() + timedelta(seconds=0.3)
+                logs = queue.pop_all()
+                if logs:
+                    lines=[]
+                    for log in logs:
+                        try:
+                            if log==Thread.STOP:
+                                please_stop.go()
+                                next_run = datetime.utcnow()
+                                break
+                            lines.append(expand_template(log.get("template", None), log.get("params", None)))
+                        except Exception, e:
+                            pass
+                    try:
+                        self.stream.write("\n".join(lines))
+                        self.stream.write("\n")
+                    except Exception, e:
+                        pass
+                Thread.sleep(till=next_run)
+        self.thread=Thread("log to "+name, worker)
+        self.thread.start()
 
     def write(self, template, params):
         try:
-            self.stream.write(expand_template(template, params)+"\n")
+            self.queue.add({"template":template, "params":params})
+            return self
+        except Exception, e:
+            raise e  #OH NO!
+
+    def stop(self):
+        try:
+            self.queue.add(Thread.STOP)  #BE PATIENT, LET REST OF MESSAGE BE SENT
+            self.thread.join()
         except Exception, e:
             pass
 
-    def stop(self):
-        pass
+        try:
+            self.queue.close()
+        except Exception, f:
+            pass
 
 
-class Log_usingThread(Log):
+
+class Log_usingThread(BaseLog):
     def __init__(self, logger):
         #DELAYED LOAD FOR THREADS MODULE
-        from multithread import worker_thread
         from threads import Queue
 
         self.queue=Queue()
-        self.thread=worker_thread("log thread", self.queue, Null, partial(Log_usingMulti.write, logger))
+
+        def worker():
+            while True:
+                logs = self.queue.pop_all()
+                for log in logs:
+                    if log==Thread.STOP:
+                        break
+
+                    logger.write(**log)
+                Thread.sleep(1)
+        self.thread=Thread("log thread", worker)
+        self.thread.start()
 
     def write(self, template, params):
         try:
@@ -286,7 +358,7 @@ class Log_usingThread(Log):
 
 
 
-class Log_usingMulti(Log):
+class Log_usingMulti(BaseLog):
     def __init__(self):
         self.many=[]
 
@@ -294,7 +366,7 @@ class Log_usingMulti(Log):
         for m in self.many:
             try:
                 m.write(template, params)
-            except Exception:
+            except Exception, e:
                 pass
         return self
 
@@ -309,7 +381,14 @@ class Log_usingMulti(Log):
     def clear_log(self):
         self.many=[]
 
+    def stop(self):
+        for m in self.many:
+            try:
+                m.stop()
+            except Exception, e:
+                pass
 
 
-if main_log == Null:
-    main_log=Log_usingStream(sys.stdout)
+
+if not main_log:
+    main_log = Log_usingStream("sys.stdout")

@@ -1,10 +1,15 @@
-from . import struct
-from .logs import Log
-from .maths import Math
-from .multiset import multiset
-from .stats import Z_moment, stats2z_moment, z_moment2stats
-from .struct import Null
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
 
+from ..logs import Log
+from ..maths import Math
+from ..multiset import Multiset
+from ..stats import Z_moment, stats2z_moment, z_moment2stats
 
 class AggregationFunction(object):
     def __init__(self):
@@ -30,8 +35,6 @@ class AggregationFunction(object):
         """
         RETURN AGGREGATE
         """
-
-
 
 
 class WindowFunction(AggregationFunction):
@@ -60,12 +63,12 @@ class Stats(WindowFunction):
 
 
     def add(self, value):
-        if value == Null:
+        if value == None:
             return
         self.total+=stats2z_moment(value)
 
     def sub(self, value):
-        if value == Null:
+        if value == None:
             return
         self.total-=stats2z_moment(value)
 
@@ -76,20 +79,19 @@ class Stats(WindowFunction):
         return z_moment2stats(self.total)
 
 
-
 class Min(WindowFunction):
     def __init__(self):
         object.__init__(self)
-        self.total = multiset()
+        self.total = Multiset()
 
 
     def add(self, value):
-        if value == Null:
+        if value == None:
             return
         self.total.add(value)
 
     def sub(self, value):
-        if value == Null:
+        if value == None:
             return
         self.total.remove(value)
 
@@ -100,16 +102,16 @@ class Min(WindowFunction):
 class Max(WindowFunction):
     def __init__(self):
         object.__init__(self)
-        self.total = multiset()
+        self.total = Multiset()
 
 
     def add(self, value):
-        if value == Null:
+        if value == None:
             return
         self.total.add(value)
 
     def sub(self, value):
-        if value == Null:
+        if value == None:
             return
         self.total.remove(value)
 
@@ -124,12 +126,12 @@ class Count(WindowFunction):
 
 
     def add(self, value):
-        if value == Null:
+        if value == None:
             return
         self.total += 1
 
     def sub(self, value):
-        if value == Null:
+        if value == None:
             return
         self.total -= 1
 
@@ -145,12 +147,12 @@ class Sum(WindowFunction):
 
 
     def add(self, value):
-        if value == Null:
+        if value == None:
             return
         self.total += value
 
     def sub(self, value):
-        if value == Null:
+        if value == None:
             return
         self.total -= value
 

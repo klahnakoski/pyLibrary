@@ -1,17 +1,19 @@
-################################################################################
-## This Source Code Form is subject to the terms of the Mozilla Public
-## License, v. 2.0. If a copy of the MPL was not distributed with this file,
-## You can obtain one at http://mozilla.org/MPL/2.0/.
-################################################################################
-## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
-################################################################################
+# encoding: utf-8
+#
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
 import math
 from . import struct
-from .struct import Null
+from .struct import Null, nvl
 from .logs import Log
 from .strings import find_first
 
-class Math():
+class Math(object):
 
     @staticmethod
     def bayesian_add(a, b):
@@ -49,8 +51,8 @@ class Math():
             return False
 
     @staticmethod
-    def round_sci(value, decimal=Null, digits=Null):
-        if digits != Null:
+    def round_sci(value, decimal=None, digits=None):
+        if digits != None:
             m=pow(10, math.floor(math.log10(digits)))
             return round(value/m, digits)*m
 
@@ -58,13 +60,13 @@ class Math():
 
 
     @staticmethod
-    def floor(value, mod=Null):
+    def floor(value, mod=None):
         """
         x == floor(x, a) + mod(x, a)  FOR ALL a
         """
-        if mod == Null:
-            mod=1
-        return int(math.floor(value))-mod(value, mod)
+        mod = nvl(mod, 1)
+        v = int(math.floor(value))
+        return v - (v % mod)
 
 
     #RETURN A VALUE CLOSE TO value, BUT WITH SHORTER len(unicode(value))<len(unicode(value)):
@@ -84,11 +86,11 @@ class Math():
     def min(values):
         output = Null
         for v in values:
-            if v == Null:
+            if v == None:
                 continue
             if math.isnan(v):
                 continue
-            if output == Null:
+            if output == None:
                 output = v
                 continue
             output = min(output, v)
@@ -100,11 +102,11 @@ class Math():
     def max(values):
         output = Null
         for v in values:
-            if v == Null:
+            if v == None:
                 continue
             if math.isnan(v):
                 continue
-            if output == Null:
+            if output == None:
                 output = v
                 continue
             output = max(output, v)

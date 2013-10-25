@@ -1,10 +1,10 @@
-################################################################################
-## This Source Code Form is subject to the terms of the Mozilla Public
-## License, v. 2.0. If a copy of the MPL was not distributed with this file,
-## You can obtain one at http://mozilla.org/MPL/2.0/.
-################################################################################
-## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
-################################################################################
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
 
 
 
@@ -12,7 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import smtplib
 import sys
-from .basic import nvl
+from .struct import nvl
 
 
 class Emailer:
@@ -22,11 +22,11 @@ class Emailer:
         
 
     def send_email(self,
-        from_address=Null,
-        to_addrs=Null,
+        from_address = None,
+        to_addrs = None,
         subject='No Subject',
-        text_data=Null,
-        html_data=Null
+        text_data = None,
+        html_data = None
     ):
         """Sends an email.
 

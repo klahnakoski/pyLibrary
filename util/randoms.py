@@ -6,7 +6,7 @@ SIMPLE_ALPHABET=string.ascii_letters + string.digits
 SEED=random.Random()
 
 
-class Random():
+class Random(object):
 
     @staticmethod
     def string(length, alphabet=SIMPLE_ALPHABET):

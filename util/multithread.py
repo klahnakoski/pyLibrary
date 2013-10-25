@@ -1,15 +1,13 @@
-################################################################################
-## This Source Code Form is subject to the terms of the Mozilla Public
-## License, v. 2.0. If a copy of the MPL was not distributed with this file,
-## You can obtain one at http://mozilla.org/MPL/2.0/.
-################################################################################
-## Author: Kyle Lahnakoski (kyle@lahnakoski.com)
-################################################################################
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
 
 import threading
-from .basic import nvl
-from . import struct
-from .struct import Null
+from .struct import nvl
 from .logs import Log
 from .threads import Queue, Thread
 
@@ -26,30 +24,50 @@ class worker_thread(threading.Thread):
         self.out_queue=out_queue
         self.function=function
         self.keep_running=True
+        self.num_runs=0
         self.start()
 
     #REQUIRED TO DETECT KEYBOARD, AND OTHER, INTERRUPTS
-    def join(self, timeout=Null):
+    def join(self, timeout=None):
         while self.isAlive():
             Log.note("Waiting on thread {{thread}}", {"thread":self.name})
             threading.Thread.join(self, nvl(timeout, 0.5))
 
     def run(self):
+        got_stop=False
         while self.keep_running:
-            params=self.in_queue.pop()
-            if params==Thread.STOP:
+            request = self.in_queue.pop()
+            if request == Thread.STOP:
+                got_stop=True
+                if self.in_queue.queue:
+                    Log.warning("programmer error")
                 break
-            try:
-                if not self.keep_running: break
-                result=self.function(**params)
-                if self.keep_running and self.out_queue != Null:
-                    self.out_queue.add({"response":result})
-            except Exception, e:
-                Log.warning("Can not execute with params={{params}}", {"params": params}, e)
-                if self.keep_running and self.out_queue != Null:
-                    self.out_queue.add({"exception":e})
+            if not self.keep_running:
+                break
 
-        self.keep_running=False
+            try:
+                if DEBUG and hasattr(self.function, "func_name"):
+                    Log.note("run {{function}}", {"function": self.function.func_name})
+                result = self.function(**request)
+                if self.out_queue:
+                    self.out_queue.add({"response": result})
+            except Exception, e:
+                Log.warning("Can not execute with params={{params}}", {"params": request}, e)
+                if self.out_queue:
+                    self.out_queue.add({"exception": e})
+            finally:
+                self.num_runs += 1
+
+        self.keep_running = False
+        if self.num_runs==0:
+            Log.warning("{{name}} thread did no work", {"name":self.name})
+        if DEBUG and self.num_runs!=1:
+            Log.note("{{name}} thread did {{num}} units of work", {
+                "name":self.name,
+                "num":self.num_runs
+            })
+        if got_stop and self.in_queue.queue:
+            Log.warning("multithread programmer error")
         if DEBUG:
             Log.note("{{thread}} DONE", {"thread":self.name})
 
@@ -66,7 +84,7 @@ class worker_thread(threading.Thread):
 
 #PASS A SET OF FUNCTIONS TO BE EXECUTED (ONE PER THREAD)
 #PASS AN (ITERATOR/LIST) OF PARAMETERS TO BE ISSUED TO NEXT AVAILABLE THREAD
-class Multithread():
+class Multithread(object):
 
 
     def __init__(self, functions):
@@ -85,16 +103,18 @@ class Multithread():
         return self
 
     #WAIT FOR ALL QUEUED WORK TO BE DONE BEFORE RETURNING
-    def __exit__(self, a, b, c):
+    def __exit__(self, type, value, traceback):
         try:
-            self.inbound.close() # SEND STOPS TO WAKE UP THE WORKERS WAITING ON inbound.pop()
+            if isinstance(value, Exception):
+                self.inbound.close()
+            self.inbound.add(Thread.STOP)
+            self.join()
         except Exception, e:
-            Log.warning("Problem adding to inbound", e)
-
-        self.join()
+            Log.warning("Problem sending stops", e)
 
 
-    #IF YOU SENT A stop(), OR STOP, YOU MAY WAIT FOR SHUTDOWN
+
+    #IF YOU SENT A stop(), OR Thread.STOP, YOU MAY WAIT FOR SHUTDOWN
     def join(self):
         try:
             #WAIT FOR FINISH
@@ -107,18 +127,18 @@ class Multithread():
         finally:
             for t in self.threads:
                 t.keep_running=False
-            for t in self.threads:
-                t.join()
             self.inbound.close()
             self.outbound.close()
+            for t in self.threads:
+                t.join()
 
 
     #RETURN A GENERATOR THAT HAS len(parameters) RESULTS (ANY ORDER)
-    def execute(self, parameters):
+    def execute(self, request):
         #FILL QUEUE WITH WORK
-        self.inbound.extend(parameters)
+        self.inbound.extend(request)
 
-        num=len(parameters)
+        num=len(request)
         def output():
             for i in xrange(num):
                 result=self.outbound.pop()
