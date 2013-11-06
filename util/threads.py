@@ -1,3 +1,5 @@
+# encoding: utf-8
+#
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
@@ -144,7 +146,7 @@ class AllThread(object):
         """
         target IS THE FUNCTION TO EXECUTE IN THE THREAD
         """
-        t=Thread.run(target, *args, **kwargs)
+        t=Thread.run(target.__name__, target, *args, **kwargs)
         self.threads.append(t)
 
 
@@ -243,16 +245,11 @@ class Thread(object):
                 raise Except(type=Thread.TIMEOUT)
 
     @staticmethod
-    def run(target, *args, **kwargs):
+    def run(name, target, *args, **kwargs):
         #ENSURE target HAS please_stop ARGUMENT
         if "please_stop" not in target.__code__.co_varnames:
             from logs import Log
             Log.error("function must have please_stop argument for signalling emergency shutdown")
-
-        if hasattr(target, "func_name") and target.func_name != "<lambda>":
-            name = "thread-" + str(Thread.num_threads) + " (" + target.func_name + ")"
-        else:
-            name = "thread-" + str(Thread.num_threads)
 
         Thread.num_threads += 1
 
@@ -350,7 +347,7 @@ class ThreadedQueue(Queue):
                         "num":len(self)
                     })
                     return
-        self.thread=Thread.run(push_to_queue)
+        self.thread=Thread.run("threaded queue", push_to_queue)
 
 
     def __enter__(self):

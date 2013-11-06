@@ -1,3 +1,5 @@
+# encoding: utf-8
+#
 from multiprocessing.queues import Queue
 from .logs import Log
 

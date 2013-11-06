@@ -1,3 +1,5 @@
+# encoding: utf-8
+#
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
@@ -33,8 +35,15 @@ class DB(object):
 
     """
 
-    def __init__(self, settings, schema=None):
-        """OVERRIDE THE settings.schema WITH THE schema PARAMETER"""
+    def __init__(self, settings, schema=None, preamble=None):
+        """
+        OVERRIDE THE settings.schema WITH THE schema PARAMETER
+        preamble WILL BE USED TO ADD COMMENTS TO THE BEGINNING OF ALL SQL
+        THE INTENT IS TO HELP ADMINISTRATORS ID THE SQL RUNNING ON THE DATABASE
+        """
+        if settings == None:
+            return
+
         all_db.append(self)
 
         if isinstance(settings, DB):
@@ -42,6 +51,12 @@ class DB(object):
 
         self.settings=settings.copy()
         self.settings.schema=nvl(schema, self.settings.schema)
+
+        preamble=nvl(preamble, self.settings.preamble)
+        if preamble == None:
+            self.preamble=""
+        else:
+            self.preamble=indent(preamble, "# ").strip()+"\n"
 
         self.debug=nvl(self.settings.debug, DEBUG)
         self._open()
@@ -184,8 +199,9 @@ class DB(object):
                 self.cursor=self.db.cursor()
 
             if param: sql=expand_template(sql, self.quote_param(param))
-            sql=outdent(sql)
-            if self.debug: Log.note(u"Execute SQL:\n{{sql}}", {u"sql":indent(sql)})
+            sql = self.preamble + outdent(sql)
+            if self.debug:
+                Log.note(u"Execute SQL:\n{{sql}}", {u"sql": indent(sql)})
 
             self.cursor.execute(sql)
 
@@ -216,9 +232,9 @@ class DB(object):
                 self.cursor=self.db.cursor()
 
             if param: sql=expand_template(sql,self.quote_param(param))
-            sql=outdent(sql)
-            if self.debug: Log.note(u"Execute SQL:\n{{sql}}", {u"sql":indent(sql)})
-
+            sql = self.preamble + outdent(sql)
+            if self.debug:
+                Log.note(u"Execute SQL:\n{{sql}}", {u"sql":indent(sql)})
             self.cursor.execute(sql)
 
             columns = tuple( [utf8_to_unicode(d[0]) for d in self.cursor.description] )
@@ -302,18 +318,22 @@ class DB(object):
             # BUG IN PYMYSQL: CAN NOT HANDLE MULTIPLE STATEMENTS
             # https://github.com/PyMySQL/PyMySQL/issues/157
             for b in backlog:
+                sql = self.preamble+b
                 try:
+                    if self.debug:
+                        Log.note(u"Execute SQL:\n{{sql|indent}}", {u"sql":sql})
                     self.cursor.execute(b)
                 except Exception, e:
-                    Log.error(u"Can not execute sql:\n{{sql}}", {u"sql":b}, e)
+                    Log.error(u"Can not execute sql:\n{{sql}}", {u"sql":sql}, e)
 
             self.cursor.close()
             self.cursor = self.db.cursor()
         else:
             for i, g in Q.groupby(backlog, size=MAX_BATCH_SIZE):
-                sql=u";\n".join(g)
+                sql=self.preamble+u";\n".join(g)
                 try:
-                    if self.debug: Log.note(u"Execute block of SQL:\n"+indent(sql))
+                    if self.debug:
+                        Log.note(u"Execute block of SQL:\n{{sql|indent}}", {u"sql":sql})
                     self.cursor.execute(sql)
                     self.cursor.close()
                     self.cursor = self.db.cursor()
@@ -453,9 +473,6 @@ class DB(object):
             Log.error(u"problem quoting SQL", e)
 
     def quote_column(self, column_name, table=None):
-
-
-
         if isinstance(column_name, basestring):
             if table:
                 column_name = table + "." + column_name
@@ -475,42 +492,58 @@ class DB(object):
     def esfilter2sqlwhere(self, esfilter):
         return SQL(self._filter2where(esfilter))
 
+    def isolate(self, separator, list):
+        if len(list) > 1:
+            return u"(\n" + indent((" "+separator+"\n").join(list)) + u"\n)"
+        else:
+            return list[0]
+
     def _filter2where(self, esfilter):
         esfilter=struct.wrap(esfilter)
 
-        if esfilter[u"and"] != None:
-            return u"("+u" AND ".join([self._filter2where(a) for a in esfilter[u"and"]])+u")"
-        elif esfilter[u"or"] != None:
-            return u"("+u" OR ".join([self._filter2where(a) for a in esfilter[u"or"]])+u")"
+        if esfilter[u"and"]:
+            return self.isolate("AND", [self._filter2where(a) for a in esfilter[u"and"]])
+        elif esfilter[u"or"]:
+            return self.isolate("OR", [self._filter2where(a) for a in esfilter[u"or"]])
         elif esfilter[u"not"]:
             return u"NOT ("+self._filter2where(esfilter[u"not"])+u")"
-        elif esfilter.term != None:
-            return u"("+u" AND ".join([self.quote_column(col)+u"="+self.quote_value(val) for col, val in esfilter.term.items()])+u")"
+        elif esfilter.term:
+            return self.isolate("AND", [self.quote_column(col)+u"="+self.quote_value(val) for col, val in esfilter.term.items()])
         elif esfilter.terms:
             for col, v in esfilter.terms.items():
                 try:
                     int_list=CNV.value2intlist(v)
-                    filter=int_list_packer(col, int_list)
+                    filter = int_list_packer(col, int_list)
                     return self._filter2where(filter)
                 except Exception, e:
-                    return self.quote_column(col)+u" in ("+", ".join([self.quote_value(val) for val in v])+")"
-        elif esfilter.script != None:
+                    if not hasattr(e, "contains") or not e.contains("no packing possible"):
+                        Log.warning("WARNING: Not an int-list: {{list}}", {"list":v}, e)
+                return self.quote_column(col)+u" in ("+", ".join([self.quote_value(val) for val in v])+")"
+        elif esfilter.script:
             return u"("+esfilter.script+u")"
-        elif esfilter.range != None:
+        elif esfilter.range:
             name2sign={
                 u"gt": u">",
                 u"gte": u">=",
                 u"lte": u"<=",
                 u"lt": u"<"
             }
-            return u"(" + u" AND ".join([
-                " AND ".join([
-                    self.quote_column(col) + name2sign[sign] + self.quote_value(value)
-                    for sign, value in ranges.items()
-                ])
-                for col, ranges in esfilter.range.items()
-            ]) + u")"
-        elif esfilter.exists != None:
+
+            def single(col, r):
+                min=nvl(r["gte"], r[">="])
+                max=nvl(r["lte"], r["<="])
+                if min and max:
+                    #SPECIAL CASE (BETWEEN)
+                    return self.quote_column(col)+u" BETWEEN "+self.quote_value(min)+u" AND "+self.quote_value(max)
+                else:
+                    return " AND ".join(
+                        self.quote_column(col) + name2sign[sign] + self.quote_value(value)
+                        for sign, value in r.items()
+                    )
+
+            output = self.isolate("AND", [single(col, ranges) for col, ranges in esfilter.range.items()])
+            return output
+        elif esfilter.exists:
             if isinstance(esfilter.exists, basestring):
                 return u"("+self.quote_column(esfilter.exists)+u" IS NOT Null)"
             else:
@@ -542,61 +575,79 @@ class SQL(unicode):
         Log.error(u"do not do this")
 
 
-
 def int_list_packer(term, values):
     """
     return singletons, ranges and exclusions
     """
+    DENSITY = 10  #a range can have holes, this is inverse of the hole density
+    MIN_RANGE = 20  #min members before a range is allowed to be used
 
-    singletons=set()
-    ranges=[]
-    exclude=set()
+    singletons = set()
+    ranges = []
+    exclude = set()
 
-    sorted=Q.sort(values)
+    sorted = Q.sort(values)
 
-    last=sorted[0]
-    curr_start=last
-    curr_excl=set()
+    last = sorted[0]
+    curr_start = last
+    curr_excl = set()
 
     for v in sorted[1:]:
-        if v<=last+1:
+        if v <= last + 1:
             pass
-        elif v-last > 3:
-            if last==curr_start:
+        elif v - last > 3:
+            #big step, how do we deal with it?
+            if last == curr_start:
+                #not a range yet, so just add as singlton
                 singletons.add(last)
-            elif last-curr_start - len(curr_excl) < 4 or ((last-curr_start) < len(curr_excl)*3):
+            elif last - curr_start - len(curr_excl) < MIN_RANGE or ((last - curr_start) < len(curr_excl) * DENSITY):
                 #small ranges are singletons, sparse ranges are singletons
-                singletons |= set(range(curr_start, last+1))
+                singletons |= set(range(curr_start, last + 1))
                 singletons -= curr_excl
             else:
-                ranges.append({"gte":curr_start, "lte":last})
+                #big enough, and dense enough range
+                ranges.append({"gte": curr_start, "lte": last})
                 exclude |= curr_excl
-            curr_start=v
-            curr_excl=set()
+            curr_start = v
+            curr_excl = set()
         else:
-            if v-curr_start >= len(curr_excl)*3:
+            if 1 + last - curr_start >= len(curr_excl) * DENSITY:
+                #high density, keep track of excluded and continue
                 add_me = set(range(last + 1, v))
                 curr_excl |= add_me
+            elif 1 + last - curr_start - len(curr_excl) < MIN_RANGE:
+                #not big enough, convert range to singletons
+                new_singles = set(range(curr_start, last + 1)) - curr_excl
+                singletons = singletons | new_singles
+
+                curr_start = v
+                curr_excl = set()
             else:
-                ranges.append({"range":{term:{"gte":curr_start, "lte":last}}})
+                ranges.append({"gte": curr_start, "lte": last})
                 exclude |= curr_excl
-                curr_start=v
-                curr_excl=set()
-        last=v
+                curr_start = v
+                curr_excl = set()
+        last = v
 
-    if last==curr_start:
+    if last == curr_start:
+        #not a range yet, so just add as singlton
         singletons.add(last)
+    elif last - curr_start - len(curr_excl) < MIN_RANGE or ((last - curr_start) < len(curr_excl) * DENSITY):
+        #small ranges are singletons, sparse ranges are singletons
+        singletons |= set(range(curr_start, last + 1))
+        singletons -= curr_excl
     else:
-        ranges.append({"gte":curr_start, "lte":last})
-
+        #big enough, and dense enough range
+        ranges.append({"gte": curr_start, "lte": last})
+        exclude |= curr_excl
 
     if ranges:
-        r={"or":[{"range":{term:r}} for r in ranges]}
+        r = {"or": [{"range": {term: r}} for r in ranges]}
         if exclude:
-            r = {"and":[r, {"not":{"terms":{term:Q.sort(exclude)}}}]}
+            r = {"and": [r, {"not": {"terms": {term: Q.sort(exclude)}}}]}
         if singletons:
-            return {"or":[
-                {"terms":{term: Q.sort(singletons)}},
+            return {"or": [
+                {"terms": {term: Q.sort(singletons)}},
                 r
             ]}
         else:

@@ -1,3 +1,4 @@
+# encoding: utf-8
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
@@ -138,11 +139,8 @@ requested = set()
 class NullStruct(object):
     """
     Structural Null provides closure under the dot (.) operator
-        Null[x] == None
-        Null.x == None
-
-
-
+        Null[x] == Null
+        Null.x == Null
     """
 
     def __init__(self):
@@ -242,9 +240,7 @@ class StructList(list):
         self.list[i]=unwrap(y)
 
     def __iter__(self):
-        i=self.list.__iter__()
-        while True:
-            yield wrap(i.next())
+        return (wrap(v) for v in self.list)
 
     def append(self, val):
         self.list.append(unwrap(val))
@@ -267,6 +263,9 @@ class StructList(list):
         for v in values:
             self.list.append(unwrap(v))
         return self
+
+    def pop(self):
+        return self.list.pop()
 
 
 def wrap(v):
@@ -301,7 +300,7 @@ def inverse(d):
     for k, v in unwrap(d).iteritems():
         output[v] = output.get(v, [])
         output[v].append(k)
-    return wrap(output)
+    return output
 
 
 

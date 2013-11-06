@@ -65,6 +65,23 @@ def test_null():
         Log.error("error")
 
 
+
+def test_list():
+
+    if not []:
+        pass
+    else:
+        Log.error("error")
+
+    if []:
+        Log.error("error")
+
+
+    if not [0]:
+        Log.error("error")
+
+
+
 test_none()
 test_null()
-
+test_list()

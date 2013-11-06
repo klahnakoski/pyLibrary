@@ -80,7 +80,7 @@ there are a few gotchas you can avoid by following these instructions.
 Optional
 --------
 
-pyLibrary does not use these, but maybe you will find the useful:
+pyLibrary does not use these, but maybe you will find them useful:
 
   * Install MySqldb from [http://sourceforge.net/projects/mysql-python/files/mysql-python/](http://sourceforge.net/projects/mysql-python/files/mysql-python/)
   * Install ujson from [http://www.lfd.uci.edu/~gohlke/pythonlibs/#ujson](http://www.lfd.uci.edu/~gohlke/pythonlibs/#ujson)
