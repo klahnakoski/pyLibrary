@@ -24,9 +24,16 @@ class Struct(dict):
     MORE ON MISSING VALUES: http://www.numpy.org/NA-overview.html
     IT ONLY CONSIDERS THE LEGITIMATE-FIELD-WITH-MISSING-VALUE (Statistical Null)
     AND DOES NOT LOOK AT FIELD-DOES-NOT-EXIST-IN-THIS-CONTEXT (Database Null)
+
+
+    This is a common pattern in many frameworks:
+
+    jinja2.environment.Environment.getattr()
+    argparse.Environment() - code performs setattr(e, name, value) on instances of Environment
+
     """
 
-    
+
     def __init__(self, **map):
         dict.__init__(self)
         object.__setattr__(self, "__dict__", map)  #map IS A COPY OF THE PARAMETERS
@@ -39,7 +46,7 @@ class Struct(dict):
 
     def __str__(self):
         return dict.__str__(object.__getattribute__(self, "__dict__"))
-    
+
     def __getitem__(self, key):
         d=object.__getattribute__(self, "__dict__")
 

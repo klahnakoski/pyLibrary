@@ -4,8 +4,6 @@ pyLibrary
 
 A library of general functions
 
-  * **basic.py** - Simple functions with no home
-
   * **cnv.py** - Convert between types, methods are in the form of ```<from_type> "2" <to_type>``` so
 I am better able to remember them
 
@@ -17,6 +15,8 @@ I am better able to remember them
 
   * **files.py** - Default utf8, and because I can not remember the builtin file functions
 
+  * **jsons.py** - Handle converting more types to JSON, switches based on cPython or PyPy for fastest implementation
+
   * **logs.py** - Exception chaining, threaded and structured logging
 
   * **maths.py** - Extra math functions, with proper mapping of missing values
@@ -27,7 +27,7 @@ I am better able to remember them
 
   * **multiprocess.py** - optimized for symmetric multi-processing (incomplete)
 
-  * **query.py** - Named methods for very common set/list comprehensions
+  * **queries/Q.py** - Named methods for very common set/list comprehensions
 
   * **queries/windows.py** - Window functions for list comprehensions
 
@@ -44,13 +44,13 @@ I am better able to remember them
   * **threads.py** - Because, somehow, the standard lib go it wrong
 
   * **timer.py** - The way timers are meant to be (using the ```with``` clause)
-  
-  
 
 
 
-Windows 7 Install Instructions 
-------------------------------
+
+
+Windows 7 Install Instructions for Python
+-----------------------------------------
 
 Python was really made for Linux, and installation will be easier there.  Technically, Python works on Windows too, but
 there are a few gotchas you can avoid by following these instructions.
@@ -59,23 +59,35 @@ there are a few gotchas you can avoid by following these instructions.
   * Install Python at c:\Python27 (The space in the "Program Files" may screw up installs of native libs)
   * Add to you path: ```c:\Python27;c:\Python27\scripts;```
   * Download ```http://python-distribute.org/distribute_setup.py```
- 
+
         CALL python distribute_setup.py
         CALL easy_install pip
         CALL easy_install virtualenv
 
   * Many "Python Powered" native installs require a pointer to the python installation, but they have no idea where to
   look in 64bit windows.  You must alter the registry ([http://stackoverflow.com/questions/3652625/installing-setuptools-on-64-bit-windows](http://stackoverflow.com/questions/3652625/installing-setuptools-on-64-bit-windows)):
-  
+
         SET HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Python\PythonCore\2.7\InstallPath = "C:\Python27"
+
+Installing pyLibrary
+--------------------
+
+Once Python is installed, other Python packages are are much easier.
+
+  * Install from PyPi:
+
+        pip install pyLibrary
+
+Installing for Development
+--------------------------
 
   * Download from Github:
 
-     	git clone https://github.com/klahnakoski/pyLibrary.git
+        git clone https://github.com/klahnakoski/pyLibrary.git
 
-  * Download requirements:
+  * Install requirements:
 
-		pip install -r requirements.txt
+		python setup.py develop
 
 Optional
 --------

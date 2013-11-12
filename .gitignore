@@ -3,3 +3,8 @@
 *.iml
 *.pyc
 util/.svn
+build
+dist
+pyLibrary.egg-info
+*.txt
+*.json
