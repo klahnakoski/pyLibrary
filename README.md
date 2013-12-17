@@ -87,7 +87,7 @@ Installing for Development
 
   * Install requirements:
 
-		python setup.py develop
+    	python setup.py develop
 
 Optional
 --------

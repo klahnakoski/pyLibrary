@@ -4,7 +4,7 @@ prune .git
 prune .svn
 prune build
 prune dist
-prune idea
+prune .idea
 exclude *.egg-info
 exclude *.iml
 exclude *.txt

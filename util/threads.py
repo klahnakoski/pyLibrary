@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import threading
 import thread
 import time
+from .struct import nvl
 
 
 DEBUG = True
@@ -43,12 +44,18 @@ class Lock(object):
         self.monitor.notify_all()
 
 
-# SIMPLE MESSAGE QUEUE, multiprocessing.Queue REQUIRES SERIALIZATION, WHICH IS HARD TO USE JUST BETWEEN THREADS
 class Queue(object):
-    def __init__(self):
-        self.keep_running=True
-        self.lock=Lock("lock for queue")
-        self.queue=[]
+    """
+    SIMPLE MESSAGE QUEUE, multiprocessing.Queue REQUIRES SERIALIZATION, WHICH IS HARD TO USE JUST BETWEEN THREADS
+    """
+    def __init__(self, max=None):
+        """
+        max - LIMIT THE NUMBER IN THE QUEUE, IF TOO MANY add() AND extend() WILL BLOCK
+        """
+        self.max = nvl(max, 2**30)
+        self.keep_running = True
+        self.lock = Lock("lock for queue")
+        self.queue = []
 
     def __iter__(self):
         while self.keep_running:
@@ -58,18 +65,22 @@ class Queue(object):
                     yield value
             except Exception, e:
                 from .logs import Log
-                Log.warning("Tell me about what happend here", e)
+                Log.warning("Tell me about what happened here", e)
 
     def add(self, value):
         with self.lock:
             if self.keep_running:
                 self.queue.append(value)
+            while self.keep_running and len(self.queue) > self.max:
+                self.lock.wait()
         return self
 
     def extend(self, values):
         with self.lock:
             if self.keep_running:
                 self.queue.extend(values)
+            while self.keep_running and len(self.queue) > self.max:
+                self.lock.wait()
 
     def __len__(self):
         with self.lock:
@@ -333,13 +344,17 @@ class ThreadedQueue(Queue):
     TODO: Check that this queue is not dropping items at shutdown
     DISPATCH TO ANOTHER (SLOWER) queue IN BATCHES OF GIVEN size
     """
-    def __init__(self, queue, size):
-        Queue.__init__(self)
+    def __init__(self, queue, size, max=None):
+        if max == None:
+            #REASONABLE DEFAULT
+            max = size*2
 
-        def push_to_queue(please_stop):
-            please_stop.on_go(lambda : self.add(Thread.STOP))
+        Queue.__init__(self, max=max)
 
-            #output_queue IS A MULTI-THREADED QUEUE, SO THIS WILL BLOCK UNTIL THE 5K ARE READY
+        def size_pusher(please_stop):
+            please_stop.on_go(lambda: self.add(Thread.STOP))
+
+            #queue IS A MULTI-THREADED QUEUE, SO THIS WILL BLOCK UNTIL THE size ARE READY
             from .queries import Q
             for i, g in Q.groupby(self, size=size):
                 try:
@@ -354,7 +369,7 @@ class ThreadedQueue(Queue):
                     from logs import Log
                     Log.warning("Can not push data to given queue", e)
 
-        self.thread = Thread.run("threaded queue", push_to_queue)
+        self.thread = Thread.run("threaded queue", size_pusher)
 
 
     def __enter__(self):
