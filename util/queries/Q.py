@@ -333,64 +333,6 @@ def filter(data, where):
     return [d for i, d in enumerate(data) if where(d, i, data)]
 
 
-def _filter(esfilter, row, rownum, rows):
-    if esfilter[u"and"]:
-        for a in esfilter[u"and"]:
-            if not _filter(a, row, rownum, rows):
-                return False
-        return True
-    elif esfilter[u"or"]:
-        for a in esfilter[u"and"]:
-            if _filter(a, row, rownum, rows):
-                return True
-        return False
-    elif esfilter[u"not"]:
-        return not _filter(esfilter[u"not"], row, rownum, rows)
-    elif esfilter.term:
-        for col, val in esfilter.term.items():
-            if row[col] != val:
-                return False
-        return True
-    elif esfilter.terms:
-        for col, vals in esfilter.terms.items:
-            if not row[col] in vals:
-                return False
-        return True
-    elif esfilter.range:
-        for col, ranges in esfilter.range.items:
-            for sign, val in ranges:
-                if sign in ("gt", ">") and row[col] <= val:
-                    return False
-                if sign == "gte" and row[col] < val:
-                    return False
-                if sign == "lte" and row[col] > val:
-                    return False
-                if sign == "lt" and row[col] >= val:
-                    return False
-        return True
-    elif esfilter.missing:
-        if isinstance(esfilter.missing, basestring):
-            field = esfilter.missing
-        else:
-            field = esfilter.missing.field
-
-        if row[field] == None:
-            return True
-        return False
-
-    elif esfilter.exists:
-        if isinstance(esfilter.missing, basestring):
-            field = esfilter.missing
-        else:
-            field = esfilter.missing.field
-
-        if row[field] != None:
-            return True
-        return False
-    else:
-        Log.error(u"Can not convert esfilter to SQL: {{esfilter}}", {u"esfilter": esfilter})
-
-
 def wrap_function(func):
     """
     RETURN A THREE-PARAMETER WINDOW FUNCTION TO MATCH
@@ -602,26 +544,21 @@ class Index(object):
 
     def __getitem__(self, key):
         try:
-            if not isinstance(key, dict):
-                #WE WILL BE FORGIVING IF THE KEY IS NOT IN A LIST
-                if len(self._keys) > 1:
-                    Log.error("Must be given an array of keys")
-                key = {self._keys[0]: key}
+            if isinstance(key, dict):
+                key=struct.unwrap(key)
+                key = [key.get(k, None) for k in self._keys]
+            elif not isinstance(key, list):
+                key=[key]
 
             d = self._data
-            for k in self._keys:
-                v = key[k]
+            for i, v in enumerate(key):
                 if v == None:
-                    Log.error("can not handle when {{key}} == None", {"key": k})
+                    Log.error("can not handle when {{key}} == None", {"key": self._keys[i]})
                 if v not in d:
                     return Null
                 d = d[v]
 
-            if len(key) != len(self._keys):
-                #NOT A COMPLETE INDEXING, SO RETURN THE PARTIAL INDEX
-                output = Index(self._keys[-len(key):])
-                output._data = d
-                return output
+            return d
         except Exception, e:
             Log.error("something went wrong", e)
 
