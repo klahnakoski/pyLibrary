@@ -13,7 +13,6 @@ from decimal import Decimal
 import time
 import json
 from util import struct
-from util.cnv import CNV
 from util.jsons import cPythonJSONEncoder, json_encoder
 from util.logs import Log
 from util.struct import Null
