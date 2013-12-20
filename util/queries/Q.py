@@ -162,9 +162,40 @@ def select(data, field_name):
 #return list with values from field_name
     if isinstance(data, Cube): Log.error("Do not know how to deal with cubes yet")
     if isinstance(field_name, basestring):
-        return [d[field_name] for d in data]
+        if field_name.find(".") < 0:
+            return [d[field_name] for d in data]
+        else:
+            field_name = [field_name]
 
-    return [dict([(k, v) for k, v in x.items() if k in field_name]) for x in data]
+    keys = []
+    for f in field_name:
+        if f.find(".") >= 0:
+            f = f.replace("\.", "\a")
+            keys.append([k.replace("\a", ".") for k in f.split(".")])
+        else:
+            keys.append([f])
+
+    return _select({}, data, keys)
+
+
+def _select(template, data, fields):
+    output = []
+    for d in data:
+        record = dict(template)
+        deep = []
+        for f in fields:
+            v = d[f[0]]
+            if isinstance(v, list):
+                deep.append((f[1:], v))
+            elif v != None:
+                record[".".join(f)] = v
+        if not deep:
+            output.append(record)
+        else:
+            for f, v in deep:
+                output.extend(_select(record, v, f))
+
+    return output
 
 
 def get_columns(data):
@@ -323,9 +354,6 @@ def filter(data, where):
     """
     if isinstance(where, collections.Callable):
         where = wrap_function(where)
-    elif len(data) < 10000:
-        # WITH SMALL NUMBERS, WE WILL SIMPLY READ THE FILTER SPEC DIRECTLY WHILE ITERATING THROUGH DATA
-        return [d for i, d in enumerate(data) if _filter(struct.wrap(where), d, i, data)]
     else:
         # THIS COMPILES PYTHON TO MAKE A FUNCTION
         where = CNV.esfilter2where(where)
@@ -538,6 +566,7 @@ class Index(object):
         i = len(self._keys)
         code = code + indent(expand_template(
             "yield d{{curr}}", {"curr": i}), prefix="    ", indent=i + 1)
+        lookup = None
         exec code
         self.lookup = lookup
 
@@ -545,10 +574,10 @@ class Index(object):
     def __getitem__(self, key):
         try:
             if isinstance(key, dict):
-                key=struct.unwrap(key)
+                key = struct.unwrap(key)
                 key = [key.get(k, None) for k in self._keys]
             elif not isinstance(key, list):
-                key=[key]
+                key = [key]
 
             d = self._data
             for i, v in enumerate(key):

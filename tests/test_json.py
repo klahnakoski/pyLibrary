@@ -22,6 +22,9 @@ class TestJSON(unittest.TestCase):
         Log.note("JSON = {{json}}", {"json": output})
 
 
+    def test_
+
+
     def test_unicode1(self):
         output = CNV.object2JSON({"comment": u"Open all links in the current tab, except the pages opened from external apps â€” open these ones in new windows"})
         if not isinstance(output, unicode):
