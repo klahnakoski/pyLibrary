@@ -174,5 +174,3 @@ class Sum(WindowFunction):
 
     def end(self):
         return self.total
-
-

@@ -17,8 +17,8 @@ from .multiset import Multiset
 from .jsons import json_decoder, json_encoder
 from .logs import Log
 import struct
-from .strings import expand_template, indent
-from .struct import StructList, Null
+from .strings import expand_template
+from .struct import StructList
 
 
 class CNV:
@@ -37,8 +37,9 @@ class CNV:
     def JSON2object(json_string, params=None, flexible=False):
         try:
             #REMOVE """COMMENTS""", #COMMENTS, //COMMENTS, AND \n \r
-            if flexible: json_string = re.sub(r"\"\"\".*?\"\"\"|\s+//.*\n|#.*?\n|\n|\r", r" ",
-                                              json_string)  #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
+            if flexible:
+                #DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py#L58
+                json_string = re.sub(r"\"\"\".*?\"\"\"|\s+//.*\n|#.*?\n|\n|\r", r" ", json_string)
 
             if params:
                 params = dict([(k, CNV.value2quote(v)) for k, v in params.items()])
@@ -227,12 +228,15 @@ class CNV:
         CONVERT esfilter TO FUNCTION THAT WILL PERFORM THE FILTER
         WILL ADD row, rownum, AND rows AS CONTEXT VARIABLES FOR {"script":} IF NEEDED
         """
+
         def output(row, rownum=None, rows=None):
             return _filter(esfilter, row, rownum, rows)
+
         return output
 
+
 def _filter(esfilter, row, rownum, rows):
-    esfilter=struct.wrap(esfilter)
+    esfilter = struct.wrap(esfilter)
 
     if esfilter[u"and"]:
         for a in esfilter[u"and"]:

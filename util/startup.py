@@ -80,8 +80,7 @@ def read_settings(filename=None, defs=None):
         return settings
 
 
-# snagged from https://github.com/pycontribs/tendo/blob/master/tendo/singleton.py
-# TODO: get licence
+# snagged from https://github.com/pycontribs/tendo/blob/master/tendo/singleton.py (under licence PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2)
 class SingleInstance:
     """
     ONLY ONE INSTANCE OF PROGRAM ALLOWED
@@ -96,14 +95,13 @@ class SingleInstance:
     Remember that this works by creating a lock file with a filename based on the full path to the script file.
     """
     def __init__(self, flavor_id=""):
-        import sys
         self.initialized = False
         basename = os.path.splitext(os.path.abspath(sys.argv[0]))[0].replace("/", "-").replace(":", "").replace("\\", "-") + '-%s' % flavor_id + '.lock'
         self.lockfile = os.path.normpath(tempfile.gettempdir() + '/' + basename)
 
 
     def __enter__(self):
-        Log.debug("SingleInstance lockfile: " + self.lockfile)
+        Log.note("SingleInstance lockfile: " + self.lockfile)
         if sys.platform == 'win32':
             try:
                 # file already exists, we try to remove (in case previous execution was interrupted)

@@ -23,6 +23,7 @@ class File(object):
     def __init__(self, filename, buffering=2 ** 14):
         if filename == None:
             from .logs import Log
+
             Log.error("File must be given a filename")
 
         #USE UNIX STANDARD
@@ -70,7 +71,7 @@ class File(object):
 
     def write(self, data):
         if not self.parent.exists: self.parent.create()
-        with open(self._filename, "w") as file:
+        with open(self._filename, "wb") as file:
             for d in listwrap(data):
                 file.write(d)
 
@@ -102,7 +103,6 @@ class File(object):
                 output_file.write(c)
 
 
-
     def delete(self):
         try:
             if os.path.isdir(self._filename):
@@ -111,15 +111,16 @@ class File(object):
                 os.remove(self._filename)
             return self
         except Exception, e:
-            if e.strerror=="The system cannot find the path specified":
+            if e.strerror == "The system cannot find the path specified":
                 return
             from .logs import Log
+
             Log.error("Could not remove file", e)
 
     def backup(self):
-        names=self._filename.split("/")[-1].split(".")
-        if len(names)==1:
-            backup=File(self._filename+".backup "+datetime.utcnow().strftime("%Y%m%d %H%i%s"))
+        names = self._filename.split("/")[-1].split(".")
+        if len(names) == 1:
+            backup = File(self._filename + ".backup " + datetime.utcnow().strftime("%Y%m%d %H%i%s"))
 
 
     def create(self):
@@ -127,7 +128,8 @@ class File(object):
             os.makedirs(self._filename)
         except Exception, e:
             from .logs import Log
-            Log.error("Could not make directory {{dir_name}}", {"dir_name":self._filename}, e)
+
+            Log.error("Could not make directory {{dir_name}}", {"dir_name": self._filename}, e)
 
 
     @property
