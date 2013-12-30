@@ -11,13 +11,17 @@
 import re
 from .jsons import json_encoder
 import struct
-from .struct import Struct
 
 
 def datetime(value):
     from .cnv import CNV
 
-    return CNV.datetime2string(CNV.milli2datetime(value), "%Y-%m-%d %H:%M:%S")
+    if value < 10000000000:
+        value = CNV.unix2datetime(value)
+    else:
+        value = CNV.milli2datetime(value)
+
+    return CNV.datetime2string(value, "%Y-%m-%d %H:%M:%S")
 
 
 def newline(value):
@@ -120,7 +124,7 @@ def _expand(template, seq):
     elif isinstance(template, list):
         return "".join(_expand(t, seq) for t in template)
     else:
-        from util.logs import Log
+        from .logs import Log
 
         Log.error("can not handle")
 
@@ -130,12 +134,13 @@ def _simple_expand(template, seq):
     seq IS TUPLE OF OBJECTS IN PATH ORDER INTO THE DATA TREE
     seq[-1] IS THE CURRENT CONTEXT
     """
+
     def replacer(found):
         ops = found.group(1).split("|")
 
         path = ops[0]
-        var = path.rstrip(".")
-        depth = max(1, len(path) - len(var))
+        var = path.lstrip(".")
+        depth = min(len(seq), max(1, len(path) - len(var)))
         try:
             val = seq[-depth][var]
             for filter in ops[1:]:
@@ -148,23 +153,19 @@ def _simple_expand(template, seq):
                     #WORK HARDER
                     val = toString(val)
                     return val
-            except Exception:
-                raise Exception(u"Can not expand " + "|".join(ops) + u" in template:\n" + indent(template), e)
+            except Exception, f:
+                from logs import Log
+
+                Log.error(u"Can not expand " + "|".join(ops) + u" in template:\n" + indent(template), e)
 
     return pattern.sub(replacer, template)
 
 
-
-
-
-
-
 def toString(val):
-    if isinstance(val, Struct):
-        return json_encoder.encode(val.dict, pretty=True)
-    elif isinstance(val, dict) or isinstance(val, list) or isinstance(val, set):
-        val = json_encoder.encode(val, pretty=True)
-        return val
+    if val == None:
+        return u""
+    elif isinstance(val, (dict, list, set)):
+        return json_encoder.encode(val, pretty=True)
     return unicode(val)
 
 

@@ -14,7 +14,7 @@ from .index import UniqueIndex, Index
 from .flat_list import FlatList
 from ..maths import Math
 from ..logs import Log
-from ..struct import nvl, listwrap
+from ..struct import nvl, listwrap, EmptyList
 from .. import struct
 from ..strings import indent, expand_template
 from ..struct import StructList, Struct, Null
@@ -74,7 +74,7 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None):
             if key in agg:
                 pair = agg[key]
             else:
-                pair = (get_keys(d), StructList())
+                pair = (get_keys(d), [])
                 agg[key] = pair
             pair[1].append(d)
 
@@ -312,7 +312,8 @@ def unstack(data, keys=None, column=None, value=None):
     assert keys != None
     assert column != None
     assert value != None
-    if isinstance(data, Cube): Log.error("Do not know how to deal with cubes yet")
+    if isinstance(data, Cube):
+        Log.error("Do not know how to deal with cubes yet")
 
     output = []
     for key, values in groupby(data, keys):
@@ -320,15 +321,15 @@ def unstack(data, keys=None, column=None, value=None):
             key[v[column]] = v[value]
         output.append(key)
 
-    return StructList(output)
+    return struct.wrap(output)
 
 
-def normalize_sort(fieldnames):
+def normalize_sort_parameters(fieldnames):
     """
     CONVERT SORT PARAMETERS TO A NORMAL FORM SO EASIER TO USE
     """
     if fieldnames == None:
-        return StructList()
+        return EmptyList
 
     formal = []
     for f in listwrap(fieldnames):
@@ -345,7 +346,7 @@ def sort(data, fieldnames=None):
     """
     try:
         if data == None:
-            return Null
+            return EmptyList
 
         if fieldnames == None:
             return struct.wrap(sorted(data))
@@ -365,7 +366,7 @@ def sort(data, fieldnames=None):
 
                 return struct.wrap(sorted(data, cmp=comparer))
 
-        formal = normalize_sort(fieldnames)
+        formal = normalize_sort_parameters(fieldnames)
 
         def comparer(left, right):
             left = nvl(left, Struct())

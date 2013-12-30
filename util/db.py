@@ -500,7 +500,7 @@ class DB(object):
             return SQL(column_name.value + u" AS " + self.quote_column(column_name.name))
 
     def sort2sqlorderby(self, sort):
-        sort = Q.normalize_sort(sort)
+        sort = Q.normalize_sort_parameters(sort)
         return u",\n".join([self.quote_column(s.field) + (" DESC" if s.sort == -1 else " ASC") for s in sort])
 
     def esfilter2sqlwhere(self, esfilter):

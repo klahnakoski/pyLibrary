@@ -1,6 +1,5 @@
 # encoding: utf-8
 #
-#
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -45,9 +44,7 @@ class CNV:
                 params = dict([(k, CNV.value2quote(v)) for k, v in params.items()])
                 json_string = expand_template(json_string, params)
 
-            obj = json_decoder.decode(json_string)
-            if isinstance(obj, list): return StructList(obj)
-            return struct.wrap(obj)
+            return struct.wrap(json_decoder.decode(json_string))
         except Exception, e:
             Log.error("Can not decode JSON:\n\t" + json_string, e)
 
@@ -89,7 +86,12 @@ class CNV:
 
     @staticmethod
     def unix2datetime(u):
-        return datetime.datetime.utcfromtimestamp(u)
+        try:
+            if u == None:
+                return None
+            return datetime.datetime.utcfromtimestamp(u)
+        except Exception, e:
+            Log.error("Can not convert {{value}} to datetime", {"value": u}, e)
 
     @staticmethod
     def milli2datetime(u):
@@ -120,7 +122,7 @@ class CNV:
             column_names, #tuple of columns names
             rows          #list of tuples
     ):
-        return StructList([dict(zip(column_names, r)) for r in rows])
+        return struct.wrap([dict(zip(column_names, r)) for r in rows])
 
 
     #PROPER NULL HANDLING

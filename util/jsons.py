@@ -23,6 +23,7 @@ import time
 from decimal import Decimal
 import json
 import re
+from util.struct import StructList
 
 
 try:
@@ -96,7 +97,10 @@ def _value2json(value, _buffer):
 
     type = value.__class__
     if type is dict:
-        _dict2json(value, _buffer)
+        if not value:
+            append(_buffer, u"{}")
+        else:
+            _dict2json(value, _buffer)
     elif type is str:
         append(_buffer, u"\"")
         v = value.decode("utf-8")
@@ -117,6 +121,8 @@ def _value2json(value, _buffer):
         append(_buffer, unicode(value))
     elif type is float:
         append(_buffer, unicode(repr(value)))
+    elif type in (set, list, tuple, StructList):
+        _list2json(value, _buffer)
     elif type is date:
         append(_buffer, unicode(long(time.mktime(value.timetuple()) * 1000)))
     elif type is datetime:
@@ -128,20 +134,19 @@ def _value2json(value, _buffer):
 
 
 def _list2json(value, _buffer):
-    append(_buffer, u"[")
-    first = True
-    for v in value:
-        if first:
-            first = False
-        else:
-            append(_buffer, u", ")
-        _value2json(v, _buffer)
-    append(_buffer, u"]")
+    if not value:
+        append(_buffer, u"[]")
+    else:
+        sep = u"["
+        for v in value:
+            append(_buffer, sep)
+            sep = u", "
+            _value2json(v, _buffer)
+        append(_buffer, u"]")
 
 
 def _dict2json(value, _buffer):
-    append(_buffer, u"{")
-    prefix = u"\""
+    prefix = u"{\""
     for k, v in value.iteritems():
         append(_buffer, prefix)
         prefix = u", \""

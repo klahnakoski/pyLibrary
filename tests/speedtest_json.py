@@ -12,8 +12,8 @@
 from decimal import Decimal
 import time
 import json
-from util import struct
-from util.jsons import cPythonJSONEncoder, json_encoder
+from util import struct, jsons
+from util.jsons import cPythonJSONEncoder, json_encoder, json_scrub
 from util.logs import Log
 from util.struct import Null
 
@@ -28,19 +28,20 @@ SIMPLE = (struct.wrap({
     'key3': 'value',
     'key4': 3.141592654,
     'key5': 'string',
-    "key6": Decimal(0.33)
+    "key6": Decimal("0.33"),
+    "key7": [[], []]
 }), 100000)
 NESTED = (struct.wrap({
     'key1': 0,
-    'key2': SIMPLE[0],
+    'key2': SIMPLE[0].copy(),
     'key3': 'value',
     'key4': None,
-    'key5': SIMPLE[0],
+    'key5': SIMPLE[0].copy(),
     'key6': ["test", u"test2", 99],
     'key7': {1, 2.5, 3, 4},
     u'key': u'\u0105\u0107\u017c'
 }), 100000)
-HUGE = (struct.wrap([NESTED[0]] * 1000), 100)
+HUGE = ([NESTED[0].copy() for i in range(1000)], 100)
 
 cases = [
     'EMPTY',
@@ -57,25 +58,41 @@ def test_json(description, method, n):
     for case in cases:
         try:
             data, count = globals()[case]
-            if case != "HUGE":
-                Log.note("{{description}} {{type}}: {{json}}", {
-                    "description": description,
-                    "type": case,
-                    "json": method(data)
-                })
+            if case == "HUGE":
+                example = "<too big to show>"
+            else:
+                try:
+                    example = method(data)
+                except Exception, e:
+                    example = "<CRASH>"
+
+            Log.note("{{interpreter}}: {{description}} {{type}}: {{json}}", {
+                "description": description,
+                "interpreter": "PyPy" if jsons.use_pypy else "CPython",
+                "type": case,
+                "json": example
+            })
         except Exception, e:
             Log.warning("problem with encoding: {{message}}", {"message": e.message}, e)
 
     for case in cases:
         try:
             data, count = globals()[case]
+            if description == "default json.dumps":
+                #SCRUB BEFORE SENDING TO C ROUTINE (NOT FAIR, BUT WE GET TO SEE HOW FAST ENCODING GOES)
+                data = json_scrub(data)
             t0 = time.time()
-            for i in range(n):
-                for i in range(count):
-                    output.append(method(data))
-            duration = time.time() - t0
-            Log.note("{{description}} {{type}} x {{num}} x {{count}} = {{time}}", {
+            try:
+                for i in range(n):
+                    for i in range(count):
+                        output.append(method(data))
+                duration = time.time() - t0
+            except Exception, e:
+                duration = "<CRASH>"
+
+            Log.note("{{interpreter}}: {{description}} {{type}} x {{num}} x {{count}} = {{time}}", {
                 "description": description,
+                "interpreter": "PyPy" if jsons.use_pypy else "CPython",
                 "time": duration,
                 "type": case,
                 "num": n,
@@ -109,8 +126,8 @@ def main(num):
     try:
         Log.start()
         test_json("util.jsons.json_encoder", json_encoder.encode, num)
-        test_json("scrub-then-encode", cPythonJSONEncoder().encode, num)
-        test_json("python json.dumps", EnhancedJSONEncoder().encode, num)
+        test_json("scrub before json.dumps", cPythonJSONEncoder().encode, num)
+        test_json("override JSONEncoder.default()", EnhancedJSONEncoder().encode, num)
         test_json("default json.dumps", json.dumps, num)  #WILL CRASH, CAN NOT HANDLE DIVERSITY OF TYPES
     finally:
         Log.stop()

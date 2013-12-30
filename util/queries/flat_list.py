@@ -1,5 +1,3 @@
-
-
 class FlatList(list):
     """
     FlatList IS A RESULT OF FILTERING SETS OF TREES
@@ -14,7 +12,7 @@ class FlatList(list):
         IT IS EXPECTED len(data[i]) == len(path)+1 (data[i][0] IS THE ORIGINAL ROW OBJECT)
         """
         list.__init__(self)
-        self.data=data
-        self.path=path
+        self.data = data
+        self.path = path
 
 
