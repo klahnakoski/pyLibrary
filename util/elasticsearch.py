@@ -6,6 +6,8 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+
+from __future__ import unicode_literals
 from datetime import datetime
 import re
 import sha
@@ -26,6 +28,20 @@ DEBUG = False
 
 
 class ElasticSearch(object):
+    """
+    AN ElasticSearch INDEX LIFETIME MANAGEMENT TOOL
+
+    ElasticSearch'S REST INTERFACE WORKS WELL WITH PYTHON AND JAVASCRIPT
+    SO HARDLY ANY LIBRARY IS REQUIRED.  IT IS SIMPLER TO MAKE HTTP CALLS
+    DIRECTLY TO ES USING YOUR FAVORITE HTTP LIBRARY.  I HAVE SOME
+    CONVENIENCE FUNCTIONS HERE, BUT IT'S BETTER TO MAKE YOUR OWN.
+
+    THIS CLASS IS TO HELP DURING ETL, CREATING INDEXES, MANAGING ALIASES
+    AND REMOVING INDEXES WHEN THEY HAVE BEEN REPLACED.  IT USES A STANDARD
+    SUFFIX (YYYYMMDD-HHMMSS) TO TRACK AGE AND RELATIONSHIP TO THE ALIAS,
+    IF ANY YET.
+
+    """
     def __init__(self, settings):
         assert settings.host
         assert settings.index
@@ -311,7 +327,7 @@ def _scrub(r):
             return CNV.value2number(r)
         elif isinstance(r, dict):
             if isinstance(r, Struct):
-                r = r.dict
+                r = object.__getattribute__(r, "__dict__")
             output = {}
             for k, v in r.items():
                 v = _scrub(v)

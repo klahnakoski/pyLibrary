@@ -56,24 +56,24 @@ class File(object):
 
 
     def read(self, encoding="utf-8"):
-        with codecs.open(self._filename, "r", encoding=encoding) as file:
-            return file.read()
+        with codecs.open(self._filename, "r", encoding=encoding) as f:
+            return f.read()
 
     def read_ascii(self):
         if not self.parent.exists: self.parent.create()
-        with open(self._filename, "r") as file:
-            return file.read()
+        with open(self._filename, "r") as f:
+            return f.read()
 
     def write_ascii(self, content):
         if not self.parent.exists: self.parent.create()
-        with open(self._filename, "w") as file:
-            file.write(content)
+        with open(self._filename, "w") as f:
+            f.write(content)
 
     def write(self, data):
         if not self.parent.exists: self.parent.create()
-        with open(self._filename, "wb") as file:
+        with open(self._filename, "wb") as f:
             for d in listwrap(data):
-                file.write(d)
+                f.write(d)
 
     def __iter__(self):
         #NOT SURE HOW TO MAXIMIZE FILE READ SPEED

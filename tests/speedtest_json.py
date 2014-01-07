@@ -41,7 +41,7 @@ NESTED = (struct.wrap({
     'key7': {1, 2.5, 3, 4},
     u'key': u'\u0105\u0107\u017c'
 }), 100000)
-HUGE = ([NESTED[0].copy() for i in range(1000)], 100)
+HUGE = ([NESTED[0]] * 1000, 100)
 
 cases = [
     'EMPTY',
@@ -126,9 +126,10 @@ def main(num):
     try:
         Log.start()
         test_json("util.jsons.json_encoder", json_encoder.encode, num)
+        test_json("util.jsons.json_encoder (again)", json_encoder.encode, num)
         test_json("scrub before json.dumps", cPythonJSONEncoder().encode, num)
         test_json("override JSONEncoder.default()", EnhancedJSONEncoder().encode, num)
-        test_json("default json.dumps", json.dumps, num)  #WILL CRASH, CAN NOT HANDLE DIVERSITY OF TYPES
+        test_json("default json.dumps", json.dumps, num)  # WILL CRASH, CAN NOT HANDLE DIVERSITY OF TYPES
     finally:
         Log.stop()
 

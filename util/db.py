@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from __future__ import unicode_literals
 
 from datetime import datetime
 import subprocess
@@ -622,7 +623,7 @@ def int_list_packer(term, values):
     curr_start = last
     curr_excl = set()
 
-    for v in sorted[1:]:
+    for v in sorted[1::]:
         if v <= last + 1:
             pass
         elif v - last > 3:

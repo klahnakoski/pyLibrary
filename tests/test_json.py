@@ -8,8 +8,6 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-
-
 import datetime
 import unittest
 from util.cnv import CNV
@@ -36,6 +34,13 @@ class TestJSON(unittest.TestCase):
         output = CNV.object2JSON({"comment": u"testing accented char Å•Ã¡Ã¢ÄƒÃ¤ÄºÄ‡Ã§ÄÃ©Ä™Ã«Ä›Ã­Ã®ÄÄ‘Å„ÅˆÃ³Ã´Å‘Ã¶Ã·Å™Å¯ÃºÅ±Ã¼Ã½Å£Ë™"})
         if not isinstance(output, unicode):
             Log.error("expecting unicode json")
+
+    def test_double(self):
+        test = {"value": 5.2025595183536973e-07}
+        output = CNV.object2JSON(test)
+        if output != u'{"value": 5.202559518353697e-07}':
+            Log.error("expecting correct value")
+
 
 
 if __name__ == '__main__':

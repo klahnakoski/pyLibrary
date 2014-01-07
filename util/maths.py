@@ -7,6 +7,7 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from __future__ import unicode_literals
 import math
 from .struct import Null, nvl
 from .logs import Log
@@ -37,8 +38,12 @@ class Math(object):
     # FOUND IN numpy, BUT WE USUALLY DO NOT NEED TO BRING IN A BIG LIB FOR A SIMPLE DECISION
     @staticmethod
     def sign(v):
-        if v < 0: return -1
-        if v > 0: return +1
+        if v == None:
+            return None
+        if v < 0:
+            return -1
+        if v > 0:
+            return +1
         return 0
 
 
@@ -107,7 +112,7 @@ class Math(object):
 
 
     @staticmethod
-    def max(values):
+    def max(*values):
         output = Null
         for v in values:
             if v == None:
@@ -122,4 +127,4 @@ class Math(object):
 
     @staticmethod
     def ceiling(value):
-        return math.ceil(value)
+        return int(math.ceil(value))

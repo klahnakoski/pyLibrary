@@ -8,17 +8,16 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-import sys
+from __future__ import unicode_literals
 import __builtin__
+from dzAlerts.util.queries import group_by
 from .index import UniqueIndex, Index
 from .flat_list import FlatList
 from ..maths import Math
 from ..logs import Log
 from ..struct import nvl, listwrap, EmptyList
 from .. import struct
-from ..strings import indent, expand_template
-from ..struct import StructList, Struct, Null
-from ..multiset import Multiset
+from ..struct import Struct, Null
 
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)
@@ -52,36 +51,7 @@ def run(query):
     return _from
 
 
-def groupby(data, keys=None, size=None, min_size=None, max_size=None):
-#return list of (keys, values) pairs where
-#group by the set of set of keys
-#values IS LIST OF ALL data that has those keys
-    if size != None or min_size != None or max_size != None:
-        if size != None: max_size = size
-        return groupby_min_max_size(data, min_size=min_size, max_size=max_size)
-
-    try:
-        def keys2string(x):
-            #REACH INTO dict TO GET PROPERTY VALUE
-            return u"|".join([unicode(x[k]) for k in keys])
-
-        def get_keys(d):
-            return struct.wrap({k: d[k] for k in keys})
-
-        agg = {}
-        for d in data:
-            key = keys2string(d)
-            if key in agg:
-                pair = agg[key]
-            else:
-                pair = (get_keys(d), [])
-                agg[key] = pair
-            pair[1].append(d)
-
-        return agg.values()
-    except Exception, e:
-        Log.error("Problem grouping", e)
-
+groupby = group_by.groupby
 
 def index(data, keys=None):
 #return dict that uses keys to index data
@@ -148,50 +118,23 @@ def map2set(data, relation):
             Log.error("Expecting a dict with lists in codomain", e)
     return Null
 
-def map(relation, data):
-    """
-    return map(relation, data), TRYING TO RETURN SAME TYPE AS data
-    """
-    if data == None:
-        return Null
-    if isinstance(data, list):
-        # RETURN A LIST
-        if isinstance(relation, dict):
-            r = struct.wrap(relation)
-            return [r[d] for d in data]
-        else:
-            # relation IS A FUNCTION
-            output = []
-            for d in data:
-                try:
-                    output.append(relation(d))
-                except Exception, e:
-                    output.append(Null)
-            return output
-
-    return map2set(data, relation)
-
-
-
-
-
-
 def select(data, field_name):
 #return list with values from field_name
-    if isinstance(data, Cube): Log.error("Do not know how to deal with cubes yet")
+    if isinstance(data, Cube):
+        Log.error("Do not know how to deal with cubes yet")
 
     if isinstance(data, FlatList):
         if isinstance(field_name, basestring):
             # RETURN LIST OF VALUES
             if field_name.find(".") < 0:
-                if data.path[0]==field_name:
+                if data.path[0] == field_name:
                     return [d[1] for d in data.data]
                 else:
                     return [d[0][field_name] for d in data.data]
             else:
-                keys = struct.chain(field_name)
-                depth = nvl(Math.min([i for i, (k, p) in enumerate(zip(keys, data.path)) if k!=p]), len(data.path)) #LENGTH OF COMMON PREFIX
-                short_keys=keys[depth:]
+                keys = struct.split_field(field_name)
+                depth = nvl(Math.min([i for i, (k, p) in enumerate(zip(keys, data.path)) if k != p]), len(data.path)) #LENGTH OF COMMON PREFIX
+                short_keys = keys[depth:]
 
                 output = []
                 _select1((d[depth] for d in data.data), short_keys, 0, output)
@@ -199,57 +142,84 @@ def select(data, field_name):
 
         Log.error("multiselect over FlatList not supported")
 
+    if isinstance(field_name, dict) and "value" in field_name:
+        # SIMPLIFY {"value":value} AS STRING
+        field_name = field_name["value"]
 
     # SIMPLE PYTHON ITERABLE ASSUMED
     if isinstance(field_name, basestring):
         if field_name.find(".") < 0:
             return [d[field_name] for d in data]
         else:
-            keys = struct.chain(field_name)
+            keys = struct.split_field(field_name)
             output = []
             _select1(data, keys, 0, output)
             return output
 
-    keys = [struct.chain(f) for f in field_name]
-    return _select({}, data, keys, 0)
+    keys = [_select_a_field(f) for f in field_name]
+    return _select(Struct(), data, keys, 0)
+
+
+def _select_a_field(field):
+    if isinstance(field, basestring):
+        return struct.wrap({"name": field, "value": struct.split_field(field)})
+    else:
+        field = struct.wrap(field)
+        return struct.wrap({"name": field.name, "value": struct.split_field(field.value)})
+
 
 
 def _select(template, data, fields, depth):
     output = []
+    deep_path = None
+    deep_fields = []
     for d in data:
-        record = dict(template)
-        deep = {}
+        record = template.copy()
         for f in fields:
-            f0 = f[depth]
-            v = d[f0]
-            if isinstance(v, list):
-                deep[f0] = v
-            elif v != None:
-                r = record
-                for x in f[0:depth]:
-                    if x not in r:
-                        r[x] = {}
-                    r = r[x]
-                r[f[depth]] = v
-        if not deep:
+            index, children = go_deep(d, f, depth, record)
+            if index:
+                path = f.value[0:index]
+                deep_fields.append(f)
+                if deep_path and path != deep_path:
+                    Log.error("Dangerous to select into more than one branch at time")
+        if not children:
             output.append(record)
-        elif len(deep) > 1:
-            Log.error("Dangerous to select into more than one branch at time")
         else:
-            for f0, v in deep.items():
-                output.extend(_select(record, v, fields, depth + 1))
+            output.extend(_select(record, children, deep_fields, depth + 1))
 
     return output
 
 
-def _select1(data, field, depth, output):
-    for d in data:
-        v = d[field[depth]]
+def go_deep(v, field, depth, record):
+    """
+    field = {"name":name, "value":["attribute", "path"]}
+    r[field.name]=v[field.value], BUT WE MUST DEAL WITH POSSIBLE LIST IN field.value PATH
+    """
+    for i, f in enumerate(field.value[depth:-1:]):
+        v = v[f]
         if isinstance(v, list):
-            _select1(v, field, depth + 1, output)
-        else:
-            output.append(v)
+            return depth + i + 1, v
 
+    f = field.value.last()
+    record[field.name] = v[f]
+    return 0, None
+
+
+def _select1(data, field, depth, output):
+    """
+    SELECT A SINGLE FIELD
+    """
+    for d in data:
+        for i, f in enumerate(field[depth:]):
+            d = d.get(f, None)
+            if d is None:
+                output.append(None)
+                break
+            elif isinstance(d, list):
+                _select1(d, field, i + 1, output)
+                break
+        else:
+            output.append(d)
 
 def get_columns(data):
     output = {}
@@ -286,7 +256,8 @@ def stack(data, name=None, value_column=None, columns=None):
     """
 
     assert value_column != None
-    if isinstance(data, Cube): Log.error("Do not know how to deal with cubes yet")
+    if isinstance(data, Cube):
+        Log.error("Do not know how to deal with cubes yet")
 
     if columns == None:
         columns = data.get_columns()
@@ -374,7 +345,8 @@ def sort(data, fieldnames=None):
             for f in formal:
                 try:
                     result = f["sort"] * cmp(left[f["field"]], right[f["field"]])
-                    if result != 0: return result
+                    if result != 0:
+                        return result
                 except Exception, e:
                     Log.error("problem with compare", e)
             return 0
@@ -408,15 +380,6 @@ def filter(data, where):
     """
     return drill_filter(where, data)
 
-    #
-    # if isinstance(where, collections.Callable):
-    #     where = wrap_function(where)
-    # else:
-    #     # THIS COMPILES PYTHON TO MAKE A FUNCTION
-    #     where = CNV.esfilter2where(where)
-    #
-    # return [d for i, d in enumerate(data) if where(d, i, data)]
-
 
 def drill_filter(esfilter, data):
     """
@@ -431,7 +394,7 @@ def drill_filter(esfilter, data):
         """
         RETURN (first, rest) OF fieldname
         """
-        col = struct.chain(fieldname)
+        col = struct.split_field(fieldname)
         d = data[col[0]]
         if isinstance(d, list) and len(col) > 1:
             if len(primary_column) <= depth:
@@ -630,6 +593,10 @@ def drill_filter(esfilter, data):
     for o in output:
         recurse(o, len(o) - 1)
 
+    if not max:
+        #SIMPLE LIST AS RESULT
+        return struct.wrap([u[0] for u in uniform_output])
+
     return FlatList(primary_column[0:max], uniform_output)
 
 
@@ -689,8 +656,8 @@ def window(data, param):
 
         #PRELOAD total
         total = aggregate()
-        for i in range(head):
-            total += sequence[i].__temp__
+        for i in range(tail, head):
+            total.add(sequence[i].__temp__)
 
         #WINDOW FUNCTION APPLICATION
         for i, r in enumerate(sequence):
@@ -702,88 +669,10 @@ def window(data, param):
         r["__temp__"] = None  #CLEANUP
 
 
-def groupby_size(data, size):
-    if hasattr(data, "next"):
-        iterator = data
-    elif hasattr(data, "__iter__"):
-        iterator = data.__iter__()
-    else:
-        Log.error("do not know how to handle this type")
-
-    done = []
-
-    def more():
-        output = []
-        for i in range(size):
-            try:
-                output.append(iterator.next())
-            except StopIteration:
-                done.append(True)
-                break
-        return output
-
-    #THIS IS LAZY
-    i = 0
-    while True:
-        output = more()
-        yield (i, output)
-        if len(done) > 0: break
-        i += 1
-
-
-def groupby_Multiset(data, min_size, max_size):
-    # GROUP multiset BASED ON POPULATION OF EACH KEY, TRYING TO STAY IN min/max LIMITS
-    if min_size == None: min_size = 0
-
-    total = 0
-    i = 0
-    g = list()
-    for k, c in data.items():
-        if total < min_size or total + c < max_size:
-            total += c
-            g.append(k)
-        elif total < max_size:
-            yield (i, g)
-            i += 1
-            total = c
-            g = [k]
-
-        if total >= max_size:
-            Log.error("({{min}}, {{max}}) range is too strict given step of {{increment}}", {
-                "min": min_size, "max": max_size, "increment": c
-            })
-
-    if g:
-        yield (i, g)
-
-
-def groupby_min_max_size(data, min_size=0, max_size=None, ):
-    if max_size == None:
-        max_size = sys.maxint
-
-    if hasattr(data, "__iter__"):
-        def _iter():
-            g = 0
-            out = []
-            for i, d in enumerate(data):
-                out.append(d)
-                if (i + 1) % max_size == 0:
-                    yield g, out
-                    g += 1
-                    out = []
-            if out:
-                yield g, out
-
-        return _iter()
-    elif not isinstance(data, Multiset):
-        return groupby_size(data, max_size)
-    else:
-        return groupby_Multiset(data, min_size, max_size)
-
-
 class Cube():
     def __init__(self, data=None, edges=None, name=None):
-        if isinstance(data, Cube): Log.error("do not know how to handle cubes yet")
+        if isinstance(data, Cube):
+            Log.error("do not know how to handle cubes yet")
 
         columns = get_columns(data)
 
@@ -819,11 +708,10 @@ class Domain():
         pass
 
 
-
-def range(_min, _max=None, size=1):
+def intervals(_min, _max=None, size=1):
     """
     RETURN (min, max) PAIRS OF GIVEN SIZE, WHICH COVER THE _min, _max RANGE
-    THE LAST PAIR BE SMALLER
+    THE LAST PAIR MAY BE SMALLER
     """
     if _max == None:
         _max = _min

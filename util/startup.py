@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from __future__ import unicode_literals
 import argparse
 import os
 import tempfile
@@ -39,7 +40,7 @@ def _argparse(defs):
         args = d.copy()
         name = args.name
         args.name = None
-        parser.add_argument(*listwrap(name).list, **args.dict)
+        parser.add_argument(*listwrap(name).list, **struct.unwrap(args))
     namespace = parser.parse_args()
     output = {k: getattr(namespace, k) for k in vars(namespace)}
     return struct.wrap(output)
@@ -96,7 +97,8 @@ class SingleInstance:
     """
     def __init__(self, flavor_id=""):
         self.initialized = False
-        basename = os.path.splitext(os.path.abspath(sys.argv[0]))[0].replace("/", "-").replace(":", "").replace("\\", "-") + '-%s' % flavor_id + '.lock'
+        appname = os.path.splitext(os.path.abspath(sys.argv[0]))[0]
+        basename = ((appname + '-%s') % flavor_id).replace("/", "-").replace(":", "").replace("\\", "-") + '.lock'
         self.lockfile = os.path.normpath(tempfile.gettempdir() + '/' + basename)
 
 

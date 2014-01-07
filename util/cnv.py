@@ -7,7 +7,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-
+from __future__ import unicode_literals
 import StringIO
 import datetime
 import re
@@ -76,13 +76,17 @@ class CNV:
     @staticmethod
     def datetime2milli(d):
         try:
-            epoch = datetime.datetime(1970, 1, 1)
+            if isinstance(d, datetime.datetime):
+                epoch = datetime.datetime(1970, 1, 1)
+            elif isinstance(d, datetime.date):
+                epoch = datetime.date(1970, 1, 1)
+            else:
+                Log.error("Can not convert {{value}} of type {{type}}", {"value": d, "type":d.__class__})
+
             diff = d - epoch
-            return (diff.days * 86400000) + \
-                   (diff.seconds * 1000) + \
-                   (diff.microseconds / 1000)  # 86400000=24*3600*1000
+            return (diff.total_seconds() * 1000) + (diff.microseconds / 1000)
         except Exception, e:
-            Log.error("Can not convert {{value}}", {"value": d})
+            Log.error("Can not convert {{value}}", {"value": d}, e)
 
     @staticmethod
     def unix2datetime(u):
