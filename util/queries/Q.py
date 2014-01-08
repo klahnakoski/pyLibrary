@@ -10,7 +10,7 @@
 
 from __future__ import unicode_literals
 import __builtin__
-from dzAlerts.util.queries import group_by
+from . import group_by
 from .index import UniqueIndex, Index
 from .flat_list import FlatList
 from ..maths import Math

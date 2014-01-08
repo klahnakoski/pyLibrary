@@ -58,7 +58,7 @@ class Struct(dict):
 
     def __getitem__(self, key):
         if isinstance(key, str):
-            key = key.decode("utf-8")
+            key = key.decode("utf8")
 
         d = _get(self, "__dict__")
 
@@ -77,7 +77,7 @@ class Struct(dict):
 
             Log.error("key is empty string.  Probably a bad idea")
         if isinstance(key, str):
-            key = key.decode("utf-8")
+            key = key.decode("utf8")
 
         try:
             d = _get(self, "__dict__")
@@ -103,7 +103,7 @@ class Struct(dict):
 
     def __getattribute__(self, key):
         if isinstance(key, str):
-            key = key.decode("utf-8")
+            key = key.decode("utf8")
 
         try:
             output = _get(self, key)
@@ -116,7 +116,7 @@ class Struct(dict):
 
     def __setattr__(self, key, value):
         if isinstance(key, str):
-            key = key.decode("utf-8")
+            key = key.decode("utf8")
 
         value = unwrap(value)
         if value is None:
@@ -157,7 +157,7 @@ class Struct(dict):
 
     def __delitem__(self, key):
         if isinstance(key, str):
-            key = key.decode("utf-8")
+            key = key.decode("utf8")
 
         if key.find(".") == -1:
             d = _get(self, "__dict__")
@@ -173,7 +173,7 @@ class Struct(dict):
 
     def __delattr__(self, key):
         if isinstance(key, str):
-            key = key.decode("utf-8")
+            key = key.decode("utf8")
 
         d = _get(self, "__dict__")
         d.pop(key, None)

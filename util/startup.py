@@ -103,7 +103,7 @@ class SingleInstance:
 
 
     def __enter__(self):
-        Log.note("SingleInstance lockfile: " + self.lockfile)
+        Log.note("SingleInstance.lockfile = " + self.lockfile)
         if sys.platform == 'win32':
             try:
                 # file already exists, we try to remove (in case previous execution was interrupted)
@@ -111,7 +111,11 @@ class SingleInstance:
                     os.unlink(self.lockfile)
                 self.fd = os.open(self.lockfile, os.O_CREAT | os.O_EXCL | os.O_RDWR)
             except Exception, e:
-                Log.warning("Another instance is already running, quitting.", e)
+                Log.note("\n"+
+                    "**********************************************************************\n"+
+                    "** Another instance is already running, quitting.\n"+
+                    "**********************************************************************\n"
+                )
                 sys.exit(-1)
         else: # non Windows
             import fcntl
@@ -119,7 +123,11 @@ class SingleInstance:
             try:
                 fcntl.lockf(self.fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except IOError:
-                Log.warning("Another instance is already running, quitting.")
+                Log.note("\n"+
+                    "**********************************************************************\n"+
+                    "** Another instance is already running, quitting.\n"+
+                    "**********************************************************************\n"
+                )
                 sys.exit(-1)
         self.initialized = True
 

@@ -65,7 +65,7 @@ class ElasticSearch(object):
 
         ElasticSearch.post(
             settings.host + ":" + unicode(settings.port) + "/" + settings.index,
-            data=CNV.object2JSON(schema),
+            data=CNV.object2JSON(schema).encode("utf8"),
             headers={"Content-Type": "application/json"}
         )
         time.sleep(2)
@@ -194,13 +194,14 @@ class ElasticSearch(object):
             if id == None:
                 id = sha.new(json).hexdigest()
 
-            lines.append(u'{"index":{"_id":' + CNV.object2JSON(id) + '}}')
+            lines.append('{"index":{"_id":' + CNV.object2JSON(id) + '}}')
             lines.append(json)
 
-        if not lines: return
+        if not lines:
+            return
         response = ElasticSearch.post(
             self.path + "/_bulk",
-            data="\n".join(lines).encode("utf8") + "\n",
+            data=("\n".join(lines) + "\n").encode("utf8"),
             headers={"Content-Type": "text"}
         )
         items = response["items"]
@@ -244,7 +245,7 @@ class ElasticSearch(object):
         try:
             if DEBUG:
                 Log.note("Query:\n{{query|indent}}", {"query": query})
-            return ElasticSearch.post(self.path + "/_search", data=CNV.object2JSON(query))
+            return ElasticSearch.post(self.path + "/_search", data=CNV.object2JSON(query).encode("utf8"))
         except Exception, e:
             Log.error("Problem with search (path={{path}}):\n{{query|indent}}", {
                 "path": self.path + "/_search",
@@ -256,6 +257,9 @@ class ElasticSearch(object):
 
     @staticmethod
     def post(*args, **kwargs):
+        if "data" in kwargs and isinstance(kwargs["data"], unicode):
+            Log.error("data can not be unicode")
+
         try:
             response = requests.post(*args, **kwargs)
             if DEBUG:

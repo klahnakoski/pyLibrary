@@ -97,7 +97,9 @@ class Math(object):
 
 
     @staticmethod
-    def min(values):
+    def min(*values):
+        if isinstance(values, tuple) and len(values) == 1 and isinstance(values[0], (list, set, tuple)):
+            values = values[0]
         output = Null
         for v in values:
             if v == None:
@@ -113,6 +115,8 @@ class Math(object):
 
     @staticmethod
     def max(*values):
+        if isinstance(values, tuple) and len(values) == 1 and isinstance(values[0], (list, set, tuple)):
+            values = values[0]
         output = Null
         for v in values:
             if v == None:

@@ -194,7 +194,7 @@ class Z_moment(object):
     @property
     def dict(self):
     #RETURN HASH OF SUMS
-        return {"s" + unicode(i): m for i, m in enumerate(self.S)}
+        return {u"s" + unicode(i): m for i, m in enumerate(self.S)}
 
 
     @staticmethod
@@ -222,7 +222,7 @@ def sub(a, b):
 
 def z_moment2dict(z):
     #RETURN HASH OF SUMS
-    return {"s" + unicode(i): m for i, m in enumerate(z.S)}
+    return {u"s" + unicode(i): m for i, m in enumerate(z.S)}
 
 
 setattr(CNV, "z_moment2dict", staticmethod(z_moment2dict))

@@ -305,7 +305,7 @@ class DB(object):
             bufsize=-1
         )
         if isinstance(sql, unicode):
-            sql = sql.encode("utf-8")
+            sql = sql.encode("utf8")
         (output, _) = proc.communicate(sql)
 
         if proc.returncode:

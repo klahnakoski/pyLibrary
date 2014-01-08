@@ -55,25 +55,32 @@ class File(object):
         return output
 
 
-    def read(self, encoding="utf-8"):
+    def read(self, encoding="utf8"):
         with codecs.open(self._filename, "r", encoding=encoding) as f:
             return f.read()
 
     def read_ascii(self):
-        if not self.parent.exists: self.parent.create()
+        if not self.parent.exists:
+            self.parent.create()
         with open(self._filename, "r") as f:
             return f.read()
 
     def write_ascii(self, content):
-        if not self.parent.exists: self.parent.create()
+        if not self.parent.exists:
+            self.parent.create()
         with open(self._filename, "w") as f:
             f.write(content)
 
     def write(self, data):
-        if not self.parent.exists: self.parent.create()
+        if not self.parent.exists:
+            self.parent.create()
         with open(self._filename, "wb") as f:
             for d in listwrap(data):
-                f.write(d)
+                if not isinstance(d, unicode):
+                    from .logs import Log
+
+                    Log.error("Expecting unicode data only")
+                f.write(d.encode("utf8"))
 
     def __iter__(self):
         #NOT SURE HOW TO MAXIMIZE FILE READ SPEED
@@ -82,7 +89,7 @@ class File(object):
         def output():
             with io.open(self._filename, "rb") as f:
                 for line in f:
-                    yield line.decode("utf-8")
+                    yield line.decode("utf8")
 
         return output()
 
@@ -138,7 +145,8 @@ class File(object):
 
     @property
     def exists(self):
-        if self._filename in ["", "."]: return True
+        if self._filename in ["", "."]:
+            return True
         try:
             return os.path.exists(self._filename)
         except Exception, e:

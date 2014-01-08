@@ -17,7 +17,6 @@ from .jsons import json_decoder, json_encoder
 from .logs import Log
 import struct
 from .strings import expand_template
-from .struct import StructList
 
 
 class CNV:
@@ -84,7 +83,7 @@ class CNV:
                 Log.error("Can not convert {{value}} of type {{type}}", {"value": d, "type":d.__class__})
 
             diff = d - epoch
-            return (diff.total_seconds() * 1000) + (diff.microseconds / 1000)
+            return long(diff.total_seconds()) * 1000L + long(diff.microseconds / 1000)
         except Exception, e:
             Log.error("Can not convert {{value}}", {"value": d}, e)
 
