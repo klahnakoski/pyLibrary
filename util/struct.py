@@ -343,15 +343,15 @@ class StructList(list):
             if index.step is not None:
                 from .logs import Log
                 Log.error("slice step must be None, do not know how to deal with values")
-            l = len(_get(self, "list"))
-            i = min(max(index.start, 0), l)
+            length = len(_get(self, "list"))
+
+            i = index.start
+            i = min(max(i, 0), length)
             j = index.stop
             if j is None:
-                j = l
-            elif j < 0 and j < i:
-                j += l   # WE ALLOW THIS BECAUSE j>i
+                j = length
             else:
-                j = max(min(j, l), 0)
+                j = max(min(j, length), 0)
             return StructList(_get(self, "list")[i:j])
 
         if index < 0 or len(_get(self, "list")) <= index:
