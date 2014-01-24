@@ -16,8 +16,6 @@ from .. import struct
 from ..multiset import Multiset
 
 
-
-
 def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous=False):
     """
         return list of (keys, values) pairs where
@@ -74,6 +72,7 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
         return agg.values()
     except Exception, e:
         Log.error("Problem grouping", e)
+
 
 def groupby_size(data, size):
     if hasattr(data, "next"):
@@ -136,7 +135,16 @@ def groupby_min_max_size(data, min_size=0, max_size=None, ):
     if max_size == None:
         max_size = sys.maxint
 
-    if hasattr(data, "__iter__"):
+    if isinstance(data, (bytearray, basestring, list)):
+        def _iter():
+            num = (len(data) - 1) / max_size + 1
+            for i in range(0, num):
+                output = (i, data[i * max_size:i * max_size + max_size:])
+                yield output
+
+        return _iter()
+
+    elif hasattr(data, "__iter__"):
         def _iter():
             g = 0
             out = []

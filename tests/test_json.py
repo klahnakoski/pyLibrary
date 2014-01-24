@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+# from __future__ import unicode_literals
 import datetime
 import unittest
 from util.cnv import CNV
@@ -28,9 +29,9 @@ class TestJSON(unittest.TestCase):
             Log.error("expecting unicode json")
 
     def test_unicode2(self):
-        output = CNV.object2JSON({"comment": "testing accented char ŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"})
+        output = CNV.object2JSON({"comment": b"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"})
 
-        assert output == u'{"comment": "testing accented char ŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"}'
+        assert output == u'{"comment": "testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"}'
         if not isinstance(output, unicode):
             Log.error("expecting unicode json")
 

@@ -211,8 +211,8 @@ def _select1(data, field, depth, output):
     """
     for d in data:
         for i, f in enumerate(field[depth:]):
-            d = d.get(f, None)
-            if d is None:
+            d = d[f]
+            if d == None:
                 output.append(None)
                 break
             elif isinstance(d, list):

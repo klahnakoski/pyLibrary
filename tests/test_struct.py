@@ -147,10 +147,10 @@ class TestStruct(unittest.TestCase):
 
         def diff(record, index, records):
             """
-            WINDOW FUNCTIONS TAKE THE CURRENT RECORD, THE index THAT RECORD HAS
+            WINDOW FUNCTIONS TAKE THE CURRENT record, THE index THAT RECORD HAS
             IN THE WINDOW, AND THE (SORTED) LIST OF ALL records
             """
-            # COMPARE CURRENT VALUE TO MAX OF PAST 4, BUT NOT THE VERY LAST ONE
+            # COMPARE CURRENT VALUE TO MAX OF PAST 5, BUT NOT THE VERY LAST ONE
             try:
                 return record - Math.max(records[index - 6:index - 1:])
             except Exception, e:
@@ -159,7 +159,7 @@ class TestStruct(unittest.TestCase):
 
         data1_list = [1, 2, 3, 4, 5, 6, 7, 8, 9]
         result1 = [diff(r, i, data1_list) for i, r in enumerate(data1_list)]
-        assert result1 == [-7, None, None, None, None, None, 2, 2, 2]
+        assert result1 == [-7, None, None, None, None, None, 2, 2, 2]  # WHAT IS EXPECTED, BUT NOT WHAT WE WANT
 
         data2_list = struct.wrap(data1_list)
         result2 = [diff(r, i, data2_list) for i, r in enumerate(data2_list)]

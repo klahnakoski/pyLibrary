@@ -58,7 +58,7 @@ class CNV:
 
 
     @staticmethod
-    def datetime2string(value, format):
+    def datetime2string(value, format="%Y-%m-%d %H:%M:%S"):
         try:
             return value.strftime(format)
         except Exception, e:
@@ -176,10 +176,18 @@ class CNV:
     def latin12hex(value):
         return value.encode("hex")
 
-
     @staticmethod
     def int2hex(value, size):
         return (("0" * size) + hex(value)[2:])[-size:]
+
+    @staticmethod
+    def hex2bytearray(value):
+        return bytearray(value.decode("hex"))
+
+    @staticmethod
+    def bytearray2hex(value):
+        return value.decode("latin1").encode("hex")
+
 
     @staticmethod
     def value2intlist(value):
