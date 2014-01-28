@@ -178,7 +178,7 @@ def _select(template, data, fields, depth):
         for f in fields:
             index, children = go_deep(d, f, depth, record)
             if index:
-                path = f.value[0:index]
+                path = f.value[0:index:]
                 deep_fields.append(f)
                 if deep_path and path != deep_path:
                     Log.error("Dangerous to select into more than one branch at time")
@@ -195,7 +195,7 @@ def go_deep(v, field, depth, record):
     field = {"name":name, "value":["attribute", "path"]}
     r[field.name]=v[field.value], BUT WE MUST DEAL WITH POSSIBLE LIST IN field.value PATH
     """
-    for i, f in enumerate(field.value[depth:-1:]):
+    for i, f in enumerate(field.value[depth:len(field.value)-1:]):
         v = v[f]
         if isinstance(v, list):
             return depth + i + 1, v

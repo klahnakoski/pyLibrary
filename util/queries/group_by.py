@@ -23,6 +23,12 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
             values IS LIST OF ALL data that has those keys
         contiguous - MAINTAIN THE ORDER OF THE DATA, STARTING THE NEW GROUP WHEN THE SELECTOR CHANGES
     """
+
+    if size != None or min_size != None or max_size != None:
+        if size != None:
+            max_size = size
+        return groupby_min_max_size(data, min_size=min_size, max_size=max_size)
+
     keys = listwrap(keys)
 
     def keys2string(x):
@@ -52,11 +58,6 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
             return struct.wrap(agg)
         except Exception, e:
             Log.error("Problem grouping contiguous values", e)
-
-    if size != None or min_size != None or max_size != None:
-        if size != None:
-            max_size = size
-        return groupby_min_max_size(data, min_size=min_size, max_size=max_size)
 
     try:
         agg = {}

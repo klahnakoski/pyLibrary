@@ -245,6 +245,30 @@ class _Null(object):
     def __nonzero__(self):
         return False
 
+    def __add__(self, other):
+        return Null
+
+    def __radd__(self, other):
+        return Null
+
+    def __sub__(self, other):
+        return Null
+
+    def __rsub__(self, other):
+        return Null
+
+    def __mul__(self, other):
+        return Null
+
+    def __rmul__(self, other):
+        return Null
+
+    def __div__(self, other):
+        return Null
+
+    def __rdiv__(self, other):
+        return Null
+
     def __gt__(self, other):
         return False
 
@@ -314,7 +338,7 @@ class _Null(object):
         return set()
 
     def pop(self, key, default=None):
-        return None
+        return Null
 
     def __str__(self):
         return "None"
