@@ -12,17 +12,18 @@ from datetime import datetime
 import re
 import sha
 import time
+import struct
 
 import requests
-from .threads import ThreadedQueue
 
-import struct
-from .maths import Math
-from .queries import Q
-from .cnv import CNV
-from .logs import Log
-from .struct import nvl, Null
-from .struct import Struct, StructList
+from ..thread.threads import ThreadedQueue
+from ..math.maths import Math
+from ..queries import Q
+from ..cnv import CNV
+from ..env.logs import Log
+from ..struct import nvl, Null
+from ..struct import Struct, StructList
+
 
 DEBUG = False
 
@@ -161,7 +162,7 @@ class ElasticSearch(object):
 
     def is_proto(self, index):
         """
-        RETURN True IF THIS INDEX HAS NOT BEEN ASSIGNED IT'S ALIAS
+        RETURN True IF THIS INDEX HAS NOT BEEN ASSIGNED ITS ALIAS
         """
         for a in self.get_aliases():
             if a.index == index and a.alias:
@@ -281,7 +282,7 @@ class ElasticSearch(object):
             response = requests.get(*list, **args)
             if DEBUG:
                 Log.note(response.content[:130])
-            details = CNV.JSON2object(response.content)
+            details = struct.wrap(CNV.JSON2object(response.content))
             if details.error:
                 Log.error(details.error)
             return details

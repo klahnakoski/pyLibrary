@@ -11,7 +11,7 @@
 import datetime
 import unittest
 from util.cnv import CNV
-from util.logs import Log
+from util.env.logs import Log
 
 
 class TestCNV(unittest.TestCase):

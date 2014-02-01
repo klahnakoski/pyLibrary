@@ -9,10 +9,10 @@
 #
 from __future__ import unicode_literals
 import math
-from .struct import Null, nvl
-from .logs import Log
-from .strings import find_first
-from .multiset import Multiset
+from ..struct import Null, nvl
+from ..env.logs import Log
+from ..strings import find_first
+from ..collections.multiset import Multiset
 
 
 class Math(object):
@@ -40,7 +40,7 @@ class Math(object):
             return Null
         return abs(v)
 
-    # FOR GOODNESS SAKE - IF YOU PROVIDE A METHOD abs(), PLEASE PROVIDE IT'S COMPLEMENT
+    # FOR GOODNESS SAKE - IF YOU PROVIDE A METHOD abs(), PLEASE PROVIDE ITS COMPLEMENT
     # x = abs(x)*sign(x)
     # FOUND IN numpy, BUT WE USUALLY DO NOT NEED TO BRING IN A BIG LIB FOR A SIMPLE DECISION
     @staticmethod
@@ -139,3 +139,17 @@ class Math(object):
     @staticmethod
     def ceiling(value):
         return int(math.ceil(value))
+
+    @staticmethod
+    def product(*values):
+        if isinstance(values, tuple) and len(values) == 1 and isinstance(values[0], (list, set, tuple, Multiset)):
+            values = values[0]
+        output = 1
+        for v in values:
+            if v == None:
+                continue
+            if isinstance(v, float) and math.isnan(v):
+                continue
+            output = output * v
+        return output
+

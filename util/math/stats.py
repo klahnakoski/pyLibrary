@@ -10,9 +10,9 @@
 
 from __future__ import unicode_literals
 from math import sqrt
-from .cnv import CNV
-from .struct import nvl, Struct, Null
-from .logs import Log
+from ..cnv import CNV
+from ..struct import nvl, Struct, Null
+from ..env.logs import Log
 
 
 DEBUG = True
@@ -233,7 +233,7 @@ def median(values, simple=True):
     RETURN MEDIAN VALUE
 
     IF simple=False THEN IN THE EVENT MULTIPLE INSTANCES OF THE
-    MEDIAN VALUE, THE MEDIAN IS INTERPOLATED BASED ON IT'S POSITION
+    MEDIAN VALUE, THE MEDIAN IS INTERPOLATED BASED ON ITS POSITION
     IN THE MEDIAN RANGE
     """
     try:

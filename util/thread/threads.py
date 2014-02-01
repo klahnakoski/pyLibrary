@@ -15,7 +15,7 @@ import threading
 import thread
 import time
 import sys
-from .struct import nvl
+from ..struct import nvl, Struct
 
 
 DEBUG = True
@@ -62,6 +62,7 @@ class Queue(object):
         self.keep_running = True
         self.lock = Lock("lock for queue")
         self.queue = []
+
 
     def __iter__(self):
         while self.keep_running:
@@ -223,10 +224,10 @@ class Thread(object):
             if self.target is not None:
                 response = self.target(*self.args, **self.kwargs)
                 with self.synch_lock:
-                    self.response = {"response": response}
+                    self.response = Struct(response=response)
         except Exception, e:
             with self.synch_lock:
-                self.response = {"exception": e}
+                self.response = Struct(exception=e)
             try:
                 from .logs import Log
 
@@ -243,7 +244,7 @@ class Thread(object):
 
     def join(self, timeout=None, till=None):
         """
-        RETURN THE RESULT OF THE THREAD EXECUTION (INCLUDING EXCEPTION)
+        RETURN THE RESULT {"response":r, "exception":e} OF THE THREAD EXECUTION (INCLUDING EXCEPTION, IF EXISTS)
         """
         if not till and timeout:
             till = datetime.utcnow() + timedelta(seconds=timeout)
@@ -265,7 +266,7 @@ class Thread(object):
             if self.stopped:
                 return self.response
             else:
-                from logs import Except
+                from ..env.logs import Except
 
                 raise Except(type=Thread.TIMEOUT)
 
@@ -273,7 +274,7 @@ class Thread(object):
     def run(name, target, *args, **kwargs):
         #ENSURE target HAS please_stop ARGUMENT
         if "please_stop" not in target.__code__.co_varnames:
-            from logs import Log
+            from ..env.logs import Log
 
             Log.error("function must have please_stop argument for signalling emergency shutdown")
 
@@ -371,16 +372,16 @@ class ThreadedQueue(Queue):
                 try:
                     queue.extend(g)
                     if please_stop:
-                        from logs import Log
+                        from ..env.logs import Log
 
                         Log.warning("ThreadedQueue stopped early, with {{num}} items left in queue", {
                             "num": len(self)
                         })
                         return
                 except Exception, e:
-                    from logs import Log
+                    from ..env.logs import Log
 
-                    Log.warning("Can not push {{num}} records to given queue.", {"num": len(g)}, e)
+                    Log.error("Problem with pushing {{num}} items to data sink", {"num": len(g)})
 
         self.thread = Thread.run("threaded queue", size_pusher)
 

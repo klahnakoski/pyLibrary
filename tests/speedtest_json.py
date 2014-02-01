@@ -14,7 +14,7 @@ import time
 import json
 from util import struct, jsons
 from util.jsons import cPythonJSONEncoder, json_encoder, json_scrub
-from util.logs import Log
+from util.env.logs import Log
 from util.struct import Null
 
 

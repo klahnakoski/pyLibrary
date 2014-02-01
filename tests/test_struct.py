@@ -1,8 +1,8 @@
 import unittest
 from util import struct
 from util.cnv import CNV
-from util.logs import Log
-from util.maths import Math
+from util.env.logs import Log
+from util.math.maths import Math
 from util.struct import Null, Struct
 
 

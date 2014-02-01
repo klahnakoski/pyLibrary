@@ -62,7 +62,7 @@ class _Multiset(Multiset):
 
     def remove(self, value):
         if value not in self.dic:
-            from .logs import Log
+            from ..env.logs import Log
 
             Log.error("{{value}} is not in multiset", {"value": value})
         self._remove(value)

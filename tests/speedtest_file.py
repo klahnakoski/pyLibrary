@@ -1,6 +1,6 @@
 import codecs
 import io
-from util.logs import Log
+from util.env.logs import Log
 from util.timer import Timer
 
 

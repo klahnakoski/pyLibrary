@@ -1,9 +1,7 @@
 import sys
 import unittest
-from util.debug import D
-from util.logs import Log
-from util.threads import Lock
-from util.multithread import Multithread
+from util.env.logs import Log
+from util.thread.multithread import Multithread
 import util
 
 
