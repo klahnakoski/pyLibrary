@@ -9,7 +9,7 @@
 #
 from __future__ import unicode_literals
 
-from dzAlerts.util import struct
+from .. import struct
 from ..cnv import CNV
 from ..collections.matrix import Matrix
 from ..sql.db import int_list_packer, SQL
@@ -245,7 +245,7 @@ class DBQuery(object):
     def _where2sql(self, where):
         if where == None:
             return ""
-        return SQL("WHERE "+esfilter2sqlwhere(self.db, where))
+        return SQL("WHERE "+_esfilter2sqlwhere(self.db, where))
 
 
 def _isolate(separator, list):
@@ -256,6 +256,9 @@ def _isolate(separator, list):
 
 
 def esfilter2sqlwhere(db, esfilter):
+    return SQL(_esfilter2sqlwhere(db, esfilter))
+
+def _esfilter2sqlwhere(db, esfilter):
     """
     CONVERT ElassticSearch FILTER TO SQL FILTER
     db - REQUIRED TO PROPERLY QUOTE VALUES AND COLUMN NAMES

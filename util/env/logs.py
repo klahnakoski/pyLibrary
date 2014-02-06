@@ -14,8 +14,8 @@ from datetime import datetime, timedelta
 import traceback
 import logging
 import sys
-import struct
 
+from .. import struct
 from ..thread import threads
 from ..struct import listwrap, nvl
 from ..strings import indent, expand_template
@@ -119,10 +119,10 @@ class Log(object):
 
     @staticmethod
     def fatal(
-            template, #human readable template
-            params=None, #parameters for template
-            cause=None, #pausible cause
-            offset=0    #stack trace offset (==1 if you do not want to report self)
+        template, #human readable template
+        params=None, #parameters for template
+        cause=None, #pausible cause
+        offset=0    #stack trace offset (==1 if you do not want to report self)
     ):
         """
         SEND TO STDERR
@@ -279,8 +279,16 @@ def make_log_from_settings(settings):
     path = settings["class"].split(".")
     class_name = path[-1]
     path = ".".join(path[:-1])
-    temp = __import__(path, globals(), locals(), [class_name], -1)
-    constructor = object.__getattribute__(temp, class_name)
+    constructor = None
+    try:
+        temp = __import__(path, globals(), locals(), [class_name], -1)
+        constructor = object.__getattribute__(temp, class_name)
+    except Exception, e:
+        if settings.stream and not constructor:
+            #PROVIDE A DEFAULT STREAM HANLDER
+            constructor = Log_usingStream
+        else:
+            Log.error("Can not find class {{class}}", {"class": path}, e)
 
     #IF WE NEED A FILE, MAKE SURE DIRECTORY EXISTS
     if settings.filename:

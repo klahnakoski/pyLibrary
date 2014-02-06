@@ -15,8 +15,8 @@ from ..collections.matrix import Matrix
 from ..queries.cube import Cube
 from .index import UniqueIndex, Index
 from .flat_list import FlatList
-from ....math.maths import Math
-from ....env.logs import Log
+from ..math.maths import Math
+from ..env.logs import Log
 from ..struct import nvl, listwrap, EmptyList
 from .. import struct
 from ..struct import Struct, Null

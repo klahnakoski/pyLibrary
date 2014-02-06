@@ -105,7 +105,7 @@ def z_moment2stats(z_moment, unbiased=True):
                 "from": Z,
                 "stats": stats,
                 "expected": v.S
-            })
+            }, e)
         globals()["DEBUG"] = True
 
     return stats

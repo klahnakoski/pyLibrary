@@ -447,8 +447,8 @@ class DB(object):
             command = \
                 "INSERT INTO " + self.quote_column(table_name) + "(" + \
                 ",".join([self.quote_column(k) for k in keys]) + \
-                ") VALUES " + ",".join([
-                    "(" + ",".join([self.quote_value(r[k]) for k in keys]) + ")\n"
+                ") VALUES " + ",\n".join([
+                    "(" + ",".join([self.quote_value(r[k]) for k in keys]) + ")"
                     for r in records
                 ])
             self.execute(command)
@@ -567,6 +567,10 @@ class SQL(unicode):
         unicode.__init__(self)
         self.template = template
         self.param = param
+
+    @property
+    def sql(self):
+        return expand_template(self.template, self.param)
 
     def __str__(self):
         Log.error("do not do this")

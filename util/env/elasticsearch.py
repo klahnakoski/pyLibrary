@@ -12,7 +12,7 @@ from datetime import datetime
 import re
 import sha
 import time
-import struct
+from .. import struct
 
 import requests
 

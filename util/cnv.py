@@ -16,7 +16,7 @@ import time
 from .collections.multiset import Multiset
 from .jsons import json_decoder, json_encoder
 from .env.logs import Log
-import struct
+from . import struct
 from .strings import expand_template
 
 

@@ -84,57 +84,63 @@ class Cube(Struct):
 
         if not new_dim:
             output = [[None, None] for i in range(acc)]
-            _stack(self.edges, self.data.cube, offsets, 0, output, Struct(), simple)
+            _stack(self.data.cube, 0, self.edges, offsets, 0, output, Struct(), simple)
         else:
             output = [[None, Matrix(new_dim)] for i in range(acc)]
-            _groupby(self.edges, self.data.cube, offsets, 0, output, Struct(), [], simple)
+            _groupby(self.data.cube, 0, self.edges, offsets, 0, output, Struct(), [], simple)
 
         return output
 
-def _groupby(edges, cube, index, offset, output, group, new_coord, simple):
+
+def _groupby(cube, depth, edges, intervals, offset, output, group, new_coord, simple):
     if not edges:
         output[offset][0] = group
         output[offset][1][new_coord] = cube
 
-    if index[0]:
+    edge = edges[depth]
+    interval = intervals[depth]
+    parts = edge.domain.partitions
+
+    if interval:
         for i, c in enumerate(cube):
             g = group.copy()
             if simple:
-                g[edges[0].name] = edges[0].domain.partitions[0].value
+                g[edge.name] = parts[i].value
             else:
-                g[edges[0].name] = edges[0].domain.partitions[0]
-            _groupby(edges[1::], c, index[1::], offset+i*index[0], output, g, new_coord, simple)
+                g[edge.name] = parts[i]
+            _groupby(c, depth + 1, edges, intervals, offset + i * interval, output, g, new_coord, simple)
     else:
         for i, c in enumerate(cube):
-            _groupby(edges[1::], c, index[1::], offset, output, group, new_coord+[i], simple)
+            _groupby(c, depth + 1, edges, intervals, offset, output, group, new_coord + [i], simple)
 
 
-def _stack(edges, cube, index, offset, output, group, simple):
+def _stack(cube, depth, edges, intervals, offset, output, group, simple):
     """
     WHEN groupby ALL EDGES IN A CUBE, AND ZERO DIMENSIONS REMAIN
     """
-    if not edges:
+    if depth == len(edges):
         output[offset][0] = group
         output[offset][1] = cube
         return
 
+    edge = edges[depth]
+    interval = intervals[depth]
+    parts = edge.domain.partitions
+
     if len(cube) == 1:
         if simple:
-            group[edges[0].name] = edges[0].domain.partitions[0].value
+            group[edge.name] = parts[0].value
         else:
-            group[edges[0].name] = edges[0].domain.partitions[0]
-        _stack(edges[1::], cube[0], index[1::], offset, output, group, simple)
+            group[edge.name] = parts[0]
+        _stack(cube[0], depth + 1, edges, intervals, offset, output, group, simple)
     else:
         for i, c in enumerate(cube):
             g = group.copy()
             if simple:
-                g[edges[0].name] = edges[0].domain.partitions[0].value
+                g[edge.name] = parts[i].value
             else:
-                g[edges[0].name] = edges[0].domain.partitions[0]
-            _stack(edges[1::], c, index[1::], offset+i*index[0], output, g, simple)
-
-
-
+                g[edge.name] = parts[i]
+            _stack(c, depth + 1, edges, intervals, offset + i * interval, output, g, simple)
 
 
 class Domain():
