@@ -1,8 +1,8 @@
 import unittest
 from util import struct
 from util.cnv import CNV
+from util.collections import MAX
 from util.env.logs import Log
-from util.math.maths import Math
 from util.struct import Null, Struct
 
 
@@ -98,7 +98,7 @@ class TestStruct(unittest.TestCase):
     def test_assign1(self):
         a = {}
 
-        b = struct.wrap(a)
+        b = wrap(a)
         b.c = "test1"
         b.d.e = "test2"
         b.f.g.h = "test3"
@@ -127,7 +127,7 @@ class TestStruct(unittest.TestCase):
     def test_assign2(self):
         a = {}
 
-        b = struct.wrap(a)
+        b = wrap(a)
         b_c = b.c
         b.c.d = "test1"
 
@@ -152,7 +152,7 @@ class TestStruct(unittest.TestCase):
             """
             # COMPARE CURRENT VALUE TO MAX OF PAST 5, BUT NOT THE VERY LAST ONE
             try:
-                return record - Math.max(records[index - 6:index - 1:])
+                return record - MAX(records[index - 6:index - 1:])
             except Exception, e:
                 return None
 
@@ -161,7 +161,7 @@ class TestStruct(unittest.TestCase):
         result1 = [diff(r, i, data1_list) for i, r in enumerate(data1_list)]
         assert result1 == [-7, None, None, None, None, None, 2, 2, 2]  # WHAT IS EXPECTED, BUT NOT WHAT WE WANT
 
-        data2_list = struct.wrap(data1_list)
+        data2_list = wrap(data1_list)
         result2 = [diff(r, i, data2_list) for i, r in enumerate(data2_list)]
         assert result2 == [None, None, 2, 2, 2, 2, 2, 2, 2]
 

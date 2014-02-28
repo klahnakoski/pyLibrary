@@ -14,9 +14,9 @@ from datetime import datetime
 import subprocess
 from pymysql import connect, InterfaceError
 from .. import struct
-from ..math.maths import Math
+from ..maths import Math
 from ..strings import expand_template
-from ..struct import nvl
+from ..struct import nvl, wrap
 from ..cnv import CNV
 from ..env.logs import Log, Except
 from ..queries import Q
@@ -33,14 +33,23 @@ all_db = []
 
 class DB(object):
     """
-
+    Parameterize SQL by name rather than by position.  Return records as objects
+    rather than tuples.
     """
 
-    def __init__(self, settings, schema=None, preamble=None):
+    def __init__(self, settings, schema=None, preamble=None, readonly=False):
         """
         OVERRIDE THE settings.schema WITH THE schema PARAMETER
         preamble WILL BE USED TO ADD COMMENTS TO THE BEGINNING OF ALL SQL
         THE INTENT IS TO HELP ADMINISTRATORS ID THE SQL RUNNING ON THE DATABASE
+
+        schema - NAME OF DEFAULT database/schema IN QUERIES
+
+        preamble - A COMMENT TO BE ADDED TO EVERY SQL STATEMENT SENT
+
+        readonly - USED ONLY TO INDICATE IF A TRANSACTION WILL BE OPENED UPON
+        USE IN with CLAUSE, YOU CAN STILL SEND UPDATES, BUT MUST OPEN A
+        TRANSACTION BEFORE YOU DO
         """
         if settings == None:
             return
@@ -59,6 +68,7 @@ class DB(object):
         else:
             self.preamble = indent(preamble, "# ").strip() + "\n"
 
+        self.readonly = readonly
         self.debug = nvl(self.settings.debug, DEBUG)
         self._open()
 
@@ -75,7 +85,7 @@ class DB(object):
                 use_unicode=True
             )
         except Exception, e:
-            if self.settings.host.find("://")==-1:
+            if self.settings.host.find("://") == -1:
                 Log.error(u"Failure to connect", e)
             else:
                 Log.error(u"Failure to connect.  PROTOCOL PREFIX IS PROBABLY BAD", e)
@@ -86,17 +96,22 @@ class DB(object):
 
 
     def __enter__(self):
-        self.begin()
+        if not self.readonly:
+            self.begin()
         return self
 
     def __exit__(self, type, value, traceback):
+        if self.readonly:
+            self.close()
+            return
+
         if isinstance(value, BaseException):
             try:
                 if self.cursor: self.cursor.close()
                 self.cursor = None
                 self.rollback()
             except Exception, e:
-                Log.warning(u"can not rollback()", e)
+                Log.warning(u"can not rollback()", [value, e])
             finally:
                 self.close()
             return
@@ -293,7 +308,7 @@ class DB(object):
             columns = tuple([utf8_to_unicode(d[0]) for d in self.cursor.description])
             for r in self.cursor:
                 num += 1
-                _execute(struct.wrap(dict(zip(columns, [utf8_to_unicode(c) for c in r]))))
+                _execute(wrap(dict(zip(columns, [utf8_to_unicode(c) for c in r]))))
 
             if not old_cursor:   #CLEANUP AFTER NON-TRANSACTIONAL READS
                 self.cursor.close()
@@ -546,8 +561,6 @@ class DB(object):
         sort = Q.normalize_sort_parameters(sort)
         return ",\n".join([self.quote_column(s.field) + (" DESC" if s.sort == -1 else " ASC") for s in sort])
 
-    def esfilter2sqlwhere(self, esfilter):
-        return SQL(self._filter2where(esfilter))
 
 
 

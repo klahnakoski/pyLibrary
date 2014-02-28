@@ -1,6 +1,12 @@
 # encoding: utf-8
-#import os
-
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
+import os
 from setuptools import setup, find_packages
 
 
@@ -14,7 +20,7 @@ except Exception:
 
 setup(
     name='pyLibrary',
-    version="0.1.13316",
+    version="0.1.14059",
     description='Library of Wonderful Things',
     long_description=long_desc,
     author='Kyle Lahnakoski',

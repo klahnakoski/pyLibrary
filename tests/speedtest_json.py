@@ -20,9 +20,9 @@ from util.struct import Null
 
 TARGET_RUNTIME = 10
 
-EMPTY = (struct.wrap({}), 200000)
-UNICODE = (struct.wrap(json._default_decoder.decode('{"key1": "\u0105\u0107\u017c", "key2": "\u0105\u0107\u017c"}')), 10000)
-SIMPLE = (struct.wrap({
+EMPTY = (wrap({}), 200000)
+UNICODE = (wrap(json._default_decoder.decode('{"key1": "\u0105\u0107\u017c", "key2": "\u0105\u0107\u017c"}')), 10000)
+SIMPLE = (wrap({
     'key1': 0,
     'key2': True,
     'key3': 'value',
@@ -31,7 +31,7 @@ SIMPLE = (struct.wrap({
     "key6": Decimal("0.33"),
     "key7": [[], []]
 }), 100000)
-NESTED = (struct.wrap({
+NESTED = (wrap({
     'key1': 0,
     'key2': SIMPLE[0].copy(),
     'key3': 'value',

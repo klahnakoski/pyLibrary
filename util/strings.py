@@ -11,12 +11,16 @@
 from __future__ import unicode_literals
 from datetime import timedelta
 import re
-from .jsons import json_encoder
+
 from . import struct
+from .struct import wrap
 
 
 def datetime(value):
     from .cnv import CNV
+
+    if isinstance(value, datetime):
+        CNV.datetime2string(value, "%Y-%m-%d %H:%M:%S")
 
     if value < 10000000000:
         value = CNV.unix2datetime(value)
@@ -99,7 +103,7 @@ def expand_template(template, value):
     template IS A STRING WITH {{variable_name}} INSTANCES, WHICH WILL
     BE EXPANDED TO WHAT IS IS IN THE value dict
     """
-    value = struct.wrap(value)
+    value = wrap(value)
     if isinstance(template, basestring):
         return _simple_expand(template, (value,))
 
@@ -113,7 +117,7 @@ def _expand(template, seq):
     if isinstance(template, basestring):
         return _simple_expand(template, seq)
     elif isinstance(template, dict):
-        template = struct.wrap(template)
+        template = wrap(template)
         assert template["from"], "Expecting template to have 'from' attribute"
         assert template.template, "Expecting template to have 'template' attribute"
 
@@ -151,13 +155,13 @@ def _simple_expand(template, seq):
             return val
         except Exception, e:
             try:
-                if e.message.find(u"is not JSON serializable"):
+                if e.message.find("is not JSON serializable"):
                     #WORK HARDER
                     val = toString(val)
                     return val
             except Exception, f:
-                from ..env.logs import Log
-
+                from .env.logs import Log
+                val = toString(val)
                 Log.error(u"Can not expand " + "|".join(ops) + u" in template:\n" + indent(template), e)
 
     return pattern.sub(replacer, template)
@@ -167,10 +171,13 @@ def toString(val):
     if val == None:
         return u""
     elif isinstance(val, (dict, list, set)):
+        from .jsons import json_encoder
+
         return json_encoder.encode(val, pretty=True)
     elif isinstance(val, timedelta):
         duration = val.total_seconds()
         return unicode(round(duration, 3))+" seconds"
+
     return unicode(val)
 
 

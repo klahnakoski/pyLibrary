@@ -11,9 +11,32 @@ import unittest
 from util import struct
 from util.cnv import CNV
 from util.queries import Q
+from util.struct import wrap
 
 
 class TestQ(unittest.TestCase):
+    def test_groupby(self):
+        data = []
+        for g, d in Q.groupby(data, size=5):
+            assert False
+
+        data = [1, 2, 3]
+        for g, d in Q.groupby(data, size=5):
+            assert d == [1, 2, 3]
+
+        data = [1, 2, 3, 4, 5]
+        for g, d in Q.groupby(data, size=5):
+            assert d == [1, 2, 3, 4, 5]
+
+        data = [1, 2, 3, 4, 5, 6]
+        for g, d in Q.groupby(data, size=5):
+            assert d == [1, 2, 3, 4, 5] or d == [6]
+
+        data = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        for g, d in Q.groupby(data, size=5):
+            assert d == [1, 2, 3, 4, 5] or d == [6, 7, 8, 9]
+
+
     def test_select_w_dot(self):
         data = [{
             "sustained_result": {
@@ -86,7 +109,7 @@ class TestQ(unittest.TestCase):
 
 
     def test_unicode_attribute(self):
-        value = struct.wrap({})
+        value = wrap({})
         value["é"] = "test"
 
         dict_value = struct.unwrap(value)

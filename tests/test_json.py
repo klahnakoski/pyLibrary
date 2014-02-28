@@ -54,28 +54,14 @@ class TestJSON(unittest.TestCase):
             Log.error("expecting correct value")
 
 
-    # def test_odd_chars(self):
-    #     {
-    #         "priority": "p5",
-    #         "product": "mozilla",
-    #         "modified_by": "arunr@formerly-netscape.com.tld",
-    #         "bug_status": "new",
-    #         "reported_by": "arunr@formerly-netscape.com.tld",
-    #         "bug_version_num": 1,
-    #         "assigned_to": "nobody@mozilla.org",
-    #         "short_desc": "testing accented char \u0155\xe1\xe2\u0103\xe4\u013a\u0107\xe7\u010d\xe9\u0119\xeb\u011b\xed\xee\u010f\u0111\u0144\u0148\xf3\xf4\u0151\xf6\xf7\u0159\u016f\xfa\u0171\xfc\xfd\u0163\u02d9",
-    #         "created_ts": 895647600000,
-    #         "created_by": "arunr@formerly-netscape.com.tld",
-    #         "id": "384_895647600",
-    #         "bug_id": 384,
-    #         "version": "1998-03-31",
-    #         "bug_severity": "enhancement",
-    #         "expires_on": 904611043000,
-    #         "rep_platform": "all",
-    #         "modified_ts": 895647600000,
-    #         "op_sys": "other",
-    #         "everconfirmed": 1
-    #     }
+    def test_bad_key(self):
+        test = {24: "value"}
+        output = CNV.object2JSON(test)
+
 
 if __name__ == '__main__':
-    unittest.main()
+    try:
+        Log.start()
+        unittest.main()
+    finally:
+        Log.stop()

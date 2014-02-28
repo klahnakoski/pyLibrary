@@ -10,9 +10,9 @@
 from __future__ import unicode_literals
 
 import unittest
-from util import crypto
+from util.maths import crypto
 from util.cnv import CNV
-from util.randoms import Random
+from util.maths.randoms import Random
 
 
 class TestDB(unittest.TestCase):
@@ -21,9 +21,9 @@ class TestDB(unittest.TestCase):
 
         key = CNV.bytearray2base64(Random.bytes(32))
 
-        # crypto.encrypt("this is a test", Random.bytes(32))
-        # crypto.encrypt("this is a longer test with more than 16bytes", Random.bytes(32))
-        # crypto.encrypt("", Random.bytes(32))
+        crypto.encrypt("this is a test", Random.bytes(32))
+        crypto.encrypt("this is a longer test with more than 16bytes", Random.bytes(32))
+        crypto.encrypt("", Random.bytes(32))
         crypto.encrypt(CNV.latin12unicode(b"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"), Random.bytes(32))
         crypto.encrypt("testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ", Random.bytes(32))
 
