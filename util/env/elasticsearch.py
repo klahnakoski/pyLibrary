@@ -19,7 +19,7 @@ from ..thread.threads import ThreadedQueue
 from ..maths import Math
 from ..cnv import CNV
 from ..env.logs import Log
-from ..struct import nvl, Null, wrap
+from ..struct import nvl, Null, wrap, unwrap
 from ..struct import Struct, StructList
 
 
@@ -42,6 +42,7 @@ class ElasticSearch(object):
 
     """
     def __init__(self, settings):
+        settings = wrap(settings)
         assert settings.host
         assert settings.index
         assert settings.type
@@ -203,7 +204,12 @@ class ElasticSearch(object):
             )
 
     def extend(self, records):
-        # ADD LINE WITH COMMAND
+        """
+        records - MUST HAVE FORM OF
+            [{"value":value}, ... {"value":value}] OR
+            [{"json":json}, ... {"json":json}]
+            OPTIONAL "id" PROPERTY IS ALSO ACCEPTED
+        """
         lines = []
         for r in records:
             id = r.get("id", None)
@@ -225,7 +231,8 @@ class ElasticSearch(object):
         response = ElasticSearch.post(
             self.path + "/_bulk",
             data=("\n".join(lines) + "\n").encode("utf8"),
-            headers={"Content-Type": "text"}
+            headers={"Content-Type": "text"},
+            timeout=self.settings.timeout
         )
         items = response["items"]
 
@@ -275,15 +282,19 @@ class ElasticSearch(object):
                 else:
                     show_query = query
                 Log.note("Query:\n{{query|indent}}", {"query": show_query})
-            return ElasticSearch.post(self.path + "/_search", data=CNV.object2JSON(query).encode("utf8"))
+            return ElasticSearch.post(
+                self.path + "/_search",
+                data=CNV.object2JSON(query).encode("utf8"),
+                timeout=self.settings.timeout
+            )
         except Exception, e:
             Log.error("Problem with search (path={{path}}):\n{{query|indent}}", {
                 "path": self.path + "/_search",
                 "query": query
             }, e)
 
-    def threaded_queue(self, size):
-        return ThreadedQueue(self, size)
+    def threaded_queue(self, size=None, period=None):
+        return ThreadedQueue(self, size=size, period=period)
 
     @staticmethod
     def post(*args, **kwargs):
@@ -291,7 +302,9 @@ class ElasticSearch(object):
             Log.error("data must be utf8 encoded string")
 
         try:
-            kwargs.setdefault("timeout", 30)
+            kwargs = wrap(kwargs)
+            kwargs.setdefault("timeout", 600)
+            kwargs = unwrap(kwargs)
             response = requests.post(*args, **kwargs)
             if DEBUG:
                 Log.note(response.content[:130])
@@ -311,7 +324,8 @@ class ElasticSearch(object):
     @staticmethod
     def get(*args, **kwargs):
         try:
-            kwargs.setdefault("timeout", 30)
+            kwargs = wrap(kwargs)
+            kwargs.setdefault("timeout", 600)
             response = requests.get(*args, **kwargs)
             if DEBUG:
                 Log.note(response.content[:130])
@@ -325,6 +339,7 @@ class ElasticSearch(object):
     @staticmethod
     def put(*args, **kwargs):
         try:
+            kwargs = wrap(kwargs)
             kwargs.setdefault("timeout", 30)
             response = requests.put(*args, **kwargs)
             if DEBUG:

@@ -18,12 +18,17 @@ class Struct(dict):
     Struct is an anonymous class with some properties good for manipulating JSON
 
     0) a.b==a["b"]
-    1) the IDE does tab completion, so my spelling mistakes get found at "compile time"
+    1) the IDE does tab completion, and my spelling mistakes get found at "compile time"
     2) it deals with missing keys gracefully, so I can put it into set operations (database
        operations) without choking
     2b) missing keys is important when dealing with JSON, which is often almost anything
-    3) you can access JSON paths as a variable:   a["b.c"]==a.b.c
-    4) attribute names (keys) are corrected to unicode - it appears Python object.getattribute()
+    3) you can access paths as a variable:   a["b.c"]==a.b.c
+    4) you can set paths to values, missing objects along the path are created:
+       a = wrap({})
+       > a == {}
+       a["b.c"] = 42
+       > a == {"b": {"c": 42}}
+    5) attribute names (keys) are corrected to unicode - it appears Python object.getattribute()
        is called with str() even when using from __future__ import unicode_literals
 
     MORE ON MISSING VALUES: http://www.numpy.org/NA-overview.html
@@ -73,7 +78,7 @@ class Struct(dict):
 
     def __setitem__(self, key, value):
         if key == "":
-            from ...env.logs import Log
+            from .env.logs import Log
 
             Log.error("key is empty string.  Probably a bad idea")
         if isinstance(key, str):
@@ -127,6 +132,30 @@ class Struct(dict):
         else:
             object.__setattr__(self, ukey, value)
         return self
+
+    def __hash__(self):
+        d = _get(self, "__dict__")
+        return hash_value(d)
+
+    def __eq__(self, other):
+        if not isinstance(other, dict):
+            return False
+        e = unwrap(other)
+        d = _get(self, "__dict__")
+        for k, v in d.items():
+            if e.get(k, None) != v:
+                return False
+        for k, v in e.items():
+            if d.get(k, None) != v:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+
+
+
 
     def items(self):
         d = _get(self, "__dict__")
@@ -185,7 +214,7 @@ class Struct(dict):
         return d.keys()
 
     def setdefault(self, k, d=None):
-        if not self[k]:
+        if self[k] == None:
             self[k]=d
 
 # KEEP TRACK OF WHAT ATTRIBUTES ARE REQUESTED, MAYBE SOME (BUILTIN) ARE STILL USEFUL
@@ -212,6 +241,8 @@ def _all_default(d, default):
     ANY VALUE NOT SET WILL BE SET BY THE default
     THIS IS RECURSIVE
     """
+    if default is None:
+        return
     for k, default_value in default.items():
         existing_value = d.get(k, None)
         if existing_value is None:
@@ -359,7 +390,10 @@ class _Null(object):
             raise e
 
     def keys(self):
-        return set()
+        return return_zero_set
+
+    def items(self):
+        return return_zero_list
 
     def pop(self, key, default=None):
         return Null
@@ -378,6 +412,13 @@ Null = _Null()
 EmptyList = Null
 
 ZeroList = []
+def return_zero_list():
+    return []
+
+def return_zero_set():
+    return set()
+
+
 
 
 class StructList(list):
@@ -495,7 +536,6 @@ class StructList(list):
             return EmptyList
         return StructList(_get(self, "list")[:-num:])
 
-
     def last(self):
         """
         RETURN LAST ELEMENT IN StructList
@@ -528,7 +568,11 @@ def wrap(v):
         for vv in v:
             # IN PRACTICE WE DO NOT EXPECT TO GO THROUGH THIS LIST, IF ANY ARE WRAPPED, THE FIRST IS PROBABLY WRAPPED
             if vv is not unwrap(vv):
-                return StructList([unwrap(vv) for vv in v])
+                #MUST KEEP THE LIST
+                temp = [unwrap(vv) for vv in v]
+                del v[:]
+                v.extend(temp)
+                return StructList(v)
         return StructList(v)
 
     if v_type is NoneType:
@@ -607,6 +651,16 @@ def listwrap(value):
         return wrap([value])
 
 
+def tuplewrap(value):
+    """
+    INTENDED TO TURN lists INTO tuples FOR USE AS KEYS
+    """
+    if isinstance(value, (list, tuple, GeneratorType)):
+        return tuple(tuplewrap(v) for v in value)
+    return unwrap(value)
+
+
+
 def split_field(field):
     """
     RETURN field AS ARRAY OF DOT-SEPARATED FIELDS
@@ -624,6 +678,14 @@ def join_field(field):
     """
     return ".".join([f.replace(".", "\.") for f in field])
 
+
+def hash_value(v):
+    if isinstance(v, (set, tuple, list)):
+        return hash(tuple(hash_value(vv) for vv in v))
+    elif not isinstance(v, dict):
+        return hash(v)
+    else:
+        return hash(tuple(sorted(hash_value(vv) for vv in v.values())))
 
 
 
