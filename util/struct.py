@@ -153,9 +153,9 @@ class Struct(dict):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-
-
-
+    def get(self, key, default):
+        d = _get(self, "__dict__")
+        return d.get(key, default)
 
     def items(self):
         d = _get(self, "__dict__")
@@ -390,10 +390,10 @@ class _Null(object):
             raise e
 
     def keys(self):
-        return return_zero_set
+        return set()
 
     def items(self):
-        return return_zero_list
+        return []
 
     def pop(self, key, default=None):
         return Null
@@ -549,7 +549,7 @@ class StructList(list):
             output = _get(self, key)
             return output
         except Exception, e:
-            return StructList([v[key] for v in _get(self, "list")])
+            return StructList([v.get(key, None) for v in _get(self, "list")])
 
 def wrap(v):
     v_type = v.__class__
@@ -660,6 +660,12 @@ def tuplewrap(value):
     return unwrap(value)
 
 
+
+def literal_field(field):
+    """
+    RETURN SAME WITH . ESCAPED
+    """
+    return field.replace(".", "\.")
 
 def split_field(field):
     """

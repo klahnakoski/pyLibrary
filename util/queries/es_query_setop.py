@@ -61,7 +61,7 @@ def es_fieldop(es, query):
     esQuery.size = nvl(query.limit, 200000)
     esQuery.fields = []
     for s in select.value:
-        if s.value == "*":
+        if s == "*":
             esQuery.fields = None
         elif isinstance(s, list):
             esQuery.fields.extend(s)
@@ -81,13 +81,16 @@ def es_fieldop(es, query):
         elif isinstance(s.value, dict):
             # for k, v in s.value.items():
             #     matricies[join_field(split_field(s.name)+[k])] = Matrix.wrap([unwrap(t.fields)[v] for t in T])
-            matricies[s.name] = Matrix.wrap([{k: unwrap(t.fields)[v] for k, v in s.value.items()}for t in T])
+            matricies[s.name] = Matrix.wrap([{k: unwrap(t.fields).get(v, None) for k, v in s.value.items()}for t in T])
         elif isinstance(s.value, list):
-            matricies[s.name] = Matrix.wrap([tuple(unwrap(t.fields)[ss] for ss in s.value) for t in T])
+            matricies[s.name] = Matrix.wrap([tuple(unwrap(t.fields).get(ss, None) for ss in s.value) for t in T])
         elif not s.value:
-            matricies[s.name] = Matrix.wrap([unwrap(t.fields)[s.value] for t in T])
+            matricies[s.name] = Matrix.wrap([unwrap(t.fields).get(s.value, None) for t in T])
         else:
-            matricies[s.name] = Matrix.wrap([unwrap(t.fields)[s.value] for t in T])
+            try:
+                matricies[s.name] = Matrix.wrap([unwrap(t.fields).get(s.value, None) for t in T])
+            except Exception, e:
+                Log.error("", e)
 
     cube = Cube(query.select, query.edges, matricies, frum=query)
     cube.frum = query

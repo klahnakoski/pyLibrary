@@ -160,7 +160,9 @@ def _value2json(value, _buffer):
     elif type is datetime:
         append(_buffer, unicode(long(time.mktime(value.timetuple()) * 1000)))
     elif type is timedelta:
-        append(_buffer, unicode(value.total_seconds())+"second")
+        append(_buffer, "\"")
+        append(_buffer, unicode(value.total_seconds()))
+        append(_buffer, "second\"")
     elif hasattr(value, '__iter__'):
         _iter2json(value, _buffer)
     elif hasattr(value, '__json__'):
@@ -235,7 +237,7 @@ def _scrub(value):
     if type in (date, datetime):
         return datetime2milli(value)
     elif type is timedelta:
-        return unicode(value.total_seconds())+"second"
+        return unicode(value.total_seconds()) + "second"
     elif type is str:
         return unicode(value.decode("utf8"))
     elif type is dict:
@@ -294,7 +296,9 @@ INDENT = "    "
 
 def pretty_json(value):
     try:
-        if isinstance(value, dict):
+        if value == None:
+            return "null"
+        elif isinstance(value, dict):
             try:
                 if not value:
                     return "{}"
@@ -349,8 +353,6 @@ def pretty_json(value):
 
             return "[\n" + ",\n".join([indent(pretty_json(v)) for v in value]) + "\n]"
         elif hasattr(value, '__json__'):
-            if value.__json__ == None:
-                Log.debug()
             j = value.__json__()
             return pretty_json(json_decoder.decode(j))
         elif hasattr(value, '__iter__'):
@@ -394,14 +396,14 @@ def datetime2milli(d):
     try:
         if d == None:
             return None
-        elif isinstance(d, datetime.datetime):
-            epoch = datetime.datetime(1970, 1, 1)
-        elif isinstance(d, datetime.date):
-            epoch = datetime.date(1970, 1, 1)
+        elif isinstance(d, datetime):
+            epoch = datetime(1970, 1, 1)
+        elif isinstance(d, date):
+            epoch = date(1970, 1, 1)
         else:
             raise Exception("Can not convert "+repr(d)+" to json")
 
         diff = d - epoch
         return long(diff.total_seconds()) * 1000L + long(diff.microseconds / 1000)
     except Exception, e:
-        raise Exception("Can not convert "+repr(d)+" to json")
+        raise Exception("Can not convert "+repr(d)+" to json", e)

@@ -44,6 +44,7 @@ class Lock(object):
             timeout = (datetime.utcnow() - till).total_seconds()
             if timeout < 0:
                 return
+        self.monitor.notify()
         self.monitor.wait(timeout=timeout)
 
     def notify_all(self):
@@ -55,11 +56,12 @@ class Queue(object):
     SIMPLE MESSAGE QUEUE, multiprocessing.Queue REQUIRES SERIALIZATION, WHICH IS HARD TO USE JUST BETWEEN THREADS
     """
 
-    def __init__(self, max=None):
+    def __init__(self, max=None, silent=False):
         """
         max - LIMIT THE NUMBER IN THE QUEUE, IF TOO MANY add() AND extend() WILL BLOCK
         """
-        self.max = nvl(max, 2 ** 30)
+        self.max = nvl(max, 2 ** 10)
+        self.silent = silent
         self.keep_running = True
         self.lock = Lock("lock for queue")
         self.queue = []
@@ -81,6 +83,9 @@ class Queue(object):
             if self.keep_running:
                 self.queue.append(value)
             while self.keep_running and len(self.queue) > self.max:
+                if not self.silent:
+                    from ..env.logs import Log
+                    Log.warning("Queue is full ({{num}}} items), waiting", {"num": len(self.queue)})
                 self.lock.wait()
         return self
 
@@ -89,6 +94,9 @@ class Queue(object):
             if self.keep_running:
                 self.queue.extend(values)
             while self.keep_running and len(self.queue) > self.max:
+                if not self.silent:
+                    from ..env.logs import Log
+                    Log.warning("Queue is full ({{num}}} items), waiting", {"num": len(self.queue)})
                 self.lock.wait()
 
     def __len__(self):

@@ -15,7 +15,6 @@ from util.cnv import CNV
 from util.env.files import File
 from util.env.logs import Log, Except, extract_tb, ERROR
 from util.queries.es_query import ESQuery
-from util.struct import Null
 
 
 class TestESQuery(unittest.TestCase):

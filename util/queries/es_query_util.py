@@ -446,6 +446,7 @@ def fix_es_stats(s):
     """
     ES RETURNS BAD DEFAULT VALUES FOR STATS
     """
+    s = wrap(s)
     if s.count == 0:
         return stats.zero
     return s

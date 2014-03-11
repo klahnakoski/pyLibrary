@@ -16,7 +16,7 @@ from ..env.logs import Log
 from ..queries import MVEL
 from ..queries.filters import TRUE_FILTER, simplify
 from ..struct import nvl, Struct, EmptyList, wrap, split_field, join_field, StructList
-from util.queries.es_query_util import INDEX_CACHE
+from .es_query_util import INDEX_CACHE
 
 
 class Query(object):
@@ -157,7 +157,8 @@ def _normalize_window(window, schema=None):
         edges=[_normalize_edge(e, schema) for e in struct.listwrap(window.edges)],
         sort=_normalize_sort(window.sort),
         aggregate=window.aggregate,
-        range=_normalize_range(window.range)
+        range=_normalize_range(window.range),
+        where=_normalize_where(window.where, schema=schema)
     )
 
 
@@ -301,7 +302,7 @@ def _where_terms(master, where, schema):
                     if domain.partitions:
                         output.append({"or": [domain.getPartByKey(vv).esfilter for vv in v]})
                         continue
-                output.append({"term": {k: v}})
+                output.append({"terms": {k: v}})
             return {"and": output}
         elif where["and"] or where["or"]:
             return {k: [_where_terms(master, vv, schema) for vv in v] for k, v in where.items()}
