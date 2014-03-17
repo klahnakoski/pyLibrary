@@ -10,8 +10,8 @@
 from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
-import threading
 import thread
+import threading
 import time
 import sys
 from ..struct import nvl, Struct
@@ -59,6 +59,7 @@ class Queue(object):
     def __init__(self, max=None, silent=False):
         """
         max - LIMIT THE NUMBER IN THE QUEUE, IF TOO MANY add() AND extend() WILL BLOCK
+        silent - COMPLAIN IF THE READERS ARE TOO SLOW
         """
         self.max = nvl(max, 2 ** 10)
         self.silent = silent
@@ -83,10 +84,13 @@ class Queue(object):
             if self.keep_running:
                 self.queue.append(value)
             while self.keep_running and len(self.queue) > self.max:
-                if not self.silent:
-                    from ..env.logs import Log
-                    Log.warning("Queue is full ({{num}}} items), waiting", {"num": len(self.queue)})
-                self.lock.wait()
+                if self.silent:
+                    self.lock.wait()
+                else:
+                    self.lock.wait(5)
+                    if len(self.queue) > self.max:
+                        from ..env.logs import Log
+                        Log.warning("Queue is full ({{num}}} items), been waiting 5 sec", {"num": len(self.queue)})
         return self
 
     def extend(self, values):
@@ -94,10 +98,13 @@ class Queue(object):
             if self.keep_running:
                 self.queue.extend(values)
             while self.keep_running and len(self.queue) > self.max:
-                if not self.silent:
-                    from ..env.logs import Log
-                    Log.warning("Queue is full ({{num}}} items), waiting", {"num": len(self.queue)})
-                self.lock.wait()
+                if self.silent:
+                    self.lock.wait()
+                else:
+                    self.lock.wait(5)
+                    if len(self.queue) > self.max:
+                        from ..env.logs import Log
+                        Log.warning("Queue is full ({{num}}} items), been waiting 5 sec", {"num": len(self.queue)})
 
     def __len__(self):
         with self.lock:
@@ -281,7 +288,7 @@ class Thread(object):
                 if DEBUG:
                     from ..env.logs import Log
 
-                    Log.note("Waiting on thread {{thread}}", {"thread": self.name})
+                    Log.note("Waiting on thread {{thread|quote}}", {"thread": self.name})
         else:
             self.stopped.wait_for_go(till=till)
             if self.stopped:
@@ -385,12 +392,12 @@ class ThreadedQueue(Queue):
     DISPATCH TO ANOTHER (SLOWER) queue IN BATCHES OF GIVEN size
     """
 
-    def __init__(self, queue, size=None, max=None, period=None):
+    def __init__(self, queue, size=None, max=None, period=None, silent=False):
         if max == None:
             #REASONABLE DEFAULT
             max = size * 2
 
-        Queue.__init__(self, max=max)
+        Queue.__init__(self, max=max, silent=silent)
 
         def size_pusher(please_stop):
             please_stop.on_go(lambda: self.add(Thread.STOP))

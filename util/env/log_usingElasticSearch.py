@@ -79,10 +79,10 @@ def time_delta_pusher(please_stop, es, queue, interval):
                         last = i
                         next_run = datetime.utcnow()
                 if last > 0:
-                    es.extend([{"value":v} for v in logs[0:last]])
+                    es.extend([{"value": v} for v in logs[0:last]])
             except Exception, e:
-                # THREAD WILL END IF
-                Log.error("problem logging to es", e)
+                # DO NOT KILL THREAD, WE MUST CONTINUE TO CONSUME MESSAGES
+                Log.warning("problem logging to es", e)
 
 
 
