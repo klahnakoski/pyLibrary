@@ -1,9 +1,8 @@
 import unittest
-from util import struct
 from util.cnv import CNV
 from util.collections import MAX
 from util.env.logs import Log
-from util.struct import Null, Struct
+from util.struct import Null, Struct, wrap
 
 
 class TestStruct(unittest.TestCase):
@@ -139,6 +138,52 @@ class TestStruct(unittest.TestCase):
                 "e": "test2"
             }
         }
+        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+            Log.error("error")
+
+    def test_assign3(self):
+        # IMPOTENT ASSIGNMENTS DO NOTHING
+        a = {}
+        b = wrap(a)
+
+        b.c = None
+        expected = {}
+        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+            Log.error("error")
+
+        b.c.d = None
+        expected = {}
+        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+            Log.error("error")
+
+        b["c.d"] = None
+        expected = {}
+        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+            Log.error("error")
+
+        b.c.d.e = None
+        expected = {}
+        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+            Log.error("error")
+
+        b.c["d.e"] = None
+        expected = {}
+        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+            Log.error("error")
+
+    def test_assign4(self):
+        # IMPOTENT ASSIGNMENTS DO NOTHING
+        a = {"c": {"d": {}}}
+        b = wrap(a)
+        b.c.d = None
+        expected = {"c": {}}
+        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+            Log.error("error")
+
+        a = {"c": {"d": {}}}
+        b = wrap(a)
+        b.c = None
+        expected = {}
         if CNV.object2JSON(expected) != CNV.object2JSON(a):
             Log.error("error")
 
