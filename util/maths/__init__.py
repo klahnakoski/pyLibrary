@@ -29,6 +29,8 @@ class Math(object):
             Log.error("Only allowed values *between* zero and one")
 
         for b in args[1:]:
+            if b == None:
+                continue
             if b >= 1 or b <= 0:
                 Log.error("Only allowed values *between* zero and one")
             a = a * b / (a * b + (1 - a) * (1 - b))
@@ -82,7 +84,10 @@ class Math(object):
             return False
 
     @staticmethod
-    def round(value, decimal=None, digits=None):
+    def round(value, decimal=0, digits=None):
+        if value == None:
+            return None
+
         if digits != None:
             m = pow(10, math.ceil(math.log10(value)))
             return __builtin__.round(value / m, digits) * m

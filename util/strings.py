@@ -99,8 +99,14 @@ def between(value, prefix, suffix):
 
 
 def right(value, len):
-    if len <= 0: return u""
+    if len <= 0:
+        return u""
     return value[-len:]
+
+def left(value, len):
+    if len <= 0:
+        return u""
+    return value[0:len]
 
 
 def find_first(value, find_arr, start=0):
@@ -197,7 +203,7 @@ def toString(val):
     elif isinstance(val, (dict, list, set)):
         from .jsons import json_encoder
 
-        return json_encoder.encode(val, pretty=True)
+        return json_encoder(val, pretty=True)
     elif hasattr(val, "__json__"):
         return val.__json__()
     elif isinstance(val, timedelta):

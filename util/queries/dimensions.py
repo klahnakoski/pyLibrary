@@ -59,7 +59,7 @@ class Dimension(object):
             edges = wrap([{"name": k, "value": v, "allowNulls": False} for k, v in self.fields.items()])
         else:
             self.fields = struct.listwrap(fields)
-            edges = wrap([{"name": f, "value": f, "allowNulls": False} for f in self.fields])
+            edges = wrap([{"name": f, "value": f, "index": i, "allowNulls": False} for i, f in enumerate(self.fields)])
 
         if dim.partitions:
             return  # ALREADY HAVE PARTS
@@ -128,6 +128,16 @@ class Dimension(object):
 
             # SIMPLE LIST OF PARTS RETURNED, BE SURE TO INTERRELATE THEM
             array = parts.data.values()[0].cube  # DIG DEEP INTO RESULT (ASSUME SINGLE VALUE CUBE, WITH NULL AT END)
+
+            def edges2value(*values):
+                if isinstance(fields, dict):
+                    output = Struct()
+                    for e, v in zip(edges, values):
+                        output[e.name] = v
+                    return output
+                else:
+                    return tuple(values)
+
             self.partitions = wrap([
                 {
                     "name": str(d.partitions[i].name),  # CONVERT TO STRING
@@ -137,10 +147,7 @@ class Dimension(object):
                     "partitions": [
                         {
                             "name": str(d2.partitions[j].name),  # CONVERT TO STRING
-                            "value": {
-                                edges[0].name: d.getEnd(d.partitions[i]),
-                                edges[1].name: d2.getEnd(d2.partitions[j])
-                            },
+                            "value": edges2value(d.getEnd(d.partitions[i]), d2.getEnd(d2.partitions[j])),
                             "esfilter": {"and": [
                                 {"term": {edges[0].value: d.partitions[i].value}},
                                 {"term": {edges[1].value: d2.partitions[j].value}}
@@ -178,42 +185,42 @@ class Dimension(object):
         if not self.partitions and self.edges:
             # USE EACH EDGE AS A PARTITION, BUT isFacet==True SO IT ALLOWS THE OVERLAP
             partitions = [
-                Struct(
-                    name=v.name,
-                    value=v.name,
-                    esfilter=v.esfilter,
-                    style=v.style,
-                    weight=v.weight # YO! WHAT DO WE *NOT* COPY?
-                )
+                {
+                    "name":v.name,
+                    "value":v.name,
+                    "esfilter":v.esfilter,
+                    "style":v.style,
+                    "weight":v.weight # YO! WHAT DO WE *NOT* COPY?
+                }
                 for i, v in enumerate(self.edges)
                 if i < nvl(self.limit, DEFAULT_QUERY_LIMIT) and v.esfilter
             ]
             self.isFacet = True
         elif kwargs.depth == None:  # ASSUME self.fields IS A dict
-            partitions = []
+            partitions = StructList()
             for i, part in enumerate(self.partitions):
                 if i >= nvl(self.limit, DEFAULT_QUERY_LIMIT):
                     break
-                partitions.append(Struct(
-                    name=part.name,
-                    value=part.value,
-                    esfilter=part.esfilter,
-                    style=nvl(part.style, part.parent.style),
-                    weight=part.weight   # YO!  WHAT DO WE *NOT* COPY?
-                ))
+                partitions.append({
+                    "name":part.name,
+                    "value":part.value,
+                    "esfilter":part.esfilter,
+                    "style":nvl(part.style, part.parent.style),
+                    "weight":part.weight   # YO!  WHAT DO WE *NOT* COPY?
+                })
         elif kwargs.depth == 0:
             partitions = [
-                Struct(
-                    name=v.name,
-                    value=v.value,
-                    esfilter=v.esfilter,
-                    style=v.style,
-                    weight=v.weight   # YO!  WHAT DO WE *NOT* COPY?
-                )
+                {
+                    "name":v.name,
+                    "value":v.value,
+                    "esfilter":v.esfilter,
+                    "style":v.style,
+                    "weight":v.weight   # YO!  WHAT DO WE *NOT* COPY?
+                }
                 for i, v in enumerate(self.partitions)
                 if i < nvl(self.limit, DEFAULT_QUERY_LIMIT)]
         elif kwargs.depth == 1:
-            partitions = []
+            partitions = StructList()
             rownum = 0
             for i, part in enumerate(self.partitions):
                 if i >= nvl(self.limit, DEFAULT_QUERY_LIMIT):
@@ -221,13 +228,13 @@ class Dimension(object):
                 rownum += 1
                 try:
                     for j, subpart in enumerate(part.partitions):
-                        partitions.append(Struct(
-                            name=join_field(split_field(subpart.parent.name) + [subpart.name]),
-                            value=subpart.value,
-                            esfilter=subpart.esfilter,
-                            style=nvl(subpart.style, subpart.parent.style),
-                            weight=subpart.weight   # YO!  WHAT DO WE *NOT* COPY?
-                        ))
+                        partitions.append({
+                            "name":join_field(split_field(subpart.parent.name) + [subpart.name]),
+                            "value":subpart.value,
+                            "esfilter":subpart.esfilter,
+                            "style":nvl(subpart.style, subpart.parent.style),
+                            "weight":subpart.weight   # YO!  WHAT DO WE *NOT* COPY?
+                        })
                 except Exception, e:
                     Log.error("", e)
         else:
@@ -298,7 +305,7 @@ def addParts(parentPart, childPath, count, index):
     parentPart.count = nvl(parentPart.count, 0) + count
 
     if parentPart.partitions == None:
-        parentPart.partitions = []
+        parentPart.partitions = StructList()
     for i, part in enumerate(parentPart.partitions):
         if part.name == c.name:
             addParts(part, childPath, count, index + 1)

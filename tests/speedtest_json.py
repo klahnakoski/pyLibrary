@@ -15,7 +15,7 @@ import json
 from util import struct, jsons
 from util.jsons import cPythonJSONEncoder, json_encoder, json_scrub
 from util.env.logs import Log
-from util.struct import Null
+from util.struct import Null, wrap
 
 
 TARGET_RUNTIME = 10
@@ -125,8 +125,8 @@ class EnhancedJSONEncoder(json.JSONEncoder):
 def main(num):
     try:
         Log.start()
-        test_json("util.jsons.json_encoder", json_encoder.encode, num)
-        test_json("util.jsons.json_encoder (again)", json_encoder.encode, num)
+        test_json("util.jsons.json_encoder", json_encoder, num)
+        test_json("util.jsons.json_encoder (again)", json_encoder, num)
         test_json("scrub before json.dumps", cPythonJSONEncoder().encode, num)
         test_json("override JSONEncoder.default()", EnhancedJSONEncoder().encode, num)
         test_json("default json.dumps", json.dumps, num)  # WILL CRASH, CAN NOT HANDLE DIVERSITY OF TYPES

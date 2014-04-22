@@ -11,7 +11,7 @@ import unittest
 from util import struct
 from util.cnv import CNV
 from util.queries import Q
-from util.struct import wrap
+from util.struct import wrap, Struct
 
 
 class TestQ(unittest.TestCase):
@@ -71,7 +71,7 @@ class TestQ(unittest.TestCase):
         }]
 
         result = Q.select(data, "attachments.attach_id")
-        assert result == [456, 789, 345], "can not pull children"
+        self.assertItemsEqual(result, [456, 789, 345], "can not pull children")
 
         result = Q.select(data, ["bug_id", "attachments.name"])
         expected = [
@@ -101,7 +101,7 @@ class TestQ(unittest.TestCase):
         assert CNV.object2JSON(result) == CNV.object2JSON(expected), "can not rename fields"
 
         result = Q.select(data, {"name": "id", "value": "attachments.attach_id"})
-        assert result == [456, 789, 345], "can not pull simple fields"
+        self.assertItemsEqual(result, [456, 789, 345], "can not pull simple fields")
 
         result = Q.select(data, [{"name": "attach.id", "value": "attachments.attach_id"}])
         expected = [{"attach": {"id": 456}}, {"attach": {"id": 789}}, {"attach": {"id": 345}}]
@@ -115,3 +115,15 @@ class TestQ(unittest.TestCase):
         dict_value = struct.unwrap(value)
         assert dict_value[u"é"] == "test", "not expecting problems"
         assert dict_value["é"] == "test", "not expecting problems"
+
+
+    def test_simple_depth_filter(self):
+        data = [Struct(**{u'test_build': {u'name': u'Firefox'}})]
+        result = Q.filter(data, {u'term': {u'test_build.name': u'Firefox'}})
+        assert len(result) == 1
+
+
+    def test_split_filter(self):
+        data = [{u'testrun': {u'suite': u'tp5o'}, u'result': {u'test_name': u'digg.com'}}]
+        result = Q.filter(data, {u'and': [{u'term': {u'testrun.suite': u'tp5o'}}, {u'term': {u'result.test_name': u'digg.com'}}]})
+        assert len(result) == 1

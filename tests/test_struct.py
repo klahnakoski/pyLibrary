@@ -80,6 +80,11 @@ class TestStruct(unittest.TestCase):
         if e.test != f.test:
             Log.error("error")
 
+    def test_int_null(self):
+        a = Struct()
+        value = a.b*1000
+        assert value == Null
+
 
     def test_list(self):
         if not []:

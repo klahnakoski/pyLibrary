@@ -17,7 +17,7 @@ from ..collections import reverse, AND
 from ..env.logs import Log
 from ..maths import Math
 from ..queries.filters import TRUE_FILTER
-from ..struct import Struct, nvl, split_field, join_field
+from ..struct import Struct, nvl, split_field, join_field, Null
 from ..times.durations import Duration
 
 
@@ -70,7 +70,7 @@ class _MVEL(object):
     def frum(self, fromPath, indexName, loopVariablePrefix):
         """
         indexName NAME USED TO REFER TO HIGH LEVEL DOCUMENT
-        loopVariablePrefix PREFIX FOR LOOP VARABLES
+        loopVariablePrefix PREFIX FOR LOOP VARIABLES
         """
         loopCode = "if (<PATH> != null){ for(<VAR> : <PATH>){\n<CODE>\n}}\n"
         self.prefixMap = []
@@ -129,7 +129,7 @@ class _MVEL(object):
                 shortForm = self._translate(s.value)
                 list.append("Value2Pipe(" + shortForm + ")\n")
             else:
-                code = self.Parts2Term(s.domain)
+                code, decode = self.Parts2Term(s.domain)
                 heads.append(code.head)
                 list.append("Value2Pipe(" + code.body + ")\n")
 
@@ -144,20 +144,48 @@ class _MVEL(object):
         )
 
     # CONVERT AN ARRAY OF PARTS{name, esfilter} TO AN MVEL EXPRESSION
+    # RETURN expression, function PAIR, WHERE
+    # expression - MVEL EXPRESSION
+    # function - TAKES RESULT OF expression AND RETURNS PART
     def Parts2Term(self, domain):
-        term = []
+        fields = domain.dimension.fields
+        if isinstance(fields, dict):
+            # CONVERT UNORDERED FIELD DEFS
+            qb_fields, es_fields = zip(*[(k, fields[k]) for k in sorted(fields.keys())])
+        else:
+            qb_fields, es_fields = zip(*[(i, e) for i, e in enumerate(fields)])
 
-        if len(split_field(self.fromData.name))==1 and domain.dimension and domain.dimension.fields:
+        term = []
+        if len(split_field(self.fromData.name))==1 and fields:
             #NO LOOPS BECAUSE QUERY IS SHALLOW
             #DOMAIN IS FROM A DIMENSION, USE IT'S FIELD DEFS TO PULL
-            for f in domain.dimension.fields:
-                term.append('getDocValue('+CNV.string2quote(f)+').replace("\\\\", "\\\\\\\\").replace(".", "\\\\.")')
-            expr = '+"."+'.join(term)
+            if len(es_fields) == 1:
+                def fromTerm(term):
+                    return domain.getPartByKey(term)
 
-            return Struct(
-                head="",
-                body=expr
-            )
+                return Struct(
+                    head="",
+                    body='getDocValue('+CNV.string2quote(domain.dimension.fields[0])+')'
+                ), fromTerm
+            else:
+                def fromTerm(term):
+                    terms = [CNV.pipe2value(t) for t in term.split("|")]
+
+                    for p in domain.partitions:
+                        for k, t in zip(qb_fields, terms):
+                            if p.value[k] != t:
+                                break
+                        else:
+                            return p
+                    return Null
+
+                for f in es_fields:
+                    term.append('Value2Pipe(getDocValue('+CNV.string2quote(f)+'))')
+
+                return Struct(
+                    head="",
+                    body='+"|"+'.join(term)
+                ), fromTerm
         else:
             for v in domain.partitions:
                 term.append("if (" + _where(v.esfilter, lambda x: self._translate(x)) + ") " + value2MVEL(domain.getKey(v)) + "; else ")
@@ -167,9 +195,9 @@ class _MVEL(object):
             return self.register_function("+\"|\"+".join(term))
 
     def Parts2TermScript(self, domain):
-        c = self.Parts2Term(domain)
-        func = addFunctions(c.head + c.body)
-        return func.head + c.head + c.body
+        code, decode = self.Parts2Term(domain)
+        func = addFunctions(code.head + code.body)
+        return func.head + code.head + code.body, decode
 
     def getFrameVariables(self, body):
         contextVariables = []

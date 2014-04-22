@@ -10,12 +10,13 @@
 
 from __future__ import unicode_literals
 import functools
+from ..struct import StructList
 from ..maths import stats
 from ..collections import MIN, MAX
 from ..env.logs import Log
 from ..maths import Math
 from ..collections.multiset import Multiset
-from ..maths.stats import Z_moment, stats2z_moment, z_moment2stats
+from ..maths.stats import Z_moment, z_moment2stats
 
 # A VARIETY OF SLIDING WINDOW FUNCTIONS
 
@@ -94,7 +95,7 @@ class _Stats(WindowFunction):
     def __init__(self, middle=None):
         object.__init__(self)
         self.middle = middle
-        self.samples = []
+        self.samples = StructList()
 
     def add(self, value):
         if value == None:

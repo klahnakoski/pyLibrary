@@ -82,6 +82,7 @@ def z_moment2stats(z_moment, unbiased=True):
         error = -EPSILON * (abs(Z2) + 1)  # EXPECTED FLOAT ERROR
 
         if error < variance <= 0:  # TODO: MAKE THIS A TEST ON SIGNIFICANT DIGITS
+            variance = 0
             skew = None
             kurtosis = None
         elif variance < error:
@@ -209,7 +210,6 @@ class Z_moment(object):
     def new_instance(values=None):
         if values == None:
             return Z_moment()
-        values = [float(v) for v in values if v != None]
 
         return Z_moment(
             len(values),
@@ -260,6 +260,9 @@ def median(values, simple=True, mean_weight=0.0):
 
         middle = l / 2
         _median = float(_sorted[middle])
+
+        if len(_sorted) == 1:
+            return _median
 
         if simple:
             if l % 2 == 0:

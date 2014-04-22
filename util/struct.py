@@ -12,6 +12,8 @@ from types import NoneType, GeneratorType
 
 _get = object.__getattribute__
 
+DEBUG = False
+
 
 class Struct(dict):
     """
@@ -21,6 +23,12 @@ class Struct(dict):
     1) the IDE does tab completion, and my spelling mistakes get found at "compile time"
     2) it deals with missing keys gracefully, so I can put it into set operations (database
        operations) without choking
+       a = wrap({})
+       > a == {}
+       a.b is Null
+       > True
+       a.b.c == None
+       > True
     2b) missing keys is important when dealing with JSON, which is often almost anything
     3) you can access paths as a variable:   a["b.c"]==a.b.c
     4) you can set paths to values, missing objects along the path are created:
@@ -49,7 +57,12 @@ class Struct(dict):
         USE wrap() INSTEAD
         """
         dict.__init__(self)
-        object.__setattr__(self, "__dict__", map)  #map IS A COPY OF THE PARAMETERS
+        if DEBUG:
+            d = _get(self, "__dict__")
+            for k, v in map.items():
+                d[literal_field(k)] = unwrap(v)
+        else:
+            object.__setattr__(self, "__dict__", map)
 
     def __bool__(self):
         return True
@@ -60,9 +73,20 @@ class Struct(dict):
 
     def __str__(self):
         try:
-            return dict.__str__(_get(self, "__dict__"))
+            return "Struct("+dict.__str__(_get(self, "__dict__"))+")"
         except Exception, e:
             return "{}"
+
+    def __repr__(self):
+        try:
+            return "Struct("+dict.__repr__(_get(self, "__dict__"))+")"
+        except Exception, e:
+            return "Struct{}"
+
+    def __contains__(self, item):
+        if Struct.__getitem__(self, item):
+            return True
+        return False
 
     def __getitem__(self, key):
         if isinstance(key, str):
@@ -71,13 +95,15 @@ class Struct(dict):
         d = _get(self, "__dict__")
 
         if key.find(".") >= 0:
-            key = key.replace("\.", "\a")
-            seq = [k.replace("\a", ".") for k in key.split(".")]
+            seq = split_field(key)
             for n in seq:
                 d = _getdefault(d, n)
             return wrap(d)
 
-        return getdefaultwrapped(d, key)
+        o = d.get(key, None)
+        if o == None:
+            return NullType(d, key)
+        return wrap(o)
 
     def __setitem__(self, key, value):
         if key == "":
@@ -97,8 +123,7 @@ class Struct(dict):
                     d[key] = value
                 return self
 
-            key = key.replace("\.", "\a")
-            seq = [k.replace("\a", ".") for k in key.split(".")]
+            seq = split_field(key)
             for k in seq[:-1]:
                 d = _getdefault(d, k)
             if value == None:
@@ -115,8 +140,6 @@ class Struct(dict):
 
         try:
             output = _get(self, key)
-            if key=="__dict__":
-                return output
             return wrap(output)
         except Exception:
             d = _get(self, "__dict__")
@@ -195,8 +218,7 @@ class Struct(dict):
             return
 
         d = _get(self, "__dict__")
-        key = key.replace("\.", "\a")
-        seq = [k.replace("\a", ".") for k in key.split(".")]
+        seq = split_field(key)
         for k in seq[:-1]:
             d = d[k]
         d.pop(seq[-1], None)
@@ -273,29 +295,36 @@ def _getdefault(obj, key):
     except Exception, e:
         return NullType(obj, key)
 
-def getdefaultwrapped(obj, key):
-    o = obj.get(key, None)
-    if o == None:
-        return NullType(obj, key)
-    return wrap(o)
 
-
-def _assign(null, key, value, force=True):
+def _assign(obj, path, value, force=True):
     """
-    value IS ONLY ASSIGNED IF self.obj[self.path][key] DOES NOT EXIST
+    value IS ASSIGNED TO obj[self.path][key]
+    force=False IF YOU PREFER TO use setDefault()
     """
-    d = _get(null, "__dict__")
-    o = d["obj"]
-    if isinstance(o, NullType):
-        o = _assign(o, d["path"], {}, False)
-    else:
-        o = _setdefault(o, d["path"], {})
+    if isinstance(obj, NullType):
+        d = _get(obj, "__dict__")
+        o = d["obj"]
+        p = d["path"]
+        s = split_field(p)+path
+        return _assign(o, s, value)
 
-    if force:
-        o[key] = value
-    else:
-        value = _setdefault(o, key, value)
-    return value
+    path0 = path[0]
+
+    if len(path) == 1:
+        if force:
+            obj[path0] = value
+        else:
+            _setdefault(obj, path0, value)
+        return
+
+    old_value = obj.get(path0, None)
+    if old_value == None:
+        if value == None:
+            return
+        else:
+            old_value = {}
+            obj[path0] = old_value
+    _assign(old_value, path[1:], value)
 
 
 class NullType(object):
@@ -303,6 +332,8 @@ class NullType(object):
     Structural Null provides closure under the dot (.) operator
         Null[x] == Null
         Null.x == Null
+
+    Null INSTANCES WILL TRACK THE
     """
 
     def __init__(self, obj=None, path=None):
@@ -388,20 +419,12 @@ class NullType(object):
 
     def __setitem__(self, key, value):
         try:
-            value = unwrap(value)
-            if key.find(".") == -1:
-                _assign(self, key, value)
-                return self
+            d = _get(self, "__dict__")
+            o = d["obj"]
+            path = d["path"]
+            seq = split_field(path)+split_field(key)
 
-            key = key.replace("\.", "\a")
-            seq = [k.replace("\a", ".") for k in key.split(".")]
-            d = _assign(self, seq[0], {}, False)
-            for k in seq[1:-1]:
-                o = {}
-                d[k] = o
-                d = o
-            d[seq[-1]] = value
-            return self
+            _assign(o, seq, value)
         except Exception, e:
             raise e
 
@@ -439,7 +462,6 @@ class StructList(list):
     ENCAPSULATES HANDING OF Nulls BY wrapING ALL MEMBERS AS NEEDED
     ENCAPSULATES FLAT SLICES ([::]) FOR USE IN WINDOW FUNCTIONS
     """
-
     def __init__(self, vals=None):
         """ USE THE vals, NOT A COPY """
         # list.__init__(self)
@@ -454,7 +476,7 @@ class StructList(list):
         if isinstance(index, slice):
             # IMPLEMENT FLAT SLICES (for i not in range(0, len(self)): assert self[i]==None)
             if index.step is not None:
-                from ...env.logs import Log
+                from .env.logs import Log
                 Log.error("slice step must be None, do not know how to deal with values")
             length = len(_get(self, "list"))
 
@@ -473,6 +495,15 @@ class StructList(list):
 
     def __setitem__(self, i, y):
         _get(self, "list")[i] = unwrap(y)
+
+    def __getattribute__(self, key):
+        try:
+            if key != "index":  # WE DO NOT WANT TO IMPLEMENT THE index METHOD
+                output = _get(self, key)
+                return output
+        except Exception, e:
+            pass
+        return StructList([v.get(key, None) for v in _get(self, "list")])
 
     def __iter__(self):
         return (wrap(v) for v in _get(self, "list"))
@@ -553,14 +584,12 @@ class StructList(list):
             return wrap(_get(self, "list")[-1])
         return Null
 
-    def __getattribute__(self, key):
-        try:
-            if key != "index":
-                output = _get(self, key)
-                return output
-        except Exception, e:
-            pass
-        return StructList([v.get(key, None) for v in _get(self, "list")])
+    def map(self, oper, includeNone=True):
+        if includeNone:
+            return StructList([oper(v) for v in _get(self, "list")])
+        else:
+            return StructList([oper(v) for v in _get(self, "list") if v != None])
+
 
 def wrap(v):
     type = v.__class__
@@ -574,18 +603,19 @@ def wrap(v):
     elif type is StructList:
         return v
     elif type is list:
-        for sv in v:
-            # IN PRACTICE WE DO NOT EXPECT TO GO THROUGH THIS LIST, IF ANY ARE WRAPPED, THE FIRST IS PROBABLY WRAPPED
-            # WARNING!  THIS IS VERY SLOW
-            if sv is not unwrap(sv):
-                #MUST KEEP THE LIST
-                temp = [unwrap(sv) for sv in v]
-                del v[:]
-                v.extend(temp)
-                # from .env.logs import Log
+        if DEBUG:
+            for sv in v:
+                # IN PRACTICE WE DO NOT EXPECT TO GO THROUGH THIS LIST, IF ANY ARE WRAPPED, THE FIRST IS PROBABLY WRAPPED
+                # WARNING!  THIS IS VERY SLOW
+                if isinstance(sv, (Struct, StructList)):
+                    from .env.logs import Log
+                    Log.warning("Please unwrap members of list before wrapping list.  Fixed for now.")
 
-                # Log.warning("Please unwrap members of list before wrapping list.  Fixed for now.")
-                return StructList(v)
+                    #MUST KEEP THE LIST
+                    temp = [unwrap(ssv) for ssv in v]
+                    del v[:]
+                    v.extend(temp)
+                    return StructList(v)
         return StructList(v)
     elif type is GeneratorType:
         return (wrap(vv) for vv in v)
@@ -598,7 +628,8 @@ def wrap(v):
 def unwrap(v):
     type = v.__class__
     if type is Struct:
-        return _get(v, "__dict__")
+        d = _get(v, "__dict__")
+        return d
     elif type is StructList:
         return v.list
     elif type is NullType:
@@ -661,16 +692,16 @@ def listwrap(value):
     elif isinstance(value, list):
         return wrap(value)
     else:
-        return wrap([value])
+        return wrap([unwrap(value)])
 
 
 def tuplewrap(value):
     """
     INTENDED TO TURN lists INTO tuples FOR USE AS KEYS
     """
-    if isinstance(value, (list, tuple, GeneratorType)):
-        return tuple(tuplewrap(v) for v in value)
-    return unwrap(value)
+    if isinstance(value, (list, set, tuple, GeneratorType)):
+        return tuple(tuplewrap(v) if isinstance(v, (list, tuple, GeneratorType)) else v for v in value)
+    return unwrap(value),
 
 
 
@@ -680,15 +711,50 @@ def literal_field(field):
     """
     return field.replace(".", "\.")
 
-def split_field(field):
+def cpython_split_field(field):
     """
     RETURN field AS ARRAY OF DOT-SEPARATED FIELDS
     """
     if field.find(".") >= 0:
         field = field.replace("\.", "\a")
-        return [k.replace("\a", "\.") for k in field.split(".")]
+        return [k.replace("\a", ".") for k in field.split(".")]
     else:
         return [field]
+
+def pypy_split_field(field):
+    """
+    RETURN field AS ARRAY OF DOT-SEPARATED FIELDS
+    """
+    from .jsons import UnicodeBuilder
+
+    if not field:
+        return []
+
+    output = []
+    curr = UnicodeBuilder()
+    i = 0
+    while i < len(field):
+        c = field[i]
+        i += 1
+        if c == "\\":
+            c = field[i]
+            i += 1
+            if c == ".":
+                curr.append(".")
+            else:
+                curr.append("\\")
+                curr.append(c)
+        elif c == ".":
+            output.append(curr.build())
+            curr = UnicodeBuilder()
+    output.append(curr.build())
+    return output
+
+# try:
+#     import __pypy__
+#     split_field = pypy_split_field
+# except ImportError:
+split_field = cpython_split_field
 
 
 def join_field(field):
@@ -706,18 +772,4 @@ def hash_value(v):
     else:
         return hash(tuple(sorted(hash_value(vv) for vv in v.values())))
 
-
-
-def deeper_than(depth):
-    """
-    RETURN TRUE IF DEEPER THAN depth
-    """
-    import sys
-
-    while True:
-        try:
-            sys._getframe(depth)
-            return True
-        except ValueError:
-            return False
 
