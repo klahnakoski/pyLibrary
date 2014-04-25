@@ -145,6 +145,12 @@ def parseColumns(index_name, parent_path, esProperties):
                 INDEX_CACHE[path] = INDEX_CACHE[parent_path].copy()
                 INDEX_CACHE[path].name = path
             INDEX_CACHE[path].columns = childColumns
+
+            columns.append({
+                "name": struct.join_field(split_field(path)[1::]),
+                "type": property.type,
+                "useSource": True
+            })
             continue
 
         if property.properties:

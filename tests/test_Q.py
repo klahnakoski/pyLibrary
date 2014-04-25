@@ -127,3 +127,16 @@ class TestQ(unittest.TestCase):
         data = [{u'testrun': {u'suite': u'tp5o'}, u'result': {u'test_name': u'digg.com'}}]
         result = Q.filter(data, {u'and': [{u'term': {u'testrun.suite': u'tp5o'}}, {u'term': {u'result.test_name': u'digg.com'}}]})
         assert len(result) == 1
+
+    def test_deep_value_selector(self):
+        data = [{'bug_id': 35, 'blocked': [686525, 123456]}]
+        result = Q.run({
+               "from": data,
+               "where": {"exists": {"field": "blocked"}},
+               "select": [
+                   "blocked.",  # SINCE blocked IS A LIST, WE USE "." SUFFIX TO INDICATE WE ARE SELECTING THE VALUES OF THE LIST, NOT THE LIST ITSELF
+                   "bug_id"
+               ]
+           })
+        assert result[0].blocked == 686525
+        assert result[1].blocked == 123456

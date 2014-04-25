@@ -128,7 +128,7 @@ def es_setop(es, mvel, query):
                 "query": {"match_all": {}},
                 "filter": simplify(query.where)
             }}
-            esQuery.size = 1 # PREVENT QUERY CHECKER FROM THROWING ERROR
+            esQuery.size = 1  # PREVENT QUERY CHECKER FROM THROWING ERROR
         elif MVEL.isKeyword(select[0].value):
             esQuery.facets.mvel = {
                 "terms": {

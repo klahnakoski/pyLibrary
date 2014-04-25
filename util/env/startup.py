@@ -71,7 +71,7 @@ def read_settings(filename=None, defs=None):
         args = _argparse(defs)
         settings_file = File(args.filename)
         if not settings_file.exists:
-            Log.error("Can not file settings file {{filename}}", {
+            Log.error("Can not read settings file {{filename}}", {
                 "filename": settings_file.abspath
             })
         json = settings_file.read()

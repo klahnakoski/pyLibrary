@@ -20,7 +20,7 @@ except Exception:
 
 setup(
     name='pyLibrary',
-    version="0.1.14076",
+    version="0.1.14112",
     description='Library of Wonderful Things',
     long_description=long_desc,
     author='Kyle Lahnakoski',

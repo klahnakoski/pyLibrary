@@ -12,7 +12,7 @@ from __future__ import unicode_literals
 import __builtin__
 
 from . import group_by
-from ..collections import UNION
+from ..collections import UNION, MIN
 from ..queries import flat_list, query
 from ..queries.filters import TRUE_FILTER, FALSE_FILTER
 from ..queries.query import Query, _normalize_selects
@@ -259,20 +259,25 @@ def _select_a_field(field):
 
 def _select(template, data, fields, depth):
     output = StructList()
-    deep_path = None
+    deep_path = []
     deep_fields = StructList()
     for d in data:
         if isinstance(d, Struct):
             Log.error("programmer error, _select can not handle Struct")
 
         record = template.copy()
+        children=None
         for f in fields:
-            index, children = _select_deep(d, f, depth, record)
+            index, c = _select_deep(d, f, depth, record)
+            children = nvl(children, c)
             if index:
                 path = f.value[0:index:]
-                deep_fields.append(f)
-                if deep_path and path != deep_path:
+                deep_fields.append(f)  # KEEP TRACK OF WHICH FIELDS NEED DEEPER SELECT
+                short = MIN(len(deep_path), len(path))
+                if path[:short:] != deep_path[:short:]:
                     Log.error("Dangerous to select into more than one branch at time")
+                if len(deep_path)<len(path):
+                    deep_path = path
         if not children:
             output.append(record)
         else:
@@ -301,7 +306,13 @@ def _select_deep(v, field, depth, record):
             return depth + i + 1, v
 
     f = field.value.last()
-    record[field.name] = v.get(f, None)
+    try:
+        if not f:  # NO NAME FIELD INDICATES SELECT VALUE
+            record[field.name] = v
+        else:
+            record[field.name] = v.get(f, None)
+    except Exception, e:
+        Log.error("{{value}} does not have {{field}} property", {"value": v, "field": f}, e)
     return 0, None
 
 

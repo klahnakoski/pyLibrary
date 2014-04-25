@@ -90,7 +90,11 @@ def _normalize_select(select, schema=None):
             s = schema[select]
             if s:
                 return s.getSelect()
-        return Struct(name=select, value=select, aggregate="none")
+        return Struct(
+            name=select.rstrip("."),  # TRAILING DOT INDICATES THE VALUE, BUT IS INVALID FOR THE NAME
+            value=select,
+            aggregate="none"
+        )
     else:
         if not select.name:
             select = select.copy()
