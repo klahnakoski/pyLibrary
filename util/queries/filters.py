@@ -91,7 +91,7 @@ def _normalize(esfilter):
         if esfilter["or"]:
             output = []
             for a in esfilter["or"]:
-                a = _normalize(a)
+                a_ = _normalize(a)
                 if a_ is not a:
                     isDiff = True
                 a = a_

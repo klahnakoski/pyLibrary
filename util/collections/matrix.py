@@ -124,10 +124,7 @@ class Matrix(object):
         return other / self.value
 
     def __iter__(self):
-        def output():
-            for c in self._all_combos():
-                yield self[c]
-        return output()
+        return (self[c] for c in self._all_combos())
 
     def __float__(self):
         return self.value
@@ -187,8 +184,12 @@ class Matrix(object):
         """
         num = self.num
         dim = self.dims
-        c = [0]*num  # THE CORRECT SIZE
 
+        combos = PRODUCT(dim)
+        if not combos:
+            return
+
+        c = [0]*num  # THE CORRECT SIZE
         while True:
             yield c
 

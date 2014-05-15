@@ -127,8 +127,8 @@ class Index(object):
 def value2key(keys, val):
     if len(keys) == 1:
         if isinstance(val, dict):
-            return val[keys[0]]
-        return val
+            return val[keys[0]],
+        return val,
     else:
         if isinstance(val, dict):
             return tuple(val[k] for k in keys)

@@ -55,7 +55,6 @@ class Relation(object):
         if to is None:
             to = set()
             self.map[key] = to
-            return
         to.add(value)
 
     def testAndAdd(self, key, value):

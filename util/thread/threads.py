@@ -83,11 +83,13 @@ class Queue(object):
         with self.lock:
             if self.keep_running:
                 self.queue.append(value)
+            wait_time=5
             while self.keep_running and len(self.queue) > self.max:
                 if self.silent:
                     self.lock.wait()
                 else:
-                    self.lock.wait(5)
+                    self.lock.wait(wait_time)
+                    wait_time *= 2
                     if len(self.queue) > self.max:
                         from ..env.logs import Log
                         Log.warning("Queue is full ({{num}}} items), been waiting 5 sec", {"num": len(self.queue)})
@@ -96,11 +98,13 @@ class Queue(object):
     def extend(self, values):
         with self.lock:
             # ONCE THE queue IS BELOW LIMIT, ALLOW ADDING MORE
+            wait_time=5
             while self.keep_running and len(self.queue) > self.max:
                 if self.silent:
                     self.lock.wait()
                 else:
-                    self.lock.wait(5)
+                    self.lock.wait(wait_time)
+                    wait_time *= 2
                     if len(self.queue) > self.max:
                         from ..env.logs import Log
                         Log.warning("Queue is full ({{num}}} items), been waiting 5 sec", {"num": len(self.queue)})
@@ -289,7 +293,7 @@ class Thread(object):
                 if DEBUG:
                     from ..env.logs import Log
 
-                    Log.note("Waiting on thread {{thread|quote}}", {"thread": self.name})
+                    Log.note("Waiting on thread {{thread|json}}", {"thread": self.name})
         else:
             self.stopped.wait_for_go(till=till)
             if self.stopped:

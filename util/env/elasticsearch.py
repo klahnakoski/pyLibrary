@@ -250,24 +250,32 @@ class ElasticSearch(object):
         try:
             for r in records:
                 id = r.get("id", None)
+                if id == None:
+                    id = Random.hex(40)
+
                 if "json" in r:
                     json = r["json"]
                 elif "value" in r:
                     json = CNV.object2JSON(r["value"])
                 else:
+                    json = None
                     Log.error("Expecting every record given to have \"value\" or \"json\" property")
-
-                if id == None:
-                    id = Random.hex(40)
 
                 lines.append('{"index":{"_id": ' + CNV.object2JSON(id) + '}}')
                 lines.append(json)
 
             if not lines:
                 return
+
+            try:
+                data_bytes = "\n".join(lines) + "\n"
+                data_bytes = data_bytes.encode("utf8")
+            except Exception, e:
+                Log.error("can not make request body from\n{{lines|indent}}", {"lines": lines}, e)
+
             response = self.post(
                 self.path + "/_bulk",
-                data=("\n".join(lines) + "\n").encode("utf8"),
+                data=data_bytes,
                 headers={"Content-Type": "text"},
                 timeout=self.settings.timeout
             )
@@ -285,7 +293,7 @@ class ElasticSearch(object):
         except Exception, e:
             if e.message.startswith("sequence item "):
                 Log.error("problem with {{data}}", {"data": repr(lines[int(e.message[14:16].strip())])}, e)
-            Log.error("problem", e)
+            Log.error("problem sending to ES", e)
 
 
     # RECORDS MUST HAVE id AND json AS A STRING OR

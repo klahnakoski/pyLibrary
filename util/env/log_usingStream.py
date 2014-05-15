@@ -105,9 +105,10 @@ def time_delta_pusher(please_stop, appender, queue, interval):
                         please_stop.go()
                         next_run = datetime.utcnow()
                     else:
-                        lines.append(expand_template(log.get("template", None), log.get("params", None)))
+                        expanded = expand_template(log.get("template", None), log.get("params", None))
+                        lines.append(expanded)
                 except Exception, e:
-                    sys.stderr.write("Trouble formatting logs: " + e.message)
+                    Log.warning("Trouble formatting logs", e)
                     # SWALLOW ERROR, GOT TO KEEP RUNNING
             try:
                 if DEBUG_LOGGING and please_stop:
@@ -116,6 +117,6 @@ def time_delta_pusher(please_stop, appender, queue, interval):
                 if DEBUG_LOGGING and please_stop:
                     sys.stdout.write("Done call to appender with " + str(len(lines)) + " lines\n")
             except Exception, e:
-                sys.stderr.write("Trouble with appender: " + e.message)
+                sys.stderr.write("Trouble with appender: " + str(e.message) + "\n")
                 # SWALLOW ERROR, GOT TO KEEP RUNNNIG
 

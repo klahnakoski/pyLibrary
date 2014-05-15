@@ -232,12 +232,12 @@ def select(data, field_name):
 
     # SIMPLE PYTHON ITERABLE ASSUMED
     if isinstance(field_name, basestring):
-        if len(split_field(field_name)) == 1:
+        path = split_field(field_name)
+        if len(path) == 1:
             return StructList([d[field_name] for d in data])
         else:
-            keys = split_field(field_name)
             output = StructList()
-            flat_list._select1(data, keys, 0, output)
+            flat_list._select1(data, path, 0, output)
             return output
     elif isinstance(field_name, list):
         keys = [_select_a_field(wrap(f)) for f in field_name]
@@ -260,23 +260,23 @@ def _select_a_field(field):
 def _select(template, data, fields, depth):
     output = StructList()
     deep_path = []
-    deep_fields = StructList()
+    deep_fields = UniqueIndex(["name"])
     for d in data:
         if isinstance(d, Struct):
             Log.error("programmer error, _select can not handle Struct")
 
         record = template.copy()
-        children=None
+        children = None
         for f in fields:
             index, c = _select_deep(d, f, depth, record)
             children = nvl(children, c)
             if index:
                 path = f.value[0:index:]
-                deep_fields.append(f)  # KEEP TRACK OF WHICH FIELDS NEED DEEPER SELECT
+                deep_fields.add(f)  # KEEP TRACK OF WHICH FIELDS NEED DEEPER SELECT
                 short = MIN(len(deep_path), len(path))
                 if path[:short:] != deep_path[:short:]:
                     Log.error("Dangerous to select into more than one branch at time")
-                if len(deep_path)<len(path):
+                if len(deep_path) < len(path):
                     deep_path = path
         if not children:
             output.append(record)
@@ -314,6 +314,62 @@ def _select_deep(v, field, depth, record):
     except Exception, e:
         Log.error("{{value}} does not have {{field}} property", {"value": v, "field": f}, e)
     return 0, None
+
+
+def _select_deep_meta(field, depth):
+    """
+    field = {"name":name, "value":["attribute", "path"]}
+    r[field.name]=v[field.value], BUT WE MUST DEAL WITH POSSIBLE LIST IN field.value PATH
+    RETURN FUNCTION THAT PERFORMS THE MAPPING
+    """
+    name = field.name
+    if hasattr(field.value, '__call__'):
+        try:
+            def assign(source, destination):
+                destination[name] = field.value(wrap(source))
+                return 0, None
+            return assign
+        except Exception, e:
+            def assign(source, destination):
+                destination[name] = None
+                return 0, None
+            return assign
+
+    prefix = field.value[depth:len(field.value) - 1:]
+    if prefix:
+        def assign(source, destination):
+            for i, f in enumerate(prefix):
+                source = source.get(f, None)
+                if source is None:
+                    return 0, None
+                if isinstance(source, list):
+                    return depth + i + 1, source
+
+            f = field.value.last()
+            try:
+                if not f:  # NO NAME FIELD INDICATES SELECT VALUE
+                    destination[name] = source
+                else:
+                    destination[name] = source.get(f, None)
+            except Exception, e:
+                Log.error("{{value}} does not have {{field}} property", {"value": source, "field": f}, e)
+            return 0, None
+        return assign
+    else:
+        f = field.value[0]
+        if not f:  # NO NAME FIELD INDICATES SELECT VALUE
+            def assign(source, destination):
+                destination[name] = source
+                return 0, None
+            return assign
+        else:
+            def assign(source, destination):
+                try:
+                    destination[name] = source.get(f, None)
+                except Exception, e:
+                    Log.error("{{value}} does not have {{field}} property", {"value": source, "field": f}, e)
+                return 0, None
+            return assign
 
 
 def get_columns(data):

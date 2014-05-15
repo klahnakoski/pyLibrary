@@ -44,8 +44,10 @@ def newline(value):
     return "\n" + toString(value).lstrip("\n")
 
 
-def quote(value):
-    return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+def json(value):
+    from .cnv import CNV
+
+    return CNV.object2JSON(value)
 
 
 def indent(value, prefix=u"\t", indent=None):
@@ -72,7 +74,7 @@ def outdent(value):
                 num = min(num, len(l) - len(l.lstrip()))
         return u"\n".join([l[num:] for l in lines])
     except Exception, e:
-        from ...env.logs import Log
+        from .env.logs import Log
 
         Log.error("can not outdent value", e)
 
@@ -189,10 +191,10 @@ def _simple_expand(template, seq):
             except Exception, f:
                 from .env.logs import Log
 
-                Log.warning("Can not expand " + "|".join(ops) + " in template: {{template}}", {
+                Log.warning("Can not expand " + "|".join(ops) + " in template: {{template|json}}", {
                     "template": template
                 }, e)
-        return "[template expansion error: ("+str(e.message)+")]"
+            return "[template expansion error: ("+str(e.message)+")]"
 
     return pattern.sub(replacer, template)
 
@@ -210,7 +212,12 @@ def toString(val):
         duration = val.total_seconds()
         return unicode(round(duration, 3))+" seconds"
 
-    return unicode(val)
+    try:
+        return unicode(val)
+    except Exception, e:
+        from .env.logs import Log
+
+        Log.error(str(type(val))+" type can not be converted to unicode", e)
 
 
 def edit_distance(s1, s2):

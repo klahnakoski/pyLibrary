@@ -70,7 +70,7 @@ def encode(value, pretty=False):
         from .env.logs import Log
         Log.warning("Serialization of JSON problems", e)
         try:
-            pretty_json(value)
+            return pretty_json(value)
         except Exception, f:
             Log.error("problem serializing object", f)
 
@@ -97,6 +97,7 @@ class cPythonJSONEncoder(object):
 
         if pretty:
             return pretty_json(value)
+
 
         return unicode(self.encoder.encode(json_scrub(value)))
 
@@ -125,15 +126,10 @@ def _value2json(value, _buffer):
         append(_buffer, v)  # ASSUME ALREADY utf-8 ENCODED
         append(_buffer, u"\"")
     elif type is unicode:
-        try:
-            append(_buffer, u"\"")
-            v = ESCAPE.sub(replace, value)
-            append(_buffer, v)
-            append(_buffer, u"\"")
-        except Exception, e:
-            from .env.logs import Log
-
-            Log.error(value, e)
+        append(_buffer, u"\"")
+        v = ESCAPE.sub(replace, value)
+        append(_buffer, v)
+        append(_buffer, u"\"")
     elif type in (int, long, Decimal):
         append(_buffer, unicode(value))
     elif type is float:
@@ -229,11 +225,6 @@ def _scrub(value):
         return unicode(value.decode("utf8"))
     elif type is Decimal:
         return float(value)
-    elif type.__name__ == "bool_":  # DEAR ME!  Numpy has it's own booleans (value==False could be used, but 0==False in Python.  DOH!)
-        if value == False:
-            return False
-        else:
-            return True
     elif isinstance(value, dict):
         output = {}
         for k, v in value.iteritems():
@@ -246,6 +237,11 @@ def _scrub(value):
             v = _scrub(v)
             output.append(v)
         return output
+    elif type.__name__ == "bool_":  # DEAR ME!  Numpy has it's own booleans (value==False could be used, but 0==False in Python.  DOH!)
+        if value == False:
+            return False
+        else:
+            return True
     elif hasattr(value, '__json__'):
         try:
             return json._default_decoder.decode(value.__json__())
@@ -291,10 +287,47 @@ ARRAY_ITEM_MAX_LENGTH = 30
 ARRAY_MAX_COLUMNS = 10
 INDENT = "    "
 
+
 def pretty_json(value):
     try:
         if value == None:
             return "null"
+        elif isinstance(value, basestring):
+            if isinstance(value, str):
+                try:
+                    value = value.decode("utf8")
+                except Exception, e:
+                    from .env.logs import Log
+
+                    value = unicode(value.decode("latin1"))
+                    Log.warning("Should not have latin1 encoded strings: {{value}}", {"value": value}, e)
+            try:
+                v = ESCAPE.sub(replace, value)
+                return "\"" + v + "\""
+            except Exception, e:
+                from .env.logs import Log
+
+                try:
+                    Log.note("try explicit convert of string with length {{length}}", {"length": len(value)})
+                    acc = [u"\""]
+                    for c in value:
+                        try:
+                            try:
+                                c2 = ESCAPE_DCT[c]
+                            except Exception, h:
+                                c2 = c
+                            c3 = unicode(c2)
+                            acc.append(c3)
+                        except BaseException, g:
+                            pass
+                            # Log.warning("odd character {{ord}} found in string.  Ignored.", {"ord": ord(c)}, g)
+                    acc.append(u"\"")
+                    output = u"".join(acc)
+                    Log.note("return value of length {{length}}", {"length": len(output)})
+                    return output
+                except BaseException, f:
+                    Log.warning("can not even explicit convert", f)
+                    return "null"
         elif isinstance(value, dict):
             try:
                 if not value:
@@ -336,7 +369,7 @@ def pretty_json(value):
             max_len = MAX(len(j) for j in js)
             if max_len <= ARRAY_ITEM_MAX_LENGTH and AND(j.find("\n") == -1 for j in js):
                 #ALL TINY VALUES
-                num_columns = max(1, min(ARRAY_MAX_COLUMNS, int(floor((ARRAY_ROW_LENGTH + 2.0)/float(max_len+2))))) # +2 TO COMPENSATE FOR COMMAS
+                num_columns = max(1, min(ARRAY_MAX_COLUMNS, int(floor((ARRAY_ROW_LENGTH + 2.0)/float(max_len+2)))))  # +2 TO COMPENSATE FOR COMMAS
                 if len(js)<=num_columns:  # DO NOT ADD \n IF ONLY ONE ROW
                     return "[" + ", ".join(js) + "]"
                 if num_columns == 1:  # DO NOT rjust IF THERE IS ONLY ONE COLUMN
@@ -348,7 +381,22 @@ def pretty_json(value):
                 )
                 return "[\n" + indent(content) + "\n]"
 
-            return "[\n" + ",\n".join([indent(pretty_json(v)) for v in value]) + "\n]"
+            pretty_list = [pretty_json(v) for v in value]
+
+            output = "[\n"
+            for i, p in enumerate(pretty_list):
+                try:
+                    if i > 0:
+                        output += ",\n"
+                    output += indent(p)
+                except Exception, e:
+                    from .env.logs import Log
+
+                    Log.warning("problem concatenating string of length {{len1}} and {{len2}}", {
+                        "len1": len(output),
+                        "len2": len(p)
+                    })
+            return output + "\n]"
         elif hasattr(value, '__json__'):
             j = value.__json__()
             if j == None:
@@ -357,12 +405,12 @@ def pretty_json(value):
         elif hasattr(value, '__iter__'):
             return pretty_json(list(value))
         else:
-            return json_encoder(value)
+            return encode(value)
 
     except Exception, e:
         from .env.logs import Log
 
-        Log.error("Problem turning value to json", e)
+        Log.error("Problem turning value ({{value}}) to json", {"value": repr(value)}, e)
 
 
 def indent(value, prefix=INDENT):
