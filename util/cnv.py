@@ -8,18 +8,20 @@
 #
 
 from __future__ import unicode_literals
+
 import StringIO
 import base64
 import datetime
 import json
 import re
 import time
+
+from . import struct
 from . import jsons
+from .jsons import json_encoder
 from .collections.multiset import Multiset
 from .env.profiles import Profiler
-from .jsons import json_encoder, replace, ESCAPE
 from .env.logs import Log
-from . import struct
 from .strings import expand_template
 from .struct import wrap
 
@@ -188,7 +190,7 @@ class CNV:
 
     @staticmethod
     def string2quote(value):
-        return "\""+ESCAPE.sub(replace, value)+"\""
+        return jsons.quote(value)
 
     @staticmethod
     def quote2string(value):
