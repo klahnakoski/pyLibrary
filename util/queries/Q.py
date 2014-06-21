@@ -39,7 +39,7 @@ def run(query):
     elif isinstance(frum, Query):
         frum = run(frum)
     else:
-        Log.error("Do ont know how to handle")
+        Log.error("Do not know how to handle")
 
     if query.edges:
         Log.error("not implemented yet")
@@ -47,7 +47,7 @@ def run(query):
     try:
         if query.filter != None or query.esfilter != None:
             Log.error("use 'where' clause")
-    except Exception, e:
+    except AttributeError, e:
         pass
 
     if query.window:

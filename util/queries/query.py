@@ -49,7 +49,7 @@ class Query(object):
             self.select2index[s.name] = i
         self.select = select
 
-        self.edges = [_normalize_edge(e, schema=schema) for e in struct.listwrap(query.edges)]
+        self.edges = _normalize_edges(query.edges, schema=schema)
         self.frum = _normalize_from(query["from"], schema=schema)
         self.where = _normalize_where(query.where, schema=schema)
 
@@ -104,6 +104,10 @@ def _normalize_select(select, schema=None):
         return select
 
 
+def _normalize_edges(edges, schema=None):
+    return [_normalize_edge(e, schema=schema) for e in struct.listwrap(edges)]
+
+
 def _normalize_edge(edge, schema=None):
     if isinstance(edge, basestring):
         if schema:
@@ -129,12 +133,14 @@ def _normalize_edge(edge, schema=None):
 
 
 def _normalize_from(frum, schema=None):
+    frum = wrap(frum)
+
     if isinstance(frum, basestring):
         return Struct(name=frum)
-    elif isinstance(frum, dict) and frum["from"]:
+    elif isinstance(frum, dict) and (frum["from"] or isinstance(frum["from"], (list, set))):
         return Query(frum, schema=schema)
     else:
-        return wrap(frum)
+        return frum
 
 
 def _normalize_domain(domain=None, schema=None):
@@ -184,15 +190,15 @@ def _normalize_where(where, schema=None):
     return where
 
 
-def _map_term_using_schema(master, where, schema):
+def _map_term_using_schema(master, path, term, schema_edges):
     """
     IF THE WHERE CLAUSE REFERS TO FIELDS IN THE SCHEMA, THEN EXPAND THEM
     """
     output = StructList()
-    for k, v in where.term.items():
-        dimension = schema.edges[k]
-        if dimension:
-            domain = schema.edges[k].getDomain()
+    for k, v in term.items():
+        dimension = schema_edges[k]
+        if isinstance(dimension, Dimension):
+            domain = dimension.getDomain()
             if dimension.fields:
                 if isinstance(dimension.fields, dict):
                     # EXPECTING A TUPLE
@@ -237,6 +243,11 @@ def _map_term_using_schema(master, where, schema):
                 continue
             else:
                 Log.error("not expected")
+        elif isinstance(v, dict):
+            sub = _map_term_using_schema(master, path + [k], v, schema_edges[k])
+            output.append(sub)
+            continue
+
         output.append({"term": {k: v}})
     return {"and": output}
 
@@ -279,36 +290,50 @@ def _where_terms(master, where, schema):
     if isinstance(where, dict):
         if where.term:
             #MAP TERM
-            output = _map_term_using_schema(master, where, schema)
-            return output
+            try:
+                output = _map_term_using_schema(master, [], where.term, schema.edges)
+                return output
+            except Exception, e:
+                Log.error("programmer problem?", e)
         elif where.terms:
             #MAP TERM
             output = StructList()
             for k, v in where.terms.items():
-                if schema.edges[k]:
-                    domain = schema.edges[k].getDomain()
+                if not isinstance(v, (list, set)):
+                    Log.error("terms filter expects list of values")
+                edge = schema.edges[k]
+                if not edge:
+                    output.append({"terms": {k: v}})
+                else:
+                    if isinstance(edge, basestring):
+                        #DIRECT FIELD REFERENCE
+                        return {"terms": {edge: v}}
+                    try:
+                        domain = edge.getDomain()
+                    except Exception, e:
+                        Log.error("programmer error", e)
                     fields = domain.dimension.fields
                     if isinstance(fields, dict):
-                        for local_field, es_field in fields.items():
-                            vv = v[local_field]
-                            if vv == None:
-                                output.append({"missing": {"field": es_field}})
-                            else:
-                                output.append({"term": {es_field: vv}})
-                        continue
-                    if isinstance(fields, list) and len(fields) == 1 and MVEL.isKeyword(fields[0]):
-                        if domain.getPartByKey(v) is domain.NULL:
-                            output.append({"missing": {"field": fields[0]}})
-                        else:
-                            output.append({"term": {fields[0]: v}})
-                        continue
-                    if domain.partitions:
+                        or_agg = []
+                        for vv in v:
+                            and_agg = []
+                            for local_field, es_field in fields.items():
+                                vvv = vv[local_field]
+                                if vvv != None:
+                                    and_agg.append({"term": {es_field: vvv}})
+                            or_agg.append({"and": and_agg})
+                        output.append({"or": or_agg})
+                    elif isinstance(fields, list) and len(fields) == 1 and MVEL.isKeyword(fields[0]):
+                        output.append({"terms": {fields[0]: v}})
+                    elif domain.partitions:
                         output.append({"or": [domain.getPartByKey(vv).esfilter for vv in v]})
-                        continue
-                output.append({"terms": {k: v}})
             return {"and": output}
-        elif where["and"] or where["or"]:
-            return {k: [unwrap(_where_terms(master, vv, schema)) for vv in v] for k, v in where.items()}
+        elif where["or"]:
+            return {"or": [unwrap(_where_terms(master, vv, schema)) for vv in where["or"]]}
+        elif where["and"]:
+            return {"and": [unwrap(_where_terms(master, vv, schema)) for vv in where["and"]]}
+        elif where["not"]:
+            return {"not": unwrap(_where_terms(master, where["not"], schema))}
     return where
 
 

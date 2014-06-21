@@ -76,7 +76,7 @@ class FakeES(object):
         pass
 
     def search(self, query):
-        Log.error("<<<<{{query}}>>>>", {"query": CNV.object2JSON(query)})
+        Log.error("<<<<\n{{query}}\n>>>>", {"query": CNV.object2JSON(query)})
 
     def get_schema(self):
         return CNV.JSON2object(File("tests/resources/bug_version.json").read()).mappings.bug_version

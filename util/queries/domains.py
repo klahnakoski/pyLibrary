@@ -191,10 +191,13 @@ class SetDomain(Domain):
         return self.getPartByKey(part.value)
 
     def getPartByKey(self, key):
-        canonical = self.map.get(key, None)
-        if not canonical:
-            return self.NULL
-        return canonical
+        try:
+            canonical = self.map.get(key, None)
+            if not canonical:
+                return self.NULL
+            return canonical
+        except Exception, e:
+            Log.error("problem", e)
 
     def getKey(self, part):
         return part[self.key]

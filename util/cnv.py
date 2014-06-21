@@ -15,6 +15,7 @@ import datetime
 import json
 import re
 import time
+from urllib import urlencode
 
 from . import struct
 from . import jsons
@@ -23,7 +24,7 @@ from .collections.multiset import Multiset
 from .env.profiles import Profiler
 from .env.logs import Log
 from .strings import expand_template
-from .struct import wrap
+from .struct import wrap, wrap_dot
 
 
 json_decoder = json.JSONDecoder().decode
@@ -63,7 +64,7 @@ class CNV:
                 value = wrap(json_decoder(json_string))
 
                 if paths:
-                    value = jsons.expand_dot(value)
+                    value = wrap_dot(value)
 
                 return value
 
@@ -191,6 +192,10 @@ class CNV:
     @staticmethod
     def string2quote(value):
         return jsons.quote(value)
+
+    @staticmethod
+    def value2url(value):
+        return urlencode(value)
 
     @staticmethod
     def quote2string(value):

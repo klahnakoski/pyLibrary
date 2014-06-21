@@ -11,6 +11,7 @@ from __future__ import unicode_literals
 from types import NoneType, GeneratorType
 
 _get = object.__getattribute__
+_set = object.__setattr__
 
 DEBUG = False
 
@@ -62,7 +63,7 @@ class Struct(dict):
             for k, v in map.items():
                 d[literal_field(k)] = unwrap(v)
         else:
-            object.__setattr__(self, "__dict__", map)
+            _set(self, "__dict__", map)
 
     def __bool__(self):
         return True
@@ -135,14 +136,14 @@ class Struct(dict):
             raise e
 
     def __getattribute__(self, key):
-        if isinstance(key, str):
-            key = key.decode("utf8")
-
         try:
             output = _get(self, key)
             return wrap(output)
         except Exception:
             d = _get(self, "__dict__")
+            if isinstance(key, str):
+                key = key.decode("utf8")
+
             return NullType(d, key)
 
     def __setattr__(self, key, value):
@@ -156,7 +157,7 @@ class Struct(dict):
             d = _get(self, "__dict__")
             d.pop(key, None)
         else:
-            object.__setattr__(self, ukey, value)
+            _set(self, ukey, value)
         return self
 
     def __hash__(self):
@@ -186,6 +187,19 @@ class Struct(dict):
     def items(self):
         d = _get(self, "__dict__")
         return ((k, wrap(v)) for k, v in d.items())
+
+    def all_items(self):
+        """
+        GET ALL KEY-VALUES OF LEAF NODES IN Struct
+        """
+        d = _get(self, "__dict__")
+        output = []
+        for k, v in d.items():
+            if isinstance(v, dict):
+                _all_items(output, k, v)
+            else:
+                output.append((k, v))
+        return output
 
     def iteritems(self):
         #LOW LEVEL ITERATION, NO WRAPPING
@@ -236,10 +250,18 @@ class Struct(dict):
 
     def setdefault(self, k, d=None):
         if self[k] == None:
-            self[k]=d
+            self[k] = d
 
 # KEEP TRACK OF WHAT ATTRIBUTES ARE REQUESTED, MAYBE SOME (BUILTIN) ARE STILL USEFUL
 requested = set()
+
+
+def _all_items(output, key, d):
+    for k, v in d:
+        if isinstance(v, dict):
+            _all_items(output, key+"."+k, v)
+        else:
+            output.append((key+"."+k, v))
 
 
 def _str(value, depth):
@@ -270,8 +292,19 @@ def _setdefault(obj, key, value):
     return v
 
 
-def set_default(original, default):
-    return wrap(_all_default(unwrap(original), unwrap(default)))
+def set_default(*params):
+    """
+    INPUT dicts IN PRIORITY ORDER
+    UPDATES FIRST dict WITH THE MERGE RESULT, WHERE MERGE RESULT IS DEFINED AS:
+    FOR EACH LEAF, RETURN THE HIGHEST PRIORITY LEAF VALUE
+    """
+    agg = params[0] if params[0] != None else {}
+    for p in params[1:]:
+        p = unwrap(p)
+        if p is None:
+            continue
+        _all_default(agg, p)
+    return wrap(agg)
 
 
 def _all_default(d, default):
@@ -290,10 +323,16 @@ def _all_default(d, default):
 
 
 def _getdefault(obj, key):
+    """
+    TRY BOTH ATTRIBUTE AND ITEM ACCESS, OR RETURN Null
+    """
     try:
-        return obj[key]
+        return obj.__getattribute__(key)
     except Exception, e:
-        return NullType(obj, key)
+        try:
+            return obj[key]
+        except Exception, f:
+            return NullType(obj, key)
 
 
 def _assign(obj, path, value, force=True):
@@ -462,6 +501,8 @@ class StructList(list):
     ENCAPSULATES HANDING OF Nulls BY wrapING ALL MEMBERS AS NEEDED
     ENCAPSULATES FLAT SLICES ([::]) FOR USE IN WINDOW FUNCTIONS
     """
+    EMPTY = None
+
     def __init__(self, vals=None):
         """ USE THE vals, NOT A COPY """
         # list.__init__(self)
@@ -502,8 +543,22 @@ class StructList(list):
                 output = _get(self, key)
                 return output
         except Exception, e:
-            pass
-        return StructList([v.get(key, None) for v in _get(self, "list")])
+            if key[0:2] == "__":  # SYSTEM LEVEL ATTRIBUTES CAN NOT BE USED FOR SELECT
+                raise e
+        return StructList.select(self, key)
+
+    def select(self, key):
+        output = []
+        for v in _get(self, "list"):
+            try:
+                output.append(v.__getattribute__(key))
+            except Exception, e:
+                try:
+                    output.append(v.__getitem__(key))
+                except Exception, f:
+                    output.append(None)
+
+        return StructList(output)
 
     def __iter__(self):
         return (wrap(v) for v in _get(self, "list"))
@@ -558,13 +613,14 @@ class StructList(list):
 
     def right(self, num=None):
         """
-        WITH SLICES BEING FLAT, WE NEED A SIMPLE WAY TO SLICE FROM THE RIGHT
+        WITH SLICES BEING FLAT, WE NEED A SIMPLE WAY TO SLICE FROM THE RIGHT [-num:]
         """
         if num == None:
             return StructList([_get(self, "list")[-1]])
         if num <= 0:
             return EmptyList
-        return StructList(_get(self, "list")[-num])
+
+        return StructList(_get(self, "list")[-num:])
 
     def leftBut(self, num):
         """
@@ -574,11 +630,12 @@ class StructList(list):
             return StructList([_get(self, "list")[:-1:]])
         if num <= 0:
             return EmptyList
+
         return StructList(_get(self, "list")[:-num:])
 
     def last(self):
         """
-        RETURN LAST ELEMENT IN StructList
+        RETURN LAST ELEMENT IN StructList [-1]
         """
         if _get(self, "list"):
             return wrap(_get(self, "list")[-1])
@@ -591,18 +648,61 @@ class StructList(list):
             return StructList([oper(v) for v in _get(self, "list") if v != None])
 
 
-def wrap(v):
-    type = v.__class__
+StructList.EMPTY = StructList()
 
-    if type is Struct:
-        return v
-    elif type is dict:
+
+def _wrap_dict(v):
+    m = Struct()
+    _set(m, "__dict__", v)  # INJECT m.__dict__=v SO THERE IS NO COPY
+    return m
+
+
+def _wrap_list(v):
+    if DEBUG:
+        for sv in v:
+            # IN PRACTICE WE DO NOT EXPECT TO GO THROUGH THIS LIST, IF ANY ARE WRAPPED, THE FIRST IS PROBABLY WRAPPED
+            # WARNING!  THIS IS VERY SLOW
+            if isinstance(sv, (Struct, StructList)):
+                from .env.logs import Log
+                Log.warning("Please unwrap members of list before wrapping list.  Fixed for now.")
+
+                #MUST KEEP THE LIST
+                temp = [unwrap(ssv) for ssv in v]
+                del v[:]
+                v.extend(temp)
+                return StructList(v)
+    return StructList(v)
+
+
+def _wrap_generator(v):
+    return (wrap(vv) for vv in v)
+
+def _no_wrap(v):
+    return v
+
+
+wrapper = {
+    dict: _wrap_dict,
+    list: _wrap_list,
+    GeneratorType: _wrap_generator
+}
+
+
+def wrap(v):
+    wrapper.get(_get(v, "__class__"), _no_wrap)(v)
+
+
+def slow_wrap(v):
+    if v is None:
+        return Null
+
+    type_ = _get(v, "__class__")
+
+    if type_ is dict:
         m = Struct()
-        object.__setattr__(m, "__dict__", v)  # INJECT m.__dict__=v SO THERE IS NO COPY
+        _set(m, "__dict__", v)  # INJECT m.__dict__=v SO THERE IS NO COPY
         return m
-    elif type is StructList:
-        return v
-    elif type is list:
+    elif type_ is list:
         if DEBUG:
             for sv in v:
                 # IN PRACTICE WE DO NOT EXPECT TO GO THROUGH THIS LIST, IF ANY ARE WRAPPED, THE FIRST IS PROBABLY WRAPPED
@@ -617,24 +717,77 @@ def wrap(v):
                     v.extend(temp)
                     return StructList(v)
         return StructList(v)
-    elif type is GeneratorType:
+    elif type_ is GeneratorType:
         return (wrap(vv) for vv in v)
-    elif v is None:
-        return Null
     else:
         return v
 
 
+def wrap_dot(value):
+    """
+    dict WITH DOTS IN KEYS IS INTERPRETED AS A PATH
+    """
+    return wrap(_wrap_dot(value))
+
+def _wrap_dot(value):
+    if value == None:
+        return None
+    if isinstance(value, (basestring, int, float)):
+        return value
+    if isinstance(value, dict):
+        if isinstance(value, Struct):
+            value = unwrap(value)
+
+        output = {}
+        for key, value in value.iteritems():
+            value = _wrap_dot(value)
+
+            if key == "":
+                from .env.logs import Log
+
+                Log.error("key is empty string.  Probably a bad idea")
+            if isinstance(key, str):
+                key = key.decode("utf8")
+
+            d = output
+            if key.find(".") == -1:
+                if value is None:
+                    d.pop(key, None)
+                else:
+                    d[key] = value
+            else:
+                seq = split_field(key)
+                for k in seq[:-1]:
+                    e = d.get(k, None)
+                    if e is None:
+                        d[k] = {}
+                        e = d[k]
+                    d = e
+                if value == None:
+                    d.pop(seq[-1], None)
+                else:
+                    d[seq[-1]] = value
+        return output
+    if hasattr(value, '__iter__'):
+        output = []
+        for v in value:
+            v = wrap_dot(v)
+            output.append(v)
+        return output
+    return value
+
+
+
 def unwrap(v):
-    type = v.__class__
-    if type is Struct:
+    _type = _get(v, "__class__")
+    if _type is Struct:
         d = _get(v, "__dict__")
         return d
-    elif type is StructList:
+    elif _type is StructList:
         return v.list
-    elif type is NullType:
+    elif _type is NullType:
         return None
-    elif type is GeneratorType:
+    elif _type is GeneratorType:
         return (unwrap(vv) for vv in v)
     else:
         return v
@@ -655,7 +808,7 @@ def nvl(*args):
     #pick the first none-null value
     for a in args:
         if a != None:
-            return a
+            return wrap(a)
     return Null
 
 def zip(keys, values):
@@ -709,7 +862,12 @@ def literal_field(field):
     """
     RETURN SAME WITH . ESCAPED
     """
-    return field.replace(".", "\.")
+    try:
+        return field.replace(".", "\.")
+    except Exception, e:
+        from .env.logs import Log
+
+        Log.error("bad literal", e)
 
 def cpython_split_field(field):
     """

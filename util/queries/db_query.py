@@ -303,10 +303,16 @@ class DBQuery(object):
 
 
 def _isolate(separator, list):
-    if len(list) > 1:
-        return "(\n" + indent((" " + separator + "\n").join(list)) + "\n)"
-    else:
-        return list[0]
+    try:
+        if len(list) > 1:
+            return "(\n" + indent((" " + separator + "\n").join(list)) + "\n)"
+        else:
+            return list[0]
+    except Exception, e:
+        Log.error("Programming problem: separator={{separator}}, list={{list}", {
+            "list": list,
+            "separator": separator
+        }, e)
 
 
 def esfilter2sqlwhere(db, esfilter):
@@ -389,6 +395,8 @@ def _esfilter2sqlwhere(db, esfilter):
             return "(" + db.quote_column(esfilter.exists.field) + " IS NOT Null)"
     elif esfilter.match_all:
         return "1=1"
+    elif esfilter.instr:
+        return _isolate("AND", ["instr(" + db.quote_column(col) + ", " + db.quote_value(val) + ")>0" for col, val in esfilter.instr.items()])
     else:
         Log.error("Can not convert esfilter to SQL: {{esfilter}}", {"esfilter": esfilter})
 

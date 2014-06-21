@@ -27,6 +27,13 @@ class Random(object):
         return random.randrange(*args)
 
     @staticmethod
+    def float(*args):
+        if args:
+            return random.random()*args[0]
+        else:
+            return random.random()
+
+    @staticmethod
     def sample(data, count):
         num = len(data)
         return [data[Random.int(num)] for i in range(count)]

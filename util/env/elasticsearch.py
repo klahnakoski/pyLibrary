@@ -43,6 +43,7 @@ class ElasticSearch(object):
     def __init__(self, settings=None):
         """
         settings.explore_metadata == True - IF PROBING THE CLUSTER FOR METATDATA IS ALLOWED
+        settings.timeout == NUMBER OF SECONDS TO WAIT FOR RESPONSE, OR SECONDS TO WAIT FOR DOWNLOAD (PASSED TO requests)
         """
 
         if settings is None:
@@ -85,10 +86,15 @@ class ElasticSearch(object):
 
 
     @staticmethod
-    def create_index(settings, schema, limit_replicas=False):
-        schema = wrap(schema)
-        if isinstance(schema, basestring):
-            schema = CNV.JSON2object(schema)
+    def create_index(settings, schema=None, limit_replicas=False):
+        if not schema and settings.schema_file:
+            from .files import File
+
+            schema = CNV.JSON2object(File(settings.schema_file).read(), flexible=True, paths=True)
+        else:
+            schema = wrap(schema)
+            if isinstance(schema, basestring):
+                schema = CNV.JSON2object(schema)
 
         if limit_replicas:
             # DO NOT ASK FOR TOO MANY REPLICAS
@@ -100,7 +106,7 @@ class ElasticSearch(object):
                 })
                 schema.settings.index.number_of_replicas = health.number_of_nodes-1
 
-        DUMMY.post(
+        DUMMY._post(
             settings.host + ":" + unicode(settings.port) + "/" + settings.index,
             data=CNV.object2JSON(schema).encode("utf8"),
             headers={"Content-Type": "application/json"}
@@ -273,7 +279,7 @@ class ElasticSearch(object):
             except Exception, e:
                 Log.error("can not make request body from\n{{lines|indent}}", {"lines": lines}, e)
 
-            response = self.post(
+            response = self._post(
                 self.path + "/_bulk",
                 data=data_bytes,
                 headers={"Content-Type": "text"},
@@ -332,7 +338,7 @@ class ElasticSearch(object):
                 else:
                     show_query = query
                 Log.note("Query:\n{{query|indent}}", {"query": show_query})
-            return self.post(
+            return self._post(
                 self.path + "/_search",
                 data=CNV.object2JSON(query).encode("utf8"),
                 timeout=self.settings.timeout
@@ -346,7 +352,7 @@ class ElasticSearch(object):
     def threaded_queue(self, size=None, period=None):
         return ThreadedQueue(self, size=size, period=period)
 
-    def post(self, *args, **kwargs):
+    def _post(self, *args, **kwargs):
         if "data" in kwargs and not isinstance(kwargs["data"], str):
             Log.error("data must be utf8 encoded string")
 
@@ -392,7 +398,7 @@ class ElasticSearch(object):
     def put(self, *args, **kwargs):
         try:
             kwargs = wrap(kwargs)
-            kwargs.setdefault("timeout", 30)
+            kwargs.setdefault("timeout", 60)
             response = requests.put(*args, **kwargs)
             if self.debug:
                 Log.note(response.content.decode("utf-8"))
@@ -402,7 +408,7 @@ class ElasticSearch(object):
 
     def delete(self, *args, **kwargs):
         try:
-            kwargs.setdefault("timeout", 30)
+            kwargs.setdefault("timeout", 60)
             response = requests.delete(*args, **kwargs)
             if self.debug:
                 Log.note(response.content.decode("utf-8"))

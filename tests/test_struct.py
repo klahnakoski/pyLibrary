@@ -80,6 +80,21 @@ class TestStruct(unittest.TestCase):
         if e.test != f.test:
             Log.error("error")
 
+    def test_get_value(self):
+        a = wrap({"a": 1, "b": {}})
+
+        if a.a != 1:
+            Log.error("error")
+        if not isinstance(a.b, dict):
+            Log.error("error")
+
+    def test_get_class(self):
+        a = wrap({})
+        _type = a.__class__
+
+        if _type is not Struct:
+            Log.error("error")
+
     def test_int_null(self):
         a = Struct()
         value = a.b*1000

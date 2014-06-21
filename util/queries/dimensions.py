@@ -99,14 +99,14 @@ class Dimension(object):
 
             partitions = StructList()
             for g, p in parts.groupby(edges):
-                if p.value:
+                if p:
                     partitions.append({
                         "value": g,
                         "esfilter": {"and": [
                             {"term": {e.value: g[e.name]}}
                             for e in edges
                         ]},
-                        "count": p.value
+                        "count": int(p)
                     })
             self.partitions = partitions
         elif len(edges) == 1:

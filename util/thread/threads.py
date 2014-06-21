@@ -44,8 +44,7 @@ class Lock(object):
             timeout = (datetime.utcnow() - till).total_seconds()
             if timeout < 0:
                 return
-        self.monitor.notify()
-        self.monitor.wait(timeout=timeout)
+        self.monitor.wait(timeout=float(timeout) if timeout else None)
 
     def notify_all(self):
         self.monitor.notify_all()
@@ -66,7 +65,7 @@ class Queue(object):
         self.keep_running = True
         self.lock = Lock("lock for queue")
         self.queue = []
-
+        self.next_warning=datetime.utcnow()  # FOR DEBUGGING
 
     def __iter__(self):
         while self.keep_running:
@@ -81,35 +80,44 @@ class Queue(object):
 
     def add(self, value):
         with self.lock:
+            self.wait_for_queue_space()
             if self.keep_running:
                 self.queue.append(value)
-            wait_time=5
-            while self.keep_running and len(self.queue) > self.max:
-                if self.silent:
-                    self.lock.wait()
-                else:
-                    self.lock.wait(wait_time)
-                    wait_time *= 2
-                    if len(self.queue) > self.max:
-                        from ..env.logs import Log
-                        Log.warning("Queue is full ({{num}}} items), been waiting 5 sec", {"num": len(self.queue)})
         return self
 
     def extend(self, values):
         with self.lock:
             # ONCE THE queue IS BELOW LIMIT, ALLOW ADDING MORE
-            wait_time=5
-            while self.keep_running and len(self.queue) > self.max:
-                if self.silent:
-                    self.lock.wait()
-                else:
-                    self.lock.wait(wait_time)
-                    wait_time *= 2
-                    if len(self.queue) > self.max:
-                        from ..env.logs import Log
-                        Log.warning("Queue is full ({{num}}} items), been waiting 5 sec", {"num": len(self.queue)})
+            self.wait_for_queue_space()
             if self.keep_running:
                 self.queue.extend(values)
+        return self
+
+    def wait_for_queue_space(self):
+        """
+        EXPECT THE self.lock TO BE HAD, WAITS FOR self.queue TO HAVE A LITTLE SPACE
+        """
+        wait_time = 5
+
+        now = datetime.utcnow()
+        if self.next_warning < now:
+            self.next_warning = now + timedelta(seconds=wait_time)
+
+        while self.keep_running and len(self.queue) > self.max:
+            if self.silent:
+                self.lock.wait()
+            else:
+                self.lock.wait(wait_time)
+                if len(self.queue) > self.max:
+                    now = datetime.utcnow()
+                    if self.next_warning < now:
+                        self.next_warning = now + timedelta(seconds=wait_time)
+                        from ..env.logs import Log
+
+                        Log.warning("Queue is full ({{num}}} items), thread(s) have been waiting {{wait_time}} sec", {
+                            "num": len(self.queue),
+                            "wait_time": wait_time
+                        })
 
     def __len__(self):
         with self.lock:

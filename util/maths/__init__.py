@@ -13,6 +13,7 @@ import __builtin__
 from ..struct import Null, nvl
 from ..env.logs import Log
 from ..strings import find_first
+from . import stats
 
 
 class Math(object):
@@ -122,3 +123,14 @@ class Math(object):
         return int(math.ceil(value))
 
 
+    @staticmethod
+    def max(*values):
+        output=None
+        for v in values:
+            if v==None:
+                continue
+            elif output == None or v > output:
+                output = v
+            else:
+                pass
+        return output

@@ -28,7 +28,7 @@ json_decoder = json.JSONDecoder().decode
 # 1) WHEN USING cPython, WE HAVE NO COMPILER OPTIMIZATIONS: THE BEST STRATEGY IS TO
 #    CONVERT THE MEMORY STRUCTURE TO STANDARD TYPES AND SEND TO THE INSANELY FAST
 #    DEFAULT JSON ENCODER
-# 2) WHEN USING PYPY, WE USE CLEAR AND SIMPLE PROGRAMMING SO THE OPTIMIZER CAN DO
+# 2) WHEN USING PYPY, WE USE CLEAR-AND-SIMPLE PROGRAMMING SO THE OPTIMIZER CAN DO
 #    ITS JOB.  ALONG WITH THE UnicodeBuilder WE GET NEAR C SPEEDS
 
 
@@ -144,11 +144,11 @@ def _value2json(value, _buffer):
         append(_buffer, "\"")
         append(_buffer, unicode(value.total_seconds()))
         append(_buffer, "second\"")
-    elif hasattr(value, '__iter__'):
-        _iter2json(value, _buffer)
     elif hasattr(value, '__json__'):
         j = value.__json__()
         append(_buffer, j)
+    elif hasattr(value, '__iter__'):
+        _iter2json(value, _buffer)
     else:
         raise Exception(repr(value) + " is not JSON serializable")
 
@@ -255,29 +255,6 @@ def _scrub(value):
         return value
 
 
-def expand_dot(value):
-    """
-    JSON CAN HAVE ATTRIBUTE NAMES WITH DOTS
-    """
-    if value == None:
-        return None
-    elif isinstance(value, (basestring, int, float)):
-        return value
-    elif isinstance(value, dict):
-        output = Struct()
-        for k, v in value.iteritems():
-            output[k] = expand_dot(v)
-        return output
-    elif hasattr(value, '__iter__'):
-        output = []
-        for v in value:
-            v = expand_dot(v)
-            output.append(v)
-        return output
-    else:
-        return value
-
-
 ARRAY_ROW_LENGTH = 80
 ARRAY_ITEM_MAX_LENGTH = 30
 ARRAY_MAX_COLUMNS = 10
@@ -298,7 +275,7 @@ def pretty_json(value):
                     value = unicode(value.decode("latin1"))
                     Log.warning("Should not have latin1 encoded strings: {{value}}", {"value": value}, e)
             try:
-                return quote(v)
+                return quote(value)
             except Exception, e:
                 from .env.logs import Log
 

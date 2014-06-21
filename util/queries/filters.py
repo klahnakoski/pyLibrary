@@ -8,7 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
-from ..struct import wrap, StructList, unwrap
+from ..struct import wrap
 
 
 TRUE_FILTER = True
@@ -60,6 +60,9 @@ def _normalize(esfilter):
         if esfilter["and"]:
             output = []
             for a in esfilter["and"]:
+                if isinstance(a, (list, set)):
+                    from dzAlerts.util.env.logs import Log
+                    Log.error("and clause is not allowed a list inside a list")
                 a_ = normalize(a)
                 if a_ is not a:
                     isDiff = True
@@ -68,9 +71,7 @@ def _normalize(esfilter):
                     isDiff = True
                     continue
                 if a == FALSE_FILTER:
-                    isDiff = True
-                    output = None
-                    break
+                    return FALSE_FILTER
                 if a.get("and", None):
                     isDiff = True
                     a.isNormal = None
@@ -85,7 +86,7 @@ def _normalize(esfilter):
                 esfilter = output[0]
                 break
             elif isDiff:
-                esfilter["and"] = output
+                esfilter = wrap({"and": output})
             continue
 
         if esfilter["or"]:
@@ -97,9 +98,7 @@ def _normalize(esfilter):
                 a = a_
 
                 if a == TRUE_FILTER:
-                    isDiff = True
-                    output = None
-                    break
+                    return TRUE_FILTER
                 if a == FALSE_FILTER:
                     isDiff = True
                     continue
@@ -116,8 +115,28 @@ def _normalize(esfilter):
                 esfilter = output[0]
                 break
             elif isDiff:
-                esfilter["or"] = output
+                esfilter = wrap({"or": output})
             continue
+
+        if esfilter.terms:
+            for k, v in esfilter.terms.items():
+                if len(v) > 0:
+                    esfilter.isNormal = True
+                    return esfilter
+            return FALSE_FILTER
+
+        if esfilter["not"] != None:
+            _sub = esfilter["not"]
+            sub = _normalize(_sub)
+            if sub is FALSE_FILTER:
+                return TRUE_FILTER
+            elif sub is TRUE_FILTER:
+                return FALSE_FILTER
+            elif sub is not _sub:
+                sub.isNormal = None
+                return wrap({"not": sub, "isNormal": True})
+            else:
+                sub.isNormal = None
 
     esfilter.isNormal = True
     return esfilter

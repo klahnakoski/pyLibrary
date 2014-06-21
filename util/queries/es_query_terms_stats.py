@@ -84,7 +84,8 @@ def es_terms_stats(esq, mvel, query):
             "from": query.frum,
             "select": {"aggregate": "count"},
             "edges": facetEdges,
-            "where": query.where
+            "where": query.where,
+            "limit": query.limit
         })
 
         esFacets = []

@@ -48,11 +48,10 @@ class UniqueIndex(object):
 
 
     def add(self, val):
-        val =  unwrap(val)
         key = value2key(self._keys, val)
         d = self._data.get(key, None)
         if d is None:
-            self._data[key] = val
+            self._data[key] = unwrap(val)
             self.count += 1
         elif d is not val:
             Log.error("key already filled")

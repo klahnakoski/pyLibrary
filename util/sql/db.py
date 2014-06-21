@@ -690,11 +690,6 @@ class Transaction(object):
             self.db.commit()
 
 
-# FOR PUTTING JSON INTO DATABASE (sort_keys=True)
-# dicts CAN BE USED AS KEYS
-def json_encode(value):
-    return unicode(json_encoder.encode(json_scrub(value)))
-
 json_encoder = json.JSONEncoder(
     skipkeys=False,
     ensure_ascii=False,  # DIFF FROM DEFAULTS
@@ -704,6 +699,14 @@ json_encoder = json.JSONEncoder(
     separators=None,
     encoding='utf-8',
     default=None,
-    sort_keys=True
+    sort_keys=True   # <-- SEE?!  sort_keys==True
 )
+
+
+def json_encode(value):
+    """
+    FOR PUTTING JSON INTO DATABASE (sort_keys=True)
+    dicts CAN BE USED AS KEYS
+    """
+    return unicode(json_encoder.encode(json_scrub(value)))
 

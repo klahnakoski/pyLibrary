@@ -12,26 +12,32 @@ from __future__ import unicode_literals
 from ..env.logs import Log
 from ..thread.threads import Queue, Thread
 
-DEBUG = True
+DEBUG = False
 
 
 class Multithread(object):
     """
     SIMPLE SEMANTICS FOR SYMMETRIC MULTITHREADING
-
-    PASS A SET OF FUNCTIONS TO BE EXECUTED (ONE PER THREAD)
-    PASS AN (ITERATOR/LIST) OF PARAMETERS TO BE ISSUED TO NEXT AVAILABLE THREAD
+    PASS A SET OF functions TO BE EXECUTED (ONE PER THREAD)
+    SET outbound==False TO SIMPLY THROW AWAY RETURN VALUES, IF ANY
+    THE inbound QUEUE IS EXPECTING dicts, EACH dict IS USED AS kwargs TO GIVEN functions
     """
-    def __init__(self, functions):
-        self.outbound = Queue()
-        self.inbound = Queue()
+
+    def __init__(self, functions, outbound=None, silent_queues=None):
+        if outbound is None:
+            self.outbound = Queue(silent=silent_queues)
+        elif outbound is False:
+            self.outbound = None
+        else:
+            self.outbound = outbound
+
+        self.inbound = Queue(silent=silent_queues)
 
         #MAKE THREADS
         self.threads = []
         for t, f in enumerate(functions):
             thread = worker_thread("worker " + unicode(t), self.inbound, self.outbound, f)
             self.threads.append(thread)
-
 
     def __enter__(self):
         return self
@@ -61,17 +67,21 @@ class Multithread(object):
             for t in self.threads:
                 t.keep_running = False
             self.inbound.close()
-            self.outbound.close()
+            if self.outbound: self.outbound.close()
             for t in self.threads:
                 t.join()
 
 
-    #RETURN A GENERATOR THAT HAS len(parameters) RESULTS (ANY ORDER)
-    def execute(self, request):
-        #FILL QUEUE WITH WORK
-        self.inbound.extend(request)
+    def execute(self, requests):
+        """
+        RETURN A GENERATOR THAT HAS len(requests) RESULTS (ANY ORDER)
+        EXPECTING requests TO BE A list OF dicts, EACH dict IS USED AS kwargs TO GIVEN functions
+        """
 
-        num = len(request)
+        #FILL QUEUE WITH WORK
+        self.inbound.extend(requests)
+
+        num = len(requests)
 
         def output():
             for i in xrange(num):
@@ -81,7 +91,10 @@ class Multithread(object):
                 else:
                     yield result["response"]
 
-        return output()
+        if self.outbound:
+            return output()
+        else:
+            return
 
     #EXTERNAL COMMAND THAT RETURNS IMMEDIATELY
     def stop(self):

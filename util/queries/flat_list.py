@@ -11,7 +11,7 @@
 from __future__ import unicode_literals
 from ..collections import MIN
 from ..env.logs import Log
-from ..struct import nvl, split_field, wrap
+from ..struct import nvl, split_field, wrap, StructList
 
 
 class FlatList(list):
