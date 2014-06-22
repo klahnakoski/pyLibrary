@@ -21,8 +21,8 @@ from ..queries.dimensions import Dimension
 from ..queries.query import Query, _normalize_where
 from ..env.logs import Log
 from ..queries.MVEL import _MVEL
-from ..struct import Struct, split_field, wrap, listwrap, StructList, nvl
-
+from ..struct import Struct, split_field, StructList, nvl
+from ..structs.wraps import wrap, unwrap, listwrap
 
 class ESQuery(object):
     """

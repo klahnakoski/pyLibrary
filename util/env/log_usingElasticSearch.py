@@ -11,7 +11,7 @@ from __future__ import unicode_literals
 from datetime import timedelta, datetime
 from ..cnv import CNV
 from .elasticsearch import ElasticSearch
-from ..struct import wrap
+from ..structs.wraps import wrap
 from ..thread.threads import Thread, Queue
 from .logs import BaseLog, Log
 

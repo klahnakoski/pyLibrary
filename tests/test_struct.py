@@ -2,7 +2,8 @@ import unittest
 from util.cnv import CNV
 from util.collections import MAX
 from util.env.logs import Log
-from util.struct import Null, Struct, wrap
+from util.struct import Null, Struct
+from util.structs.wraps import wrap
 
 
 class TestStruct(unittest.TestCase):

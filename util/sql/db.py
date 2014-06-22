@@ -18,7 +18,8 @@ from .. import struct
 from ..jsons import json_scrub
 from ..maths import Math
 from ..strings import expand_template
-from ..struct import nvl, wrap
+from ..struct import nvl
+from ..structs.wraps import wrap
 from ..cnv import CNV
 from ..env.logs import Log, Except
 from ..queries import Q

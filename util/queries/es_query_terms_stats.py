@@ -19,7 +19,8 @@ from ..queries.filters import simplify
 from ..env.logs import Log
 from ..queries import domains, MVEL, filters
 from ..queries.MVEL import UID
-from ..struct import nvl, StructList, wrap, Struct, unwrap
+from ..struct import nvl, StructList
+from ..structs.wraps import wrap
 
 
 def is_terms_stats(query):

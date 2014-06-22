@@ -12,12 +12,13 @@ from __future__ import unicode_literals
 from .. import struct
 from ..collections.matrix import Matrix
 from ..collections import AND
-from dzAlerts.util.queries import Q
+from ..queries import Q
 from ..queries import es_query_util
 from ..queries.es_query_util import aggregates, buildESQuery, compileEdges2Term
 from ..queries.filters import simplify
 from ..queries.cube import Cube
-from ..struct import wrap, nvl, StructList
+from ..struct import nvl, StructList
+from ..structs.wraps import wrap
 
 
 def is_terms(query):

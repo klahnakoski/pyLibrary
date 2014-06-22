@@ -16,7 +16,7 @@ import re
 from . import struct
 import math
 import __builtin__
-from .struct import wrap
+from .structs.wraps import unwrap, wrap
 
 
 def datetime(value):

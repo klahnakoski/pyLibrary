@@ -18,7 +18,8 @@ from ..thread.threads import ThreadedQueue
 from ..maths import Math
 from ..cnv import CNV
 from ..env.logs import Log
-from ..struct import nvl, Null, wrap, unwrap
+from ..struct import nvl, Null
+from ..structs.wraps import wrap, unwrap
 from ..struct import Struct, StructList
 
 

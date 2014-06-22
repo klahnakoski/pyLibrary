@@ -14,7 +14,7 @@ from ..cnv import CNV
 from ..collections import MIN
 from ..env.logs import Log
 from ..maths import Math
-from ..struct import wrap
+from ..structs.wraps import unwrap, wrap
 
 
 class Duration(object):

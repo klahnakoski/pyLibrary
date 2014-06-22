@@ -10,7 +10,8 @@
 from datetime import timedelta
 from time import clock
 
-from ..struct import nvl, Struct, wrap
+from ..struct import nvl, Struct
+from ..structs.wraps import wrap
 from ..env.logs import Log
 
 

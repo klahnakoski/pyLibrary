@@ -11,8 +11,7 @@
 from __future__ import unicode_literals
 from ..queries.unique_index import UniqueIndex
 from ..env.logs import Log
-from ..struct import unwrap, wrap, tuplewrap
-
+from ..structs.wraps import wrap, unwrap, tuplewrap
 
 class Index(object):
     """

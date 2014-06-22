@@ -12,10 +12,11 @@
 from decimal import Decimal
 import time
 import json
-from util import struct, jsons
+from util import jsons
 from util.jsons import cPythonJSONEncoder, json_encoder, json_scrub
 from util.env.logs import Log
-from util.struct import Null, wrap
+from util.struct import Null
+from util.structs.wraps import wrap
 
 
 TARGET_RUNTIME = 10

@@ -14,12 +14,13 @@ from datetime import datetime
 import sys
 
 from .. import struct
-from ..env import profiles
 from ..jsons import json_encoder
 from ..thread import threads
-from ..struct import listwrap, nvl, Struct, wrap
+from ..struct import nvl, Struct
+from ..structs.wraps import listwrap, wrap
 from ..strings import indent, expand_template
 from ..thread.threads import Thread
+from util.env import profiles
 
 
 DEBUG_LOGGING = False
@@ -230,6 +231,8 @@ class Log(object):
             cls.cprofiler.enable()
 
         if settings.profile:
+            from ..env import profiles
+
             if isinstance(settings.profile, bool):
                 settings.profile = {"enabled": True, "filename": "profile.tab"}
 

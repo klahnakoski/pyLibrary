@@ -12,7 +12,8 @@ from .. import struct
 from ..collections.matrix import Matrix
 from ..collections import MAX, OR
 from ..queries.query import _normalize_edge
-from ..struct import StructList, wrap, Struct, wrap_dot
+from ..struct import StructList
+from ..structs.wraps import wrap
 from ..env.logs import Log
 
 

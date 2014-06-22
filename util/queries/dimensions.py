@@ -10,10 +10,12 @@
 from __future__ import unicode_literals
 from .. import struct
 from ..collections import SUM
-from ..queries.domains import PARTITION, Domain, ALGEBRAIC, KNOWN
-from ..struct import Struct, nvl, Null, StructList, join_field, split_field, wrap
+from ..queries.domains import Domain, ALGEBRAIC, KNOWN
+from ..struct import Struct, nvl, Null, StructList, join_field, split_field
 from ..times.timer import Timer
 from ..env.logs import Log
+from ..structs.wraps import wrap
+
 
 DEFAULT_QUERY_LIMIT = 20
 

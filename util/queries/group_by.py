@@ -12,7 +12,8 @@ from __future__ import unicode_literals
 import sys
 from .cube import Cube
 from ..queries.index import value2key
-from ..struct import listwrap, StructList, wrap, Struct
+from ..struct import StructList, Struct
+from ..structs.wraps import listwrap, wrap
 from ..env.logs import Log
 from ..collections.multiset import Multiset
 

@@ -11,7 +11,8 @@ from __future__ import unicode_literals
 from ..collections import PRODUCT, reverse, MAX, MIN
 from ..cnv import CNV
 from ..env.logs import Log
-from ..struct import Null, Struct, wrap
+from ..struct import Null, Struct
+from ..structs.wraps import wrap
 
 
 class Matrix(object):

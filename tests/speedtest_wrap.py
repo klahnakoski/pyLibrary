@@ -1,14 +1,21 @@
 from math import log, floor
 import gc
+
 from util.env import profiles
 from util.env.logs import Log
 from util.maths.randoms import Random
-from util.struct import Struct, StructList, wrap, slow_wrap
+from util.struct import Struct, StructList
+from util.structs.slow_wrap import slow_wrap
+from util.structs.wraps import wrap
 from util.env.profiles import Profiler
 
 
 def baseline(v):
     return [v]
+
+
+NUM_INPUT = 1000000
+NUM_REPEAT = 10
 
 
 def test_wrap_1():
@@ -19,10 +26,9 @@ def test_wrap_1():
         lambda: [{"i": Random.int(2000)}]
     ]
 
-    inputs = [switch[min(len(switch) - 1, int(floor(-log(Random.float(), 2))))]() for i in range(1000000)]
+    inputs = [switch[min(len(switch) - 1, int(floor(-log(Random.float(), 2))))]() for i in range(NUM_INPUT)]
 
-    num = 10
-    for i in range(num):
+    for i in range(NUM_REPEAT):
         results = []
         gc.collect()
         with Profiler("more struct: slow_wrap"):
@@ -41,7 +47,7 @@ def test_wrap_1():
             for v in inputs:
                 results.append(baseline(v))
 
-        Log.note("Done {{i}} of {{num}}", {"i": i, "num": num})
+        Log.note("Done {{i}} of {{num}}", {"i": i, "num": NUM_REPEAT})
 
 
 def test_wrap_2():
@@ -52,10 +58,9 @@ def test_wrap_2():
         lambda: [{"i": Random.int(2000)}]
     ]
 
-    inputs = [switch[min(len(switch) - 1, int(floor(-log(Random.float(), 2))))]() for i in range(1000000)]
+    inputs = [switch[min(len(switch) - 1, int(floor(-log(Random.float(), 2))))]() for i in range(NUM_INPUT)]
 
-    num = 10
-    for i in range(num):
+    for i in range(NUM_REPEAT):
         results = []
         gc.collect()
         with Profiler("more dict: slow_wrap"):
@@ -74,7 +79,7 @@ def test_wrap_2():
             for v in inputs:
                 results.append(baseline(v))
 
-        Log.note("Done {{i}} of {{num}}", {"i": i, "num": num})
+        Log.note("Done {{i}} of {{num}}", {"i": i, "num": NUM_REPEAT})
 
 
 def test_wrap_3():
@@ -86,10 +91,9 @@ def test_wrap_3():
         lambda: [{"i": Random.int(2000)}]
     ]
 
-    inputs = [switch[min(len(switch) - 1, int(floor(-log(Random.float(), 2))))]() for i in range(1000000)]
+    inputs = [switch[min(len(switch) - 1, int(floor(-log(Random.float(), 2))))]() for i in range(NUM_INPUT)]
 
-    num = 10
-    for i in range(num):
+    for i in range(NUM_REPEAT):
         results = []
         gc.collect()
         with Profiler("more string: slow_wrap"):
@@ -108,7 +112,7 @@ def test_wrap_3():
             for v in inputs:
                 results.append(baseline(v))
 
-        Log.note("Done {{i}} of {{num}}", {"i": i, "num": num})
+        Log.note("Done {{i}} of {{num}}", {"i": i, "num": NUM_REPEAT})
 
 
 profiles.ON = True

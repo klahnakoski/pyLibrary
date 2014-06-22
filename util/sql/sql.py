@@ -10,8 +10,7 @@
 
 from __future__ import unicode_literals
 from ..queries.db_query import esfilter2sqlwhere
-from ..struct import wrap
-
+from ..structs.wraps import wrap
 
 def find_holes(db, table_name, column_name, _range, filter=None):
     """

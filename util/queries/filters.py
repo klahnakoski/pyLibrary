@@ -8,8 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
-from ..struct import wrap
-
+from ..structs.wraps import wrap
 
 TRUE_FILTER = True
 FALSE_FILTER = False

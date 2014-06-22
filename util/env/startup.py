@@ -13,7 +13,7 @@ import argparse
 import os
 import tempfile
 import sys
-from ..struct import listwrap, wrap, unwrap
+from ..structs.wraps import listwrap, wrap, unwrap
 from ..cnv import CNV
 from ..env.logs import Log
 from ..env.files import File

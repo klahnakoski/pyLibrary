@@ -11,16 +11,16 @@ from __future__ import unicode_literals
 from datetime import datetime
 
 from .. import struct
-import functools
 from ..cnv import CNV
 from .. import strings
-from ..collections import COUNT, MAX
+from ..collections import COUNT
 from ..maths import stats
 from ..env.elasticsearch import ElasticSearch
 from ..env.logs import Log
 from ..maths import Math
 from ..queries import domains, MVEL, filters
-from ..struct import nvl, StructList, Struct, split_field, join_field, wrap, Null
+from ..struct import nvl, StructList, Struct, split_field, join_field
+from ..structs.wraps import wrap
 from ..times import durations
 
 
@@ -379,8 +379,6 @@ def compileEdges2Term(mvel_compiler, edges, constants):
     "type" CAN HAVE A VALUE OF "script", "field" OR "count"
     CAN USE THE constants (name, value pairs)
     """
-
-    from ..queries import Q
 
     # IF THE QUERY IS SIMPLE ENOUGH, THEN DO NOT USE TERM PACKING
     edge0 = edges[0]

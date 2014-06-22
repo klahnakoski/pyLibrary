@@ -11,7 +11,8 @@ import unittest
 from util import struct
 from util.cnv import CNV
 from util.queries import Q
-from util.struct import wrap, Struct
+from util.struct import Struct
+from util.structs.wraps import wrap
 
 
 class TestQ(unittest.TestCase):

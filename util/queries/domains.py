@@ -13,8 +13,8 @@ from ..cnv import CNV
 from ..collections import UNION
 from .index import UniqueIndex
 from ..env.logs import Log
-from ..struct import Struct, nvl, wrap, unwrap, StructList
-
+from ..struct import Struct, nvl, StructList
+from ..structs.wraps import wrap, unwrap
 
 ALGEBRAIC = {"time", "duration", "numeric", "count", "datetime"}  # DOMAINS THAT HAVE ALGEBRAIC OPERATIONS DEFINED
 KNOWN = {"set", "boolean", "duration", "time", "numeric"}    # DOMAINS THAT HAVE A KNOWN NUMBER FOR PARTS AT QUERY TIME

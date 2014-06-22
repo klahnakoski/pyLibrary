@@ -24,7 +24,7 @@ from .collections.multiset import Multiset
 from .env.profiles import Profiler
 from .env.logs import Log
 from .strings import expand_template
-from .struct import wrap, wrap_dot
+from .structs.wraps import wrap, wrap_dot
 
 
 json_decoder = json.JSONDecoder().decode

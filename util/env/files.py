@@ -14,7 +14,8 @@ import io
 import os
 import shutil
 from ..maths import crypto
-from ..struct import listwrap, nvl
+from ..struct import nvl
+from ..structs.wraps import listwrap
 from ..cnv import CNV
 
 
