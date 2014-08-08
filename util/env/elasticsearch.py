@@ -329,7 +329,7 @@ class ElasticSearch(object):
                 "error": response.content.decode("utf-8")
             })
 
-    def search(self, query):
+    def search(self, query, timeout=None):
         query = wrap(query)
         try:
             if self.debug:
@@ -342,7 +342,7 @@ class ElasticSearch(object):
             return self._post(
                 self.path + "/_search",
                 data=CNV.object2JSON(query).encode("utf8"),
-                timeout=self.settings.timeout
+                timeout=nvl(timeout, self.settings.timeout)
             )
         except Exception, e:
             Log.error("Problem with search (path={{path}}):\n{{query|indent}}", {

@@ -117,7 +117,14 @@ def _normalize(esfilter):
                 esfilter = wrap({"or": output})
             continue
 
-        if esfilter.terms:
+        if esfilter.term != None:
+            if esfilter.term.keys():
+                esfilter.isNormal = True
+                return esfilter
+            else:
+                return TRUE_FILTER
+
+        if esfilter.terms != None:
             for k, v in esfilter.terms.items():
                 if len(v) > 0:
                     esfilter.isNormal = True

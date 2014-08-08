@@ -14,7 +14,7 @@ from ..queries.domains import Domain, ALGEBRAIC, KNOWN
 from ..struct import Struct, nvl, Null, StructList, join_field, split_field
 from ..times.timer import Timer
 from ..env.logs import Log
-from ..structs.wraps import wrap
+from ..structs.wraps import wrap, listwrap
 
 
 DEFAULT_QUERY_LIMIT = 20
@@ -46,7 +46,7 @@ class Dimension(object):
 
         # ALLOW ACCESS TO SUB-PART BY NAME (IF ONLY THERE IS NO NAME COLLISION)
         self.edges = {}
-        for e in struct.listwrap(dim.edges):
+        for e in listwrap(dim.edges):
             new_e = Dimension(e, self, qb)
             self.edges[new_e.full_name] = new_e
 
@@ -60,7 +60,7 @@ class Dimension(object):
             self.fields = wrap(fields)
             edges = wrap([{"name": k, "value": v, "allowNulls": False} for k, v in self.fields.items()])
         else:
-            self.fields = struct.listwrap(fields)
+            self.fields = listwrap(fields)
             edges = wrap([{"name": f, "value": f, "index": i, "allowNulls": False} for i, f in enumerate(self.fields)])
 
         if dim.partitions:

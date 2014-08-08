@@ -39,6 +39,18 @@ class Random(object):
         return [data[Random.int(num)] for i in range(count)]
 
     @staticmethod
+    def combination(data):
+        output = []
+        data = list(data)
+        num = len(data)
+        for i in range(num):
+            n = Random.int(num-i)
+            output.append(data[n])
+            del data[n]
+        return output
+
+
+    @staticmethod
     def bytes(count):
         output = bytearray(random.randrange(256) for i in range(count))
         return output

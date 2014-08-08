@@ -12,6 +12,7 @@ from __future__ import unicode_literals
 from ..queries.db_query import esfilter2sqlwhere
 from ..structs.wraps import wrap
 
+
 def find_holes(db, table_name, column_name, _range, filter=None):
     """
     FIND HOLES IN A DENSE COLUMN OF INTEGERS
@@ -29,7 +30,7 @@ def find_holes(db, table_name, column_name, _range, filter=None):
         "filter": esfilter2sqlwhere(db, filter)
     }
 
-    min_max=db.query("""
+    min_max = db.query("""
         SELECT
             min({{column_name}}) `min`,
             max({{column_name}})+1 `max`
@@ -39,7 +40,6 @@ def find_holes(db, table_name, column_name, _range, filter=None):
             a.{{column_name}} BETWEEN {{min}} AND {{max}} AND
             {{filter}}
     """, params)[0]
-
 
     db.execute("SET @last={{min}}-1", {"min": _range.min})
     ranges = db.query("""
@@ -63,7 +63,6 @@ def find_holes(db, table_name, column_name, _range, filter=None):
             diff>1
     """, params)
 
-
     if ranges:
         ranges.append({"min": min_max.max, "max": _range.max})
     else:
@@ -72,6 +71,5 @@ def find_holes(db, table_name, column_name, _range, filter=None):
             ranges.append({"min": min_max.max, "max": _range.max})
         else:
             ranges.append(_range)
-
 
     return ranges

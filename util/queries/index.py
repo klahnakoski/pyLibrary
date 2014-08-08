@@ -68,7 +68,41 @@ class Index(object):
 
 
     def __contains__(self, key):
-        return self[key]
+        expected = True if self[key] else False
+        testing = self._test_contains(key)
+
+        if testing==expected:
+            return testing
+        else:
+            Log.error("not expected")
+
+    def _test_contains(self, key):
+        try:
+            if isinstance(key, (list, tuple)) and len(key) < len(self._keys):
+                # RETURN ANOTHER Index
+                length = len(key)
+                key = value2key(self._keys[0:length:], key)
+                d = self._data
+                for k in key[:length]:
+                    try:
+                        d = d[k]
+                    except Exception, e:
+                        return False
+                return True
+
+            key = value2key(self._keys, key)
+            d = self._data
+            for k in key:
+                try:
+                    d = d[k]
+                except Exception, e:
+                    return False
+            return True
+        except Exception, e:
+            Log.error("something went wrong", e)
+
+
+
 
     def __nonzero__(self):
         if self._data.keys():

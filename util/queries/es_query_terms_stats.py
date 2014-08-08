@@ -9,7 +9,6 @@
 #
 from __future__ import unicode_literals
 
-from .. import struct
 from ..collections.matrix import Matrix
 from ..collections import COUNT, PRODUCT
 from ..queries import es_query_util
@@ -20,7 +19,7 @@ from ..env.logs import Log
 from ..queries import domains, MVEL, filters
 from ..queries.MVEL import UID
 from ..struct import nvl, StructList
-from ..structs.wraps import wrap
+from ..structs.wraps import wrap, listwrap
 
 
 def is_terms_stats(query):
@@ -36,7 +35,7 @@ def is_terms_stats(query):
 
 
 def es_terms_stats(esq, mvel, query):
-    select = struct.listwrap(query.select)
+    select = listwrap(query.select)
     facetEdges = []    # EDGES THAT WILL REQUIRE A FACET FOR EACH PART
     termsEdges = StructList()
     specialEdge = None

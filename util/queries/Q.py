@@ -388,7 +388,7 @@ def sort(data, fieldnames=None):
         if fieldnames == None:
             return wrap(sorted(data))
 
-        fieldnames = struct.listwrap(fieldnames)
+        fieldnames = listwrap(fieldnames)
         if len(fieldnames) == 1:
             fieldnames = fieldnames[0]
             #SPECIAL CASE, ONLY ONE FIELD TO SORT BY

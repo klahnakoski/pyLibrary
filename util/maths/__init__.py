@@ -18,9 +18,13 @@ from . import stats
 
 class Math(object):
     """
-    MATH FUNCTIONS THAT ASSUME NONE IMPLY *NOT APPLICABLE* RATHER THAN *MISSING*
+    MATH FUNCTIONS THAT ASSUME None IMPLY *NOT APPLICABLE* RATHER THAN *MISSING*
+    LET "." BE SOME OPERATOR (+, -, *, etc)
+    a.None == None
+    None.a == None
+    .None == None
+    func(None, *kwargs)) == None
     """
-
 
 
     @staticmethod
@@ -48,6 +52,19 @@ class Math(object):
         if v == None:
             return Null
         return abs(v)
+
+    @staticmethod
+    def log(v, base=None):
+        if v == None:
+            return Null
+        return math.log(v, base)
+
+    @staticmethod
+    def log10(v):
+        try:
+            return math.log(v, 10)
+        except Exception, e:
+            return Null
 
     # FOR GOODNESS SAKE - IF YOU PROVIDE A METHOD abs(), PLEASE PROVIDE ITS COMPLEMENT
     # x = abs(x)*sign(x)
@@ -86,6 +103,11 @@ class Math(object):
 
     @staticmethod
     def round(value, decimal=0, digits=None):
+        """
+        ROUND TO GIVEN NUMBER OF DIGITS, OR GIVEN NUMBER OF DECIMAL PLACES
+        decimal - NUMBER OF SIGNIFICANT DIGITS (LESS THAN 1 IS INVALID)
+        digits - NUMBER OF DIGITS AFTER DECIMAL POINT (NEGATIVE IS VALID)
+        """
         if value == None:
             return None
 
@@ -111,12 +133,17 @@ class Math(object):
     def approx_str(value):
         v = unicode(value)
         d = v.find(".")
-        if d == -1: return value
+        if d == -1:
+            return value
+
+        if Math.round(value) == value:
+            return int(value)
 
         i = find_first(v, ["9999", "0000"], d)
-        if i == -1: return value
+        if i != -1:
+            Math.round(value, decimal=i - d - 1)
 
-        return Math.round_sci(value, decimal=i - d - 1)
+        return value
 
     @staticmethod
     def ceiling(value):
@@ -125,9 +152,9 @@ class Math(object):
 
     @staticmethod
     def max(*values):
-        output=None
+        output = None
         for v in values:
-            if v==None:
+            if v == None:
                 continue
             elif output == None or v > output:
                 output = v

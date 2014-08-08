@@ -12,6 +12,7 @@ from __future__ import unicode_literals
 from .. import struct
 from ..collections.matrix import Matrix
 from ..collections import AND, SUM, OR
+from ..structs.wraps import listwrap
 from ..queries.es_query_util import aggregates
 from ..queries import domains, es_query_util
 from ..queries.filters import simplify, TRUE_FILTER
@@ -24,7 +25,7 @@ from ..struct import split_field, unwrap, nvl, StructList
 def is_fieldop(query):
     # THESE SMOOTH EDGES REQUIRE ALL DATA (SETOP)
 
-    select = struct.listwrap(query.select)
+    select = listwrap(query.select)
     if not query.edges:
         isDeep = len(split_field(query.frum.name)) > 1  # LOOKING INTO NESTED WILL REQUIRE A SCRIPT
         isSimple = AND(s.value != None and (s.value == "*" or isKeyword(s.value)) for s in select)
@@ -49,7 +50,7 @@ def isKeyword(value):
 
 def es_fieldop(es, query):
     esQuery = es_query_util.buildESQuery(query)
-    select = struct.listwrap(query.select)
+    select = listwrap(query.select)
     esQuery.query = {
         "filtered": {
             "query": {
@@ -98,7 +99,7 @@ def es_fieldop(es, query):
 
 
 def is_setop(query):
-    select = struct.listwrap(query.select)
+    select = listwrap(query.select)
 
     if not query.edges:
         isDeep = len(split_field(query.frum.name)) > 1  # LOOKING INTO NESTED WILL REQUIRE A SCRIPT
@@ -117,7 +118,7 @@ def is_setop(query):
 
 def es_setop(es, mvel, query):
     esQuery = es_query_util.buildESQuery(query)
-    select = struct.listwrap(query.select)
+    select = listwrap(query.select)
 
     isDeep = len(split_field(query.frum.name)) > 1  # LOOKING INTO NESTED WILL REQUIRE A SCRIPT
     isComplex = OR([s.value == None and s.aggregate not in ("count", "none") for s in select])   # CONVERTING esfilter DEFINED PARTS WILL REQUIRE SCRIPT
@@ -192,7 +193,7 @@ def es_setop(es, mvel, query):
 
 
 def is_deep(query):
-    select = struct.listwrap(query.select)
+    select = listwrap(query.select)
     if len(select) > 1:
         return False
 

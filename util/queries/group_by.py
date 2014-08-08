@@ -34,8 +34,6 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
     if isinstance(data, Cube):
         return data.groupby(keys)
 
-    keys = listwrap(keys)
-
     def value2hash(x):
         return value2key(keys, x)
 
@@ -54,7 +52,7 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
             acc = StructList()
             curr_key = value2hash(data[0])
             for d in data:
-                key = value2hash(d)
+                key = value2key(keys, d)
                 if key != curr_key:
                     agg.append((get_keys(acc[0]), acc))
                     curr_key = key
@@ -69,7 +67,7 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
     try:
         agg = {}
         for d in data:
-            key = value2hash(d)
+            key = value2key(keys, d)
             pair = agg.get(key, None)
             if pair is None:
                 pair = (get_keys(d), StructList())

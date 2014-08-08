@@ -57,7 +57,7 @@ class Emailer:
         settings = self.settings
 
         from_address = nvl(from_address, settings["from"], settings.from_address)
-        to_addrs = struct.listwrap(nvl(to_addrs, settings.to, settings.to_addrs))
+        to_addrs = listwrap(nvl(to_addrs, settings.to, settings.to_addrs))
 
         if not from_address or not to_addrs:
             raise Exception("Both from_addr and to_addrs must be specified")

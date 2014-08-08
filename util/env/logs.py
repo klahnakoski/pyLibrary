@@ -20,7 +20,7 @@ from ..struct import nvl, Struct
 from ..structs.wraps import listwrap, wrap
 from ..strings import indent, expand_template
 from ..thread.threads import Thread
-from util.env import profiles
+
 
 
 DEBUG_LOGGING = False
@@ -137,7 +137,7 @@ class Log(object):
         """
         raise an exception with a trace for the cause too
         """
-        if params and isinstance(struct.listwrap(params)[0], BaseException):
+        if params and isinstance(listwrap(params)[0], BaseException):
             cause = params
             params = None
 
@@ -165,7 +165,7 @@ class Log(object):
         """
         SEND TO STDERR
         """
-        if params and isinstance(struct.listwrap(params)[0], BaseException):
+        if params and isinstance(listwrap(params)[0], BaseException):
             cause = params
             params = None
 
@@ -242,6 +242,8 @@ class Log(object):
 
     @classmethod
     def stop(cls):
+        from ..env import profiles
+
         if cls.cprofiler and hasattr(cls, "settings"):
             write_profile(cls.settings.cprofile, cls.cprofiler)
 

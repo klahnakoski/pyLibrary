@@ -93,6 +93,21 @@ avoid by following these instructions.
 
         SET HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Python\PythonCore\2.7\InstallPath = "C:\Python27"
 
+Using virtualenv
+----------------
+
+```virtualenv``` allows you to have multiple python projects on the same
+machine, even if they use different versions of the same libraries.
+```virtualenv``` does this by making a copy of the main python directory and
+using it to hold the specific versions required.
+
+* New environment: ```virtualenv <name_of_dir>```
+* Activate environment: ```<name_of_dir>\scripts\activate```
+* Exit environment: ```deactivate```
+
+If you have more than one project on your dev box I suggest you do all your
+work inside a virtual environment.
+
 Installing pyLibrary
 --------------------
 
@@ -113,10 +128,3 @@ Installing for Development
 
         python setup.py develop
 
-Optional
---------
-
-pyLibrary does not use these, but maybe you will find them useful:
-
-  * Install MySqldb from [http://sourceforge.net/projects/mysql-python/files/mysql-python/](http://sourceforge.net/projects/mysql-python/files/mysql-python/)
-  * Install ujson from [http://www.lfd.uci.edu/~gohlke/pythonlibs/#ujson](http://www.lfd.uci.edu/~gohlke/pythonlibs/#ujson)

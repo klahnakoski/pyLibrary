@@ -16,7 +16,7 @@ from ..env.logs import Log
 from ..queries import MVEL
 from ..queries.filters import TRUE_FILTER, simplify
 from ..struct import nvl, Struct, EmptyList, split_field, join_field, StructList
-from ..structs.wraps import wrap, unwrap
+from ..structs.wraps import wrap, unwrap, listwrap
 from .es_query_util import INDEX_CACHE
 
 
@@ -46,7 +46,7 @@ class Query(object):
         else:
             select = StructList()
         self.select2index = {}  # MAP FROM NAME TO data INDEX
-        for i, s in enumerate(struct.listwrap(select)):
+        for i, s in enumerate(listwrap(select)):
             self.select2index[s.name] = i
         self.select = select
 
@@ -54,7 +54,7 @@ class Query(object):
         self.frum = _normalize_from(query["from"], schema=schema)
         self.where = _normalize_where(query.where, schema=schema)
 
-        self.window = [_normalize_window(w) for w in struct.listwrap(query.window)]
+        self.window = [_normalize_window(w) for w in listwrap(query.window)]
 
         self.sort = _normalize_sort(query.sort)
         self.limit = query.limit
@@ -106,7 +106,7 @@ def _normalize_select(select, schema=None):
 
 
 def _normalize_edges(edges, schema=None):
-    return [_normalize_edge(e, schema=schema) for e in struct.listwrap(edges)]
+    return [_normalize_edge(e, schema=schema) for e in listwrap(edges)]
 
 
 def _normalize_edge(edge, schema=None):
@@ -164,7 +164,7 @@ def _normalize_window(window, schema=None):
     return Struct(
         name=nvl(window.name, window.value),
         value=window.value,
-        edges=[_normalize_edge(e, schema) for e in struct.listwrap(window.edges)],
+        edges=[_normalize_edge(e, schema) for e in listwrap(window.edges)],
         sort=_normalize_sort(window.sort),
         aggregate=window.aggregate,
         range=_normalize_range(window.range),
@@ -347,7 +347,7 @@ def _normalize_sort(sort=None):
         return EmptyList
 
     output = StructList()
-    for s in struct.listwrap(sort):
+    for s in listwrap(sort):
         if isinstance(s, basestring):
             output.append({"field": s, "sort": 1})
         else:

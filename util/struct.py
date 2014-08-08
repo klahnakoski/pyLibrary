@@ -394,6 +394,9 @@ class NullType(object):
     def __rsub__(self, other):
         return Null
 
+    def __neg__(self):
+        return Null
+
     def __mul__(self, other):
         return Null
 
@@ -631,8 +634,9 @@ class StructList(list):
         """
         RETURN LAST ELEMENT IN StructList [-1]
         """
-        if _get(self, "list"):
-            return wrap(_get(self, "list")[-1])
+        lst = _get(self, "list")
+        if lst:
+            return wrap(lst[-1])
         return Null
 
     def map(self, oper, includeNone=True):
@@ -747,4 +751,4 @@ def hash_value(v):
         return hash(tuple(sorted(hash_value(vv) for vv in v.values())))
 
 
-from util.structs.wraps import unwrap, wrap
+from .structs.wraps import unwrap, wrap

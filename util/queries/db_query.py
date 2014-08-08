@@ -17,7 +17,7 @@ from ..sql.db import int_list_packer, SQL, DB
 from ..env.logs import Log
 from ..strings import indent, expand_template
 from ..struct import nvl, StructList
-from ..structs.wraps import unwrap, wrap
+from ..structs.wraps import wrap, listwrap
 
 
 class DBQuery(object):
@@ -63,7 +63,7 @@ class DBQuery(object):
             # RETURN A CUBE
             sql, post = self._grouped(query, stacked)
         else:
-            select = struct.listwrap(query.select)
+            select = listwrap(query.select)
             if select[0].aggregate != "none":
                 sql, post = self._aggop(query)
             else:
@@ -75,7 +75,7 @@ class DBQuery(object):
             return sql, post
 
     def _grouped(self, query, stacked=False):
-        select = struct.listwrap(query.select)
+        select = listwrap(query.select)
 
         # RETURN SINGLE OBJECT WITH AGGREGATES
         for s in select:

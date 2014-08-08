@@ -33,7 +33,7 @@ class _MVEL(object):
         """
         RETURN THE MVEL THAT WILL FILTER USING query.where AND TERM-PACK THE query.select CLAUSE
         """
-        selectList = struct.listwrap(query.select)
+        selectList = listwrap(query.select)
         fromPath = query.frum.name  # FIRST NAME IS THE INDEX
         sourceVar = "__sourcedoc__"
         whereClause = query.where

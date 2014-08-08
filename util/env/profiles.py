@@ -10,8 +10,8 @@
 from __future__ import unicode_literals
 from datetime import datetime
 from time import clock
-from util.collections import MAX
-from util.struct import Struct
+from ..collections import MAX
+from ..struct import Struct
 
 ON = False
 profiles = {}
@@ -31,7 +31,7 @@ class Profiler(object):
         return output
 
     def __init__(self, description):
-        from util.queries.windows import Stats
+        from ..queries.windows import Stats
 
         if ON and not hasattr(self, "description"):
             self.description = description

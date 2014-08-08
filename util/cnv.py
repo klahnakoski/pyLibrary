@@ -40,8 +40,8 @@ class CNV:
         try:
             json = json_encoder(obj, pretty=pretty)
             if json == None:
-                Log.note(str(type(obj))+ " is not valid{{type}}JSON", {"type": " (pretty) " if pretty else " "})
-                Log.error("Not valid JSON: "+str(obj)+ " of type "+str(type(obj)))
+                Log.note(str(type(obj)) + " is not valid{{type}}JSON", {"type": " (pretty) " if pretty else " "})
+                Log.error("Not valid JSON: " + str(obj) + " of type " + str(type(obj)))
             return json
         except Exception, e:
             Log.error("Can not encode into JSON: {{value}}", {"value": repr(obj)}, e)
@@ -71,7 +71,6 @@ class CNV:
             except Exception, e:
                 Log.error("Can not decode JSON:\n\t" + str(json_string), e)
 
-
     @staticmethod
     def string2datetime(value, format):
         ## http://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
@@ -82,7 +81,6 @@ class CNV:
         except Exception, e:
             Log.error("Can not format {{value}} with {{format}}", {"value": value, "format": format}, e)
 
-
     @staticmethod
     def datetime2string(value, format="%Y-%m-%d %H:%M:%S"):
         try:
@@ -90,13 +88,11 @@ class CNV:
         except Exception, e:
             Log.error("Can not format {{value}} with {{format}}", {"value": value, "format": format}, e)
 
-
     @staticmethod
     def datetime2unix(d):
         if d == None:
             return None
         return long(time.mktime(d.timetuple()))
-
 
     @staticmethod
     def datetime2milli(d):
@@ -108,7 +104,7 @@ class CNV:
             elif isinstance(d, datetime.date):
                 epoch = datetime.date(1970, 1, 1)
             else:
-                Log.error("Can not convert {{value}} of type {{type}}", {"value": d, "type":d.__class__})
+                Log.error("Can not convert {{value}} of type {{type}}", {"value": d, "type": d.__class__})
 
             diff = d - epoch
             return long(diff.total_seconds()) * 1000L + long(diff.microseconds / 1000)
@@ -132,7 +128,7 @@ class CNV:
 
     @staticmethod
     def milli2datetime(u):
-        return CNV.unix2datetime(u/1000.0)
+        return CNV.unix2datetime(u / 1000.0)
 
     @staticmethod
     def dict2Multiset(dic):
@@ -170,8 +166,7 @@ class CNV:
         for r in rows:
             output.append("\t".join(CNV.object2JSON(r[k]) for k in keys))
 
-        return "\t".join(keys)+"\n"+"\n".join(output)
-
+        return "\t".join(keys) + "\n" + "\n".join(output)
 
     #PROPER NULL HANDLING
     @staticmethod
@@ -263,14 +258,12 @@ class CNV:
         else:
             return [int(value)]
 
-
     @staticmethod
     def value2int(value):
         if value == None:
             return None
         else:
             return int(value)
-
 
     @staticmethod
     def value2number(v):
@@ -295,7 +288,12 @@ class CNV:
 
     @staticmethod
     def latin12unicode(value):
-        return unicode(value.decode('iso-8859-1'))
+        if isinstance(value, unicode):
+            Log.error("can not convert unicode from latin1")
+        try:
+            return unicode(value.decode('iso-8859-1'))
+        except Exception, e:
+            Log.error("Can not convert {{value|quote}} to unicode", {"value": value})
 
     @staticmethod
     def esfilter2where(esfilter):
@@ -308,7 +306,6 @@ class CNV:
             return _filter(esfilter, row, rownum, rows)
 
         return output
-
 
     @staticmethod
     def pipe2value(value):

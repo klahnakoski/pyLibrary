@@ -53,10 +53,10 @@ class TestJSON(unittest.TestCase):
         if output != u'{"value": []}':
             Log.error("expecting correct value")
 
-
     def test_bad_key(self):
         test = {24: "value"}
         output = CNV.object2JSON(test)
+
 
 
 if __name__ == '__main__':
