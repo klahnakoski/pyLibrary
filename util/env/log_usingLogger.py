@@ -10,6 +10,8 @@
 
 
 from __future__ import unicode_literals
+from __future__ import division
+
 from datetime import timedelta
 import logging
 import sys
@@ -22,7 +24,7 @@ from ..thread.threads import Thread
 
 
 
-#WRAP PYTHON CLASSIC logger OBJECTS
+# WRAP PYTHON CLASSIC logger OBJECTS
 class Log_usingLogger(BaseLog):
     def __init__(self, settings):
         self.logger = logging.Logger("unique name", level=logging.INFO)
@@ -34,14 +36,14 @@ class Log_usingLogger(BaseLog):
         self.thread.start()
 
     def write(self, template, params):
-        # http://docs.python.org/2/library/logging.html#logging.LogRecord
+        # http://docs.python.org/2/library/logging.html# logging.LogRecord
         self.queue.add({"template": template, "params": params})
 
     def stop(self):
         try:
             if DEBUG_LOGGING:
                 sys.stdout.write("Log_usingLogger sees stop, adding stop to queue\n")
-            self.queue.add(Thread.STOP)  #BE PATIENT, LET REST OF MESSAGE BE SENT
+            self.queue.add(Thread.STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
             self.thread.join()
             if DEBUG_LOGGING:
                 sys.stdout.write("Log_usingLogger done\n")
@@ -67,12 +69,12 @@ def make_log_from_settings(settings):
         constructor = object.__getattribute__(temp, class_name)
     except Exception, e:
         if settings.stream and not constructor:
-            #PROVIDE A DEFAULT STREAM HANLDER
+            # PROVIDE A DEFAULT STREAM HANLDER
             constructor = Log_usingStream
         else:
             Log.error("Can not find class {{class}}", {"class": path}, e)
 
-    #IF WE NEED A FILE, MAKE SURE DIRECTORY EXISTS
+    # IF WE NEED A FILE, MAKE SURE DIRECTORY EXISTS
     if settings.filename:
         from ..env.files import File
 

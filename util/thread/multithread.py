@@ -9,6 +9,8 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
+
 from collections import Iterable
 from types import GeneratorType
 from ..struct import nvl
@@ -37,7 +39,7 @@ class Multithread(object):
 
         self.inbound = Queue(silent=silent_queues)
 
-        #MAKE THREADS
+        # MAKE THREADS
         if isinstance(functions, Iterable):
             if threads:
                 Log.error("do not know how to handle an array of functions AND a thread multiplier")
@@ -46,7 +48,7 @@ class Multithread(object):
                 thread = worker_thread("worker " + unicode(t), self.inbound, self.outbound, f)
                 self.threads.append(thread)
         else:
-            #ASSUME functions IS A SINGLE FUNCTION
+            # ASSUME functions IS A SINGLE FUNCTION
             self.threads = []
             for t in range(nvl(threads, 1)):
                 thread = worker_thread("worker " + unicode(t), self.inbound, self.outbound, functions)
@@ -55,7 +57,7 @@ class Multithread(object):
     def __enter__(self):
         return self
 
-    #WAIT FOR ALL QUEUED WORK TO BE DONE BEFORE RETURNING
+    # WAIT FOR ALL QUEUED WORK TO BE DONE BEFORE RETURNING
     def __exit__(self, type, value, traceback):
         try:
             if isinstance(value, Exception):
@@ -66,10 +68,10 @@ class Multithread(object):
             Log.warning("Problem sending stops", e)
 
 
-    #IF YOU SENT A stop(), OR Thread.STOP, YOU MAY WAIT FOR SHUTDOWN
+    # IF YOU SENT A stop(), OR Thread.STOP, YOU MAY WAIT FOR SHUTDOWN
     def join(self):
         try:
-            #WAIT FOR FINISH
+            # WAIT FOR FINISH
             for t in self.threads:
                 t.join()
         except (KeyboardInterrupt, SystemExit):
@@ -80,10 +82,10 @@ class Multithread(object):
             for t in self.threads:
                 t.keep_running = False
             self.inbound.close()
-            if self.outbound: self.outbound.close()
+            if self.outbound:
+                self.outbound.close()
             for t in self.threads:
                 t.join()
-
 
     def execute(self, requests):
         """
@@ -93,7 +95,7 @@ class Multithread(object):
         if not isinstance(requests,(list, tuple, GeneratorType)):
             Log.error("Expecting requests to be a list or generator", offset=1)
 
-        #FILL QUEUE WITH WORK
+        # FILL QUEUE WITH WORK
         self.inbound.extend(requests)
 
         num = len(requests)
@@ -111,15 +113,15 @@ class Multithread(object):
         else:
             return
 
-    #EXTERNAL COMMAND THAT RETURNS IMMEDIATELY
+    # EXTERNAL COMMAND THAT RETURNS IMMEDIATELY
     def stop(self):
-        self.inbound.close() #SEND STOPS TO WAKE UP THE WORKERS WAITING ON inbound.pop()
+        self.inbound.close() # SEND STOPS TO WAKE UP THE WORKERS WAITING ON inbound.pop()
         for t in self.threads:
             t.keep_running = False
 
 
 class worker_thread(Thread):
-    #in_queue MUST CONTAIN HASH OF PARAMETERS FOR load()
+    # in_queue MUST CONTAIN HASH OF PARAMETERS FOR load()
     def __init__(self, name, in_queue, out_queue, function):
         Thread.__init__(self, name, self.event_loop)
         self.in_queue = in_queue

@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+from __future__ import division
 
 from .. import struct
 from ..cnv import CNV
@@ -220,8 +221,8 @@ class DBQuery(object):
                 FROM
                     {{table}}
                 {{where}}
-                {{limit}}
                 {{sort}}
+                {{limit}}
             """, {
                 "selects": SQL(",\n".join(selects)),
                 "table": self._subquery(query["from"])[0],
@@ -241,7 +242,7 @@ class DBQuery(object):
                                 r[s.name+"."+k] = None
 
                     if isinstance(s.value, list):
-                        #REWRITE AS TUPLE
+                        # REWRITE AS TUPLE
                         for r in result:
                             r[s.name] = tuple(r[s.name + "," + str(i)] for i, ss in enumerate(s.value))
                             for i, ss in enumerate(s.value):
@@ -265,8 +266,8 @@ class DBQuery(object):
                 FROM
                     {{table}}
                 {{where}}
-                {{limit}}
                 {{sort}}
+                {{limit}}
             """, {
                 "selects": SQL(select),
                 "table": self._subquery(query["from"])[0],
@@ -319,6 +320,7 @@ def _isolate(separator, list):
 def esfilter2sqlwhere(db, esfilter):
     return SQL(_esfilter2sqlwhere(db, esfilter))
 
+
 def _esfilter2sqlwhere(db, esfilter):
     """
     CONVERT ElassticSearch FILTER TO SQL FILTER
@@ -326,7 +328,9 @@ def _esfilter2sqlwhere(db, esfilter):
     """
     esfilter = wrap(esfilter)
 
-    if esfilter["and"]:
+    if esfilter is True:
+        return "1=1"
+    elif esfilter["and"]:
         return _isolate("AND", [esfilter2sqlwhere(db, a) for a in esfilter["and"]])
     elif esfilter["or"]:
         return _isolate("OR", [esfilter2sqlwhere(db, a) for a in esfilter["or"]])
@@ -359,7 +363,7 @@ def _esfilter2sqlwhere(db, esfilter):
                         return "false"
             except Exception, e:
                 pass
-            return db.quote_column(col) + " in (" + ", ".join([db.quote_value(val) for val in v]) + ")"
+            return db.quote_column(col) + " in (" + ",\n".join([db.quote_value(val) for val in v]) + ")"
     elif esfilter.script:
         return "(" + esfilter.script + ")"
     elif esfilter.range:
@@ -374,7 +378,7 @@ def _esfilter2sqlwhere(db, esfilter):
             min = nvl(r["gte"], r[">="])
             max = nvl(r["lte"], r["<="])
             if min and max:
-                #SPECIAL CASE (BETWEEN)
+                # SPECIAL CASE (BETWEEN)
                 return db.quote_column(col) + " BETWEEN " + db.quote_value(min) + " AND " + db.quote_value(max)
             else:
                 return " AND ".join(
@@ -403,7 +407,7 @@ def _esfilter2sqlwhere(db, esfilter):
 
 
 def expand_json(rows):
-    #CONVERT JSON TO VALUES
+    # CONVERT JSON TO VALUES
     for r in rows:
         for k, json in list(r.items()):
             if isinstance(json, basestring) and json[0:1] in ("[", "{"):
@@ -414,7 +418,7 @@ def expand_json(rows):
                     pass
 
 
-#MAP NAME TO SQL FUNCTION
+# MAP NAME TO SQL FUNCTION
 aggregates = {
     "one": "COUNT({{code}})",
     "sum": "SUM({{code}})",

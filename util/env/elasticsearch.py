@@ -8,6 +8,8 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
+
 from datetime import datetime
 import re
 import time
@@ -77,25 +79,26 @@ class ElasticSearch(object):
 
 
     @staticmethod
-    def get_or_create_index(settings, schema, limit_replicas=False):
+    def get_or_create_index(settings, schema=None, limit_replicas=None):
         es = ElasticSearch(settings)
         aliases = es.get_aliases()
-        if settings.index not in [a.index for a in aliases]:
-            schema = CNV.JSON2object(CNV.object2JSON(schema), paths=True)
+        if settings.index not in aliases.index:
             es = ElasticSearch.create_index(settings, schema, limit_replicas=limit_replicas)
         return es
 
 
     @staticmethod
-    def create_index(settings, schema=None, limit_replicas=False):
+    def create_index(settings, schema=None, limit_replicas=None):
         if not schema and settings.schema_file:
             from .files import File
 
             schema = CNV.JSON2object(File(settings.schema_file).read(), flexible=True, paths=True)
+        elif isinstance(schema, basestring):
+            schema = CNV.JSON2object(schema, paths=True)
         else:
-            schema = wrap(schema)
-            if isinstance(schema, basestring):
-                schema = CNV.JSON2object(schema)
+            schema = CNV.JSON2object(CNV.object2JSON(schema), paths=True)
+
+        limit_replicas = nvl(limit_replicas, settings.limit_replicas)
 
         if limit_replicas:
             # DO NOT ASK FOR TOO MANY REPLICAS
@@ -164,7 +167,7 @@ class ElasticSearch(object):
             return wrap({"mappings":mapping[self.settings.type]})
 
 
-    #DELETE ALL INDEXES WITH GIVEN PREFIX, EXCEPT name
+    # DELETE ALL INDEXES WITH GIVEN PREFIX, EXCEPT name
     def delete_all_but(self, prefix, name):
         if prefix == name:
             Log.note("{{index_name}} will not be deleted", {"index_name": prefix})
@@ -236,7 +239,7 @@ class ElasticSearch(object):
         elif self.node_metatdata.version.number.startswith("1.0"):
             query = {"query": filter}
         else:
-            Log.error("not implemented yet")
+            raise NotImplementedError
 
         if self.debug:
             Log.note("Delete bugs:\n{{query}}", {"query": query})
@@ -296,7 +299,7 @@ class ElasticSearch(object):
                     })
 
             if self.debug:
-                Log.note("{{num}} items added", {"num": len(lines) / 2})
+                Log.note("{{num}} items added", {"num": int(len(lines) / 2)})
         except Exception, e:
             if e.message.startswith("sequence item "):
                 Log.error("problem with {{data}}", {"data": repr(lines[int(e.message[14:16].strip())])}, e)

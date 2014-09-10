@@ -9,6 +9,7 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
 import sys
 from .cube import Cube
 from ..queries.index import value2key
@@ -21,7 +22,7 @@ from ..collections.multiset import Multiset
 def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous=False):
     """
         return list of (keys, values) pairs where
-            group by the set of set of keys
+            group by the set of keys
             values IS LIST OF ALL data that has those keys
         contiguous - MAINTAIN THE ORDER OF THE DATA, STARTING THE NEW GROUP WHEN THE SELECTOR CHANGES
     """
@@ -34,9 +35,7 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
     if isinstance(data, Cube):
         return data.groupby(keys)
 
-    def value2hash(x):
-        return value2key(keys, x)
-
+    keys = listwrap(keys)
     def get_keys(d):
         output = Struct()
         for k in keys:
@@ -50,7 +49,7 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
 
             agg = StructList()
             acc = StructList()
-            curr_key = value2hash(data[0])
+            curr_key = value2key(keys, data[0])
             for d in data:
                 key = value2key(keys, d)
                 if key != curr_key:
@@ -98,7 +97,7 @@ def groupby_size(data, size):
                 break
         return output
 
-    #THIS IS LAZY
+    # THIS IS LAZY
     i = 0
     while True:
         output = more()
@@ -141,7 +140,7 @@ def groupby_min_max_size(data, min_size=0, max_size=None, ):
 
     if isinstance(data, (bytearray, basestring, list)):
         def _iter():
-            num = (len(data) - 1) / max_size + 1
+            num = int((len(data) - 1) / max_size) + 1
             for i in range(0, num):
                 output = (i, data[i * max_size:i * max_size + max_size:])
                 yield output

@@ -9,6 +9,7 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
 import __builtin__
 
 from . import group_by
@@ -21,7 +22,7 @@ from .index import UniqueIndex, Index
 from .flat_list import FlatList
 from ..maths import Math
 from ..env.logs import Log
-from ..struct import nvl, EmptyList, split_field, join_field
+from ..struct import nvl, EmptyList, split_field, join_field, set_default
 from ..structs.wraps import listwrap, wrap, unwrap
 from .. import struct
 from ..struct import Struct, Null, StructList
@@ -43,7 +44,7 @@ def run(query):
         Log.error("Do not know how to handle")
 
     if query.edges:
-        Log.error("not implemented yet")
+        raise NotImplementedError
 
     try:
         if query.filter != None or query.esfilter != None:
@@ -74,8 +75,19 @@ groupby = group_by.groupby
 
 
 def index(data, keys=None):
-#return dict that uses keys to index data
+# return dict that uses keys to index data
     o = Index(keys)
+
+    if isinstance(data, Cube):
+        if data.edges[0].name==keys[0]:
+            #QUICK PATH
+            names = list(data.data.keys())
+            for d in (set_default(struct.zip(names, r), {keys[0]: p}) for r, p in zip(zip(*data.data.values()), data.edges[0].domain.partitions.value)):
+                o.add(d)
+            return o
+        else:
+            Log.error("Can not handle indexing cubes at this time")
+
     for d in data:
         o.add(d)
     return o
@@ -115,7 +127,7 @@ def map2set(data, relation):
 
     if isinstance(relation, dict):
         try:
-            #relation[d] is expected to be a list
+            # relation[d] is expected to be a list
             # return set(cod for d in data for cod in relation[d])
             output = set()
             for d in data:
@@ -126,7 +138,7 @@ def map2set(data, relation):
             Log.error("Expecting a dict with lists in codomain", e)
     else:
         try:
-            #relation[d] is expected to be a list
+            # relation[d] is expected to be a list
             # return set(cod for d in data for cod in relation[d])
             output = set()
             for d in data:
@@ -215,7 +227,7 @@ def _tuple_deep(v, field, depth, record):
 
 
 def select(data, field_name):
-#return list with values from field_name
+# return list with values from field_name
     if isinstance(data, Cube):
         return data._select(_normalize_selects(field_name))
 
@@ -391,14 +403,14 @@ def sort(data, fieldnames=None):
         fieldnames = listwrap(fieldnames)
         if len(fieldnames) == 1:
             fieldnames = fieldnames[0]
-            #SPECIAL CASE, ONLY ONE FIELD TO SORT BY
+            # SPECIAL CASE, ONLY ONE FIELD TO SORT BY
             if isinstance(fieldnames, basestring):
                 def comparer(left, right):
                     return cmp(nvl(left, Struct())[fieldnames], nvl(right, Struct())[fieldnames])
 
                 return StructList([unwrap(d) for d in sorted(data, cmp=comparer)])
             else:
-                #EXPECTING {"field":f, "sort":i} FORMAT
+                # EXPECTING {"field":f, "sort":i} FORMAT
                 def comparer(left, right):
                     return fieldnames["sort"] * cmp(nvl(left, Struct())[fieldnames["field"]], nvl(right, Struct())[fieldnames["field"]])
 
@@ -430,17 +442,17 @@ def sort(data, fieldnames=None):
         Log.error("Problem sorting\n{{data}}", {"data": data}, e)
 
 
+def pairwise(values):
+    """
+    WITH values = [a, b, c, d, ...]
+    RETURN [(a, b), (b, c), (c, d), ...]
+    """
+    i = iter(values)
+    a = next(i)
 
-
-def add(*values):
-    total = Null
-    for v in values:
-        if total == None:
-            total = v
-        else:
-            if v != None:
-                total += v
-    return total
+    for b in i:
+        yield (a, b)
+        a = b
 
 
 def filter(data, where):
@@ -637,7 +649,7 @@ def drill_filter(esfilter, data):
         else:
             Log.error(u"Can not interpret esfilter: {{esfilter}}", {u"esfilter": filter})
 
-    output = []  #A LIST OF OBJECTS MAKING THROUGH THE FILTER
+    output = []  # A LIST OF OBJECTS MAKING THROUGH THE FILTER
 
     def main(sequence, esfilter, row, depth):
         """
@@ -681,7 +693,7 @@ def drill_filter(esfilter, data):
         else:
             nested = row[-1][primary_column[depth]]
             if not nested:
-                #PASSED FILTER, BUT NO CHILDREN, SO ADD NULL CHILDREN
+                # PASSED FILTER, BUT NO CHILDREN, SO ADD NULL CHILDREN
                 for i in range(depth, max):
                     row.append(None)
                 uniform_output.append(row)
@@ -695,7 +707,7 @@ def drill_filter(esfilter, data):
         recurse(o, 0)
 
     if not max:
-        #SIMPLE LIST AS RESULT
+        # SIMPLE LIST AS RESULT
         return wrap([unwrap(u[0]) for u in uniform_output])
 
     return FlatList(primary_column[0:max], uniform_output)
@@ -744,7 +756,7 @@ def window(data, param):
         data = sort(data, sortColumns)
 
     if not aggregate and not edges:
-        #SIMPLE CALCULATED VALUE
+        # SIMPLE CALCULATED VALUE
         for rownum, r in enumerate(data):
             r[name] = calc_value(r, rownum, data)
         return
@@ -763,19 +775,19 @@ def window(data, param):
         head = nvl(_range.max, _range.stop)
         tail = nvl(_range.min, _range.start)
 
-        #PRELOAD total
+        # PRELOAD total
         total = aggregate()
         for i in range(tail, head):
             total.add(sequence[i].__temp__)
 
-        #WINDOW FUNCTION APPLICATION
+        # WINDOW FUNCTION APPLICATION
         for i, r in enumerate(sequence):
             r[name] = total.end()
             total.add(sequence[i + head].__temp__)
             total.sub(sequence[i + tail].__temp__)
 
     for r in data:
-        r["__temp__"] = None  #CLEANUP
+        r["__temp__"] = None  # CLEANUP
 
 
 

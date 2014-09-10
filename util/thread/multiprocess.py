@@ -7,7 +7,9 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
-from multiprocessing.queues import Queue
+from __future__ import division
+
+from dzAlerts.util.thread.threads import Queue
 from ..env.logs import Log
 
 
@@ -35,9 +37,9 @@ class Multiprocess(object):
         self.inbound = Queue()
         self.inbound = Queue()
 
-        #MAKE
+        # MAKE
 
-        #MAKE THREADS
+        # MAKE THREADS
         self.threads = []
         for t, f in enumerate(functions):
             thread = worker(
@@ -52,7 +54,7 @@ class Multiprocess(object):
     def __enter__(self):
         return self
 
-    #WAIT FOR ALL QUEUED WORK TO BE DONE BEFORE RETURNING
+    # WAIT FOR ALL QUEUED WORK TO BE DONE BEFORE RETURNING
     def __exit__(self, a, b, c):
         try:
             self.inbound.close() # SEND STOPS TO WAKE UP THE WORKERS WAITING ON inbound.pop()
@@ -62,10 +64,10 @@ class Multiprocess(object):
         self.join()
 
 
-    #IF YOU SENT A stop(), OR STOP, YOU MAY WAIT FOR SHUTDOWN
+    # IF YOU SENT A stop(), OR STOP, YOU MAY WAIT FOR SHUTDOWN
     def join(self):
         try:
-            #WAIT FOR FINISH
+            # WAIT FOR FINISH
             for t in self.threads:
                 t.join()
         except (KeyboardInterrupt, SystemExit):
@@ -81,9 +83,9 @@ class Multiprocess(object):
             self.outbound.close()
 
 
-    #RETURN A GENERATOR THAT HAS len(parameters) RESULTS (ANY ORDER)
+    # RETURN A GENERATOR THAT HAS len(parameters) RESULTS (ANY ORDER)
     def execute(self, parameters):
-        #FILL QUEUE WITH WORK
+        # FILL QUEUE WITH WORK
         self.inbound.extend(parameters)
 
         num = len(parameters)
@@ -95,9 +97,9 @@ class Multiprocess(object):
 
         return output()
 
-    #EXTERNAL COMMAND THAT RETURNS IMMEDIATELY
+    # EXTERNAL COMMAND THAT RETURNS IMMEDIATELY
     def stop(self):
-        self.inbound.close() #SEND STOPS TO WAKE UP THE WORKERS WAITING ON inbound.pop()
+        self.inbound.close() # SEND STOPS TO WAKE UP THE WORKERS WAITING ON inbound.pop()
         for t in self.threads:
             t.keep_running = False
 

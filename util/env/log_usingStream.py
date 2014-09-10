@@ -10,9 +10,10 @@
 
 
 from __future__ import unicode_literals
+from __future__ import division
+
 from datetime import datetime, timedelta
 import sys
-
 from .logs import BaseLog, DEBUG_LOGGING, Log
 from ..strings import expand_template
 from ..thread.threads import Thread
@@ -20,8 +21,8 @@ from ..thread.threads import Thread
 
 
 class Log_usingStream(BaseLog):
-    #stream CAN BE AN OBJCET WITH write() METHOD, OR A STRING
-    #WHICH WILL eval() TO ONE
+    # stream CAN BE AN OBJCET WITH write() METHOD, OR A STRING
+    # WHICH WILL eval() TO ONE
     def __init__(self, stream):
         assert stream
 
@@ -29,14 +30,14 @@ class Log_usingStream(BaseLog):
 
         if isinstance(stream, basestring):
             if stream.startswith("sys."):
-                use_UTF8 = True  #sys.* ARE OLD AND CAN NOT HANDLE unicode
+                use_UTF8 = True  # sys.* ARE OLD AND CAN NOT HANDLE unicode
             self.stream = eval(stream)
             name = stream
         else:
             self.stream = stream
             name = "stream"
 
-        #WRITE TO STREAMS CAN BE *REALLY* SLOW, WE WILL USE A THREAD
+        # WRITE TO STREAMS CAN BE *REALLY* SLOW, WE WILL USE A THREAD
         from ..thread.threads import Queue
 
         if use_UTF8:
@@ -58,13 +59,13 @@ class Log_usingStream(BaseLog):
             self.queue.add({"template": template, "params": params})
             return self
         except Exception, e:
-            raise e  #OH NO!
+            raise e  # OH NO!
 
     def stop(self):
         try:
             if DEBUG_LOGGING:
                 sys.stdout.write("Log_usingStream sees stop, adding stop to queue\n")
-            self.queue.add(Thread.STOP)  #BE PATIENT, LET REST OF MESSAGE BE SENT
+            self.queue.add(Thread.STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
             self.thread.join()
             if DEBUG_LOGGING:
                 sys.stdout.write("Log_usingStream done\n")

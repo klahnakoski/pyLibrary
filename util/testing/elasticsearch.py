@@ -1,13 +1,23 @@
 # encoding: utf-8
 #
-from .util import struct
-from .util.cnv import CNV
-from .util.env.elasticsearch import ElasticSearch
-from .util.env.logs import Log
-from .util.env.files import File
-from .util.queries import Q
-from .util.struct import Struct
-from .util.structs.wraps import unwrap, wrap
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
+
+from __future__ import unicode_literals
+from __future__ import division
+
+from .. import struct
+from ..cnv import CNV
+from ..env.elasticsearch import ElasticSearch
+from ..env.logs import Log
+from ..env.files import File
+from ..queries import Q
+from ..struct import Struct
+from ..structs.wraps import unwrap, wrap
 
 def make_test_instance(name, settings):
     if settings.filename:

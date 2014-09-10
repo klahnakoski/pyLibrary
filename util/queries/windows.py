@@ -9,6 +9,7 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
 import functools
 from ..struct import StructList
 from ..maths import stats
@@ -26,25 +27,26 @@ class AggregationFunction(object):
         """
         RETURN A ZERO-STATE AGGREGATE
         """
-        Log.error("not implemented yet")
+        raise NotImplementedError
 
     def add(self, value):
         """
         ADD value TO AGGREGATE
         """
-        Log.error("not implemented yet")
+        raise NotImplementedError
 
 
     def merge(self, agg):
         """
         ADD TWO AGGREGATES TOGETHER
         """
-        Log.error("not implemented yet")
+        raise NotImplementedError
 
     def end(self):
         """
         RETURN AGGREGATE
         """
+        raise NotImplementedError
 
 
 class Exists(AggregationFunction):
@@ -70,14 +72,14 @@ class WindowFunction(AggregationFunction):
         """
         RETURN A ZERO-STATE AGGREGATE
         """
-        Log.error("not implemented yet")
+        raise NotImplementedError
 
 
     def sub(self, value):
         """
         REMOVE value FROM AGGREGATE
         """
-        Log.error("not implemented yet")
+        raise NotImplementedError
 
 
 def Stats(**kwargs):

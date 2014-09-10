@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+from __future__ import division
 import math
 import __builtin__
 from ..struct import Null, nvl
@@ -54,10 +55,28 @@ class Math(object):
         return abs(v)
 
     @staticmethod
-    def log(v, base=None):
+    def pow(v, expo):
         if v == None:
             return Null
-        return math.log(v, base)
+        return math.pow(v, expo)
+
+    @staticmethod
+    def exp(v):
+        if v == None:
+            return Null
+        return math.exp(v)
+
+    @staticmethod
+    def log(v, base=None):
+        try:
+            if v == None:
+                return Null
+            if base == None:
+                return math.log(v)
+            return math.log(v, base)
+        except Exception, e:
+            raise Exception("error in log")
+
 
     @staticmethod
     def log10(v):
@@ -110,8 +129,10 @@ class Math(object):
         """
         if value == None:
             return None
+        else:
+            value = float(value)
 
-        if digits != None:
+        if digits is None:
             m = pow(10, math.ceil(math.log10(value)))
             return __builtin__.round(value / m, digits) * m
 
@@ -128,7 +149,7 @@ class Math(object):
         return v - (v % mod)
 
 
-    #RETURN A VALUE CLOSE TO value, BUT WITH SHORTER len(unicode(value))<len(unicode(value)):
+    # RETURN A VALUE CLOSE TO value, BUT WITH SHORTER len(unicode(value))<len(unicode(value)):
     @staticmethod
     def approx_str(value):
         v = unicode(value)
@@ -157,6 +178,18 @@ class Math(object):
             if v == None:
                 continue
             elif output == None or v > output:
+                output = v
+            else:
+                pass
+        return output
+
+    @staticmethod
+    def min(*values):
+        output = None
+        for v in values:
+            if v == None:
+                continue
+            elif output == None or v < output:
                 output = v
             else:
                 pass

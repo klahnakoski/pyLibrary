@@ -93,8 +93,7 @@ avoid by following these instructions.
 
         SET HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Python\PythonCore\2.7\InstallPath = "C:\Python27"
 
-Using virtualenv
-----------------
+###Using virtualenv
 
 ```virtualenv``` allows you to have multiple python projects on the same
 machine, even if they use different versions of the same libraries.
@@ -107,6 +106,14 @@ using it to hold the specific versions required.
 
 If you have more than one project on your dev box I suggest you do all your
 work inside a virtual environment.
+
+### Binaries and Virtual Environments
+
+If you plan to use any binary packages, ```virtualenv``` will not work
+directly.  Instead, install the binary (32 bit only!!) to the main python
+installation.  Then copy any newly installed files/directories from
+```C:\Python27\Lib\site-packages``` to ```<name_of_dir>\Lib\site-packages```
+
 
 Installing pyLibrary
 --------------------

@@ -9,6 +9,7 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
 
 from datetime import datetime
 import json
@@ -96,7 +97,7 @@ class DB(object):
         self.cursor = None
         self.partial_rollback = False
         self.transaction_level = 0
-        self.backlog = []     #accumulate the write commands so they are sent at once
+        self.backlog = []     # accumulate the write commands so they are sent at once
 
 
     def __enter__(self):
@@ -144,7 +145,7 @@ class DB(object):
     def close(self):
         if self.transaction_level > 0:
             Log.error("expecting commit() or rollback() before close")
-        self.cursor = None  #NOT NEEDED
+        self.cursor = None  # NOT NEEDED
         try:
             self.db.close()
         except Exception, e:
@@ -194,7 +195,7 @@ class DB(object):
 
 
     def rollback(self):
-        self.backlog = []     #YAY! FREE!
+        self.backlog = []     # YAY! FREE!
         if self.transaction_level == 0:
             Log.error("No transaction has begun")
         elif self.transaction_level == 1:
@@ -227,7 +228,7 @@ class DB(object):
         self._execute_backlog()
         try:
             old_cursor = self.cursor
-            if not old_cursor: #ALLOW NON-TRANSACTIONAL READS
+            if not old_cursor: # ALLOW NON-TRANSACTIONAL READS
                 self.cursor = self.db.cursor()
                 self.cursor.execute("SET TIME_ZONE='+00:00'")
                 self.cursor.close()
@@ -244,7 +245,7 @@ class DB(object):
             fixed = [[utf8_to_unicode(c) for c in row] for row in self.cursor]
             result = CNV.table2list(columns, fixed)
 
-            if not old_cursor:   #CLEANUP AFTER NON-TRANSACTIONAL READS
+            if not old_cursor:   # CLEANUP AFTER NON-TRANSACTIONAL READS
                 self.cursor.close()
                 self.cursor = None
 
@@ -261,7 +262,7 @@ class DB(object):
         self._execute_backlog()
         try:
             old_cursor = self.cursor
-            if not old_cursor: #ALLOW NON-TRANSACTIONAL READS
+            if not old_cursor: # ALLOW NON-TRANSACTIONAL READS
                 self.cursor = self.db.cursor()
                 self.cursor.execute("SET TIME_ZONE='+00:00'")
                 self.cursor.close()
@@ -278,7 +279,7 @@ class DB(object):
             # columns = [utf8_to_unicode(d[0]) for d in nvl(self.cursor.description, [])]
             result = zip(*grid)
 
-            if not old_cursor:   #CLEANUP AFTER NON-TRANSACTIONAL READS
+            if not old_cursor:   # CLEANUP AFTER NON-TRANSACTIONAL READS
                 self.cursor.close()
                 self.cursor = None
 
@@ -299,7 +300,7 @@ class DB(object):
         self._execute_backlog()
         try:
             old_cursor = self.cursor
-            if not old_cursor: #ALLOW NON-TRANSACTIONAL READS
+            if not old_cursor: # ALLOW NON-TRANSACTIONAL READS
                 self.cursor = self.db.cursor()
 
             if param:
@@ -314,7 +315,7 @@ class DB(object):
                 num += 1
                 _execute(wrap(dict(zip(columns, [utf8_to_unicode(c) for c in r]))))
 
-            if not old_cursor:   #CLEANUP AFTER NON-TRANSACTIONAL READS
+            if not old_cursor:   # CLEANUP AFTER NON-TRANSACTIONAL READS
                 self.cursor.close()
                 self.cursor = None
 
@@ -485,8 +486,8 @@ class DB(object):
 
         where_clause = " AND\n".join([
             self.quote_column(k) + "=" + self.quote_value(v) if v != None else self.quote_column(k) + " IS NULL"
-            for k, v in where_slice.items()]
-        )
+            for k, v in where_slice.items()
+        ])
 
         command = "UPDATE " + self.quote_column(table_name) + "\n" + \
                   "SET " + \
@@ -509,7 +510,7 @@ class DB(object):
                 return "NULL"
             elif isinstance(value, SQL):
                 if not value.param:
-                    #value.template CAN BE MORE THAN A TEMPLATE STRING
+                    # value.template CAN BE MORE THAN A TEMPLATE STRING
                     return self.quote_sql(value.template)
                 param = {k: self.quote_sql(v) for k, v in value.param.items()}
                 return expand_template(value.template, param)
@@ -554,13 +555,13 @@ class DB(object):
         if isinstance(column_name, basestring):
             if table:
                 column_name = table + "." + column_name
-            return SQL("`" + column_name.replace(".", "`.`") + "`")    #MY SQL QUOTE OF COLUMN NAMES
+            return SQL("`" + column_name.replace(".", "`.`") + "`")    # MY SQL QUOTE OF COLUMN NAMES
         elif isinstance(column_name, list):
             if table:
                 return SQL(", ".join([self.quote_column(table + "." + c) for c in column_name]))
             return SQL(", ".join([self.quote_column(c) for c in column_name]))
         else:
-            #ASSUME {"name":name, "value":value} FORM
+            # ASSUME {"name":name, "value":value} FORM
             return SQL(column_name.value + " AS " + self.quote_column(column_name.name))
 
     def sort2sqlorderby(self, sort):
@@ -580,7 +581,7 @@ def utf8_to_unicode(v):
         Log.error("not expected", e)
 
 
-#ACTUAL SQL, DO NOT QUOTE THIS STRING
+# ACTUAL SQL, DO NOT QUOTE THIS STRING
 class SQL(unicode):
     def __init__(self, template='', param=None):
         unicode.__init__(self)
@@ -599,8 +600,8 @@ def int_list_packer(term, values):
     """
     return singletons, ranges and exclusions
     """
-    DENSITY = 10  #a range can have holes, this is inverse of the hole density
-    MIN_RANGE = 20  #min members before a range is allowed to be used
+    DENSITY = 10  # a range can have holes, this is inverse of the hole density
+    MIN_RANGE = 20  # min members before a range is allowed to be used
 
     singletons = set()
     ranges = []
@@ -616,27 +617,27 @@ def int_list_packer(term, values):
         if v <= last + 1:
             pass
         elif v - last > 3:
-            #big step, how do we deal with it?
+            # big step, how do we deal with it?
             if last == curr_start:
-                #not a range yet, so just add as singlton
+                # not a range yet, so just add as singlton
                 singletons.add(last)
             elif last - curr_start - len(curr_excl) < MIN_RANGE or ((last - curr_start) < len(curr_excl) * DENSITY):
-                #small ranges are singletons, sparse ranges are singletons
+                # small ranges are singletons, sparse ranges are singletons
                 singletons |= set(range(curr_start, last + 1))
                 singletons -= curr_excl
             else:
-                #big enough, and dense enough range
+                # big enough, and dense enough range
                 ranges.append({"gte": curr_start, "lte": last})
                 exclude |= curr_excl
             curr_start = v
             curr_excl = set()
         else:
             if 1 + last - curr_start >= len(curr_excl) * DENSITY:
-                #high density, keep track of excluded and continue
+                # high density, keep track of excluded and continue
                 add_me = set(range(last + 1, v))
                 curr_excl |= add_me
             elif 1 + last - curr_start - len(curr_excl) < MIN_RANGE:
-                #not big enough, convert range to singletons
+                # not big enough, convert range to singletons
                 new_singles = set(range(curr_start, last + 1)) - curr_excl
                 singletons = singletons | new_singles
 
@@ -650,14 +651,14 @@ def int_list_packer(term, values):
         last = v
 
     if last == curr_start:
-        #not a range yet, so just add as singlton
+        # not a range yet, so just add as singlton
         singletons.add(last)
     elif last - curr_start - len(curr_excl) < MIN_RANGE or ((last - curr_start) < len(curr_excl) * DENSITY):
-        #small ranges are singletons, sparse ranges are singletons
+        # small ranges are singletons, sparse ranges are singletons
         singletons |= set(range(curr_start, last + 1))
         singletons -= curr_excl
     else:
-        #big enough, and dense enough range
+        # big enough, and dense enough range
         ranges.append({"gte": curr_start, "lte": last})
         exclude |= curr_excl
 

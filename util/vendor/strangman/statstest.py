@@ -3,7 +3,7 @@ import stats, os, pstat
 reload(stats)
 
 try:
-    import numpy as N
+    import numpy as np as N
 except ImportError:
     pass
 
@@ -28,10 +28,10 @@ print 'moment:',stats.moment(l),stats.moment(lf),stats.moment(a),stats.moment(af
 print 'variation:',stats.variation(l),stats.variation(a),stats.variation(lf),stats.variation(af)
 print 'skew:',stats.skew(l),stats.skew(lf),stats.skew(a),stats.skew(af)
 print 'kurtosis:',stats.kurtosis(l),stats.kurtosis(lf),stats.kurtosis(a),stats.kurtosis(af)
-print 'tmean:',stats.tmean(a,(5,17)),stats.tmean(af,(5,17))
-print 'tvar:',stats.tvar(a,(5,17)),stats.tvar(af,(5,17))
-print 'tstdev:',stats.tstdev(a,(5,17)),stats.tstdev(af,(5,17))
-print 'tsem:',stats.tsem(a,(5,17)),stats.tsem(af,(5,17))
+print 'mean:',stats.mean(a),stats.mean(af)
+print 'var:',stats.var(a),stats.var(af)
+print 'stdev:',stats.stdev(a),stats.stdev(af)
+print 'sem:',stats.sem(a),stats.sem(af)
 print 'describe:'
 print stats.describe(l)
 print stats.describe(lf)
@@ -92,7 +92,7 @@ print stats.trim1(a,.2)
 print stats.trim1(af,.2)
 
 print '\nCORRELATION'
-#execfile('testpairedstats.py')
+# execfile('testpairedstats.py')
 
 l = range(1,21)
 a = N.array(l)
@@ -100,15 +100,15 @@ ll = [l]*5
 aa = N.array(ll)
 
 m = range(4,24)
-m[10] = 34 
+m[10] = 34
 b = N.array(m)
 
 pb = [0]*9 + [1]*11
 apb = N.array(pb)
 
 print 'paired:'
-#stats.paired(l,m)
-#stats.paired(a,b)
+# stats.paired(l,m)
+# stats.paired(a,b)
 
 print
 print
@@ -168,13 +168,13 @@ ll = [l]*5
 aa = N.array(ll)
 
 m = range(4,24)
-m[10] = 34 
+m[10] = 34
 b = N.array(m)
 
 print '\n\nF_oneway:'
-print stats.F_oneway(l,m) 
+print stats.F_oneway(l,m)
 print stats.F_oneway(a,b)
-#print 'F_value:',stats.F_value(l),stats.F_value(a)
+# print 'F_value:',stats.F_value(l),stats.F_value(a)
 
 print '\nSUPPORT'
 print 'sum:',stats.sum(l),stats.sum(lf),stats.sum(a),stats.sum(af)

@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+from __future__ import division
 
 from .. import struct
 from ..collections.matrix import Matrix
@@ -150,7 +151,7 @@ def es_setop(es, mvel, query):
                 esQuery.facets.mvel.terms.order = "term" if s0.sort >= 0 else "reverse_term"
     elif not isDeep:
         simple_query = query.copy()
-        simple_query.where = TRUE_FILTER  #THE FACET FILTER IS FASTER
+        simple_query.where = TRUE_FILTER  # THE FACET FILTER IS FASTER
         esQuery.facets.mvel = {
             "terms": {
                 "script_field": mvel.code(simple_query),

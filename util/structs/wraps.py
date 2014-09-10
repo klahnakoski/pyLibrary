@@ -1,3 +1,14 @@
+# encoding: utf-8
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
+
+from __future__ import unicode_literals
+from __future__ import division
 from types import NoneType, GeneratorType
 from ..struct import Null, StructList, Struct
 
@@ -106,17 +117,17 @@ def listwrap(value):
     value -> [value]
     [...] -> [...]  (unchanged list)
 
-    #BEFORE
+    # BEFORE
     if a is not None:
         if not isinstance(a, list):
             a=[a]
         for x in a:
-            #do something
+            # do something
 
 
-    #AFTER
+    # AFTER
     for x in listwrap(a):
-        #do something
+        # do something
 
     """
     if value == None:

@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+from __future__ import division
 from .. import struct
 from .dimensions import Dimension
 from .domains import Domain
@@ -290,14 +291,14 @@ def _where_terms(master, where, schema):
     """
     if isinstance(where, dict):
         if where.term:
-            #MAP TERM
+            # MAP TERM
             try:
                 output = _map_term_using_schema(master, [], where.term, schema.edges)
                 return output
             except Exception, e:
                 Log.error("programmer problem?", e)
         elif where.terms:
-            #MAP TERM
+            # MAP TERM
             output = StructList()
             for k, v in where.terms.items():
                 if not isinstance(v, (list, set)):
@@ -307,7 +308,7 @@ def _where_terms(master, where, schema):
                     output.append({"terms": {k: v}})
                 else:
                     if isinstance(edge, basestring):
-                        #DIRECT FIELD REFERENCE
+                        # DIRECT FIELD REFERENCE
                         return {"terms": {edge: v}}
                     try:
                         domain = edge.getDomain()

@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+from __future__ import division
 
 from datetime import datetime
 import re
@@ -174,8 +175,8 @@ class _MVEL(object):
             else:
                 qb_fields, es_fields = zip(*[(i, e) for i, e in enumerate(fields)])
 
-            #NO LOOPS BECAUSE QUERY IS SHALLOW
-            #DOMAIN IS FROM A DIMENSION, USE IT'S FIELD DEFS TO PULL
+            # NO LOOPS BECAUSE QUERY IS SHALLOW
+            # DOMAIN IS FROM A DIMENSION, USE IT'S FIELD DEFS TO PULL
             if len(es_fields) == 1:
                 def fromTerm(term):
                     return domain.getPartByKey(term)

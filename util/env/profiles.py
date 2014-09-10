@@ -8,9 +8,12 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
+
 from datetime import datetime
 from time import clock
 from ..collections import MAX
+from ..structs.wraps import wrap
 from ..struct import Struct
 
 ON = False
@@ -49,7 +52,7 @@ class Profiler(object):
             self.end = clock()
             duration = self.end - self.start
 
-            from util.queries.windows import Stats
+            from ..queries.windows import Stats
 
             self.stats.add(duration)
             if self.samples is not None:
@@ -81,13 +84,14 @@ def write(profile_settings):
         stats_file.write("<no profiles>")
 
     stats_file2 = File(profile_settings.filename, suffix=CNV.datetime2string(datetime.now(), "_series_%Y%m%d_%H%M%S"))
-    r = range(MAX([len(p.samples) for p in profs]))
-    profs.insert(0, Struct(description="index", samples=r))
-    stats = [
-        {p.description: p.samples[i] for p in profs if p.samples}
-        for i in r
-    ]
-    if stats:
-        stats_file2.write(CNV.list2tab(stats))
+    if profs:
+        r = range(MAX([len(p.samples) for p in profs]))
+        profs.insert(0, Struct(description="index", samples=r))
+        stats = [
+            {p.description: wrap(p.samples)[i] for p in profs if p.samples}
+            for i in r
+        ]
+        if stats:
+            stats_file2.write(CNV.list2tab(stats))
 
 

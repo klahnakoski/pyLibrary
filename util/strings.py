@@ -9,6 +9,8 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
+
 from datetime import timedelta, date
 from datetime import datetime as builtin_datetime
 import re
@@ -16,6 +18,7 @@ import re
 from . import struct
 import math
 import __builtin__
+from urllib import urlencode
 from .structs.wraps import unwrap, wrap
 
 
@@ -43,6 +46,20 @@ def unix(value):
         value = CNV.milli2datetime(value)
 
     return str(CNV.datetime2unix(value))
+
+def url(value):
+    """
+    CONVERT FROM dict OR string TO URL PARAMETERS
+    """
+    from .cnv import CNV
+    return CNV.value2url(value)
+
+def html(value):
+    """
+    CONVERT FROM unicode TO HTML OF THE SAME
+    """
+    from .cnv import CNV
+    return CNV.unicode2HTML(value)
 
 def upper(value):
     return value.upper()
@@ -95,6 +112,7 @@ def outdent(value):
         Log.error("can not outdent value", e)
 
 def round(value, decimal=None, digits=None):
+    value=float(value)
     if digits != None:
         m = pow(10, math.ceil(math.log10(abs(value))))
         return __builtin__.round(value / m, digits) * m
@@ -115,7 +133,7 @@ def between(value, prefix, suffix):
     if e == -1:
         return None
 
-    s = value.rfind(prefix, 0, e) + len(prefix) #WE KNOW THIS EXISTS, BUT THERE MAY BE A RIGHT-MORE ONE
+    s = value.rfind(prefix, 0, e) + len(prefix) # WE KNOW THIS EXISTS, BUT THERE MAY BE A RIGHT-MORE ONE
     return value[s:e]
 
 
@@ -198,13 +216,13 @@ def _simple_expand(template, seq):
                 if len(parts) > 1:
                     val = eval(parts[0] + "(val, " + ("(".join(parts[1::])))
                 else:
-                    val = eval(filter + "(val)")
+                    val = globals()[filter](val)
             val = toString(val)
             return val
         except Exception, e:
             try:
                 if e.message.find("is not JSON serializable"):
-                    #WORK HARDER
+                    # WORK HARDER
                     val = toString(val)
                     return val
             except Exception, f:
@@ -241,7 +259,7 @@ def toString(val):
 
 def edit_distance(s1, s2):
     """
-    FROM http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Python
+    FROM http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance# Python
     LICENCE http://creativecommons.org/licenses/by-sa/3.0/
     """
     if len(s1) < len(s2):
@@ -261,7 +279,7 @@ def edit_distance(s1, s2):
             current_row.append(min(insertions, deletions, substitutions))
         previous_row = current_row
 
-    return float(previous_row[-1]) / len(s1)
+    return previous_row[-1] / len(s1)
 
 
 DIFF_PREFIX = re.compile(r"@@ -(\d+(?:\s*,\d+)?) \+(\d+(?:\s*,\d+)?) @@")
@@ -305,7 +323,7 @@ def apply_diff(text, diff, reverse=False):
         add = [add[0], 1]
 
     # UNUSUAL CASE WHERE @@ -x +x, n @@ AND FIRST LINE HAS NOT CHANGED
-    half = len(diff[1]) / 2
+    half = int(len(diff[1]) / 2)
     first_half = diff[1][:half]
     last_half = diff[1][half:half * 2]
     if remove[1] == 1 and add[0] == remove[0] and first_half[1:] == last_half[1:]:

@@ -10,14 +10,17 @@
 
 
 from __future__ import unicode_literals
-from datetime import datetime
-import sys
+from __future__ import division
 
-from .. import struct
+from datetime import datetime
+import os
+import sys
+from types import ModuleType
+
 from ..jsons import json_encoder
 from ..thread import threads
-from ..struct import nvl, Struct
-from ..structs.wraps import listwrap, wrap
+from ..struct import nvl, Struct, split_field, join_field
+from ..structs.wraps import listwrap, wrap, wrap_dot
 from ..strings import indent, expand_template
 from ..thread.threads import Thread
 
@@ -26,6 +29,7 @@ from ..thread.threads import Thread
 DEBUG_LOGGING = False
 ERROR = "ERROR"
 WARNING = "WARNING"
+UNEXPECTED = "UNEXPECTED"
 NOTE = "NOTE"
 
 
@@ -36,9 +40,10 @@ class Log(object):
     trace = False
     main_log = None
     logging_multi = None
-    profiler = None
+    profiler = None   # simple pypy-friendly profiler
     cprofiler = None  # screws up with pypy, but better than nothing
     error_mode = False  # prevent error loops
+    please_setup_constants = False  # we intend to manipulate module-level constants for debugging
 
     @classmethod
     def new_instance(cls, settings):
@@ -106,16 +111,16 @@ class Log(object):
         cls.main_log.write(log_template, log_params)
 
     @classmethod
-    def warning(cls, template, params=None, cause=None):
+    def unexpected(cls, template, params=None, cause=None):
         if isinstance(params, BaseException):
             cause = params
             params = None
 
         if cause and not isinstance(cause, Except):
-            cause = Except(WARNING, unicode(cause), trace=extract_tb(0))
+            cause = Except(UNEXPECTED, unicode(cause), trace=extract_tb(0))
 
         trace = extract_stack(1)
-        e = Except(WARNING, template, params, cause, trace)
+        e = Except(UNEXPECTED, template, params, cause, trace)
         Log.note(unicode(e), {
             "warning": {
                 "template": template,
@@ -127,12 +132,33 @@ class Log(object):
 
 
     @classmethod
+    def warning(cls, template, params=None, cause=None):
+        if isinstance(params, BaseException):
+            cause = params
+            params = None
+
+        if cause and not isinstance(cause, Except):
+            cause = Except(ERROR, unicode(cause), trace=extract_tb(0))
+
+        trace = extract_stack(1)
+        e = Except(WARNING, template, params, cause, trace)
+        Log.note(unicode(e), {
+            "warning": {  # REDUNDANT INFO
+                "template": template,
+                "params": params,
+                "cause": cause,
+                "trace": trace
+            }
+        })
+
+
+    @classmethod
     def error(
             cls,
-            template, #human readable template
-            params=None, #parameters for template
-            cause=None, #pausible cause
-            offset=0        #stack trace offset (==1 if you do not want to report self)
+            template, # human readable template
+            params=None, # parameters for template
+            cause=None, # pausible cause
+            offset=0        # stack trace offset (==1 if you do not want to report self)
     ):
         """
         raise an exception with a trace for the cause too
@@ -156,11 +182,11 @@ class Log(object):
 
     @classmethod
     def fatal(
-            cls,
-            template, #human readable template
-            params=None, #parameters for template
-            cause=None, #pausible cause
-            offset=0    #stack trace offset (==1 if you do not want to report self)
+        cls,
+        template, # human readable template
+        params=None, # parameters for template
+        cause=None, # pausible cause
+        offset=0    # stack trace offset (==1 if you do not want to report self)
     ):
         """
         SEND TO STDERR
@@ -201,10 +227,10 @@ class Log(object):
         sys.stderr.write(str_e)
 
 
-    #RUN ME FIRST TO SETUP THE THREADED LOGGING
+    # RUN ME FIRST TO SETUP THE THREADED LOGGING
     @classmethod
     def start(cls, settings=None):
-        ##http://victorlin.me/2012/08/good-logging-practice-in-python/
+        ## http://victorlin.me/2012/08/good-logging-practice-in-python/
         if not settings:
             return
 
@@ -239,6 +265,49 @@ class Log(object):
             if settings.profile.enabled:
                 profiles.ON = True
 
+        if settings.constants:
+            cls.please_setup_constants = True
+        if cls.please_setup_constants:
+            sys_modules = sys.modules
+            # ONE MODULE IS MISSING, THE CALLING MODULE
+            caller_globals = sys._getframe(1).f_globals
+            caller_file = caller_globals["__file__"]
+            if not caller_file.endswith(".py"):
+                raise Exception("do not know how to handle non-python caller")
+            caller_module = caller_file[:-3].replace("/", ".")
+
+            for k, v in wrap_dot(settings.constants).leaves():
+                module_name = join_field(split_field(k)[:-1])
+                attribute_name = split_field(k)[-1].lower()
+                if module_name in sys_modules and isinstance(sys_modules[module_name], ModuleType):
+                    mod = sys_modules[module_name]
+                    all_names = dir(mod)
+                    for name in all_names:
+                        if attribute_name == name.lower():
+                            setattr(mod, name, v)
+                    continue
+                elif caller_module.endswith(module_name):
+                    for name in caller_globals.keys():
+                        if attribute_name == name.lower():
+                            old_value = caller_globals[name]
+                            try:
+                                new_value = old_value.__class__(v)  # TRY TO MAKE INSTANCE OF SAME CLASS
+                            except Exception, e:
+                                new_value = v
+                            caller_globals[name] = new_value
+                            Log.note("Changed {{module}}[{{attribute}}] from {{old_value}} to {{new_value}}", {
+                                "module": module_name,
+                                "attribute": name,
+                                "old_value": old_value,
+                                "new_value": new_value
+                            })
+                            break
+                else:
+                    Log.note("Can not change {{module}}[{{attribute}}] to {{new_value}}", {
+                        "module": module_name,
+                        "attribute": k,
+                        "new_value": v
+                    })
 
     @classmethod
     def stop(cls):
@@ -253,7 +322,7 @@ class Log(object):
 
 
     def write(self):
-        Log.error("not implemented")
+        raise NotImplementedError
 
 def extract_stack(start=0):
     """
@@ -330,7 +399,7 @@ def format_trace(tbs, start=0):
 
 class Except(Exception):
     def __init__(self, type=ERROR, template=None, params=None, cause=None, trace=None):
-        super(Exception, self).__init__(self)
+        Exception.__init__(self)
         self.type = type
         self.template = template
         self.params = params
@@ -350,24 +419,27 @@ class Except(Exception):
         return False
 
     def __str__(self):
-        output = self.type + ": " + self.template
+        output = self.type + ": " + self.template +"\n"
         if self.params:
             output = expand_template(output, self.params)
 
         if self.trace:
-            output += "\n" + indent(format_trace(self.trace))
+            output += indent(format_trace(self.trace))
 
         if self.cause:
             cause_strings = []
-            for c in self.cause:
+            for c in listwrap(self.cause):
                 try:
-                    cause_strings.append(c.__str__())
+                    cause_strings.append(unicode(c))
                 except Exception, e:
                     pass
 
-            output += "\ncaused by\n\t" + "\nand caused by\n\t".join(cause_strings)
+            output += "caused by\n\t" + "and caused by\n\t".join(cause_strings)
 
-        return output + "\n"
+        return output
+
+    def __unicode__(self):
+        return unicode(str(self))
 
     def __json__(self):
         return json_encoder(Struct(
@@ -401,17 +473,15 @@ class Log_usingFile(BaseLog):
         self.file_lock = threads.Lock()
 
     def write(self, template, params):
-        from ..env.files import File
-
         with self.file_lock:
-            File(self.filename).append(expand_template(template, params))
+            self.file.append(expand_template(template, params))
 
 
 
 
 class Log_usingThread(BaseLog):
     def __init__(self, logger):
-        #DELAYED LOAD FOR THREADS MODULE
+        # DELAYED LOAD FOR THREADS MODULE
         from ..thread.threads import Queue
 
         self.queue = Queue(max=10000, silent=True)
@@ -438,13 +508,13 @@ class Log_usingThread(BaseLog):
             return self
         except Exception, e:
             sys.stdout.write("IF YOU SEE THIS, IT IS LIKELY YOU FORGOT TO RUN Log.start() FIRST\n")
-            raise e  #OH NO!
+            raise e  # OH NO!
 
     def stop(self):
         try:
             if DEBUG_LOGGING:
                 sys.stdout.write("injecting stop into queue\n")
-            self.queue.add(Thread.STOP)  #BE PATIENT, LET REST OF MESSAGE BE SENT
+            self.queue.add(Thread.STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
             self.thread.join()
             if DEBUG_LOGGING:
                 sys.stdout.write("Log_usingThread telling logger to stop\n")
@@ -463,6 +533,7 @@ class Log_usingThread(BaseLog):
 class Log_usingMulti(BaseLog):
     def __init__(self):
         self.many = []
+
     def write(self, template, params):
         for m in self.many:
             try:
@@ -481,6 +552,7 @@ class Log_usingMulti(BaseLog):
 
     def clear_log(self):
         self.many = []
+
     def stop(self):
         for m in self.many:
             try:

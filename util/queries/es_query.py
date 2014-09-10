@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+from __future__ import division
 
 from ..cnv import CNV
 from ..queries import MVEL
@@ -156,7 +157,7 @@ class ESQuery(object):
         """
         command = wrap(command)
 
-        #GET IDS OF DOCUMENTS
+        # GET IDS OF DOCUMENTS
         results = self.es.search({
             "fields": [],
             "query": {"filtered": {
@@ -172,7 +173,7 @@ class ESQuery(object):
             if not MVEL.isKeyword(k):
                 Log.error("Only support simple paths for now")
 
-            scripts.append("ctx._source."+k+" = "+MVEL.value2MVEL(v)+";")
+            scripts.append("ctx._source."+k+" = "+MVEL.value2MVEL(v)+";\n")
         script = "".join(scripts)
 
         if results.hits.hits:

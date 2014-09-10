@@ -8,6 +8,7 @@ prune .idea
 exclude *.egg-info
 exclude *.iml
 exclude *.txt
+exclude *.tab
 exclude README.md
 exclude *.json
 exclude .git*

@@ -9,6 +9,7 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
 from ..queries.unique_index import UniqueIndex
 from ..env.logs import Log
 from ..structs.wraps import wrap, unwrap, tuplewrap
@@ -46,7 +47,7 @@ class Index(object):
             Log.error("something went wrong", e)
 
     def __setitem__(self, key, value):
-        Log.error("Not implemented")
+        raise NotImplementedError
 
 
     def add(self, val):

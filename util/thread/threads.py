@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+from __future__ import division
 
 from datetime import datetime, timedelta
 import thread
@@ -128,7 +129,7 @@ class Queue(object):
             while self.keep_running:
                 if self.queue:
                     value = self.queue.pop(0)
-                    if value is Thread.STOP:  #SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
+                    if value is Thread.STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                         self.keep_running = False
                     return value
                 self.lock.wait()
@@ -145,11 +146,11 @@ class Queue(object):
                 return []
 
             for v in self.queue:
-                if v is Thread.STOP:  #SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
+                if v is Thread.STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                     self.keep_running = False
 
             output = list(self.queue)
-            del self.queue[:]       #CLEAR
+            del self.queue[:]       # CLEAR
             return output
 
     def close(self):
@@ -168,7 +169,7 @@ class AllThread(object):
     def __enter__(self):
         return self
 
-    #WAIT FOR ALL QUEUED WORK TO BE DONE BEFORE RETURNING
+    # WAIT FOR ALL QUEUED WORK TO BE DONE BEFORE RETURNING
     def __exit__(self, type, value, traceback):
         self.join()
 
@@ -223,7 +224,7 @@ class Thread(object):
         self.synch_lock = Lock()
         self.args = args
 
-        #ENSURE THERE IS A SHARED please_stop SIGNAL
+        # ENSURE THERE IS A SHARED please_stop SIGNAL
         self.kwargs = kwargs.copy()
         self.kwargs["please_stop"] = self.kwargs.get("please_stop", Signal())
         self.please_stop = self.kwargs["please_stop"]
@@ -313,7 +314,7 @@ class Thread(object):
 
     @staticmethod
     def run(name, target, *args, **kwargs):
-        #ENSURE target HAS please_stop ARGUMENT
+        # ENSURE target HAS please_stop ARGUMENT
         if "please_stop" not in target.__code__.co_varnames:
             from ..env.logs import Log
 
@@ -421,7 +422,7 @@ class ThreadedQueue(Queue):
 
     def __init__(self, queue, size=None, max=None, period=None, silent=False):
         if max == None:
-            #REASONABLE DEFAULT
+            # REASONABLE DEFAULT
             max = size * 2
 
         Queue.__init__(self, max=max, silent=silent)
@@ -429,7 +430,7 @@ class ThreadedQueue(Queue):
         def size_pusher(please_stop):
             please_stop.on_go(lambda: self.add(Thread.STOP))
 
-            #queue IS A MULTI-THREADED QUEUE, SO THIS WILL BLOCK UNTIL THE size ARE READY
+            # queue IS A MULTI-THREADED QUEUE, SO THIS WILL BLOCK UNTIL THE size ARE READY
             from ..queries import Q
 
             for i, g in Q.groupby(self, size=size):

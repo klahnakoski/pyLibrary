@@ -9,6 +9,8 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
+
 
 
 class Multiset(object):
@@ -24,7 +26,6 @@ class Multiset(object):
     |     No     |   No    | Multiset |
     +------------+---------+----------+
     """
-
     def __new__(cls, list=None, key_field=None, count_field=None, allow_negative=False):
         try:
             if allow_negative:
@@ -35,6 +36,15 @@ class Multiset(object):
             from ..env.logs import Log
 
             Log.error("Not expected", e)
+
+    def add(self, value):
+        raise NotImplementedError
+
+    def extend(self, values):
+        raise NotImplementedError
+
+    def remove(self, value):
+        raise NotImplementedError
 
 
 class _Multiset(Multiset):

@@ -8,6 +8,7 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
 
 _get = object.__getattribute__
 _set = object.__setattr__
@@ -17,37 +18,54 @@ DEBUG = False
 
 class Struct(dict):
     """
-    Struct is an anonymous class with some properties good for manipulating JSON
+    Struct is used to declare an instance of an anonymous type, and has good
+    features for manipulating JSON.  Anonymous types are necessary when
+    writing sophisticated list comprehensions, or queries, and to keep them
+    readable.  In many ways, dict() can act as an anonymous type, but it does
+    not have the features listed here.
 
     0) a.b==a["b"]
-    1) the IDE does tab completion, and my spelling mistakes get found at "compile time"
-    2) it deals with missing keys gracefully, so I can put it into set operations (database
-       operations) without choking
+    1) by allowing dot notation, the IDE does tab completion and my spelling
+       mistakes get found at "compile time"
+    2) it deals with missing keys gracefully, so I can put it into set
+       operations (database operations) without raising exceptions
        a = wrap({})
        > a == {}
-       a.b is Null
+       a.b == None
        > True
        a.b.c == None
        > True
-    2b) missing keys is important when dealing with JSON, which is often almost anything
+       a[None] == None
+       > True
+    2b) missing keys is important when dealing with JSON, which is often almost
+        anything
+    2c) you loose the ability to perform <code>a is None</code> checks, must
+        always use <code>a == None</code> instead
     3) you can access paths as a variable:   a["b.c"]==a.b.c
-    4) you can set paths to values, missing objects along the path are created:
+    4) you can set paths to values, missing dicts along the path are created:
        a = wrap({})
        > a == {}
        a["b.c"] = 42
        > a == {"b": {"c": 42}}
-    5) attribute names (keys) are corrected to unicode - it appears Python object.getattribute()
-       is called with str() even when using from __future__ import unicode_literals
+    5) attribute names (keys) are corrected to unicode - it appears Python
+       object.getattribute() is called with str() even when using
+       <code>from __future__ import unicode_literals
+from __future__ import division</code>
 
-    MORE ON MISSING VALUES: http://www.numpy.org/NA-overview.html
-    IT ONLY CONSIDERS THE LEGITIMATE-FIELD-WITH-MISSING-VALUE (Statistical Null)
-    AND DOES NOT LOOK AT FIELD-DOES-NOT-EXIST-IN-THIS-CONTEXT (Database Null)
+    More on missing values: http://www.np.org/NA-overview.html
+    it only considers the legitimate-field-with-missing-value (Statistical Null)
+    and does not look at field-does-not-exist-in-this-context (Database Null)
 
-    The Struct is a common pattern in many frameworks (I am still working on this list)
+    The Struct is a common pattern in many frameworks even though it goes by
+    different names, some examples are:
 
-    jinja2.environment.Environment.getattr()
-    argparse.Environment() - code performs setattr(e, name, value) on instances of Environment
-    collections.namedtuple() - gives attribute names to tuple indicies
+    * jinja2.environment.Environment.getattr()
+    * argparse.Environment() - code performs setattr(e, name, value) on instances of Environment
+    * collections.namedtuple() - gives attribute names to tuple indicies
+    * C# Linq requires anonymous types to avoid large amounts of boilerplate code.
+
+
+    http://www.saltycrane.com/blog/2012/08/python-data-object-motivated-desire-mutable-namedtuple-default-values/
 
     """
 
@@ -90,6 +108,8 @@ class Struct(dict):
         return False
 
     def __getitem__(self, key):
+        if key == None:
+            return Null
         if isinstance(key, str):
             key = key.decode("utf8")
 
@@ -188,6 +208,19 @@ class Struct(dict):
         d = _get(self, "__dict__")
         return ((k, wrap(v)) for k, v in d.items())
 
+    def leaves(self, prefix=None):
+        """
+        LIKE items() BUT RECURSIVE, AND ONLY FOR THE LEAVES (non dict) VALUES
+        """
+        prefix = nvl(prefix, "")
+        output = []
+        for k, v in self.items():
+            if isinstance(v, dict):
+                output.extend(wrap(v).leaves(prefix=prefix+literal_field(k)+"."))
+            else:
+                output.append((prefix+literal_field(k), v))
+        return output
+
     def all_items(self):
         """
         GET ALL KEY-VALUES OF LEAF NODES IN Struct
@@ -202,7 +235,7 @@ class Struct(dict):
         return output
 
     def iteritems(self):
-        #LOW LEVEL ITERATION, NO WRAPPING
+        # LOW LEVEL ITERATION, NO WRAPPING
         d = _get(self, "__dict__")
         return d.iteritems()
 
@@ -247,6 +280,7 @@ class Struct(dict):
     def setdefault(self, k, d=None):
         if self[k] == None:
             self[k] = d
+        return self
 
 # KEEP TRACK OF WHAT ATTRIBUTES ARE REQUESTED, MAYBE SOME (BUILTIN) ARE STILL USEFUL
 requested = set()
@@ -290,7 +324,7 @@ def _setdefault(obj, key, value):
 
 def set_default(*params):
     """
-    I+NPUT dicts IN PRIORITY ORDER
+    INPUT dicts IN PRIORITY ORDER
     UPDATES FIRST dict WITH THE MERGE RESULT, WHERE MERGE RESULT IS DEFINED AS:
     FOR EACH LEAF, RETURN THE HIGHEST PRIORITY LEAF VALUE
     """
@@ -325,10 +359,25 @@ def _getdefault(obj, key):
     try:
         return obj.__getattribute__(key)
     except Exception, e:
-        try:
-            return obj[key]
-        except Exception, f:
-            return NullType(obj, key)
+        pass
+
+    try:
+        return obj[key]
+    except Exception, f:
+        pass
+
+    try:
+        if float(key) == round(float(key), 0):
+            return eval("obj["+key+"]")
+    except Exception, f:
+        pass
+
+    try:
+        return eval("obj."+unicode(key))
+    except Exception, f:
+        pass
+
+    return NullType(obj, key)
 
 
 def _assign(obj, path, value, force=True):
@@ -338,8 +387,8 @@ def _assign(obj, path, value, force=True):
     """
     if isinstance(obj, NullType):
         d = _get(obj, "__dict__")
-        o = d["obj"]
-        p = d["path"]
+        o = d["_obj"]
+        p = d["_path"]
         s = split_field(p)+path
         return _assign(o, s, value)
 
@@ -373,8 +422,8 @@ class NullType(object):
 
     def __init__(self, obj=None, path=None):
         d = _get(self, "__dict__")
-        d["obj"] = obj
-        d["path"] = path
+        d["_obj"] = obj
+        d["_path"] = path
 
     def __bool__(self):
         return False
@@ -458,8 +507,8 @@ class NullType(object):
     def __setitem__(self, key, value):
         try:
             d = _get(self, "__dict__")
-            o = d["obj"]
-            path = d["path"]
+            o = d["_obj"]
+            path = d["_path"]
             seq = split_field(path)+split_field(key)
 
             _assign(o, seq, value)
@@ -480,6 +529,9 @@ class NullType(object):
 
     def __repr__(self):
         return "Null"
+
+    def __hash__(self):
+        return hash(None)
 
 
 Null = NullType()
@@ -664,7 +716,7 @@ def inverse(d):
 
 
 def nvl(*args):
-    #pick the first none-null value
+    # pick the first none-null value
     for a in args:
         if a != None:
             return wrap(a)

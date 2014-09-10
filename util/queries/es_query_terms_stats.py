@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+from __future__ import division
 
 from ..collections.matrix import Matrix
 from ..collections import COUNT, PRODUCT
@@ -23,7 +24,7 @@ from ..structs.wraps import wrap, listwrap
 
 
 def is_terms_stats(query):
-    #ONLY ALLOWED ONE UNKNOWN DOMAIN
+    # ONLY ALLOWED ONE UNKNOWN DOMAIN
     num_unknown = COUNT(1 for e in query.edges if e.domain.type not in domains.KNOWN)
 
     if num_unknown <= 1:
@@ -64,7 +65,7 @@ def es_terms_stats(esq, mvel, query):
 
     if not specialEdge:
         # WE SERIOUSLY WANT A SPECIAL EDGE, OTHERWISE WE WILL HAVE TOO MANY FACETS
-        #THE BIGGEST EDGE MAY BE COLLAPSED TO A TERM, MAYBE?
+        # THE BIGGEST EDGE MAY BE COLLAPSED TO A TERM, MAYBE?
         num_parts = 0
         special_index = -1
         for i, e in enumerate(facetEdges):
@@ -90,9 +91,9 @@ def es_terms_stats(esq, mvel, query):
 
         esFacets = []
 
-        def add_facet(value, coord, cube):
+        def add_facet(value, parts, cube):
             if value:
-                esFacets.append([e.domain.partitions[coord[i]] for i, e in enumerate(facetEdges)])
+                esFacets.append(parts)
 
         counts["count"].forall(add_facet)
 
@@ -147,7 +148,7 @@ def es_terms_stats(esq, mvel, query):
     data = es_query_util.post(esq.es, esQuery, query.limit)
 
     if specialEdge.domain.type not in domains.KNOWN:
-        #WE BUILD THE PARTS BASED ON THE RESULTS WE RECEIVED
+        # WE BUILD THE PARTS BASED ON THE RESULTS WE RECEIVED
         partitions = StructList()
         map = {}
         for facetName, parts in data.facets.items():
@@ -195,7 +196,7 @@ def register_script_field(esQuery, code):
     if not esQuery.script_fields:
         esQuery.script_fields = {}
 
-    #IF CODE IS IDENTICAL, THEN USE THE EXISTING SCRIPT
+    # IF CODE IS IDENTICAL, THEN USE THE EXISTING SCRIPT
     for n, c in esQuery.script_fields.items():
         if c.script == code:
             return n

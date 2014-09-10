@@ -9,6 +9,7 @@
 #
 
 from __future__ import unicode_literals
+from __future__ import division
 import argparse
 import os
 import tempfile
@@ -19,19 +20,19 @@ from ..env.logs import Log
 from ..env.files import File
 
 
-#PARAMETERS MATCH argparse.ArgumentParser.add_argument()
-#http://docs.python.org/dev/library/argparse.html#the-add-argument-method
-#name or flags - Either a name or a list of option strings, e.g. foo or -f, --foo.
-#action - The basic type of action to be taken when this argument is encountered at the command line.
-#nargs - The number of command-line arguments that should be consumed.
-#const - A constant value required by some action and nargs selections.
-#default - The value produced if the argument is absent from the command line.
-#type - The type to which the command-line argument should be converted.
-#choices - A container of the allowable values for the argument.
-#required - Whether or not the command-line option may be omitted (optionals only).
-#help - A brief description of what the argument does.
-#metavar - A name for the argument in usage messages.
-#dest - The name of the attribute to be added to the object returned by parse_args().
+# PARAMETERS MATCH argparse.ArgumentParser.add_argument()
+# http://docs.python.org/dev/library/argparse.html# the-add-argument-method
+# name or flags - Either a name or a list of option strings, e.g. foo or -f, --foo.
+# action - The basic type of action to be taken when this argument is encountered at the command line.
+# nargs - The number of command-line arguments that should be consumed.
+# const - A constant value required by some action and nargs selections.
+# default - The value produced if the argument is absent from the command line.
+# type - The type to which the command-line argument should be converted.
+# choices - A container of the allowable values for the argument.
+# required - Whether or not the command-line option may be omitted (optionals only).
+# help - A brief description of what the argument does.
+# metavar - A name for the argument in usage messages.
+# dest - The name of the attribute to be added to the object returned by parse_args().
 
 def _argparse(defs):
     parser = argparse.ArgumentParser()
@@ -130,15 +131,10 @@ class SingleInstance:
                 sys.exit(-1)
         self.initialized = True
 
-
     def __exit__(self, type, value, traceback):
         self.__del__()
 
-
     def __del__(self):
-        import sys
-        import os
-
         temp, self.initialized = self.initialized, False
         if not temp:
             return
