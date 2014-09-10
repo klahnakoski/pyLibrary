@@ -19,7 +19,7 @@ class TestQ(unittest.TestCase):
     def test_groupby(self):
         data = []
         for g, d in Q.groupby(data, size=5):
-            assert False
+             assert False
 
         data = [1, 2, 3]
         for g, d in Q.groupby(data, size=5):

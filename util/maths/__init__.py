@@ -167,8 +167,8 @@ class Math(object):
         return value
 
     @staticmethod
-    def ceiling(value):
-        return int(math.ceil(value))
+    def ceiling(value, mod=1):
+        return int(math.ceil(value/mod))*mod
 
 
     @staticmethod

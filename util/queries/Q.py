@@ -282,10 +282,11 @@ def _select(template, data, fields, depth):
         children = None
         for f in fields:
             index, c = _select_deep(d, f, depth, record)
-            children = nvl(children, c)
+            children = c if children is None else children
             if index:
                 path = f.value[0:index:]
-                deep_fields.add(f)  # KEEP TRACK OF WHICH FIELDS NEED DEEPER SELECT
+                if not deep_fields[f]:
+                    deep_fields.add(f)  # KEEP TRACK OF WHICH FIELDS NEED DEEPER SELECT
                 short = MIN(len(deep_path), len(path))
                 if path[:short:] != deep_path[:short:]:
                     Log.error("Dangerous to select into more than one branch at time")

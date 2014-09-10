@@ -11,6 +11,7 @@
 from __future__ import unicode_literals
 from __future__ import division
 import sys
+import math
 from .cube import Cube
 from ..queries.index import value2key
 from ..struct import StructList, Struct
@@ -140,7 +141,7 @@ def groupby_min_max_size(data, min_size=0, max_size=None, ):
 
     if isinstance(data, (bytearray, basestring, list)):
         def _iter():
-            num = int((len(data) - 1) / max_size) + 1
+            num = int(math.ceil(len(data)/max_size))
             for i in range(0, num):
                 output = (i, data[i * max_size:i * max_size + max_size:])
                 yield output

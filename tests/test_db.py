@@ -1,6 +1,20 @@
+# encoding: utf-8
+#
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
+
+from __future__ import unicode_literals
+from __future__ import division
+
+import re
 import unittest
-from util import strings
 from util.cnv import CNV
+from util.queries.db_query import esfilter2sqlwhere
 from util.sql import db
 from util.sql.db import DB
 from util.env.logs import Log
@@ -88,7 +102,7 @@ class TestDB(unittest.TestCase):
              856702, 856703, 856705, 856707, 856708, 856709, 856710, 856711, 856712, 856713, 856715, 856716, 856717, 856718, 856720, 856728, 856729, 856731, 856732, 856733, 856734, 856736, 856738, 856739,
              856740, 856741, 856742, 856743]
 
-        where = DB(Null)._filter2where({"terms": {"bug_id": v}})
+        where = esfilter2sqlwhere(DB(Null), {"terms": {"bug_id": v}})
         reference = """
         (
             `bug_id` in (856000, 856001, 856002, 856003, 856004, 856006, 856007, 856008, 856009, 856011, 856012, 856013, 856014, 856015, 856016, 856017, 856018, 856020, 856021, 856022, 856023, 856024, 856025, 856026, 856027, 856028, 856030, 856031, 856032, 856034, 856037, 856038, 856039, 856040, 856041, 856043, 856045, 856047, 856048, 856049, 856050, 856051, 856052, 856053, 856054, 856055, 856056, 856058, 856059, 856062, 856165, 856166, 856167, 856168, 856169, 856170, 856171, 856172, 856176, 856177, 856178, 856179, 856180, 856182, 856183, 856184, 856222, 856223, 856224, 856225, 856226, 856227, 856228, 856229, 856230, 856232, 856233, 856234, 856235, 856238, 856239, 856240, 856241, 856242, 856381, 856383, 856651, 856653, 856654, 856657, 856658, 856659, 856660, 856661, 856662, 856664, 856665, 856666, 856728, 856729, 856731, 856732, 856733, 856734, 856736, 856738, 856739, 856740, 856741, 856742, 856743) OR
@@ -104,7 +118,8 @@ class TestDB(unittest.TestCase):
                 NOT (`bug_id` in (856091, 856099, 856104, 856106, 856125, 856126, 856135, 856136, 856157, 856161, 856162, 856200, 856259, 856271, 856274, 856293, 856294, 856320, 856326, 856334, 856336, 856343, 856347, 856348, 856374, 856376, 856377, 856395, 856398, 856399, 856416, 856428, 856435, 856446, 856447, 856473, 856480, 856483, 856488, 856510, 856537, 856539, 856563, 856564, 856570, 856573, 856578, 856589, 856597, 856610, 856628, 856636, 856686, 856704, 856706, 856714, 856719))
             )
         )"""
-        reference = strings.outdent(reference.replace("    ", "\t")).strip()
+        reference = re.sub(r"\s+", " ", reference).strip()
+        where = re.sub(r"\s+", " ", where).strip()
 
         if where != reference:
             Log.note(where)
