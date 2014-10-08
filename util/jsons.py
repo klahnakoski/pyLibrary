@@ -14,10 +14,10 @@ import json
 from math import floor
 import re
 import time
+import sys
 from datetime import datetime, date, timedelta
 from decimal import Decimal
-import sys
-from .collections import AND, MAX
+from .strings import utf82unicode
 from .struct import Struct, StructList
 
 json_decoder = json.JSONDecoder().decode
@@ -122,7 +122,12 @@ def _value2json(value, _buffer):
             append(_buffer, u"{}")
     elif type is str:
         append(_buffer, u"\"")
-        v = value.decode("utf8")
+        try:
+            v = utf82unicode(value)
+        except Exception, e:
+            from .env.logs import Log
+            raise Log.error("Serialization of value="+repr(value), e)
+
         for c in v:
             append(_buffer, ESCAPE_DCT.get(c, c))
         append(_buffer, u"\"")
@@ -182,7 +187,7 @@ def _dict2json(value, _buffer):
         append(_buffer, prefix)
         prefix = u", \""
         if isinstance(k, str):
-            k = k.decode("utf8")
+            k = utf82unicode(k)
         for c in k:
             append(_buffer, ESCAPE_DCT.get(c, c))
         append(_buffer, u"\": ")
@@ -219,7 +224,7 @@ def _scrub(value):
     elif type is timedelta:
         return unicode(value.total_seconds()) + "second"
     elif type is str:
-        return unicode(value.decode("utf8"))
+        return utf82unicode(value)
     elif type is Decimal:
         return float(value)
     elif isinstance(value, dict):
@@ -268,13 +273,7 @@ def pretty_json(value):
             return "null"
         elif isinstance(value, basestring):
             if isinstance(value, str):
-                try:
-                    value = value.decode("utf8")
-                except Exception, e:
-                    from .env.logs import Log
-
-                    value = unicode(value.decode("latin1"))
-                    Log.warning("Should not have latin1 encoded strings: {{value}}", {"value": value}, e)
+                value = utf82unicode(value)
             try:
                 return quote(value)
             except Exception, e:
@@ -339,8 +338,8 @@ def pretty_json(value):
                     return "[" + j + "]"
 
             js = [pretty_json(v) for v in value]
-            max_len = MAX(len(j) for j in js)
-            if max_len <= ARRAY_ITEM_MAX_LENGTH and AND(j.find("\n") == -1 for j in js):
+            max_len = max(*[len(j) for j in js])
+            if max_len <= ARRAY_ITEM_MAX_LENGTH and max(*[j.find("\n") for j in js]) == -1:
                 # ALL TINY VALUES
                 num_columns = max(1, min(ARRAY_MAX_COLUMNS, int(floor((ARRAY_ROW_LENGTH + 2.0)/float(max_len+2)))))  # +2 TO COMPENSATE FOR COMMAS
                 if len(js)<=num_columns:  # DO NOT ADD \n IF ONLY ONE ROW

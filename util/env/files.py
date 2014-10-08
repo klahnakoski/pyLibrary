@@ -13,6 +13,7 @@ from datetime import datetime
 import io
 import os
 import shutil
+from ..strings import utf82unicode
 from ..maths import crypto
 from ..struct import nvl
 from ..structs.wraps import listwrap
@@ -59,11 +60,48 @@ class File(object):
         """
         path = filename.split("/")
         parts = path[-1].split(".")
-        i = max(len(parts)-2, 0)
-        parts[i]=parts[i]+suffix
-        path[-1]=".".join(parts)
+        i = max(len(parts) - 2, 0)
+        parts[i] = parts[i] + suffix
+        path[-1] = ".".join(parts)
         return "/".join(path)
 
+    @property
+    def extension(self):
+        parts = self._filename.split("/")[-1].split(".")
+        if len(parts) == 1:
+            return ""
+        else:
+            return parts[-1]
+
+    @property
+    def name(self):
+        parts = self._filename.split("/")[-1].split(".")
+        if len(parts) == 1:
+            return parts[0]
+        else:
+            return ".".join(parts[0:-1])
+
+    def set_extension(self, ext):
+        """
+        RETURN NEW FILE WITH GIVEN EXTENSION
+        """
+        path = self._filename.split("/")
+        parts = path[-1].split(".")
+        parts[-1] = ext
+        path[-1] = ".".join(parts)
+        return File("/".join(path))
+
+    def set_name(self, name):
+        """
+        RETURN NEW FILE WITH GIVEN EXTENSION
+        """
+        path = self._filename.split("/")
+        parts = path[-1].split(".")
+        if len(parts) == 1:
+            path[-1] = name
+        else:
+            path[-1] = name + "." + parts[-1]
+        return File("/".join(path))
 
     def backup_name(self, timestamp=None):
         """
@@ -79,6 +117,9 @@ class File(object):
                 return crypto.decrypt(content, self.key)
             else:
                 return content
+
+    def is_directory(self):
+        return os.path.isdir(self._filename)
 
     def read_ascii(self):
         if not self.parent.exists:
@@ -119,9 +160,10 @@ class File(object):
             try:
                 with io.open(self._filename, "rb") as f:
                     for line in f:
-                        yield line.decode("utf8")
+                        yield utf82unicode(line)
             except Exception, e:
                 from .logs import Log
+
                 Log.error("Can not read line from {{filename}}", {"filename": self._filename}, e)
 
         return output()
@@ -132,6 +174,7 @@ class File(object):
         with open(self._filename, "ab") as output_file:
             if isinstance(content, str):
                 from .logs import Log
+
                 Log.error("expecting to write unicode only")
             output_file.write(content.encode("utf-8"))
             output_file.write(b"\n")
@@ -146,6 +189,7 @@ class File(object):
             for c in content:
                 if isinstance(c, str):
                     from .logs import Log
+
                     Log.error("expecting to write unicode only")
 
                 output_file.write(c.encode("utf-8"))
@@ -180,6 +224,9 @@ class File(object):
 
             Log.error("Could not make directory {{dir_name}}", {"dir_name": self._filename}, e)
 
+    @property
+    def children(self):
+        return [File(self._filename + "/" + c) for c in os.listdir(self.filename)]
 
     @property
     def parent(self):

@@ -18,7 +18,7 @@ from pymysql import connect, InterfaceError
 from .. import struct
 from ..jsons import json_scrub
 from ..maths import Math
-from ..strings import expand_template
+from ..strings import expand_template, utf82unicode
 from ..struct import nvl
 from ..structs.wraps import wrap, listwrap
 from ..cnv import CNV
@@ -241,8 +241,8 @@ class DB(object):
                 Log.note("Execute SQL:\n{{sql}}", {"sql": indent(sql)})
 
             self.cursor.execute(sql)
-            columns = [utf8_to_unicode(d[0]) for d in nvl(self.cursor.description, [])]
-            fixed = [[utf8_to_unicode(c) for c in row] for row in self.cursor]
+            columns = [utf82unicode(d[0]) for d in nvl(self.cursor.description, [])]
+            fixed = [[utf82unicode(c) for c in row] for row in self.cursor]
             result = CNV.table2list(columns, fixed)
 
             if not old_cursor:   # CLEANUP AFTER NON-TRANSACTIONAL READS
@@ -275,8 +275,8 @@ class DB(object):
                 Log.note("Execute SQL:\n{{sql}}", {"sql": indent(sql)})
 
             self.cursor.execute(sql)
-            grid = [[utf8_to_unicode(c) for c in row] for row in self.cursor]
-            # columns = [utf8_to_unicode(d[0]) for d in nvl(self.cursor.description, [])]
+            grid = [[utf82unicode(c) for c in row] for row in self.cursor]
+            # columns = [utf82unicode(d[0]) for d in nvl(self.cursor.description, [])]
             result = zip(*grid)
 
             if not old_cursor:   # CLEANUP AFTER NON-TRANSACTIONAL READS
@@ -310,10 +310,10 @@ class DB(object):
                 Log.note("Execute SQL:\n{{sql}}", {"sql": indent(sql)})
             self.cursor.execute(sql)
 
-            columns = tuple([utf8_to_unicode(d[0]) for d in self.cursor.description])
+            columns = tuple([utf82unicode(d[0]) for d in self.cursor.description])
             for r in self.cursor:
                 num += 1
-                _execute(wrap(dict(zip(columns, [utf8_to_unicode(c) for c in r]))))
+                _execute(wrap(dict(zip(columns, [utf82unicode(c) for c in r]))))
 
             if not old_cursor:   # CLEANUP AFTER NON-TRANSACTIONAL READS
                 self.cursor.close()
@@ -570,15 +570,6 @@ class DB(object):
 
 
 
-
-def utf8_to_unicode(v):
-    try:
-        if isinstance(v, str):
-            return v.decode("utf8")
-        else:
-            return v
-    except Exception, e:
-        Log.error("not expected", e)
 
 
 # ACTUAL SQL, DO NOT QUOTE THIS STRING

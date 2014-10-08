@@ -10,16 +10,14 @@
 
 from __future__ import unicode_literals
 from __future__ import division
-
 from datetime import timedelta, date
 from datetime import datetime as builtin_datetime
 import re
-
-from . import struct
 import math
 import __builtin__
-from urllib import urlencode
-from .structs.wraps import unwrap, wrap
+
+from . import struct
+from .structs.wraps import wrap
 
 
 def datetime(value):
@@ -141,6 +139,17 @@ def right(value, len):
     if len <= 0:
         return u""
     return value[-len:]
+
+
+def right_align(value, len):
+    if len <= 0:
+        return u""
+
+    if len(value) < len:
+        return " " * (len - len(value)) + value
+    else:
+        return value[-len:]
+
 
 def left(value, len):
     if len <= 0:
@@ -344,3 +353,21 @@ def apply_diff(text, diff, reverse=False):
     return text
 
 
+def utf82unicode(value):
+    try:
+        return value.decode("utf8")
+    except Exception, e:
+        from .env.logs import Log, Except
+
+        e = Except.wrap(e)
+        for i, c in enumerate(value):
+            try:
+                c.decode("utf8")
+            except Exception, f:
+                Log.error("Can not convert charcode {{c}} in string  index {{i}}", {"i": i, "c": ord(c)}, [e, Except.wrap(f)])
+
+        try:
+            latin1 = unicode(value.decode("latin1"))
+            Log.error("Can not explain conversion failure, but seems to be latin1", e)
+        except Exception, f:
+            Log.error("Can not explain conversion failure!", [e, Except.wrap(f)])

@@ -14,7 +14,6 @@ import __builtin__
 from ..struct import Null, nvl
 from ..env.logs import Log
 from ..strings import find_first
-from . import stats
 
 
 class Math(object):
@@ -121,7 +120,7 @@ class Math(object):
             return False
 
     @staticmethod
-    def round(value, decimal=0, digits=None):
+    def round(value, decimal=7, digits=None):
         """
         ROUND TO GIVEN NUMBER OF DIGITS, OR GIVEN NUMBER OF DECIMAL PLACES
         decimal - NUMBER OF SIGNIFICANT DIGITS (LESS THAN 1 IS INVALID)
@@ -132,9 +131,14 @@ class Math(object):
         else:
             value = float(value)
 
-        if digits is None:
-            m = pow(10, math.ceil(math.log10(value)))
-            return __builtin__.round(value / m, digits) * m
+        if digits != None:
+            if value ==0:
+                return __builtin__.round(value, digits)
+            try:
+                m = pow(10, math.ceil(math.log10(abs(value))))
+                return __builtin__.round(value / m, digits) * m
+            except Exception, e:
+                Log.error("not expected", e)
 
         return __builtin__.round(value, decimal)
 
@@ -144,6 +148,8 @@ class Math(object):
         """
         x == floor(x, a) + mod(x, a)  FOR ALL a
         """
+        if value == None:
+            return None
         mod = nvl(mod, 1)
         v = int(math.floor(value))
         return v - (v % mod)
@@ -194,3 +200,21 @@ class Math(object):
             else:
                 pass
         return output
+
+
+def almost_equal(first, second, digits=None, places=None, delta=None):
+    if first == second:
+        return True
+
+    if delta is not None:
+        if abs(first - second) <= delta:
+            return True
+    else:
+        places = nvl(places, digits, 18)
+        diff = math.log10(abs(first-second))
+        if diff < Math.ceiling(math.log10(first))-places:
+            return True
+
+    return False
+
+

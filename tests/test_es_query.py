@@ -56,8 +56,9 @@ class ESQueryTester(object):
 
     def query(self, query):
         try:
-            self.esq.query(query)
-            return None
+            with self.esq:
+                self.esq.query(query)
+                return None
         except Exception, e:
             f = Except(ERROR, unicode(e), trace=extract_tb(1))
             try:
