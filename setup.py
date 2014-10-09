@@ -54,7 +54,6 @@ setup(
     packages=find_packages("pyLibrary", lib_prefix="pyLibrary."),
     install_requires=['pymysql', 'requests'],
     include_package_data=True,
-    exclude_package_data={'': ['tests*']},
     zip_safe=False,
     classifiers=[  #https://pypi.python.org/pypi?%3Aaction=list_classifiers
         "Development Status :: 2 - Pre-Alpha",

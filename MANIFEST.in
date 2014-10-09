@@ -2,7 +2,7 @@ graft tests
 graft docs
 prune .git
 prune .svn
-prune build
+exclude build
 prune dist
 prune .idea
 exclude *.egg-info
