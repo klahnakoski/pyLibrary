@@ -13,6 +13,7 @@ exclude README.md
 exclude *.json
 exclude .git*
 recursive-exclude . *.pyc
+recursive-include . __init__.py
 include README.txt
 exclude MANIFEST.in
 

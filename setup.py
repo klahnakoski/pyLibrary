@@ -51,7 +51,7 @@ setup(
     author_email='kyle@lahnakoski.com',
     url='https://github.com/klahnakoski/pyLibrary',
     license='MPL 2.0',
-    packages=find_packages("pyLibrary", lib_prefix="pyLibrary."),
+    packages=find_packages(".", lib_prefix=""),
     install_requires=['pymysql', 'requests'],
     include_package_data=True,
     zip_safe=False,
