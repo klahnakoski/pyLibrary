@@ -3,7 +3,7 @@ import stats, os, pstat
 reload(stats)
 
 try:
-    import numpy as np as N
+    import numpy as N
 except ImportError:
     pass
 

@@ -433,9 +433,13 @@ class Except(Exception):
             return e
         else:
             if hasattr(e, "message"):
-                return Except(ERROR, unicode(e.message), trace=extract_tb(0))
+                cause = Except(ERROR, unicode(e.message), trace=extract_tb(0))
             else:
-                return Except(ERROR, unicode(e), trace=extract_tb(0))
+                cause = Except(ERROR, unicode(e), trace=extract_tb(0))
+
+            trace = extract_stack(2)
+            cause.trace.extend(trace)
+            return cause
 
     @property
     def message(self):
