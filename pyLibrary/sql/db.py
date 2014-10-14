@@ -480,7 +480,9 @@ class DB(object):
 
     def update(self, table_name, where_slice, new_values):
         """
-        where_slice IS A Struct WHICH WILL BE USED TO MATCH ALL IN table
+        where_slice - A Struct WHICH WILL BE USED TO MATCH ALL IN table
+                      eg {"id": 42}
+        new_values  - A dict WITH COLUMN NAME, COLUMN VALUE PAIRS TO SET
         """
         new_values = self.quote_param(new_values)
 
