@@ -8,11 +8,11 @@
 #
 from __future__ import unicode_literals
 import unittest
-from util import struct
-from util.cnv import CNV
-from util.queries import Q
-from util.struct import Struct
-from util.structs.wraps import wrap
+from pyLibrary import struct
+from pyLibrary.cnv import CNV
+from pyLibrary.queries import Q
+from pyLibrary.struct import Struct
+from pyLibrary.structs.wraps import wrap
 
 
 class TestQ(unittest.TestCase):

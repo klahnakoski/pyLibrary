@@ -10,8 +10,8 @@
 
 from __future__ import unicode_literals
 import unittest
-from util.env.logs import Log, Except
-from util.structs.wraps import wrap, listwrap
+from pyLibrary.env.logs import Log, Except
+from pyLibrary.structs.wraps import wrap, listwrap
 
 
 class TestExcept(unittest.TestCase):

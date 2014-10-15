@@ -7,10 +7,10 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from util.maths import stats
+from pyLibrary.maths import stats
 
-from util.maths.stats import Z_moment, z_moment2stats
-from util.testing.fuzzytestcase import FuzzyTestCase
+from pyLibrary.maths.stats import Z_moment, z_moment2stats
+from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestCNV(FuzzyTestCase):

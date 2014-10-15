@@ -10,11 +10,11 @@
 from __future__ import unicode_literals
 
 import unittest
-from util import strings
-from util.cnv import CNV
-from util.env.files import File
-from util.env.logs import Log, Except, extract_tb, ERROR
-from util.queries.es_query import ESQuery
+from pyLibrary import strings
+from pyLibrary.cnv import CNV
+from pyLibrary.env.files import File
+from pyLibrary.env.logs import Log, Except, extract_tb, ERROR
+from pyLibrary.queries.es_query import ESQuery
 
 
 class TestESQuery(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestESQuery(unittest.TestCase):
     # USUALLY I WOULD SIMPLY FORCE THE QUERY TO APPLY TO THE NESTED
     # DOCUMENTS ONLY.  RETURNING THE PARENT DOCUMENT IS WHAT'S
     # AMBIGUOUS
-    def test1(self):
+    def not_done_test1(self):
         esq = ESQueryTester("private_bugs")
 
         esquery = esq.query({

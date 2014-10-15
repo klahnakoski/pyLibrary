@@ -13,12 +13,12 @@ from __future__ import division
 
 import re
 import unittest
-from util.cnv import CNV
-from util.queries.db_query import esfilter2sqlwhere
-from util.sql import db
-from util.sql.db import DB
-from util.env.logs import Log
-from util.struct import Null
+from pyLibrary.cnv import CNV
+from pyLibrary.queries.db_query import esfilter2sqlwhere
+from pyLibrary.sql import db
+from pyLibrary.sql.db import DB
+from pyLibrary.env.logs import Log
+from pyLibrary.struct import Null
 
 __author__ = 'klahnakoski'
 

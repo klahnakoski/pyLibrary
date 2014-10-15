@@ -1,13 +1,13 @@
 from math import log, floor
 import gc
 
-from util.env import profiles
-from util.env.logs import Log
-from util.maths.randoms import Random
-from util.struct import Struct, StructList
-from util.structs.slow_wrap import slow_wrap
-from util.structs.wraps import wrap
-from util.env.profiles import Profiler
+from pyLibrary.env import profiles
+from pyLibrary.env.logs import Log
+from pyLibrary.maths.randoms import Random
+from pyLibrary.struct import Struct, StructList
+from pyLibrary.structs.slow_wrap import slow_wrap
+from pyLibrary.structs.wraps import wrap
+from pyLibrary.env.profiles import Profiler
 
 
 def baseline(v):

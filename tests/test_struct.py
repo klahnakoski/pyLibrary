@@ -1,9 +1,9 @@
 import unittest
-from util.cnv import CNV
-from util.collections import MAX
-from util.env.logs import Log
-from util.struct import Null, Struct
-from util.structs.wraps import wrap
+from pyLibrary.cnv import CNV
+from pyLibrary.collections import MAX
+from pyLibrary.env.logs import Log
+from pyLibrary.struct import Null, Struct
+from pyLibrary.structs.wraps import wrap
 
 
 class TestStruct(unittest.TestCase):

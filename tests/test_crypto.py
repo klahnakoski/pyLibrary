@@ -10,9 +10,9 @@
 from __future__ import unicode_literals
 
 import unittest
-from util.maths import crypto
-from util.cnv import CNV
-from util.maths.randoms import Random
+from pyLibrary.maths import crypto
+from pyLibrary.cnv import CNV
+from pyLibrary.maths.randoms import Random
 
 
 class TestDB(unittest.TestCase):

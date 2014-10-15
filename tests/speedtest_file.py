@@ -1,7 +1,7 @@
 import codecs
 import io
-from util.env.logs import Log
-from util.timer import Timer
+from pyLibrary.env.logs import Log
+from pyLibrary.timer import Timer
 
 
 def test_simple(filename):

@@ -11,8 +11,8 @@
 # from __future__ import unicode_literals
 import datetime
 import unittest
-from util.cnv import CNV
-from util.env.logs import Log
+from pyLibrary.cnv import CNV
+from pyLibrary.env.logs import Log
 
 
 class TestJSON(unittest.TestCase):

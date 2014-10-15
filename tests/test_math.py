@@ -10,8 +10,8 @@
 
 # from __future__ import unicode_literals
 import unittest
-from util.env.logs import Log
-from util.maths import Math
+from pyLibrary.env.logs import Log
+from pyLibrary.maths import Math
 
 
 class TestJSON(unittest.TestCase):
