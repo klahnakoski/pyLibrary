@@ -55,6 +55,8 @@ class DB(object):
         USE IN with CLAUSE, YOU CAN STILL SEND UPDATES, BUT MUST OPEN A
         TRANSACTION BEFORE YOU DO
         """
+        settings = wrap(settings)
+
         if settings == None:
             Log.warning("No settings provided")
             return
@@ -344,6 +346,8 @@ class DB(object):
     @staticmethod
     def execute_sql(settings, sql, param=None):
         """EXECUTE MANY LINES OF SQL (FROM SQLDUMP FILE, MAYBE?"""
+        settings = wrap(settings)
+        settings.schema = nvl(settings.schema, settings.database)
 
         if param:
             with DB(settings) as temp:
