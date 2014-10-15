@@ -25,7 +25,7 @@ from .jsons import json_encoder
 from .collections.multiset import Multiset
 from .env.profiles import Profiler
 from .env.logs import Log
-from .strings import expand_template
+from .strings import expand_template, deformat
 from .structs.wraps import wrap, wrap_dot
 
 
@@ -75,17 +75,19 @@ class CNV:
                 Log.error("Can not decode JSON:\n\t" + str(json_string), e)
 
     @staticmethod
-    def string2datetime(value, format):
-        ## http://docs.python.org/2/library/datetime.html# strftime-and-strptime-behavior
-        if value == None:
-            return None
-        try:
-            return datetime.datetime.strptime(value, format)
-        except Exception, e:
-            Log.error("Can not format {{value}} with {{format}}", {"value": value, "format": format}, e)
+    def string2datetime(value, format=None):
+        return Date(value, format).value
+
+    @staticmethod
+    def str2datetime(value, format=None):
+        return CNV.string2datetime(value, format)
 
     @staticmethod
     def datetime2string(value, format="%Y-%m-%d %H:%M:%S"):
+        return Date(value).format(format=format)
+
+    @staticmethod
+    def datetime2str(value, format="%Y-%m-%d %H:%M:%S"):
         return Date(value).format(format=format)
 
     @staticmethod

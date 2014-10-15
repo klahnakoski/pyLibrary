@@ -245,6 +245,14 @@ def _simple_expand(template, seq):
     return pattern.sub(replacer, template)
 
 
+delchars = {c.decode("latin1"): None for c in map(chr, range(256)) if not c.decode("latin1").isalnum()}
+def deformat(value):
+    """
+    REMOVE NON-ALPHANUMERIC CHARACTERS
+    """
+    return value.translate(delchars)
+
+
 def toString(val):
     if val == None:
         return ""

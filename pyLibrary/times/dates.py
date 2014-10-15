@@ -14,8 +14,9 @@
 from __future__ import unicode_literals
 from __future__ import division
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import math
+from pyLibrary.strings import deformat
 
 
 class Date(object):
@@ -36,10 +37,15 @@ class Date(object):
                         self.value = Date.MAX
                     else:
                         self.value = datetime.utcfromtimestamp(a0/1000)
+                elif isinstance(a0, basestring):
+                    self.value = unicode2datetime(a0)
                 else:
                     self.value = datetime(*args)
             else:
-                self.value = datetime(*args)
+                if isinstance(args[0], basestring):
+                    self.value = unicode2datetime(*args)
+                else:
+                    self.value = datetime(*args)
 
         except Exception, e:
             Log.error("Can not convert {{args}} to Date", {"args": args}, e)
@@ -80,9 +86,23 @@ class Date(object):
     def unix(self):
         return self.milli/1000
 
+    def addDay(self):
+        return Date(self.value + timedelta(days=1))
+
+    def add(self, interval):
+        return Date(self.value+interval)
+
+
     @staticmethod
     def now():
         return Date(datetime.utcnow())
+
+    @staticmethod
+    def eod():
+        """
+        RETURN END-OF-TODAY (WHICH IS SAME AS BEGINNING OF TOMORROW)
+        """
+        return Date.today().addDay()
 
     @staticmethod
     def today():
@@ -90,6 +110,39 @@ class Date(object):
 
     def __str__(self):
         return str(self.value)
+
+
+def unicode2datetime(value, format=None):
+    """
+    CONVERT UNICODE STRING TO datetime VALUE
+    """
+    ## http://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+    if value == None:
+        return None
+
+    if format != None:
+        try:
+            return datetime.strptime(value, format)
+        except Exception, e:
+            Log.error("Can not format {{value}} with {{format}}", {"value": value, "format": format}, e)
+
+    formats = [
+        "%Y%m%d",
+        "%d%m%Y",
+        "%d%m%y",
+        "%d%b%Y",
+        "%d%b%y",
+        "%d%B%Y",
+        "%d%B%y"
+    ]
+    value = deformat(value)
+    for f in formats:
+        try:
+            return unicode2datetime(value, format=f)
+        except Exception:
+            pass
+    else:
+        Log.error("Can not interpret {{value}} as a datetime", {"value": value})
 
 
 from ..env.logs import Log

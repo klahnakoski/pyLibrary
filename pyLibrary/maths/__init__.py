@@ -74,7 +74,7 @@ class Math(object):
                 return math.log(v)
             return math.log(v, base)
         except Exception, e:
-            raise Exception("error in log")
+            Log.error("error in log")
 
 
     @staticmethod
@@ -105,6 +105,17 @@ class Math(object):
             return True
         except Exception:
             return False
+
+    @staticmethod
+    def is_finite(s):
+        try:
+            f = float(s)
+            if abs(f) == float("+inf"):
+                return False
+            return True
+        except Exception:
+            return False
+
 
     @staticmethod
     def is_nan(s):
