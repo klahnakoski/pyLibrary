@@ -19,7 +19,7 @@ from pyLibrary.thread.threads import Queue, Thread
 from pyLibrary.collections import OR
 from pyLibrary.times.timer import Timer
 
-DEBUG = True
+DEBUG = False
 
 
 class Multithread(object):

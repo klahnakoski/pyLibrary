@@ -190,7 +190,7 @@ def parseColumns(index_name, parent_path, esProperties):
                     "type": property.type,
                     "useSource": property.index == "no"
                 })
-        elif property.enabled == False:
+        elif not property.enabled:
             columns.append({
                 "name": struct.join_field(split_field(path)[1::]),
                 "type": property.type,

@@ -16,6 +16,8 @@ from __future__ import division
 
 from datetime import datetime, date, timedelta
 import math
+from dateutil.parser import parse as parse_date
+import pytz
 from pyLibrary.strings import deformat
 
 
@@ -136,7 +138,25 @@ def unicode2datetime(value, format=None):
         except Exception, e:
             Log.error("Can not format {{value}} with {{format}}", {"value": value, "format": format}, e)
 
+    try:
+        local_value = parse_date(value)  #eg 2014-07-16 10:57 +0200
+        return (local_value - local_value.utcoffset()).replace(tzinfo=None)
+    except Exception, e:
+        pass
+
+
+
     formats = [
+        #"%Y-%m-%d %H:%M %z",  # "%z" NOT SUPPORTED IN 2.7
+    ]
+    for f in formats:
+        try:
+            return unicode2datetime(value, format=f)
+        except Exception:
+            pass
+
+    deformats = [
+        "%Y-%m",# eg 2014-07-16 10:57 +0200
         "%Y%m%d",
         "%d%m%Y",
         "%d%m%y",
@@ -146,7 +166,7 @@ def unicode2datetime(value, format=None):
         "%d%B%y"
     ]
     value = deformat(value)
-    for f in formats:
+    for f in deformats:
         try:
             return unicode2datetime(value, format=f)
         except Exception:

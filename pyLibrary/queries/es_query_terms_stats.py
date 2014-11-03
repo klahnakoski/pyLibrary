@@ -126,7 +126,7 @@ def es_terms_stats(esq, mvel, query):
         for parts in esFacets:
             condition = StructList()
             constants = StructList()
-            name = [s.name]
+            name = [literal_field(s.name)]
             for f, fedge in enumerate(facetEdges):
                 name.append(str(parts[f].dataIndex))
                 condition.append(buildCondition(mvel, fedge, parts[f]))

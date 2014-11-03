@@ -41,13 +41,14 @@ class Struct(dict):
         anything
     2c) you loose the ability to perform <code>a is None</code> checks, must
         always use <code>a == None</code> instead
-    3) you can access paths as a variable:   a["b.c"]==a.b.c
-    4) you can set paths to values, missing dicts along the path are created:
+    3) remove an attribute by assigning Null:  setting a
+    4) you can access paths as a variable:   a["b.c"]==a.b.c
+    5) you can set paths to values, missing dicts along the path are created:
        a = wrap({})
        > a == {}
        a["b.c"] = 42
        > a == {"b": {"c": 42}}
-    5) attribute names (keys) are corrected to unicode - it appears Python
+    6) attribute names (keys) are corrected to unicode - it appears Python
        object.getattribute() is called with str() even when using
        <code>from __future__ import unicode_literals</code>
 
@@ -59,14 +60,22 @@ class Struct(dict):
     different names, some examples are:
 
     * jinja2.environment.Environment.getattr()
-    * argparse.Environment() - code performs setattr(e, name, value) on instances of Environment
+    * argparse.Environment() - code performs setattr(e, name, value) on
+      instances of Environment to provide dot(.) accessors
     * collections.namedtuple() - gives attribute names to tuple indicies
+      effectively providing <code>a.b</code> rather than <code>a["b"]</code>
+      offered by dicts
     * C# Linq requires anonymous types to avoid large amounts of boilerplate code.
+    * D3 has many of these conventions ["The function's return value is
+      then used to set each element's attribute. A null value will remove the
+      specified attribute."](https://github.com/mbostock/d3/wiki/Selections#attr)
 
 
     http://www.saltycrane.com/blog/2012/08/python-data-object-motivated-desire-mutable-namedtuple-default-values/
 
     """
+
+    #  http://www.saltycrane.com/
     def __init__(self, **map):
         """
         CALLING Struct(**something) WILL RESULT IN A COPY OF something, WHICH IS UNLIKELY TO BE USEFUL
@@ -636,7 +645,7 @@ class StructList(list):
     def __getslice__(self, i, j):
         from .env.logs import Log
 
-        Log.error("slicing is broken in Python 2.7: a[i:j] == a[i+len(a), j] sometimes.  Use [start:stop:step]")
+        Log.error("slicing is broken in Python 2.7: a[i:j] == a[i+len(a), j] sometimes.  Use [start:stop:step] (see collections/README.md)")
 
     def copy(self):
         return StructList(list(_get(self, "list")))

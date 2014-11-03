@@ -219,8 +219,10 @@ for i in range(0x20):
     ESCAPE_DCT.setdefault(chr(i), u'\\u{0:04x}'.format(i))
 
 
-# REMOVE VALUES THAT CAN NOT BE JSON-IZED
 def json_scrub(value):
+    """
+    REMOVE/REPLACE VALUES THAT CAN NOT BE JSON-IZED
+    """
     return _scrub(value)
 
 

@@ -145,6 +145,10 @@ class Duration(object):
             output.milli = Math.floor(self.milli / (interval.milli)) * (interval.milli)
         return output
 
+    @property
+    def seconds(self):
+        return self.milli/1000
+
     def __str__(self):
         if not self.milli:
             return "zero"

@@ -443,9 +443,13 @@ class Except(Exception):
 
     @property
     def message(self):
-        return unicode(self)
+        return expand_template(self.template, self.params)
 
     def contains(self, value):
+        if isinstance(value, basestring):
+            if self.message.find(value) >= 0:
+                return True
+
         if self.type == value:
             return True
         for c in self.cause:
