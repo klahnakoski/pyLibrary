@@ -41,23 +41,23 @@ something more complicated; especially considering that ```num``` could be
 negative.
 
 I advocate never using negative indices in the slice operator.  Rather, use the
-```right()``` method instead which is consistent in face of a range of
-```num```:
+```right()``` method instead which is consistent for a range ```num```:
 
     def right(_list, num):
         if num <= 0:
             return []
         return _list[-num:]
 
+
 ###Python 2.7 ```__getslice__``` is broken###
 
 It would be nice to have our own list-like class that implements slicing in a
-way that is not inconsistent.  Specifically, we expect to solve the inconsistent
+way that is consistent.  Specifically, we expect to solve the inconsistent
 behaviour seen when dealing with negative indices.
 
 As an example, I would like to ensure my over-sliced-to-the-right and over-
 sliced-to-the-left  behave the same.  Let's look at over-slicing-to-the-right,
-which behaves as expected in a regular list:
+which behaves as expected on a regular list:
 
         assert 3 == len(my_list[1:4])
         assert 4 == len(my_list[1:5])
