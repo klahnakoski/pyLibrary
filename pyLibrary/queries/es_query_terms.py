@@ -10,16 +10,15 @@
 from __future__ import unicode_literals
 from __future__ import division
 
-from .. import struct
-from ..collections.matrix import Matrix
-from ..collections import AND
-from ..queries import Q
-from ..queries import es_query_util
-from ..queries.es_query_util import aggregates, buildESQuery, compileEdges2Term
-from ..queries.filters import simplify
-from ..queries.cube import Cube
-from ..struct import nvl, StructList
-from ..structs.wraps import wrap, listwrap
+from pyLibrary.collections.matrix import Matrix
+from pyLibrary.collections import AND
+from pyLibrary.queries import Q
+from pyLibrary.queries import es_query_util
+from pyLibrary.queries.es_query_util import aggregates, buildESQuery, compileEdges2Term
+from pyLibrary.queries.filters import simplify
+from pyLibrary.queries.cube import Cube
+from pyLibrary.struct import nvl, StructList
+from pyLibrary.structs.wraps import wrap, listwrap
 
 
 def is_terms(query):

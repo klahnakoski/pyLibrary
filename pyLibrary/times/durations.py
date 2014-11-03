@@ -12,13 +12,13 @@ from __future__ import division
 
 from datetime import timedelta
 
-from .. import regex
-from ..vendor.dateutil.relativedelta import relativedelta
-from ..cnv import CNV
-from ..collections import MIN
-from ..env.logs import Log
-from ..maths import Math
-from ..structs.wraps import wrap
+from pyLibrary import regex
+from pyLibrary.vendor.dateutil.relativedelta import relativedelta
+from pyLibrary import convert
+from pyLibrary.collections import MIN
+from pyLibrary.env.logs import Log
+from pyLibrary.maths import Math
+from pyLibrary.structs.wraps import wrap
 
 
 class Duration(object):
@@ -55,7 +55,7 @@ class Duration(object):
         elif Math.is_nan(value):
             return None
         else:
-            Log.error("Do not know type of object (" + CNV.object2JSON(value) + ")of to make a Duration")
+            Log.error("Do not know type of object (" + convert.object2JSON(value) + ")of to make a Duration")
 
 
     def __add__(self, other):
@@ -234,7 +234,7 @@ def _string2Duration(text):
         return Duration(0)
 
     amount, interval = regex.match(r"([\d\.]*)(.*)", text)
-    amount = CNV.value2int(amount) if amount else 1
+    amount = convert.value2int(amount) if amount else 1
 
     if MILLI_VALUES[interval] == None:
         Log.error(interval + " is not a recognized duration type (did you use the pural form by mistake?")

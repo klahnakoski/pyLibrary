@@ -2,8 +2,8 @@
 import math
 
 from . import PRODUCT
-from ..env.logs import Log
-from ..testing.fuzzytestcase import assertAlmostEqual
+from pyLibrary.env.logs import Log
+from pyLibrary.testing.fuzzytestcase import assertAlmostEqual
 
 
 def zeros(dim, dtype=None):

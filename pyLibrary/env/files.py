@@ -13,11 +13,11 @@ from datetime import datetime
 import io
 import os
 import shutil
-from ..strings import utf82unicode
-from ..maths import crypto
-from ..struct import nvl
-from ..structs.wraps import listwrap
-from ..cnv import CNV
+from pyLibrary.strings import utf82unicode
+from pyLibrary.maths import crypto
+from pyLibrary.struct import nvl
+from pyLibrary.structs.wraps import listwrap
+from pyLibrary import convert
 
 
 class File(object):
@@ -30,7 +30,7 @@ class File(object):
         YOU MAY SET filename TO {"path":p, "key":k} FOR CRYPTO FILES
         """
         if filename == None:
-            from ..env.logs import Log
+            from pyLibrary.env.logs import Log
 
             Log.error("File must be given a filename")
         elif isinstance(filename, basestring):
@@ -38,7 +38,7 @@ class File(object):
             self._filename = "/".join(filename.split(os.sep))  # USE UNIX STANDARD
             self.buffering = buffering
         else:
-            self.key = CNV.base642bytearray(filename.key)
+            self.key = convert.base642bytearray(filename.key)
             self._filename = "/".join(filename.path.split(os.sep))  # USE UNIX STANDARD
             self.buffering = buffering
 
@@ -107,7 +107,7 @@ class File(object):
         """
         RETURN A FILENAME THAT CAN SERVE AS A BACKUP FOR THIS FILE
         """
-        suffix = CNV.datetime2string(nvl(timestamp, datetime.now()), "%Y%m%d_%H%M%S")
+        suffix = convert.datetime2string(nvl(timestamp, datetime.now()), "%Y%m%d_%H%M%S")
         return File.add_suffix(self._filename, suffix)
 
     def read(self, encoding="utf8"):
@@ -138,13 +138,13 @@ class File(object):
             self.parent.create()
         with open(self._filename, "wb") as f:
             if isinstance(data, list) and self.key:
-                from ..env.logs import Log
+                from pyLibrary.env.logs import Log
 
                 Log.error("list of data and keys are not supported, encrypt before sending to file")
 
             for d in listwrap(data):
                 if not isinstance(d, unicode):
-                    from ..env.logs import Log
+                    from pyLibrary.env.logs import Log
 
                     Log.error("Expecting unicode data only")
                 if self.key:
@@ -183,18 +183,21 @@ class File(object):
         return self.append(content)
 
     def extend(self, content):
-        if not self.parent.exists:
-            self.parent.create()
-        with open(self._filename, "ab") as output_file:
-            for c in content:
-                if isinstance(c, str):
-                    from .logs import Log
+        try:
+            if not self.parent.exists:
+                self.parent.create()
+            with open(self._filename, "ab") as output_file:
+                for c in content:
+                    if isinstance(c, str):
+                        from .logs import Log
+                        Log.error("expecting to write unicode only")
 
-                    Log.error("expecting to write unicode only")
+                    output_file.write(c.encode("utf-8"))
+                    output_file.write(b"\n")
+        except Exception, e:
+            from ..env.logs import Log
 
-                output_file.write(c.encode("utf-8"))
-                output_file.write(b"\n")
-
+            Log.error("Could not write to file", e)
 
     def delete(self):
         try:
@@ -206,7 +209,7 @@ class File(object):
         except Exception, e:
             if e.strerror == "The system cannot find the path specified":
                 return
-            from ..env.logs import Log
+            from pyLibrary.env.logs import Log
 
             Log.error("Could not remove file", e)
 
@@ -220,7 +223,7 @@ class File(object):
         try:
             os.makedirs(self._filename)
         except Exception, e:
-            from ..env.logs import Log
+            from pyLibrary.env.logs import Log
 
             Log.error("Could not make directory {{dir_name}}", {"dir_name": self._filename}, e)
 

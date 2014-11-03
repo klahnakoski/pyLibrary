@@ -10,9 +10,10 @@
 from math import log10
 
 import unittest
-from ..struct import nvl
-from ..maths import Math
-from ..structs.wraps import wrap
+from pyLibrary.struct import nvl
+from pyLibrary.maths import Math
+from pyLibrary.structs.wraps import wrap
+from pyLibrary.strings import expand_template
 
 
 class FuzzyTestCase(unittest.TestCase):
@@ -53,27 +54,25 @@ def assertAlmostEqualValue(first, second, digits=None, places=None, msg=None, de
         if abs(first - second) <= delta:
             return
 
-        standardMsg = '%s != %s within %s delta' % (
-            repr(first),
-            repr(second),
-            repr(delta)
-        )
+        standardMsg = expand_template("{{first}} != {{second}} within {{delta}} delta", {
+            "first": first,
+            "second": second,
+            "delta": delta
+        })
     else:
         if places is None:
             places = 18
 
         diff = log10(abs(first-second))
-        if diff < Math.ceiling(log10(first))-places:
+        if diff < Math.ceiling(log10(abs(first)))-places:
             return
 
-        standardMsg = '%s != %s within %r places' % (
-            repr(first),
-            repr(second),
-            places
-        )
+        standardMsg = expand_template("{{first}} != {{second}} within {{places}} places", {
+            "first": first,
+            "second": second,
+            "": places
+        })
 
-    r_first = Math.round(first, digits=places)
-    r_second = Math.round(second, digits=places)
     raise AssertionError(nvl(msg, "") + ": (" + standardMsg + ")")
 
 

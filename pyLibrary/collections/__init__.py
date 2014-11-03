@@ -1,7 +1,7 @@
 import types
 import math
-from ..collections.multiset import Multiset
-from ..struct import Null
+from pyLibrary.collections.multiset import Multiset
+from pyLibrary.struct import Null
 
 __author__ = 'klahnakoski'
 

@@ -15,9 +15,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import smtplib
 import sys
-from dzAlerts.util.env.logs import Log
-from ..structs.wraps import listwrap
-from ..struct import nvl
+from pyLibrary.env.logs import Log
+from pyLibrary.structs.wraps import listwrap
+from pyLibrary.struct import nvl
 
 
 class Emailer:

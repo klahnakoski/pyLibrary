@@ -9,13 +9,15 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
+from collections import deque
 
 from datetime import datetime, timedelta
 import thread
 import threading
 import time
 import sys
-from ..struct import nvl, Struct
+from pyLibrary.struct import nvl, Struct
+import gc
 
 # THIS THREADING MODULE IS PERMEATED BY THE please_stop SIGNAL.
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
@@ -65,8 +67,9 @@ class Queue(object):
         self.silent = silent
         self.keep_running = True
         self.lock = Lock("lock for queue")
-        self.queue = []
-        self.next_warning=datetime.utcnow()  # FOR DEBUGGING
+        self.queue = deque()
+        self.next_warning = datetime.utcnow()  # FOR DEBUGGING
+        self.gc_count = 0
 
     def __iter__(self):
         while self.keep_running:
@@ -75,7 +78,7 @@ class Queue(object):
                 if value is not Thread.STOP:
                     yield value
             except Exception, e:
-                from ..env.logs import Log
+                from pyLibrary.env.logs import Log
 
                 Log.warning("Tell me about what happened here", e)
 
@@ -113,7 +116,7 @@ class Queue(object):
                     now = datetime.utcnow()
                     if self.next_warning < now:
                         self.next_warning = now + timedelta(seconds=wait_time)
-                        from ..env.logs import Log
+                        from pyLibrary.env.logs import Log
 
                         Log.warning("Queue is full ({{num}}} items), thread(s) have been waiting {{wait_time}} sec", {
                             "num": len(self.queue),
@@ -128,7 +131,10 @@ class Queue(object):
         with self.lock:
             while self.keep_running:
                 if self.queue:
-                    value = self.queue.pop(0)
+                    value = self.queue.popleft()
+                    self.gc_count += 1
+                    if self.gc_count % 1000 == 0:
+                        gc.collect()
                     if value is Thread.STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                         self.keep_running = False
                     return value
@@ -150,7 +156,7 @@ class Queue(object):
                     self.keep_running = False
 
             output = list(self.queue)
-            del self.queue[:]       # CLEAR
+            self.queue.clear()
             return output
 
     def close(self):
@@ -181,12 +187,12 @@ class AllThread(object):
                 if "exception" in response:
                     exceptions.append(response["exception"])
         except Exception, e:
-            from ..env.logs import Log
+            from pyLibrary.env.logs import Log
 
             Log.warning("Problem joining", e)
 
         if exceptions:
-            from ..env.logs import Log
+            from pyLibrary.env.logs import Log
 
             Log.error("Problem in child threads", exceptions)
 
@@ -249,7 +255,7 @@ class Thread(object):
         try:
             thread.start_new_thread(Thread._run, (self, ))
         except Exception, e:
-            from ..env.logs import Log
+            from pyLibrary.env.logs import Log
 
             Log.error("Can not start thread", e)
 
@@ -270,7 +276,7 @@ class Thread(object):
             with self.synch_lock:
                 self.response = Struct(exception=e)
             try:
-                from ..env.logs import Log
+                from pyLibrary.env.logs import Log
 
                 Log.fatal("Problem in thread {{name}}", {"name": self.name}, e)
             except Exception, f:
@@ -300,7 +306,7 @@ class Thread(object):
                         self.synch_lock.wait(0.5)
 
                 if DEBUG:
-                    from ..env.logs import Log
+                    from pyLibrary.env.logs import Log
 
                     Log.note("Waiting on thread {{thread|json}}", {"thread": self.name})
         else:
@@ -308,7 +314,7 @@ class Thread(object):
             if self.stopped:
                 return self.response
             else:
-                from ..env.logs import Except
+                from pyLibrary.env.logs import Except
 
                 raise Except(type=Thread.TIMEOUT)
 
@@ -316,7 +322,7 @@ class Thread(object):
     def run(name, target, *args, **kwargs):
         # ENSURE target HAS please_stop ARGUMENT
         if "please_stop" not in target.__code__.co_varnames:
-            from ..env.logs import Log
+            from pyLibrary.env.logs import Log
 
             Log.error("function must have please_stop argument for signalling emergency shutdown")
 
@@ -418,6 +424,10 @@ class ThreadedQueue(Queue):
     """
     TODO: Check that this queue is not dropping items at shutdown
     DISPATCH TO ANOTHER (SLOWER) queue IN BATCHES OF GIVEN size
+
+    queue          - THE SLOWER QUEUE
+    max            - SET THE MAXIMUM SIZE OF THE QUEUE, WRITERS WILL BLOCK IF QUEUE IS OVER THIS LIMIT
+    silent = False - WRITES WILL COMPLAIN IF THEY ARE WAITING TOO LONG
     """
 
     def __init__(self, queue, size=None, max=None, period=None, silent=False):
@@ -431,24 +441,24 @@ class ThreadedQueue(Queue):
             please_stop.on_go(lambda: self.add(Thread.STOP))
 
             # queue IS A MULTI-THREADED QUEUE, SO THIS WILL BLOCK UNTIL THE size ARE READY
-            from ..queries import Q
+            from pyLibrary.queries import Q
 
             for i, g in Q.groupby(self, size=size):
                 try:
                     queue.extend(g)
                     if please_stop:
-                        from ..env.logs import Log
+                        from pyLibrary.env.logs import Log
 
                         Log.warning("ThreadedQueue stopped early, with {{num}} items left in queue", {
                             "num": len(self)
                         })
                         return
                 except Exception, e:
-                    from ..env.logs import Log
+                    from pyLibrary.env.logs import Log
 
                     Log.warning("Problem with pushing {{num}} items to data sink", {"num": len(g)}, e)
 
-        self.thread = Thread.run("threaded queue", size_pusher)
+        self.thread = Thread.run("threaded queue " + unicode(id(self)), size_pusher)
 
 
     def __enter__(self):

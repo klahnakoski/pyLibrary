@@ -1,5 +1,5 @@
 import unittest
-from pyLibrary.cnv import CNV
+from pyLibrary import convert
 from pyLibrary.collections import MAX
 from pyLibrary.env.logs import Log
 from pyLibrary.struct import Null, Struct
@@ -140,7 +140,7 @@ class TestStruct(unittest.TestCase):
                 "l": {"m": {"n": "test5"}}
             }
         }
-        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+        if convert.object2JSON(expected) != convert.object2JSON(a):
             Log.error("error")
 
 
@@ -159,7 +159,7 @@ class TestStruct(unittest.TestCase):
                 "e": "test2"
             }
         }
-        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+        if convert.object2JSON(expected) != convert.object2JSON(a):
             Log.error("error")
 
     def test_assign3(self):
@@ -169,27 +169,27 @@ class TestStruct(unittest.TestCase):
 
         b.c = None
         expected = {}
-        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+        if convert.object2JSON(expected) != convert.object2JSON(a):
             Log.error("error")
 
         b.c.d = None
         expected = {}
-        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+        if convert.object2JSON(expected) != convert.object2JSON(a):
             Log.error("error")
 
         b["c.d"] = None
         expected = {}
-        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+        if convert.object2JSON(expected) != convert.object2JSON(a):
             Log.error("error")
 
         b.c.d.e = None
         expected = {}
-        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+        if convert.object2JSON(expected) != convert.object2JSON(a):
             Log.error("error")
 
         b.c["d.e"] = None
         expected = {}
-        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+        if convert.object2JSON(expected) != convert.object2JSON(a):
             Log.error("error")
 
     def test_assign4(self):
@@ -198,14 +198,14 @@ class TestStruct(unittest.TestCase):
         b = wrap(a)
         b.c.d = None
         expected = {"c": {}}
-        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+        if convert.object2JSON(expected) != convert.object2JSON(a):
             Log.error("error")
 
         a = {"c": {"d": {}}}
         b = wrap(a)
         b.c = None
         expected = {}
-        if CNV.object2JSON(expected) != CNV.object2JSON(a):
+        if convert.object2JSON(expected) != convert.object2JSON(a):
             Log.error("error")
 
 

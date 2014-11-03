@@ -10,15 +10,15 @@
 from __future__ import unicode_literals
 from __future__ import division
 
-from .. import struct
-from ..cnv import CNV
-from ..collections.matrix import Matrix
+from pyLibrary import struct
+from pyLibrary import convert
+from pyLibrary.collections.matrix import Matrix
 from .query import Query
-from ..sql.db import int_list_packer, SQL, DB
-from ..env.logs import Log
-from ..strings import indent, expand_template
-from ..struct import nvl, StructList
-from ..structs.wraps import wrap, listwrap
+from pyLibrary.sql.db import int_list_packer, SQL, DB
+from pyLibrary.env.logs import Log
+from pyLibrary.strings import indent, expand_template
+from pyLibrary.struct import nvl, StructList
+from pyLibrary.structs.wraps import wrap, listwrap
 
 
 class DBQuery(object):
@@ -344,7 +344,7 @@ def _esfilter2sqlwhere(db, esfilter):
                 return "FALSE"
 
             try:
-                int_list = CNV.value2intlist(v)
+                int_list = convert.value2intlist(v)
                 has_null = False
                 for vv in v:
                     if vv == None:
@@ -412,7 +412,7 @@ def expand_json(rows):
         for k, json in list(r.items()):
             if isinstance(json, basestring) and json[0:1] in ("[", "{"):
                 try:
-                    value = CNV.JSON2object(json)
+                    value = convert.JSON2object(json)
                     r[k] = value
                 except Exception, e:
                     pass

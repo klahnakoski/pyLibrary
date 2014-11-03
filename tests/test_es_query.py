@@ -11,7 +11,7 @@ from __future__ import unicode_literals
 
 import unittest
 from pyLibrary import strings
-from pyLibrary.cnv import CNV
+from pyLibrary import convert
 from pyLibrary.env.files import File
 from pyLibrary.env.logs import Log, Except, extract_tb, ERROR
 from pyLibrary.queries.es_query import ESQuery
@@ -43,7 +43,7 @@ class TestESQuery(unittest.TestCase):
 
         expecting = {}
 
-        assert CNV.object2JSON(esquery, pretty=True) == CNV.object2JSON(expecting, pretty=True)
+        assert convert.object2JSON(esquery, pretty=True) == convert.object2JSON(expecting, pretty=True)
 
 
 class ESQueryTester(object):
@@ -63,7 +63,7 @@ class ESQueryTester(object):
             f = Except(ERROR, unicode(e), trace=extract_tb(1))
             try:
                 details = str(f)
-                query = CNV.JSON2object(strings.between(details, ">>>>", "<<<<"))
+                query = convert.JSON2object(strings.between(details, ">>>>", "<<<<"))
                 return query
             except Exception, g:
                 Log.error("problem", f)
@@ -77,9 +77,9 @@ class FakeES(object):
         pass
 
     def search(self, query):
-        Log.error("<<<<\n{{query}}\n>>>>", {"query": CNV.object2JSON(query)})
+        Log.error("<<<<\n{{query}}\n>>>>", {"query": convert.object2JSON(query)})
 
     def get_schema(self):
-        return CNV.JSON2object(File("tests/resources/bug_version.json").read()).mappings.bug_version
+        return convert.JSON2object(File("tests/resources/bug_version.json").read()).mappings.bug_version
 
 

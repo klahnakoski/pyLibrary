@@ -49,8 +49,7 @@ class Struct(dict):
        > a == {"b": {"c": 42}}
     5) attribute names (keys) are corrected to unicode - it appears Python
        object.getattribute() is called with str() even when using
-       <code>from __future__ import unicode_literals
-from __future__ import division</code>
+       <code>from __future__ import unicode_literals</code>
 
     More on missing values: http://www.np.org/NA-overview.html
     it only considers the legitimate-field-with-missing-value (Statistical Null)
@@ -68,7 +67,6 @@ from __future__ import division</code>
     http://www.saltycrane.com/blog/2012/08/python-data-object-motivated-desire-mutable-namedtuple-default-values/
 
     """
-
     def __init__(self, **map):
         """
         CALLING Struct(**something) WILL RESULT IN A COPY OF something, WHICH IS UNLIKELY TO BE USEFUL
@@ -248,8 +246,11 @@ from __future__ import division</code>
         return (wrap(v) for v in d.values())
 
     def copy(self):
+        """
+        SHALLOW COPY
+        """
         d = _get(self, "__dict__")
-        return Struct(**d)
+        return wrap(d.copy())
 
     def __delitem__(self, key):
         if isinstance(key, str):
@@ -281,6 +282,7 @@ from __future__ import division</code>
         if self[k] == None:
             self[k] = d
         return self
+
 
 # KEEP TRACK OF WHAT ATTRIBUTES ARE REQUESTED, MAYBE SOME (BUILTIN) ARE STILL USEFUL
 requested = set()

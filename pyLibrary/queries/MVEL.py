@@ -12,14 +12,14 @@ from __future__ import division
 
 from datetime import datetime
 import re
-from .. import struct
-from ..cnv import CNV
-from ..collections import reverse
-from ..env.logs import Log
-from ..maths import Math
-from ..queries.filters import TRUE_FILTER
-from ..struct import Struct, nvl, split_field, join_field, Null
-from ..times.durations import Duration
+from pyLibrary import struct
+from pyLibrary import convert
+from pyLibrary.collections import reverse
+from pyLibrary.env.logs import Log
+from pyLibrary.maths import Math
+from pyLibrary.queries.filters import TRUE_FILTER
+from pyLibrary.struct import Struct, nvl, split_field, join_field, Null
+from pyLibrary.times.durations import Duration
 
 
 class _MVEL(object):
@@ -80,7 +80,7 @@ class _MVEL(object):
         path = split_field(fromPath)
 
         # ADD LOCAL VARIABLES
-        from ..queries.es_query_util import INDEX_CACHE
+        from pyLibrary.queries.es_query_util import INDEX_CACHE
 
         columns = INDEX_CACHE[path[0]].columns
         for i, c in enumerate(columns):
@@ -183,11 +183,11 @@ class _MVEL(object):
 
                 return Struct(
                     head="",
-                    body='getDocValue('+CNV.string2quote(domain.dimension.fields[0])+')'
+                    body='getDocValue('+convert.string2quote(domain.dimension.fields[0])+')'
                 ), fromTerm
             else:
                 def fromTerm(term):
-                    terms = [CNV.pipe2value(t) for t in CNV.pipe2value(term).split("|")]
+                    terms = [convert.pipe2value(t) for t in convert.pipe2value(term).split("|")]
 
                     candidate = dict(zip(qb_fields, terms))
                     for p in domain.partitions:
@@ -204,7 +204,7 @@ class _MVEL(object):
                         return Null
 
                 for f in es_fields:
-                    term.append('Value2Pipe(getDocValue('+CNV.string2quote(f)+'))')
+                    term.append('Value2Pipe(getDocValue('+convert.string2quote(f)+'))')
 
                 return Struct(
                     head="",
@@ -318,7 +318,7 @@ class Compiled(object):
         return self.code
 
     def __json__(self):
-        return CNV.string2quote(self.code)
+        return convert.string2quote(self.code)
 
 
 
@@ -378,7 +378,7 @@ def unpack_terms(facet, selects):
             continue        # NO DATA
         value = []
         for i, v in enumerate(t.term.split("|")):
-            value.append(CNV.pipe2value(v))
+            value.append(convert.pipe2value(v))
             if ((i + 1) % mod) == 0:
                 value.append(t.count)
                 output.append(value)
@@ -481,7 +481,7 @@ def _where(esFilter, _translate):
     elif op == "prefix":
         pair = esFilter[op]
         variableName, value = pair.items()[0]
-        return _translate(variableName) + ".startsWith(" + CNV.string2quote(value) + ")"
+        return _translate(variableName) + ".startsWith(" + convert.string2quote(value) + ")"
     elif op == "match_all":
         return "true"
     else:
@@ -511,24 +511,24 @@ def value2MVEL(value):
     FROM PYTHON VALUE TO MVEL EQUIVALENT
     """
     if isinstance(value, datetime):
-        return str(CNV.datetime2milli(value)) + " /*" + value.format("yyNNNdd HHmmss") + "*/"        # TIME
+        return str(convert.datetime2milli(value)) + " /*" + value.format("yyNNNdd HHmmss") + "*/"        # TIME
     if isinstance(value, Duration):
-        return str(CNV.timedelta2milli(value)) + " /*" + str(value) + "*/"    # DURATION
+        return str(convert.timedelta2milli(value)) + " /*" + str(value) + "*/"    # DURATION
 
     if Math.is_number(value):
         return str(value)
-    return CNV.string2quote(value)
+    return convert.string2quote(value)
 
 # FROM PYTHON VALUE TO ES QUERY EQUIVALENT
 def value2query(value):
     if isinstance(value, datetime):
-        return CNV.datetime2milli(value)
+        return convert.datetime2milli(value)
     if isinstance(value, Duration):
         return value.milli
 
     if Math.is_number(value):
         return value
-    return CNV.string2quote(value)
+    return convert.string2quote(value)
 
 
 def value2value(value):
@@ -536,7 +536,7 @@ def value2value(value):
     CONVERT FROM PYTHON VALUE TO ES EQUIVALENT
     """
     if isinstance(value, datetime):
-        return CNV.datetime2milli(value)
+        return convert.datetime2milli(value)
     if isinstance(value, Duration):
         return value.milli    # DURATION
     return value

@@ -9,7 +9,7 @@
 #
 from __future__ import unicode_literals
 
-from ..struct import Struct, nvl
+from pyLibrary.struct import Struct, nvl
 
 INDEX_CACHE = {}  # MATCH NAMES TO FULL CONNECTION INFO
 

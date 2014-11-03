@@ -12,9 +12,9 @@ from __future__ import division
 
 from datetime import datetime
 from time import clock
-from ..collections import MAX
-from ..structs.wraps import wrap
-from ..struct import Struct
+from pyLibrary.collections import MAX
+from pyLibrary.structs.wraps import wrap
+from pyLibrary.struct import Struct
 
 ON = False
 profiles = {}
@@ -34,7 +34,7 @@ class Profiler(object):
         return output
 
     def __init__(self, description):
-        from ..queries.windows import Stats
+        from pyLibrary.queries.windows import Stats
 
         if ON and not hasattr(self, "description"):
             self.description = description
@@ -52,7 +52,7 @@ class Profiler(object):
             self.end = clock()
             duration = self.end - self.start
 
-            from ..queries.windows import Stats
+            from pyLibrary.queries.windows import Stats
 
             self.stats.add(duration)
             if self.samples is not None:
@@ -62,7 +62,7 @@ class Profiler(object):
 
 
 def write(profile_settings):
-    from ..cnv import CNV
+    from pyLibrary import convert
     from .files import File
 
     profs = list(profiles.values())
@@ -77,21 +77,27 @@ def write(profile_settings):
     }
         for p in profs if p.stats.count > 0
     ]
-    stats_file = File(profile_settings.filename, suffix=CNV.datetime2string(datetime.now(), "_%Y%m%d_%H%M%S"))
+    stats_file = File(profile_settings.filename, suffix=convert.datetime2string(datetime.now(), "_%Y%m%d_%H%M%S"))
     if stats:
-        stats_file.write(CNV.list2tab(stats))
+        stats_file.write(convert.list2tab(stats))
     else:
         stats_file.write("<no profiles>")
 
-    stats_file2 = File(profile_settings.filename, suffix=CNV.datetime2string(datetime.now(), "_series_%Y%m%d_%H%M%S"))
-    if profs:
-        r = range(MAX([len(p.samples) for p in profs]))
-        profs.insert(0, Struct(description="index", samples=r))
-        stats = [
-            {p.description: wrap(p.samples)[i] for p in profs if p.samples}
-            for i in r
-        ]
-        if stats:
-            stats_file2.write(CNV.list2tab(stats))
+    stats_file2 = File(profile_settings.filename, suffix=convert.datetime2string(datetime.now(), "_series_%Y%m%d_%H%M%S"))
+    if not profs:
+        return
+
+    max_samples = MAX([len(p.samples) for p in profs if p.samples])
+    if not max_samples:
+        return
+
+    r = range(max_samples)
+    profs.insert(0, Struct(description="index", samples=r))
+    stats = [
+        {p.description: wrap(p.samples)[i] for p in profs if p.samples}
+        for i in r
+    ]
+    if stats:
+        stats_file2.write(convert.list2tab(stats))
 
 

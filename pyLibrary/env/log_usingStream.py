@@ -15,8 +15,8 @@ from __future__ import division
 from datetime import datetime, timedelta
 import sys
 from .logs import BaseLog, DEBUG_LOGGING, Log
-from ..strings import expand_template
-from ..thread.threads import Thread
+from pyLibrary.strings import expand_template
+from pyLibrary.thread.threads import Thread
 
 
 
@@ -38,7 +38,7 @@ class Log_usingStream(BaseLog):
             name = "stream"
 
         # WRITE TO STREAMS CAN BE *REALLY* SLOW, WE WILL USE A THREAD
-        from ..thread.threads import Queue
+        from pyLibrary.thread.threads import Queue
 
         if use_UTF8:
             def utf8_appender(value):

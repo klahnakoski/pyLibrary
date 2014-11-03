@@ -10,17 +10,17 @@
 from __future__ import unicode_literals
 from __future__ import division
 
-from ..collections.matrix import Matrix
-from ..collections import COUNT, PRODUCT
-from ..queries import es_query_util
-from ..queries.cube import Cube
-from ..queries.es_query_util import aggregates, buildESQuery, compileEdges2Term
-from ..queries.filters import simplify
-from ..env.logs import Log
-from ..queries import domains, MVEL, filters
-from ..queries.MVEL import UID
-from ..struct import nvl, StructList
-from ..structs.wraps import wrap, listwrap
+from pyLibrary.collections.matrix import Matrix
+from pyLibrary.collections import COUNT, PRODUCT
+from pyLibrary.queries import es_query_util
+from pyLibrary.queries.cube import Cube
+from pyLibrary.queries.es_query_util import aggregates, buildESQuery, compileEdges2Term
+from pyLibrary.queries.filters import simplify
+from pyLibrary.env.logs import Log
+from pyLibrary.queries import domains, MVEL, filters
+from pyLibrary.queries.MVEL import UID
+from pyLibrary.struct import nvl, StructList
+from pyLibrary.structs.wraps import wrap, listwrap
 
 
 def is_terms_stats(query):

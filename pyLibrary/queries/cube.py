@@ -9,13 +9,13 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
-from .. import struct
-from ..collections.matrix import Matrix
-from ..collections import MAX, OR
-from ..queries.query import _normalize_edge
-from ..struct import StructList, Null
-from ..structs.wraps import wrap, wrap_dot, listwrap
-from ..env.logs import Log
+from pyLibrary import struct
+from pyLibrary.collections.matrix import Matrix
+from pyLibrary.collections import MAX, OR
+from pyLibrary.queries.query import _normalize_edge
+from pyLibrary.struct import StructList, Null
+from pyLibrary.structs.wraps import wrap, wrap_dot, listwrap
+from pyLibrary.env.logs import Log
 
 
 class Cube(object):
@@ -245,7 +245,7 @@ class Cube(object):
     def filter(self, where):
         if len(self.edges)==1 and self.edges[0].domain.type=="index":
             # USE THE STANDARD LIST FILTER
-            from ..queries import Q
+            from pyLibrary.queries import Q
             return Q.filter(where, self.data.values()[0].cube)
         else:
             # FILTER DOES NOT ALTER DIMESIONS, JUST WHETHER THERE ARE VALUES IN THE CELLS

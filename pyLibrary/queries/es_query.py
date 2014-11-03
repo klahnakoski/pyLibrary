@@ -10,20 +10,20 @@
 from __future__ import unicode_literals
 from __future__ import division
 
-from ..cnv import CNV
-from ..queries import MVEL
-from ..queries.es_query_aggop import is_aggop, es_aggop
-from ..queries.es_query_setop import is_fieldop, is_setop, is_deep, es_setop, es_deepop, es_fieldop
-from ..queries.es_query_terms import es_terms, is_terms
-from ..queries.es_query_terms_stats import es_terms_stats, is_terms_stats
-from ..queries.es_query_util import aggregates, loadColumns
+from pyLibrary import convert
+from pyLibrary.queries import MVEL
+from pyLibrary.queries.es_query_aggop import is_aggop, es_aggop
+from pyLibrary.queries.es_query_setop import is_fieldop, is_setop, is_deep, es_setop, es_deepop, es_fieldop
+from pyLibrary.queries.es_query_terms import es_terms, is_terms
+from pyLibrary.queries.es_query_terms_stats import es_terms_stats, is_terms_stats
+from pyLibrary.queries.es_query_util import aggregates, loadColumns
 from . import Q
-from ..queries.dimensions import Dimension
-from ..queries.query import Query, _normalize_where
-from ..env.logs import Log
-from ..queries.MVEL import _MVEL
-from ..struct import Struct, split_field, StructList, nvl
-from ..structs.wraps import wrap, unwrap, listwrap
+from pyLibrary.queries.dimensions import Dimension
+from pyLibrary.queries.query import Query, _normalize_where
+from pyLibrary.env.logs import Log
+from pyLibrary.queries.MVEL import _MVEL
+from pyLibrary.struct import Struct, split_field, StructList, nvl
+from pyLibrary.structs.wraps import wrap, unwrap, listwrap
 
 class ESQuery(object):
     """
@@ -181,7 +181,7 @@ class ESQuery(object):
             for id in results.hits.hits._id:
                 command.append({"update": {"_id": id}})
                 command.append({"script": script})
-            content = ("\n".join(CNV.object2JSON(c) for c in command)+"\n").encode('utf-8')
+            content = ("\n".join(convert.object2JSON(c) for c in command)+"\n").encode('utf-8')
             self.es.cluster._post(
                 self.es.path + "/_bulk",
                 data=content,

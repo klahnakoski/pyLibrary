@@ -21,43 +21,43 @@ from .structs.wraps import wrap
 
 
 def datetime(value):
-    from .cnv import CNV
+    from . import convert
 
     if isinstance(value, (date, builtin_datetime)):
         pass
     elif value < 10000000000:
-        value = CNV.unix2datetime(value)
+        value = convert.unix2datetime(value)
     else:
-        value = CNV.milli2datetime(value)
+        value = convert.milli2datetime(value)
 
-    return CNV.datetime2string(value, "%Y-%m-%d %H:%M:%S")
+    return convert.datetime2string(value, "%Y-%m-%d %H:%M:%S")
 
 
 def unix(value):
-    from .cnv import CNV
+    from . import convert
 
     if isinstance(value, (date, builtin_datetime)):
         pass
     elif value < 10000000000:
-        value = CNV.unix2datetime(value)
+        value = convert.unix2datetime(value)
     else:
-        value = CNV.milli2datetime(value)
+        value = convert.milli2datetime(value)
 
-    return str(CNV.datetime2unix(value))
+    return str(convert.datetime2unix(value))
 
 def url(value):
     """
     CONVERT FROM dict OR string TO URL PARAMETERS
     """
-    from .cnv import CNV
-    return CNV.value2url(value)
+    from . import convert
+    return convert.value2url(value)
 
 def html(value):
     """
     CONVERT FROM unicode TO HTML OF THE SAME
     """
-    from .cnv import CNV
-    return CNV.unicode2HTML(value)
+    from . import convert
+    return convert.unicode2HTML(value)
 
 def upper(value):
     return value.upper()
@@ -76,9 +76,9 @@ def replace(value, find, replace):
     return value.replace(find, replace)
 
 def json(value):
-    from .cnv import CNV
+    from . import convert
 
-    return CNV.object2JSON(value)
+    return convert.object2JSON(value)
 
 
 def indent(value, prefix=u"\t", indent=None):
@@ -362,10 +362,16 @@ def apply_diff(text, diff, reverse=False):
 
 
 def utf82unicode(value):
+    """
+    WITH EXPLANATION FOR FAILURE
+    """
     try:
         return value.decode("utf8")
     except Exception, e:
         from .env.logs import Log, Except
+
+        if not isinstance(value, basestring):
+            Log.error("Can not convert {{type}} to unicode because it's not a string", {"type": type(value).__name__})
 
         e = Except.wrap(e)
         for i, c in enumerate(value):
@@ -378,4 +384,12 @@ def utf82unicode(value):
             latin1 = unicode(value.decode("latin1"))
             Log.error("Can not explain conversion failure, but seems to be latin1", e)
         except Exception, f:
-            Log.error("Can not explain conversion failure!", [e, Except.wrap(f)])
+            pass
+
+        try:
+            a = unicode(value.decode("iso-8859-1"))
+            Log.error("Can not explain conversion failure, but seems to be iso-8859-1", e)
+        except Exception, f:
+            pass
+
+        Log.error("Can not explain conversion failure of "+type(value).__name__+"!", e)

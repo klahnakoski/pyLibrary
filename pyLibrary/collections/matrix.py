@@ -11,11 +11,11 @@ from __future__ import unicode_literals
 from __future__ import division
 
 
-from ..collections import PRODUCT, reverse, MAX, MIN, OR
-from ..cnv import CNV
-from ..env.logs import Log
-from ..struct import Null, Struct, nvl
-from ..structs.wraps import wrap
+from pyLibrary.collections import PRODUCT, reverse, MAX, MIN, OR
+from pyLibrary import convert
+from pyLibrary.env.logs import Log
+from pyLibrary.struct import Null, Struct, nvl
+from pyLibrary.structs.wraps import wrap
 
 
 class Matrix(object):
@@ -238,10 +238,10 @@ class Matrix(object):
 
 
     def __str__(self):
-        return "Matrix " + CNV.object2JSON(self.shape) + ": " + str(self.cube)
+        return "Matrix " + convert.object2JSON(self.shape) + ": " + str(self.cube)
 
     def __json__(self):
-        return CNV.object2JSON(self.cube)
+        return convert.object2JSON(self.cube)
 
 
 Matrix.ZERO = Matrix(value=None)

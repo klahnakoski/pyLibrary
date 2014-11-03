@@ -12,18 +12,18 @@ from __future__ import division
 
 from datetime import datetime
 
-from .. import struct
-from ..cnv import CNV
-from .. import strings
-from ..collections import COUNT
-from ..maths import stats
-from ..env.elasticsearch import Index
-from ..env.logs import Log
-from ..maths import Math
-from ..queries import domains, MVEL, filters
-from ..struct import nvl, StructList, Struct, split_field, join_field
-from ..structs.wraps import wrap
-from ..times import durations
+from pyLibrary import struct
+from pyLibrary import convert
+from pyLibrary import strings
+from pyLibrary.collections import COUNT
+from pyLibrary.maths import stats
+from pyLibrary.env.elasticsearch import Index
+from pyLibrary.env.logs import Log
+from pyLibrary.maths import Math
+from pyLibrary.queries import domains, MVEL, filters
+from pyLibrary.struct import nvl, StructList, Struct, split_field, join_field
+from pyLibrary.structs.wraps import wrap
+from pyLibrary.times import durations
 
 
 TrueFilter = {"match_all": {}}
@@ -314,7 +314,7 @@ def compileNumeric2Term(edge):
         nullTest = "(" + value + "<" + ref + ") or (" + value + ">=" + top + ")"
 
     partition2int = "((" + nullTest + ") ? " + numPartitions + " : " + partition2int + ")"
-    offset = CNV.value2int(ref)
+    offset = convert.value2int(ref)
 
     def int2Partition(value):
         if Math.round(value) == numPartitions:
@@ -330,7 +330,7 @@ def compileString2Term(edge):
 
     value = edge.value
     if MVEL.isKeyword(value):
-        value = strings.expand_template("getDocValue({{path}})", {"path": CNV.string2quote(value)})
+        value = strings.expand_template("getDocValue({{path}})", {"path": convert.string2quote(value)})
     else:
         Log.error("not handled")
 

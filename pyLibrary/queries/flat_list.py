@@ -12,10 +12,10 @@ from __future__ import unicode_literals
 from __future__ import division
 
 import functools
-from ..collections import MIN
-from ..env.logs import Log
-from ..struct import nvl, split_field, StructList, Struct
-from ..structs.wraps import wrap
+from pyLibrary.collections import MIN
+from pyLibrary.env.logs import Log
+from pyLibrary.struct import nvl, split_field, StructList, Struct
+from pyLibrary.structs.wraps import wrap
 
 
 class FlatList(list):

@@ -9,15 +9,15 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
-from .. import struct
+from pyLibrary import struct
 from .dimensions import Dimension
 from .domains import Domain
-from ..collections import AND, reverse
-from ..env.logs import Log
-from ..queries import MVEL, _normalize_select, INDEX_CACHE
-from ..queries.filters import TRUE_FILTER, simplify
-from ..struct import nvl, Struct, EmptyList, split_field, join_field, StructList, Null
-from ..structs.wraps import wrap, unwrap, listwrap
+from pyLibrary.collections import AND, reverse
+from pyLibrary.env.logs import Log
+from pyLibrary.queries import MVEL, _normalize_select, INDEX_CACHE
+from pyLibrary.queries.filters import TRUE_FILTER, simplify
+from pyLibrary.struct import nvl, Struct, EmptyList, split_field, join_field, StructList, Null
+from pyLibrary.structs.wraps import wrap, unwrap, listwrap
 
 
 class Query(object):

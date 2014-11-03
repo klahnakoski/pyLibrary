@@ -9,7 +9,7 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
-from ..structs.wraps import listwrap
+from pyLibrary.structs.wraps import listwrap
 
 
 class Record(object):

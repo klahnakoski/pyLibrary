@@ -13,11 +13,13 @@ from __future__ import division
 
 from collections import Iterable
 from types import GeneratorType
-from ..struct import nvl
-from ..env.logs import Log
-from ..thread.threads import Queue, Thread
+from pyLibrary.struct import nvl
+from pyLibrary.env.logs import Log
+from pyLibrary.thread.threads import Queue, Thread
+from pyLibrary.collections import OR
+from pyLibrary.times.timer import Timer
 
-DEBUG = False
+DEBUG = True
 
 
 class Multithread(object):
@@ -41,18 +43,12 @@ class Multithread(object):
 
         # MAKE THREADS
         if isinstance(functions, Iterable):
-            if threads:
-                Log.error("do not know how to handle an array of functions AND a thread multiplier")
-            self.threads = []
-            for t, f in enumerate(functions):
-                thread = worker_thread("worker " + unicode(t), self.inbound, self.outbound, f)
-                self.threads.append(thread)
-        else:
-            # ASSUME functions IS A SINGLE FUNCTION
-            self.threads = []
-            for t in range(nvl(threads, 1)):
-                thread = worker_thread("worker " + unicode(t), self.inbound, self.outbound, functions)
-                self.threads.append(thread)
+            Log.error("Not supported anymore")
+
+        self.threads = []
+        for t in range(nvl(threads, 1)):
+            thread = worker_thread("worker " + unicode(t), self.inbound, self.outbound, functions)
+            self.threads.append(thread)
 
     def __enter__(self):
         return self
@@ -99,7 +95,7 @@ class Multithread(object):
         EXPECTING requests TO BE A list OF dicts, EACH dict IS USED AS kwargs TO GIVEN functions
         """
         if not isinstance(requests, (list, tuple, GeneratorType, Iterable)):
-            Log.error("Expecting requests to be a list or generator", offset=1)
+            Log.error("Expecting requests to be a list or generator", stack_depth=1)
         else:
             requests = list(requests)
 
@@ -141,48 +137,55 @@ class worker_thread(Thread):
     def event_loop(self, please_stop):
         got_stop_message = False
         while not please_stop.is_go():
-            request = self.in_queue.pop()
+            with Timer("get more work", debug=DEBUG):
+                request = self.in_queue.pop()
             if request == Thread.STOP:
                 if DEBUG:
                     Log.note("{{name}} got a stop message", {"name": self.name})
                 got_stop_message = True
-                if self.in_queue.queue:
+                if OR(*(r != Thread.STOP for r in self.in_queue.queue)):
                     Log.warning("programmer error, queue not empty. {{num}} requests lost:\n{{requests}}", {
                         "num": len(self.in_queue.queue),
-                        "requests": self.in_queue.queue[:5:] + self.in_queue.queue[-5::]
+                        "requests": list(self.in_queue.queue)[:5:] + list(self.in_queue.queue)[-5::]
                     })
                 break
             if please_stop.is_go():
                 break
 
-            try:
-                if DEBUG and hasattr(self.function, "func_name"):
-                    Log.note("run {{function}}", {"function": self.function.func_name})
-                result = self.function(**request)
-                if self.out_queue != None:
-                    self.out_queue.add({"response": result})
-            except Exception, e:
-                Log.warning("Can not execute with params={{params}}", {"params": request}, e)
-                if self.out_queue != None:
-                    self.out_queue.add({"exception": e})
-            finally:
-                self.num_runs += 1
+            with Timer("run {{function}}", {"function": get_function_name(self.function)}, debug=DEBUG):
+                try:
+                    result = self.function(**request)
+                    if self.out_queue != None:
+                        self.out_queue.add({"response": result})
+                except Exception, e:
+                    Log.warning("Can not execute with params={{params}}", {"params": request}, e)
+                    if self.out_queue != None:
+                        self.out_queue.add({"exception": e})
+                finally:
+                    self.num_runs += 1
 
+        if DEBUG:
+            Log.note("please_stop has been encountered")
         please_stop.go()
         del self.function
 
         if DEBUG:
             if self.num_runs == 0:
-                if DEBUG:
-                    Log.note("{{name}} thread did no work", {"name": self.name})
+                Log.note("{{name}} thread did no work", {"name": self.name})
             else:
                 Log.note("{{name}} thread did {{num}} units of work", {
                     "name": self.name,
                     "num": self.num_runs
                 })
-                
+
         if got_stop_message and self.in_queue.queue:
             Log.warning("multithread programmer error, queue not empty. {{num}} requests lost", {"num": len(self.in_queue.queue)})
         if DEBUG:
             Log.note("{{thread}} DONE", {"thread": self.name})
 
+def get_function_name(func):
+    if hasattr(func, "__name__"):
+        return func.__name__
+    if hasattr(func, "func_name"):
+        return func.func_name
+    return "function"

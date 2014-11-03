@@ -10,17 +10,16 @@
 from __future__ import unicode_literals
 from __future__ import division
 
-from .. import struct
-from ..collections.matrix import Matrix
-from ..collections import AND, SUM, OR
-from ..structs.wraps import listwrap
-from ..queries.es_query_util import aggregates
-from ..queries import domains, es_query_util
-from ..queries.filters import simplify, TRUE_FILTER
-from ..env.logs import Log
-from ..queries import MVEL, filters
-from ..queries.cube import Cube
-from ..struct import split_field, unwrap, nvl, StructList
+from pyLibrary.collections.matrix import Matrix
+from pyLibrary.collections import AND, SUM, OR
+from pyLibrary.structs.wraps import listwrap
+from pyLibrary.queries.es_query_util import aggregates
+from pyLibrary.queries import domains, es_query_util
+from pyLibrary.queries.filters import simplify, TRUE_FILTER
+from pyLibrary.env.logs import Log
+from pyLibrary.queries import MVEL, filters
+from pyLibrary.queries.cube import Cube
+from pyLibrary.struct import split_field, unwrap, nvl, StructList
 
 
 def is_fieldop(query):

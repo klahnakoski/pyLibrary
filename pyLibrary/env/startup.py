@@ -14,10 +14,10 @@ import argparse
 import os
 import tempfile
 import sys
-from ..structs.wraps import listwrap, wrap, unwrap
-from ..cnv import CNV
-from ..env.logs import Log
-from ..env.files import File
+from pyLibrary.structs.wraps import listwrap, wrap, unwrap
+from pyLibrary import convert
+from pyLibrary.env.logs import Log
+from pyLibrary.env.files import File
 
 
 # PARAMETERS MATCH argparse.ArgumentParser.add_argument()
@@ -33,7 +33,7 @@ from ..env.files import File
 # help - A brief description of what the argument does.
 # metavar - A name for the argument in usage messages.
 # dest - The name of the attribute to be added to the object returned by parse_args().
-from util.struct import Struct
+from ..struct import Struct
 
 
 def _argparse(defs):
@@ -57,7 +57,7 @@ def read_settings(filename=None, defs=None):
                 "filename": settings_file.abspath
             })
         json = settings_file.read()
-        settings = CNV.JSON2object(json, flexible=True)
+        settings = convert.JSON2object(json, flexible=True)
         if defs:
             settings.args = _argparse(defs)
         return settings
@@ -80,7 +80,7 @@ def read_settings(filename=None, defs=None):
             settings = Struct()
         else:
             json = settings_file.read()
-            settings = CNV.JSON2object(json, flexible=True)
+            settings = convert.JSON2object(json, flexible=True)
 
         settings.args = args
         return settings

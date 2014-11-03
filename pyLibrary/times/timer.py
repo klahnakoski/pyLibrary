@@ -13,9 +13,9 @@ from __future__ import division
 from datetime import timedelta
 from time import clock
 
-from ..struct import nvl, Struct
-from ..structs.wraps import wrap
-from ..env.logs import Log
+from pyLibrary.struct import nvl, Struct
+from pyLibrary.structs.wraps import wrap
+from pyLibrary.env.logs import Log
 
 
 class Timer:
@@ -25,6 +25,9 @@ class Timer:
         something_that_takes_long()
     OUTPUT:
         doing hard time took 45.468 sec
+
+    param - USED WHEN LOGGING
+    debug - SET TO False TO DISABLE THIS TIMER
     """
 
     def __init__(self, description, param=None, debug=True):

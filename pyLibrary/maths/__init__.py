@@ -11,9 +11,9 @@ from __future__ import unicode_literals
 from __future__ import division
 import math
 import __builtin__
-from ..struct import Null, nvl
-from ..env.logs import Log
-from ..strings import find_first
+from pyLibrary.struct import Null, nvl
+from pyLibrary.env.logs import Log
+from pyLibrary.strings import find_first
 
 
 class Math(object):
@@ -187,6 +187,28 @@ class Math(object):
     def ceiling(value, mod=1):
         return int(math.ceil(value/mod))*mod
 
+    @staticmethod
+    def count(values):
+        count = 0
+        for v in values:
+            if v != None:
+                count += 1
+        return count
+
+    @staticmethod
+    def pow(n, p):
+        if n == None or p == None:
+            return None
+        return math.pow(n, p)
+
+
+    @staticmethod
+    def sum(values):
+        sum = 0
+        for v in values:
+            if v != None:
+                sum += v
+        return sum
 
     @staticmethod
     def max(*values):

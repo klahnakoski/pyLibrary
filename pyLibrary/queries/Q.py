@@ -13,19 +13,19 @@ from __future__ import division
 import __builtin__
 
 from . import group_by
-from ..collections import UNION, MIN
-from ..queries import flat_list, query
-from ..queries.filters import TRUE_FILTER, FALSE_FILTER
-from ..queries.query import Query, _normalize_selects, sort_direction
-from ..queries.cube import Cube
+from pyLibrary.collections import UNION, MIN
+from pyLibrary.queries import flat_list, query
+from pyLibrary.queries.filters import TRUE_FILTER, FALSE_FILTER
+from pyLibrary.queries.query import Query, _normalize_selects, sort_direction
+from pyLibrary.queries.cube import Cube
 from .index import UniqueIndex, Index
 from .flat_list import FlatList
-from ..maths import Math
-from ..env.logs import Log
-from ..struct import nvl, EmptyList, split_field, join_field, set_default
-from ..structs.wraps import listwrap, wrap, unwrap
-from .. import struct
-from ..struct import Struct, Null, StructList
+from pyLibrary.maths import Math
+from pyLibrary.env.logs import Log
+from pyLibrary.struct import nvl, EmptyList, split_field, join_field, set_default
+from pyLibrary.structs.wraps import listwrap, wrap, unwrap
+from pyLibrary import struct
+from pyLibrary.struct import Struct, Null, StructList
 
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)

@@ -10,9 +10,9 @@
 
 from __future__ import unicode_literals
 from __future__ import division
-from ..queries.unique_index import UniqueIndex
-from ..env.logs import Log
-from ..structs.wraps import wrap, unwrap, tuplewrap
+from pyLibrary.queries.unique_index import UniqueIndex
+from pyLibrary.env.logs import Log
+from pyLibrary.structs.wraps import wrap, unwrap, tuplewrap
 
 class Index(object):
     """

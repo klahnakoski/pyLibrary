@@ -111,6 +111,16 @@ class Date(object):
     def __str__(self):
         return str(self.value)
 
+    def __sub__(self, other):
+        if isinstance(other, datetime):
+            return self.value - other
+        elif isinstance(other, date):
+            return self.value - other
+        elif isinstance(other, Date):
+            return self.value - other.value
+        else:
+            Log.error("can not subtract {{type}} from Date", {"type":other.__class__.__name__})
+
 
 def unicode2datetime(value, format=None):
     """
@@ -145,4 +155,4 @@ def unicode2datetime(value, format=None):
         Log.error("Can not interpret {{value}} as a datetime", {"value": value})
 
 
-from ..env.logs import Log
+from pyLibrary.env.logs import Log

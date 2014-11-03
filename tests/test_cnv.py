@@ -10,25 +10,25 @@
 
 import datetime
 import unittest
-from pyLibrary.cnv import CNV
+from pyLibrary import convert
 from pyLibrary.env.logs import Log
 
 
 class TestCNV(unittest.TestCase):
     def test_datetime(self):
 
-        result = CNV.datetime2milli(datetime.datetime(2012, 07, 24))
+        result = convert.datetime2milli(datetime.datetime(2012, 07, 24))
         expected = 1343088000000
         assert result == expected
 
-        result = CNV.datetime2milli(datetime.date(2012, 07, 24))
+        result = convert.datetime2milli(datetime.date(2012, 07, 24))
         expected = 1343088000000
         assert result == expected
 
-        result = CNV.datetime2milli(datetime.datetime(2014, 01, 07, 10, 21, 00))
+        result = convert.datetime2milli(datetime.datetime(2014, 01, 07, 10, 21, 00))
         expected = 1389090060000
         assert result == expected
 
-        result = unicode(CNV.datetime2milli(datetime.datetime(2014, 01, 07, 10, 21, 00)))
+        result = unicode(convert.datetime2milli(datetime.datetime(2014, 01, 07, 10, 21, 00)))
         expected = u"1389090060000"
         assert result == expected

@@ -10,8 +10,8 @@
 
 from __future__ import unicode_literals
 from __future__ import division
-from ..env.logs import Log
-from ..structs.wraps import wrap, unwrap, tuplewrap
+from pyLibrary.env.logs import Log
+from pyLibrary.structs.wraps import wrap, unwrap, tuplewrap
 
 class UniqueIndex(object):
     """

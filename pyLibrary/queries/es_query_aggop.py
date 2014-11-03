@@ -10,15 +10,15 @@
 from __future__ import unicode_literals
 from __future__ import division
 
-from ..collections.matrix import Matrix
-from ..collections import AND
-from ..structs.wraps import listwrap
-from ..struct import unwrap
-from ..queries import es_query_util
-from ..queries.es_query_util import aggregates, fix_es_stats, buildESQuery
-from ..queries.filters import simplify
-from ..queries import MVEL
-from ..queries.cube import Cube
+from pyLibrary.collections.matrix import Matrix
+from pyLibrary.collections import AND
+from pyLibrary.structs.wraps import listwrap
+from pyLibrary.struct import unwrap
+from pyLibrary.queries import es_query_util
+from pyLibrary.queries.es_query_util import aggregates, fix_es_stats, buildESQuery
+from pyLibrary.queries.filters import simplify
+from pyLibrary.queries import MVEL
+from pyLibrary.queries.cube import Cube
 
 
 def is_aggop(query):
