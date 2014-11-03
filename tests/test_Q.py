@@ -82,6 +82,46 @@ class TestQ(unittest.TestCase):
         ]
         assert CNV.object2JSON(result) == CNV.object2JSON(expected), "expecting complex result"
 
+    def test_property_select(self):
+        data = [
+            {
+                "treeherder": {"job_id": 3},
+                "test_build": {"branch": "mozilla-inbound"}
+            }, {
+                "treeherder": {"job_id": 4},
+                "test_build": {"branch": "mozilla-inbound"}
+            }, {
+                "treeherder": {"job_id": 5},
+                "test_build": {"branch": "b2g-inbound"}
+            }
+        ]
+
+        result = Q.run({
+            "from": data,
+            "select": {"value": "treeherder.job_id", "aggregate": "max"},
+            "edges": [
+                {"value": "test_build.branch"}
+            ]
+        })
+
+        expected = {
+            "edges": [
+                {"domain": {"partitions": [
+                    {"value": "mozilla-inbound"},
+                    {"value": "b2g-inbound"}
+                ]}}
+            ],
+            "cube": [
+                {"treeherder": {"id": 4}},
+                {"treeherder": {"id": 3}}
+            ],
+            "select": {
+                "name": "treeherder.job_id"
+            }
+        }
+
+        assert CNV.object2JSON(result) == CNV.object2JSON(expected), "expecting complex result"
+
 
     def test_renaming(self):
         data = [{

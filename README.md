@@ -107,6 +107,37 @@ using it to hold the specific versions required.
 If you have more than one project on your dev box I suggest you do all your
 work inside a virtual environment.
 
+### PyPy and Virtual Environments
+
+```virtualenv``` can be used with PyPy, but it is a bit more involved.  The
+paths must be explict, and some copying is required.
+
+#### New environment:
+The first call to virtualenv will make the directory, to which you copy the
+PyPy core libraries, and the second call finishes the install.
+
+    c:\PyPy27\bin\virtualenv <name_of_dir>
+    copy c:\PyPy27\bin\lib_pypy <name_of_dir>
+    copy c:\PyPy27\bin\lib_python <name_of_dir>
+    c:\PyPy27\bin\virtualenv <name_of_dir>
+
+#### Activate environment:
+With CPython ```virtualenv``` puts it's executables in ```Scripts```.  The
+PyPy version uses ```bin```
+
+    <name_of_dir>\bin\activate
+
+#### Using PIP in PyPy virtualenv:
+Do **NOT** use the ```<name_of_dir>\Scripts``` directory: It installs to your
+main PyPy installation.  Pip install is done using the ``bin`` directory:
+
+    <name_of_dir>\bin\pip.exe
+
+#### Exit environment:
+Deactivation is like normal
+
+    deactivate
+
 ### Binaries and Virtual Environments
 
 If you plan to use any binary packages, ```virtualenv``` will not work
