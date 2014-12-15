@@ -15,7 +15,7 @@ from time import clock
 
 from pyLibrary.structs import nvl, Struct
 from pyLibrary.structs.wraps import wrap
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 
 
 class Timer:

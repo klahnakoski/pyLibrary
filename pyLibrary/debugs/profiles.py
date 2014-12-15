@@ -14,7 +14,7 @@ from datetime import datetime
 from time import clock
 from pyLibrary.collections import MAX
 from pyLibrary.structs.wraps import wrap
-from pyLibrary.struct import Struct
+from pyLibrary.structs import Struct
 
 ON = False
 profiles = {}

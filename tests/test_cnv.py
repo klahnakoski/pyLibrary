@@ -11,7 +11,7 @@
 import datetime
 import unittest
 from pyLibrary import convert
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 
 
 class TestCNV(unittest.TestCase):

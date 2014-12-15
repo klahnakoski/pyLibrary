@@ -14,7 +14,7 @@ from pyLibrary.queries.domains import Domain, ALGEBRAIC, KNOWN
 from pyLibrary.structs import Null, nvl, join_field, split_field, Struct
 from pyLibrary.structs.lists import StructList
 from pyLibrary.times.timer import Timer
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.structs.wraps import wrap, listwrap
 
 

@@ -11,7 +11,7 @@ from __future__ import unicode_literals
 from __future__ import division
 
 from pyLibrary.collections import PRODUCT
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.testing.fuzzytestcase import assertAlmostEqual
 
 

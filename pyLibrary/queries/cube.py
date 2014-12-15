@@ -9,14 +9,13 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
-from pyLibrary import structs
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.collections import MAX, OR
 from pyLibrary.queries.query import _normalize_edge
 from pyLibrary.structs import Null
 from pyLibrary.structs.lists import StructList
 from pyLibrary.structs.wraps import wrap, wrap_dot, listwrap
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 
 
 class Cube(object):

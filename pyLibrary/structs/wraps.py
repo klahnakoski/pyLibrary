@@ -61,7 +61,7 @@ def _wrap_dot(value):
             value = _wrap_dot(value)
 
             if key == "":
-                from pyLibrary.env.logs import Log
+                from pyLibrary.debugs.logs import Log
 
                 Log.error("key is empty string.  Probably a bad idea")
             if isinstance(key, str):

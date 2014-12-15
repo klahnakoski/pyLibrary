@@ -10,7 +10,7 @@
 
 from __future__ import unicode_literals
 import unittest
-from pyLibrary.env.logs import Log, Except
+from pyLibrary.debugs.logs import Log, Except
 from pyLibrary.structs.wraps import wrap, listwrap
 
 

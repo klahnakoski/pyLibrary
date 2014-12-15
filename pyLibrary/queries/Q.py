@@ -12,7 +12,6 @@ from __future__ import unicode_literals
 from __future__ import division
 import __builtin__
 
-from pyLibrary import structs
 from pyLibrary.collections import UNION, MIN
 from pyLibrary.queries import flat_list, query, group_by
 from pyLibrary.queries.filters import TRUE_FILTER, FALSE_FILTER
@@ -21,7 +20,7 @@ from pyLibrary.queries.index import Index
 from pyLibrary.queries.query import Query, _normalize_selects, sort_direction
 from pyLibrary.queries.cube import Cube
 from pyLibrary.maths import Math
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.queries.unique_index import UniqueIndex
 from pyLibrary.structs import set_default, Null, Struct, split_field, nvl, join_field
 from pyLibrary.structs.lists import StructList

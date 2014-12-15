@@ -39,7 +39,7 @@ class StructList(list):
         if isinstance(index, slice):
             # IMPLEMENT FLAT SLICES (for i not in range(0, len(self)): assert self[i]==None)
             if index.step is not None:
-                from pyLibrary.env.logs import Log
+                from pyLibrary.debugs.logs import Log
                 Log.error("slice step must be None, do not know how to deal with values")
             length = len(_get(self, "list"))
 
@@ -99,7 +99,7 @@ class StructList(list):
         return _get(self, "list").__len__()
 
     def __getslice__(self, i, j):
-        from pyLibrary.env.logs import Log
+        from pyLibrary.debugs.logs import Log
 
         Log.error("slicing is broken in Python 2.7: a[i:j] == a[i+len(a), j] sometimes.  Use [start:stop:step] (see https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/structs/README.md#slicing-is-broken-in-python-27)")
 

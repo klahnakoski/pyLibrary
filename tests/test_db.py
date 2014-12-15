@@ -17,8 +17,8 @@ from pyLibrary import convert
 from pyLibrary.queries.db_query import esfilter2sqlwhere
 from pyLibrary.sql import db
 from pyLibrary.sql.db import DB
-from pyLibrary.env.logs import Log
-from pyLibrary.struct import Null
+from pyLibrary.debugs.logs import Log
+from pyLibrary.structs.nones import Null
 
 __author__ = 'klahnakoski'
 

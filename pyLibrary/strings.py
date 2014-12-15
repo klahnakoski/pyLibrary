@@ -105,7 +105,7 @@ def outdent(value):
                 num = min(num, len(l) - len(l.lstrip()))
         return u"\n".join([l[num:] for l in lines])
     except Exception, e:
-        from pyLibrary.env.logs import Log
+        from pyLibrary.debugs.logs import Log
 
         Log.error("can not outdent value", e)
 
@@ -201,7 +201,7 @@ def _expand(template, seq):
     elif isinstance(template, list):
         return "".join(_expand(t, seq) for t in template)
     else:
-        from pyLibrary.env.logs import Log
+        from pyLibrary.debugs.logs import Log
 
         Log.error("can not handle")
 
@@ -235,7 +235,7 @@ def _simple_expand(template, seq):
                     val = toString(val)
                     return val
             except Exception, f:
-                from pyLibrary.env.logs import Log
+                from pyLibrary.debugs.logs import Log
 
                 Log.warning("Can not expand " + "|".join(ops) + " in template: {{template|json}}", {
                     "template": template
@@ -269,7 +269,7 @@ def toString(val):
     try:
         return unicode(val)
     except Exception, e:
-        from pyLibrary.env.logs import Log
+        from pyLibrary.debugs.logs import Log
 
         Log.error(str(type(val))+" type can not be converted to unicode", e)
 
@@ -328,7 +328,7 @@ def apply_diff(text, diff, reverse=False):
 
     matches = DIFF_PREFIX.match(diff[0].strip())
     if not matches:
-        from pyLibrary.env.logs import Log
+        from pyLibrary.debugs.logs import Log
 
         Log.error("Can not handle {{diff}}\n", {"diff": diff[0]})
 
@@ -368,7 +368,7 @@ def utf82unicode(value):
     try:
         return value.decode("utf8")
     except Exception, e:
-        from pyLibrary.env.logs import Log, Except
+        from pyLibrary.debugs.logs import Log, Except
 
         if not isinstance(value, basestring):
             Log.error("Can not convert {{type}} to unicode because it's not a string", {"type": type(value).__name__})

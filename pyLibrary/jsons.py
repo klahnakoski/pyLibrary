@@ -74,7 +74,7 @@ def encode(value, pretty=False):
         return output
     except Exception, e:
         # THE PRETTY JSON WILL PROVIDE MORE DETAIL ABOUT THE SERIALIZATION CONCERNS
-        from pyLibrary.env.logs import Log
+        from pyLibrary.debugs.logs import Log
         Log.warning("Serialization of JSON problems", e)
         try:
             return pretty_json(value)
@@ -162,11 +162,11 @@ def _value2json(value, _buffer):
         elif hasattr(value, '__iter__'):
             _iter2json(value, _buffer)
         else:
-            from pyLibrary.env.logs import Log
+            from pyLibrary.debugs.logs import Log
 
             Log.error(repr(value) + " is not JSON serializable")
     except Exception, e:
-        from pyLibrary.env.logs import Log
+        from pyLibrary.debugs.logs import Log
 
         Log.error(repr(value) + " is not JSON serializable", e)
 
@@ -262,7 +262,7 @@ def _scrub(value):
         try:
             return json._default_decoder.decode(value.__json__())
         except Exception, e:
-            from pyLibrary.env.logs import Log
+            from pyLibrary.debugs.logs import Log
 
             Log.error("problem with calling __json__()", e)
     elif hasattr(value, '__iter__'):
@@ -291,7 +291,7 @@ def pretty_json(value):
             try:
                 return quote(value)
             except Exception, e:
-                from pyLibrary.env.logs import Log
+                from pyLibrary.debugs.logs import Log
 
                 try:
                     Log.note("try explicit convert of string with length {{length}}", {"length": len(value)})
@@ -326,7 +326,7 @@ def pretty_json(value):
                 values = [quote(k)+": " + indent(pretty_json(v)).strip() for k, v in items if v != None]
                 return "{\n" + INDENT + (",\n"+INDENT).join(values) + "\n}"
             except Exception, e:
-                from pyLibrary.env.logs import Log
+                from pyLibrary.debugs.logs import Log
                 from pyLibrary.collections import OR
 
                 if OR(not isinstance(k, basestring) for k in value.keys()):
@@ -376,7 +376,7 @@ def pretty_json(value):
                         output += ",\n"
                     output += indent(p)
                 except Exception, e:
-                    from pyLibrary.env.logs import Log
+                    from pyLibrary.debugs.logs import Log
 
                     Log.warning("problem concatenating string of length {{len1}} and {{len2}}", {
                         "len1": len(output),
@@ -401,7 +401,7 @@ def problem_serializing(value, e=None):
     """
     THROW ERROR ABOUT SERIALIZING
     """
-    from pyLibrary.env.logs import Log
+    from pyLibrary.debugs.logs import Log
 
     try:
         typename = type(value).__name__

@@ -18,7 +18,7 @@ import requests
 
 from pyLibrary.collections import OR
 from pyLibrary import convert
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.maths.randoms import Random
 from pyLibrary.maths import Math
 from pyLibrary.queries import Q

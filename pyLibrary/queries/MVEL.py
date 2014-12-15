@@ -14,7 +14,7 @@ from datetime import datetime
 import re
 from pyLibrary import convert
 from pyLibrary.collections import reverse
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.maths import Math
 from pyLibrary.queries.filters import TRUE_FILTER
 from pyLibrary.structs import split_field, Struct, Null, join_field, nvl

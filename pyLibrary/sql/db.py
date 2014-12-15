@@ -21,7 +21,7 @@ from pyLibrary.strings import expand_template, utf82unicode
 from pyLibrary.structs import nvl
 from pyLibrary.structs.wraps import wrap, listwrap, unwrap
 from pyLibrary import convert
-from pyLibrary.env.logs import Log, Except
+from pyLibrary.debugs.logs import Log, Except
 from pyLibrary.queries import Q
 from pyLibrary.strings import indent
 from pyLibrary.strings import outdent
@@ -257,7 +257,7 @@ class DB(object):
         except Exception, e:
             if isinstance(e, InterfaceError) or e.message.find("InterfaceError") >= 0:
                 Log.error("Did you close the db connection?", e)
-            Log.error("Problem executing SQL:\n" + indent(sql.strip()), e, stack_depth=1)
+            Log.error("Problem executing SQL:\n{{sql|indent}}", {"sql": sql}, e, stack_depth=1)
 
     def column_query(self, sql, param=None):
         """
@@ -291,7 +291,7 @@ class DB(object):
         except Exception, e:
             if isinstance(e, InterfaceError) or e.message.find("InterfaceError") >= 0:
                 Log.error("Did you close the db connection?", e)
-            Log.error("Problem executing SQL:\n" + indent(sql.strip()), e, stack_depth=1)
+            Log.error("Problem executing SQL:\n{{sql|indent}}", {"sql": sql}, e, stack_depth=1)
 
 
 
@@ -324,7 +324,7 @@ class DB(object):
                 self.cursor = None
 
         except Exception, e:
-            Log.error("Problem executing SQL:\n" + indent(sql.strip()), e, stack_depth=1)
+            Log.error("Problem executing SQL:\n{{sql|indent}}", {"sql": sql}, e, stack_depth=1)
 
         return num
 
@@ -430,7 +430,7 @@ class DB(object):
                     self.cursor.close()
                     self.cursor = self.db.cursor()
                 except Exception, e:
-                    Log.error("Problem executing SQL:\n{{sql}}", {"sql": indent(sql.strip())}, e, stack_depth=1)
+                    Log.error("Problem executing SQL:\n{{sql|indent}}", {"sql": sql}, e, stack_depth=1)
 
 
     ## Insert dictionary of values into table

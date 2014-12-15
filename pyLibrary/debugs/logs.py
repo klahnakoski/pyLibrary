@@ -19,7 +19,7 @@ from types import ModuleType
 
 from pyLibrary.jsons import json_encoder
 from pyLibrary.thread import threads
-from pyLibrary.struct import nvl, Struct, split_field, join_field
+from pyLibrary.structs import nvl, Struct, split_field, join_field
 from pyLibrary.structs.wraps import listwrap, wrap, wrap_dot
 from pyLibrary.strings import indent, expand_template
 from pyLibrary.thread.threads import Thread
@@ -275,7 +275,7 @@ class Log(object):
             cls.cprofiler.enable()
 
         if settings.profile:
-            from pyLibrary.env import profiles
+            from pyLibrary.debugs import profiles
 
             if isinstance(settings.profile, bool):
                 settings.profile = {"enabled": True, "filename": "profile.tab"}
@@ -329,7 +329,7 @@ class Log(object):
 
     @classmethod
     def stop(cls):
-        from pyLibrary.env import profiles
+        from pyLibrary.debugs import profiles
 
         if cls.cprofiler and hasattr(cls, "settings"):
             write_profile(cls.settings.cprofile, cls.cprofiler)

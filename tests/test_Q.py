@@ -8,11 +8,10 @@
 #
 from __future__ import unicode_literals
 import unittest
-from pyLibrary import struct
 from pyLibrary import convert
 from pyLibrary.queries import Q
-from pyLibrary.struct import Struct
-from pyLibrary.structs.wraps import wrap
+from pyLibrary.structs.dicts import Struct
+from pyLibrary.structs.wraps import wrap, unwrap
 
 
 class TestQ(unittest.TestCase):
@@ -153,7 +152,7 @@ class TestQ(unittest.TestCase):
         value = wrap({})
         value["é"] = "test"
 
-        dict_value = struct.unwrap(value)
+        dict_value = unwrap(value)
         assert dict_value[u"é"] == "test", "not expecting problems"
         assert dict_value["é"] == "test", "not expecting problems"
 

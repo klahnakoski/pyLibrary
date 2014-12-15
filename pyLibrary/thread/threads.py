@@ -35,7 +35,7 @@ class Lock(object):
         self.monitor = threading.Condition()
         # if not name:
         #     if "extract_stack" not in globals():
-        #         from pyLibrary.env.logs import extract_stack
+        #         from pyLibrary.debugs.logs import extract_stack
         #
         #     self.name = extract_stack(1)[0].method
 
@@ -85,7 +85,7 @@ class Queue(object):
                 if value is not Thread.STOP:
                     yield value
             except Exception, e:
-                from pyLibrary.env.logs import Log
+                from pyLibrary.debugs.logs import Log
 
                 Log.warning("Tell me about what happened here", e)
 
@@ -123,7 +123,7 @@ class Queue(object):
                     now = datetime.utcnow()
                     if self.next_warning < now:
                         self.next_warning = now + timedelta(seconds=wait_time)
-                        from pyLibrary.env.logs import Log
+                        from pyLibrary.debugs.logs import Log
 
                         Log.warning("Queue is full ({{num}}} items), thread(s) have been waiting {{wait_time}} sec", {
                             "num": len(self.queue),
@@ -194,12 +194,12 @@ class AllThread(object):
                 if "exception" in response:
                     exceptions.append(response["exception"])
         except Exception, e:
-            from pyLibrary.env.logs import Log
+            from pyLibrary.debugs.logs import Log
 
             Log.warning("Problem joining", e)
 
         if exceptions:
-            from pyLibrary.env.logs import Log
+            from pyLibrary.debugs.logs import Log
 
             Log.error("Problem in child threads", exceptions)
 
@@ -262,7 +262,7 @@ class Thread(object):
         try:
             thread.start_new_thread(Thread._run, (self, ))
         except Exception, e:
-            from pyLibrary.env.logs import Log
+            from pyLibrary.debugs.logs import Log
 
             Log.error("Can not start thread", e)
 
@@ -283,7 +283,7 @@ class Thread(object):
             with self.synch_lock:
                 self.response = Struct(exception=e)
             try:
-                from pyLibrary.env.logs import Log
+                from pyLibrary.debugs.logs import Log
 
                 Log.fatal("Problem in thread {{name}}", {"name": self.name}, e)
             except Exception, f:
@@ -313,7 +313,7 @@ class Thread(object):
                         self.synch_lock.wait(0.5)
 
                 if DEBUG:
-                    from pyLibrary.env.logs import Log
+                    from pyLibrary.debugs.logs import Log
 
                     Log.note("Waiting on thread {{thread|json}}", {"thread": self.name})
         else:
@@ -321,7 +321,7 @@ class Thread(object):
             if self.stopped:
                 return self.response
             else:
-                from pyLibrary.env.logs import Except
+                from pyLibrary.debugs.logs import Except
 
                 raise Except(type=Thread.TIMEOUT)
 
@@ -329,7 +329,7 @@ class Thread(object):
     def run(name, target, *args, **kwargs):
         # ENSURE target HAS please_stop ARGUMENT
         if "please_stop" not in target.__code__.co_varnames:
-            from pyLibrary.env.logs import Log
+            from pyLibrary.debugs.logs import Log
 
             Log.error("function must have please_stop argument for signalling emergency shutdown")
 
@@ -454,14 +454,14 @@ class ThreadedQueue(Queue):
                 try:
                     queue.extend(g)
                     if please_stop:
-                        from pyLibrary.env.logs import Log
+                        from pyLibrary.debugs.logs import Log
 
                         Log.warning("ThreadedQueue stopped early, with {{num}} items left in queue", {
                             "num": len(self)
                         })
                         return
                 except Exception, e:
-                    from pyLibrary.env.logs import Log
+                    from pyLibrary.debugs.logs import Log
 
                     Log.warning("Problem with pushing {{num}} items to data sink", {"num": len(g)}, e)
 

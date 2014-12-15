@@ -11,7 +11,7 @@ from __future__ import unicode_literals
 from __future__ import division
 import re
 from pyLibrary import convert
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.queries.unique_index import UniqueIndex
 from pyLibrary.structs import nvl, Struct
 from pyLibrary.structs.lists import StructList

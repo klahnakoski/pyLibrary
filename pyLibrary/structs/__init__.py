@@ -48,7 +48,7 @@ def literal_field(field):
     try:
         return field.replace(".", "\.")
     except Exception, e:
-        from pyLibrary.env.logs import Log
+        from pyLibrary.debugs.logs import Log
 
         Log.error("bad literal", e)
 

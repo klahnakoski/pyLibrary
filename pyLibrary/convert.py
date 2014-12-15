@@ -22,8 +22,8 @@ from pyLibrary import jsons
 from pyLibrary.times.dates import Date
 from pyLibrary.jsons import json_encoder
 from pyLibrary.collections.multiset import Multiset
-from pyLibrary.env.profiles import Profiler
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.profiles import Profiler
+from pyLibrary.debugs.logs import Log
 from pyLibrary.strings import expand_template
 from pyLibrary.structs.wraps import wrap, wrap_dot, unwrap
 

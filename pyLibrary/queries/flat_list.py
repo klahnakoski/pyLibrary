@@ -13,7 +13,7 @@ from __future__ import division
 
 import functools
 from pyLibrary.collections import MIN
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.structs import split_field, nvl, Struct
 from pyLibrary.structs.lists import StructList
 from pyLibrary.structs.wraps import wrap

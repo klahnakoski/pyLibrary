@@ -17,7 +17,7 @@ from pyLibrary.queries.index import value2key
 from pyLibrary.structs.dicts import Struct
 from pyLibrary.structs.lists import StructList
 from pyLibrary.structs.wraps import listwrap, wrap
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.collections.multiset import Multiset
 
 

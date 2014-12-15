@@ -13,7 +13,7 @@ from __future__ import division
 import functools
 from pyLibrary.maths import stats
 from pyLibrary.collections import MIN, MAX
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.maths import Math
 from pyLibrary.collections.multiset import Multiset
 from pyLibrary.maths.stats import ZeroMoment, ZeroMoment2Stats

@@ -17,7 +17,7 @@ from math import sqrt
 from pyLibrary import convert
 from pyLibrary.collections import OR
 from __init__ import almost_equal
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.structs import nvl, Struct, Null
 from pyLibrary.vendor import strangman
 

@@ -17,7 +17,7 @@ from pyLibrary import strings
 from pyLibrary.collections import COUNT
 from pyLibrary.maths import stats
 from pyLibrary.env.elasticsearch import Index
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.maths import Math
 from pyLibrary.queries import domains, MVEL, filters
 from pyLibrary.structs.dicts import Struct

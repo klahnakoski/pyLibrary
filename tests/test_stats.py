@@ -9,7 +9,7 @@
 #
 from pyLibrary.maths import stats
 
-from pyLibrary.maths.stats import Z_moment, z_moment2stats
+from pyLibrary.maths.stats import ZeroMoment, ZeroMoment2Stats
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
@@ -20,13 +20,12 @@ class TestCNV(FuzzyTestCase):
         stats.DEBUG_STRANGMAN = True
 
     def test_convert01(self):
-        z_m = Z_moment(5, 3389.3216783216785, 2297521.2992811385, 1557436224.6382546, 1055759415011.5643)
-        stats = z_moment2stats(z_m)
+        z_m = ZeroMoment(5, 3389.3216783216785, 2297521.2992811385, 1557436224.6382546, 1055759415011.5643)
+        stats = ZeroMoment2Stats(z_m)
         self.assertAlmostEqual(stats, {
             "count": 5,
             "kurtosis": -1.6291215900707667,
             "mean": 677.8643356643357,
             "skew": -0.24151691954619345,
-            "unbiased": True,
             "variance": 4.202290576475207
-        })
+        }, places=12)

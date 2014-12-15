@@ -16,7 +16,7 @@ import tempfile
 import sys
 from pyLibrary.structs.wraps import listwrap, wrap, unwrap
 from pyLibrary import convert
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.env.files import File
 
 
@@ -33,7 +33,7 @@ from pyLibrary.env.files import File
 # help - A brief description of what the argument does.
 # metavar - A name for the argument in usage messages.
 # dest - The name of the attribute to be added to the object returned by parse_args().
-from ..struct import Struct
+from pyLibrary.structs.dicts import Struct
 
 
 def _argparse(defs):

@@ -16,7 +16,7 @@ from pyLibrary import regex
 from pyLibrary.vendor.dateutil.relativedelta import relativedelta
 from pyLibrary import convert
 from pyLibrary.collections import MIN
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.maths import Math
 from pyLibrary.structs.wraps import wrap
 

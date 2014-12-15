@@ -14,7 +14,7 @@ from pyLibrary import convert
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.queries.query import Query
 from pyLibrary.sql.db import int_list_packer, SQL, DB
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.strings import indent, expand_template
 from pyLibrary.structs import nvl
 from pyLibrary.structs.lists import StructList

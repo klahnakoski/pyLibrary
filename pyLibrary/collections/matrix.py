@@ -13,7 +13,7 @@ from __future__ import division
 
 from pyLibrary.collections import PRODUCT, reverse, MAX, MIN, OR
 from pyLibrary import convert
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.structs import Null, Struct, nvl
 from pyLibrary.structs.wraps import wrap
 

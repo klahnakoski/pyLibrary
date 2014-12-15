@@ -25,7 +25,7 @@ def simplify(esfilter):
         output.isNormal = None
         return output
     except Exception, e:
-        from pyLibrary.env.logs import Log
+        from pyLibrary.debugs.logs import Log
 
         raise Log.unexpected("programmer error")
 
@@ -69,7 +69,7 @@ def _normalize(esfilter):
             output = []
             for a in esfilter["and"]:
                 if isinstance(a, (list, set)):
-                    from pyLibrary.env.logs import Log
+                    from pyLibrary.debugs.logs import Log
                     Log.error("and clause is not allowed a list inside a list")
                 a_ = normalize(a)
                 if a_ is not a:

@@ -1,7 +1,7 @@
 import sys
 import unittest
 import pyLibrary
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.thread.multithread import Multithread
 
 

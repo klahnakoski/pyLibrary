@@ -12,7 +12,7 @@ from __future__ import division
 import math
 import __builtin__
 
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.strings import find_first
 from pyLibrary.structs import Null, nvl
 

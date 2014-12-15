@@ -2,7 +2,7 @@ from math import log, floor
 import gc
 
 from pyLibrary.env import profiles
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.maths.randoms import Random
 from pyLibrary.struct import Struct, StructList
 from pyLibrary.structs.slow_wrap import slow_wrap

@@ -19,7 +19,7 @@ from pyLibrary.queries.es_query_terms_stats import es_terms_stats, is_terms_stat
 from pyLibrary.queries.es_query_util import aggregates, loadColumns
 from pyLibrary.queries.dimensions import Dimension
 from pyLibrary.queries.query import Query, _normalize_where
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.queries.MVEL import _MVEL
 from pyLibrary.structs.dicts import Struct
 from pyLibrary.structs import nvl, split_field

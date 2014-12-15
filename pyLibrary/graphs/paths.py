@@ -10,7 +10,7 @@
 from __future__ import unicode_literals
 from __future__ import division
 from collections import namedtuple, deque
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 
 
 Step = namedtuple("Step", ["parent", "node"])

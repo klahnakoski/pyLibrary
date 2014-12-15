@@ -9,7 +9,7 @@
 #
 
 import unittest
-from pyLibrary.struct import StructList
+from pyLibrary.structs.lists import StructList
 
 
 class NaiveList(list):

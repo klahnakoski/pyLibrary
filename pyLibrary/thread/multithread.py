@@ -14,7 +14,7 @@ from __future__ import division
 from collections import Iterable
 from types import GeneratorType
 from pyLibrary.structs import nvl
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.thread.threads import Queue, Thread
 from pyLibrary.collections import OR
 from pyLibrary.times.timer import Timer

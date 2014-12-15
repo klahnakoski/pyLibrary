@@ -14,7 +14,7 @@ import time
 import json
 from pyLibrary import jsons
 from pyLibrary.jsons import cPythonJSONEncoder, json_encoder, json_scrub
-from pyLibrary.env.logs import Log
+from pyLibrary.debugs.logs import Log
 from pyLibrary.struct import Null
 from pyLibrary.structs.wraps import wrap
 
