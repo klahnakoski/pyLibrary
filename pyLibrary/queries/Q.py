@@ -12,20 +12,20 @@ from __future__ import unicode_literals
 from __future__ import division
 import __builtin__
 
-from . import group_by
+from pyLibrary import structs
 from pyLibrary.collections import UNION, MIN
-from pyLibrary.queries import flat_list, query
+from pyLibrary.queries import flat_list, query, group_by
 from pyLibrary.queries.filters import TRUE_FILTER, FALSE_FILTER
+from pyLibrary.queries.flat_list import FlatList
+from pyLibrary.queries.index import Index
 from pyLibrary.queries.query import Query, _normalize_selects, sort_direction
 from pyLibrary.queries.cube import Cube
-from .index import UniqueIndex, Index
-from .flat_list import FlatList
 from pyLibrary.maths import Math
 from pyLibrary.env.logs import Log
-from pyLibrary.struct import nvl, EmptyList, split_field, join_field, set_default
+from pyLibrary.queries.unique_index import UniqueIndex
+from pyLibrary.structs import set_default, Null, Struct, split_field, nvl, join_field
+from pyLibrary.structs.lists import StructList
 from pyLibrary.structs.wraps import listwrap, wrap, unwrap
-from pyLibrary import struct
-from pyLibrary.struct import Struct, Null, StructList
 
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)
@@ -64,11 +64,11 @@ def run(query):
     if query.where is not TRUE_FILTER:
         frum = filter(frum, query.where)
 
-    if query.select:
-        frum = select(frum, query.select)
-
     if query.sort:
         frum = sort(frum, query.sort)
+
+    if query.select:
+        frum = select(frum, query.select)
 
     return frum
 
@@ -84,7 +84,7 @@ def index(data, keys=None):
         if data.edges[0].name==keys[0]:
             #QUICK PATH
             names = list(data.data.keys())
-            for d in (set_default(struct.zip(names, r), {keys[0]: p}) for r, p in zip(zip(*data.data.values()), data.edges[0].domain.partitions.value)):
+            for d in (set_default(structs.zip(names, r), {keys[0]: p}) for r, p in zip(zip(*data.data.values()), data.edges[0].domain.partitions.value)):
                 o.add(d)
             return o
         else:
@@ -398,7 +398,7 @@ def sort(data, fieldnames=None):
     """
     try:
         if data == None:
-            return EmptyList
+            return StructList.EMPTY
 
         if fieldnames == None:
             return wrap(sorted(data))
@@ -479,7 +479,7 @@ def drill_filter(esfilter, data):
     """
     PARTIAL EVALUATE THE FILTER BASED ON DATA GIVEN
     """
-    esfilter = struct.unwrap(esfilter)
+    esfilter = unwrap(esfilter)
     primary_nested = []  # track if nested, changes if not
     primary_column = []  # only one path allowed
     primary_branch = []  # CONTAINS LISTS OF RECORDS TO ITERATE: constantly changing as we dfs the tree
@@ -859,7 +859,12 @@ def intervals(_min, _max=None, size=1):
 
 
 def reverse(vals):
-    """
-    ONLY BECAUSE I AM A NUMBSKULL: I CAN NEVER REMEMBER THIS FUNCTION
-    """
-    return reversed(vals)
+    # TODO: Test how to do this fastest
+    l = len(vals)
+    output = [None] * l
+
+    for v in unwrap(vals):
+        l -= 1
+        output[l] = v
+
+    return wrap(output)

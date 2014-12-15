@@ -16,9 +16,9 @@ from math import sqrt
 
 from pyLibrary import convert
 from pyLibrary.collections import OR
-from __init__ import Math, almost_equal
+from __init__ import almost_equal
 from pyLibrary.env.logs import Log
-from pyLibrary.struct import nvl, Struct, Null
+from pyLibrary.structs import nvl, Struct, Null
 from pyLibrary.vendor import strangman
 
 
@@ -77,20 +77,20 @@ def Stats2ZeroMoment(stats):
 
         globals()["DEBUG"] = False
         try:
-            v = ZeroMoment2Stats(m, unbiased=False)
-            assertAlmostEqualValue(v.count, stats.count)
-            assertAlmostEqualValue(v.mean, stats.mean)
-            assertAlmostEqualValue(v.variance, stats.variance)
-            assertAlmostEqualValue(v.skew, stats.skew)
-            assertAlmostEqualValue(v.kurtosis, stats.vkurtosis)
+            v = ZeroMoment2Stats(m)
+            assertAlmostEqualValue(v.count, stats.count, places=10)
+            assertAlmostEqualValue(v.mean, stats.mean, places=10)
+            assertAlmostEqualValue(v.variance, stats.variance, places=10)
+            assertAlmostEqualValue(v.skew, stats.skew, places=10)
+            assertAlmostEqualValue(v.kurtosis, stats.kurtosis, places=10)
         except Exception, e:
-            v = ZeroMoment2Stats(m, unbiased=False)
+            v = ZeroMoment2Stats(m)
             Log.error("programmer error")
         globals()["DEBUG"] = True
     return m
 
 
-def ZeroMoment2Stats(z_moment, unbiased=True):
+def ZeroMoment2Stats(z_moment):
     Z = z_moment.S
     N = Z[0]
     if N == 0:
@@ -122,8 +122,7 @@ def ZeroMoment2Stats(z_moment, unbiased=True):
         mean=mean,
         variance=variance,
         skew=skew,
-        kurtosis=kurtosis,
-        unbiased=unbiased
+        kurtosis=kurtosis
     )
 
     if DEBUG:
@@ -201,12 +200,6 @@ class Stats(Struct):
             self.variance = kwargs["variance"] if "variance" in kwargs else kwargs["std"] ** 2
             self.skew = kwargs["skew"]
             self.kurtosis = kwargs["kurtosis"]
-
-        self.unbiased = \
-            kwargs["unbiased"] if "unbiased" in kwargs else \
-                not kwargs["biased"] if "biased" in kwargs else \
-                    False
-
 
     @property
     def std(self):

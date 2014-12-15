@@ -11,7 +11,6 @@
 from __future__ import unicode_literals
 from __future__ import division
 import functools
-from pyLibrary.struct import StructList
 from pyLibrary.maths import stats
 from pyLibrary.collections import MIN, MAX
 from pyLibrary.env.logs import Log
@@ -21,6 +20,8 @@ from pyLibrary.maths.stats import ZeroMoment, ZeroMoment2Stats
 
 
 # A VARIETY OF SLIDING WINDOW FUNCTIONS
+from pyLibrary.structs.lists import StructList
+
 
 class AggregationFunction(object):
     def __init__(self):

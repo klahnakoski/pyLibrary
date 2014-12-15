@@ -16,8 +16,7 @@ from __future__ import division
 
 from datetime import datetime, date, timedelta
 import math
-from dateutil.parser import parse as parse_date
-import pytz
+from pyLibrary.vendor.dateutil.parser import parse as parse_date
 from pyLibrary.strings import deformat
 
 

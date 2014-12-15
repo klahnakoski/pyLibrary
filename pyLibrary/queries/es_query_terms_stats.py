@@ -19,7 +19,8 @@ from pyLibrary.queries.filters import simplify
 from pyLibrary.env.logs import Log
 from pyLibrary.queries import domains, MVEL, filters
 from pyLibrary.queries.MVEL import UID
-from pyLibrary.struct import nvl, StructList
+from pyLibrary.structs import literal_field, nvl
+from pyLibrary.structs.lists import StructList
 from pyLibrary.structs.wraps import wrap, listwrap
 
 

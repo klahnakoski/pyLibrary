@@ -18,22 +18,19 @@ import json
 import re
 import time
 
-from . import struct
-from . import jsons
-from .times.dates import Date
-from .jsons import json_encoder
-from .collections.multiset import Multiset
-from .env.profiles import Profiler
-from .env.logs import Log
-from .strings import expand_template
-from .structs.wraps import wrap, wrap_dot
+from pyLibrary import jsons
+from pyLibrary.times.dates import Date
+from pyLibrary.jsons import json_encoder
+from pyLibrary.collections.multiset import Multiset
+from pyLibrary.env.profiles import Profiler
+from pyLibrary.env.logs import Log
+from pyLibrary.strings import expand_template
+from pyLibrary.structs.wraps import wrap, wrap_dot, unwrap
 
 
 """
 DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
 """
-
-
 def object2JSON(obj, pretty=False):
     try:
         json = json_encoder(obj, pretty=pretty)
@@ -59,6 +56,10 @@ def JSON2object(json_string, params=None, flexible=False, paths=False):
                 json_string = expand_template(json_string, params)
             if isinstance(json_string, str):
                 Log.error("only unicode json accepted")
+
+            # LOOKUP REFERENCES
+
+
 
             value = wrap(json_decoder(json_string))
 
@@ -136,7 +137,7 @@ def dict2Multiset(dic):
         return None
 
     output = Multiset()
-    output.dic = struct.unwrap(dic).copy()
+    output.dic = unwrap(dic).copy()
     return output
 
 

@@ -11,11 +11,11 @@ from __future__ import unicode_literals
 from __future__ import division
 import re
 from pyLibrary import convert
-from pyLibrary.collections import UNION
 from pyLibrary.env.logs import Log
-from pyLibrary.struct import Struct, nvl, StructList
+from pyLibrary.queries.unique_index import UniqueIndex
+from pyLibrary.structs import nvl, Struct
+from pyLibrary.structs.lists import StructList
 from pyLibrary.structs.wraps import wrap, unwrap
-from .index import UniqueIndex
 
 ALGEBRAIC = {"time", "duration", "numeric", "count", "datetime"}  # DOMAINS THAT HAVE ALGEBRAIC OPERATIONS DEFINED
 KNOWN = {"set", "boolean", "duration", "time", "numeric"}    # DOMAINS THAT HAVE A KNOWN NUMBER FOR PARTS AT QUERY TIME

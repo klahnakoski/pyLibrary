@@ -14,7 +14,7 @@ from __future__ import division
 from pyLibrary import convert
 from pyLibrary.env.logs import Log
 from pyLibrary.queries import Q
-from pyLibrary.struct import Struct
+from pyLibrary.structs.dicts import Struct
 from pyLibrary.maths.randoms import Random
 from pyLibrary.vendor.aespython import key_expander, aes_cipher, cbc_mode
 

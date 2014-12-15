@@ -10,15 +10,15 @@
 from __future__ import unicode_literals
 from __future__ import division
 
-from pyLibrary import struct
 from pyLibrary import convert
 from pyLibrary.collections.matrix import Matrix
-from .query import Query
+from pyLibrary.queries.query import Query
 from pyLibrary.sql.db import int_list_packer, SQL, DB
 from pyLibrary.env.logs import Log
 from pyLibrary.strings import indent, expand_template
-from pyLibrary.struct import nvl, StructList
-from pyLibrary.structs.wraps import wrap, listwrap
+from pyLibrary.structs import nvl
+from pyLibrary.structs.lists import StructList
+from pyLibrary.structs.wraps import wrap, listwrap, unwrap
 
 
 class DBQuery(object):
@@ -129,7 +129,7 @@ class DBQuery(object):
                     Log.error("Do not know what to do here, yet")
 
             # FILL THE DATA CUBE
-            maps = [(struct.unwrap(e.domain.map), result[i]) for i, e in enumerate(edges)]
+            maps = [(unwrap(e.domain.map), result[i]) for i, e in enumerate(edges)]
             cubes = StructList()
             for c, s in enumerate(select):
                 data = Matrix(*[len(e.domain.partitions) + (1 if e.allow_nulls else 0) for e in edges])

@@ -11,9 +11,8 @@ from __future__ import unicode_literals
 from __future__ import division
 from collections import deque
 from pyLibrary.collections import INTERSECT
-from pyLibrary.env.logs import Log
 from pyLibrary.graphs.paths import Step, Path
-from pyLibrary.struct import Struct
+from pyLibrary.structs.dicts import Struct
 
 
 def dfs(graph, func, head, reverse=None):

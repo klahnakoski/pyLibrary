@@ -16,12 +16,13 @@ import thread
 import threading
 import time
 import sys
-from pyLibrary.struct import nvl, Struct
 import gc
 
 # THIS THREADING MODULE IS PERMEATED BY THE please_stop SIGNAL.
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
+from pyLibrary.structs import nvl, Struct
+
 
 DEBUG = True
 
@@ -32,9 +33,15 @@ class Lock(object):
 
     def __init__(self, name=""):
         self.monitor = threading.Condition()
-        self.name = name
+        # if not name:
+        #     if "extract_stack" not in globals():
+        #         from pyLibrary.env.logs import extract_stack
+        #
+        #     self.name = extract_stack(1)[0].method
+
 
     def __enter__(self):
+        # with pyLibrary.times.timer.Timer("get lock"):
         self.monitor.acquire()
         return self
 
@@ -205,7 +212,7 @@ class AllThread(object):
         self.threads.append(t)
 
 
-ALL_LOCK = Lock()
+ALL_LOCK = Lock("threads ALL_LOCK")
 MAIN_THREAD = Struct(name="Main Thread", id=thread.get_ident())
 ALL = dict()
 ALL[thread.get_ident()] = MAIN_THREAD
@@ -227,7 +234,7 @@ class Thread(object):
         self.name = name
         self.target = target
         self.response = None
-        self.synch_lock = Lock()
+        self.synch_lock = Lock("response synch lock")
         self.args = args
 
         # ENSURE THERE IS A SHARED please_stop SIGNAL
@@ -469,3 +476,4 @@ class ThreadedQueue(Queue):
         if isinstance(b, BaseException):
             self.thread.please_stop.go()
         self.thread.join()
+

@@ -1,1 +1,1 @@
-from .maths import stats
+from pyLibrary.maths import stats

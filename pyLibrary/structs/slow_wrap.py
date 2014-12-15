@@ -10,7 +10,8 @@
 from __future__ import unicode_literals
 from __future__ import division
 from types import GeneratorType
-from pyLibrary.struct import StructList, Struct
+from pyLibrary.structs.dicts import Struct
+from pyLibrary.structs.lists import StructList
 
 
 _get = object.__getattribute__

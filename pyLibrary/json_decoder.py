@@ -10,10 +10,10 @@
 from __future__ import unicode_literals
 from __future__ import division
 
-import json
-from .jsons import json_encoder, use_pypy, UnicodeBuilder
-from .struct import StructList, Null, EmptyList
-from .structs.wraps import wrap, wrap_dot
+from pyLibrary.jsons import json_encoder, use_pypy, UnicodeBuilder
+from pyLibrary.structs import Null
+from pyLibrary.structs.lists import StructList
+from pyLibrary.structs.wraps import wrap, unwrap
 
 DEBUG = False
 
@@ -275,7 +275,7 @@ def parse_const(i, json):
                 mode = float
             j += 1
     except Exception, e:
-        from .env.logs import Log
+        from pyLibrary.env.logs import Log
 
         Log.error("Can not parse const", e)
 
@@ -295,7 +295,7 @@ class JSONList(object):
         if isinstance(index, slice):
             # IMPLEMENT FLAT SLICES (for i not in range(0, len(self)): assert self[i]==None)
             if index.step is not None:
-                from .env.logs import Log
+                from pyLibrary.env.logs import Log
 
                 Log.error("slice step must be None, do not know how to deal with values")
             length = len(self.list)
@@ -340,7 +340,7 @@ class JSONList(object):
         return self.list.__len__()
 
     def __getslice__(self, i, j):
-        from .env.logs import Log
+        from pyLibrary.env.logs import Log
 
         Log.error("slicing is broken in Python 2.7: a[i:j] == a[i+len(a), j] sometimes.  Use [start:stop:step]")
 
@@ -393,7 +393,7 @@ class JSONList(object):
         if num == None:
             return StructList([self.list[-1]])
         if num <= 0:
-            return EmptyList
+            return Null
         return StructList(self.list[-num])
 
     def leftBut(self, num):
@@ -404,7 +404,7 @@ class JSONList(object):
         if num == None:
             return StructList([self.list[:-1:]])
         if num <= 0:
-            return EmptyList
+            return Null
         return StructList(self.list[:-num:])
 
     def last(self):

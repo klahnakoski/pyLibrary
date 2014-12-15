@@ -11,20 +11,20 @@ from __future__ import unicode_literals
 from __future__ import division
 
 from pyLibrary import convert
-from pyLibrary.queries import MVEL
+from pyLibrary.queries import MVEL, Q
 from pyLibrary.queries.es_query_aggop import is_aggop, es_aggop
 from pyLibrary.queries.es_query_setop import is_fieldop, is_setop, is_deep, es_setop, es_deepop, es_fieldop
 from pyLibrary.queries.es_query_terms import es_terms, is_terms
 from pyLibrary.queries.es_query_terms_stats import es_terms_stats, is_terms_stats
 from pyLibrary.queries.es_query_util import aggregates, loadColumns
-from . import Q
 from pyLibrary.queries.dimensions import Dimension
 from pyLibrary.queries.query import Query, _normalize_where
 from pyLibrary.env.logs import Log
 from pyLibrary.queries.MVEL import _MVEL
-from pyLibrary.struct import Struct, split_field, StructList, nvl
-from pyLibrary.structs.wraps import wrap, unwrap, listwrap
-
+from pyLibrary.structs.dicts import Struct
+from pyLibrary.structs import nvl, split_field
+from pyLibrary.structs.lists import StructList
+from pyLibrary.structs.wraps import wrap, listwrap
 
 class ESQuery(object):
     """

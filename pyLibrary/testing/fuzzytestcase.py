@@ -7,71 +7,116 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from math import log10
 
 import unittest
-from pyLibrary.struct import nvl
+from pyLibrary.structs import nvl
 from pyLibrary.maths import Math
 from pyLibrary.structs.wraps import wrap
 from pyLibrary.strings import expand_template
 
 
 class FuzzyTestCase(unittest.TestCase):
-    def assertAlmostEqual(self, first, second, places=None, msg=None, delta=None):
-        assertAlmostEqual(first, second, places=places, msg=msg, delta=delta)
 
-    def assertEqual(self, first, second, msg=None):
-        self.assertAlmostEqual(first, second, msg=msg)
+    def __init__(self, *args, **kwargs):
+        unittest.TestCase.__init__(self, *args, **kwargs)
+        self.default_places=15
 
 
-def assertAlmostEqual(first, second, places=None, msg=None, delta=None):
-    if isinstance(second, dict):
-        first = wrap({"value": first})
-        second = wrap(second)
-        for k, v2 in second.items():
-            v1 = first["value." + unicode(k)]
-            assertAlmostEqual(v1, v2)
-    elif hasattr(first, "__iter__") and hasattr(second, "__iter__"):
-        for a, b in zip(first, second):
-            assertAlmostEqual(a, b, places=places, msg=msg, delta=delta)
+    def set_default_places(self, places):
+        """
+        WHEN COMPARING float, HOW MANY DIGITS ARE SIGNIFICANT BY DEFAULT
+        """
+        self.default_places=places
+
+    def assertAlmostEqual(self, first, second, msg=None, digits=None, places=None, delta=None):
+        if delta or digits:
+            assertAlmostEqual(first, second, msg=msg, digits=digits, places=places, delta=delta)
+        else:
+            assertAlmostEqual(first, second, msg=msg, digits=digits, places=nvl(places, self.default_places), delta=delta)
+
+    def assertEqual(self, first, second, msg=None, digits=None, places=None, delta=None):
+        self.assertAlmostEqual(first, second, msg=msg, digits=digits, places=places, delta=delta)
+
+
+def zipall(*args):
+    """
+    LOOP THROUGH LONGEST OF THE LISTS
+    """
+    iters = [a.__iter__() for a in args]
+
+    def _next(_iter):
+        try:
+            return False, _iter.next()
+        except:
+            return True, None
+
+    while True:
+        output = zip(*(_next(a) for a in iters))
+        if all(output[0]):
+            return
+        else:
+            yield output[1]
+
+
+def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=None):
+    if isinstance(expected, dict):
+        test = wrap({"value": test})
+        expected = wrap(expected)
+        for k, v2 in expected.items():
+            v1 = test["value." + unicode(k)]
+            assertAlmostEqual(v1, v2, msg=msg, digits=digits, places=places, delta=delta)
+    elif hasattr(test, "__iter__") and hasattr(expected, "__iter__"):
+        for a, b in zipall(test, expected):
+            assertAlmostEqual(a, b, msg=msg, digits=digits, places=places, delta=delta)
+
     else:
-        assertAlmostEqualValue(first, second, places=places, msg=msg, delta=delta)
+        assertAlmostEqualValue(test, expected, msg=msg, digits=digits, places=places, delta=delta)
 
 
-def assertAlmostEqualValue(first, second, digits=None, places=None, msg=None, delta=None):
+def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, delta=None):
     """
     Snagged from unittest/case.py, then modified (Aug2014)
     """
-    if first == second:
+    if test == expected:
         # shortcut
         return
 
-    places = places if places is not None else digits
-    if delta is not None and places is not None:
-        raise TypeError("specify delta or places not both")
+    num_param = 0
+    if digits != None:
+        num_param += 1
+    if places != None:
+        num_param += 1
+    if delta != None:
+        num_param += 1
+    if num_param>1:
+        raise TypeError("specify only one of digits, places or delta")
 
-    if delta is not None:
-        if abs(first - second) <= delta:
+    if digits is not None:
+        try:
+            diff = Math.log10(abs(test-expected))
+            if diff < digits:
+                return
+        except Exception, e:
+            pass
+
+        standardMsg = expand_template("{{test}} != {{expected}} within {{digits}} decimal places", locals())
+    elif delta is not None:
+        if abs(test - expected) <= delta:
             return
 
-        standardMsg = expand_template("{{first}} != {{second}} within {{delta}} delta", {
-            "first": first,
-            "second": second,
-            "delta": delta
-        })
+        standardMsg = expand_template("{{test}} != {{expected}} within {{delta}} delta", locals())
     else:
         if places is None:
-            places = 18
+            places = 15
 
-        diff = log10(abs(first-second))
-        if diff < Math.ceiling(log10(abs(first)))-places:
-            return
+        try:
+            diff = Math.log10(abs(test-expected))
+            if diff < Math.ceiling(Math.log10(abs(test)))-places:
+                return
+        except Exception, e:
+            pass
 
-        standardMsg = expand_template("{{first}} != {{second}} within {{places}} places", {
-            "first": first,
-            "second": second,
-            "": places
-        })
+        standardMsg = expand_template("{{test}} != {{expected}} within {{places}} places", locals())
 
     raise AssertionError(nvl(msg, "") + ": (" + standardMsg + ")")
 

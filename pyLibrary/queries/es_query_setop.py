@@ -12,14 +12,15 @@ from __future__ import division
 
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.collections import AND, SUM, OR
-from pyLibrary.structs.wraps import listwrap
+from pyLibrary.structs import nvl, split_field
+from pyLibrary.structs.lists import StructList
+from pyLibrary.structs.wraps import listwrap, unwrap
 from pyLibrary.queries.es_query_util import aggregates
 from pyLibrary.queries import domains, es_query_util
 from pyLibrary.queries.filters import simplify, TRUE_FILTER
 from pyLibrary.env.logs import Log
 from pyLibrary.queries import MVEL, filters
 from pyLibrary.queries.cube import Cube
-from pyLibrary.struct import split_field, unwrap, nvl, StructList
 
 
 def is_fieldop(query):

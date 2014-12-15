@@ -15,12 +15,11 @@ from datetime import datetime
 import json
 import subprocess
 from pymysql import connect, InterfaceError
-from pyLibrary import struct
 from pyLibrary.jsons import json_scrub
 from pyLibrary.maths import Math
 from pyLibrary.strings import expand_template, utf82unicode
-from pyLibrary.struct import nvl
-from pyLibrary.structs.wraps import wrap, listwrap
+from pyLibrary.structs import nvl
+from pyLibrary.structs.wraps import wrap, listwrap, unwrap
 from pyLibrary import convert
 from pyLibrary.env.logs import Log, Except
 from pyLibrary.queries import Q
@@ -93,7 +92,10 @@ class DB(object):
             )
         except Exception, e:
             if self.settings.host.find("://") == -1:
-                Log.error(u"Failure to connect", e)
+                Log.error(u"Failure to connect to {{host}}:{{port}}", {
+                    "host": self.settings.host,
+                    "port": self.settings.port
+                }, e)
             else:
                 Log.error(u"Failure to connect.  PROTOCOL PREFIX IS PROBABLY BAD", e)
         self.cursor = None
@@ -214,7 +216,7 @@ class DB(object):
 
     def call(self, proc_name, params):
         self._execute_backlog()
-        params = [struct.unwrap(v) for v in params]
+        params = [unwrap(v) for v in params]
         try:
             self.cursor.callproc(proc_name, params)
             self.cursor.close()
@@ -359,9 +361,11 @@ class DB(object):
             "mysql",
             "-h{0}".format(settings.host),
             "-u{0}".format(settings.username),
-            "-p{0}".format(settings.password),
-            "{0}".format(settings.schema)
+            "-p{0}".format(settings.password)
         ]
+        if settings.schema:
+            args.append("{0}".format(settings.schema))
+
         try:
             proc = subprocess.Popen(
                 args,
@@ -386,12 +390,17 @@ class DB(object):
             })
 
     @staticmethod
-    def execute_file(settings, filename, param=None):
+    def execute_file(settings, filename, param=None, ignore_errors=False):
         # MySQLdb provides no way to execute an entire SQL file in bulk, so we
         # have to shell out to the commandline client.
         sql = File(filename).read()
-        DB.execute_sql(settings, sql, param)
-
+        if ignore_errors:
+            try:
+                DB.execute_sql(settings, sql, param)
+            except Exception, e:
+                pass
+        else:
+            DB.execute_sql(settings, sql, param)
 
     def _execute_backlog(self):
         if not self.backlog: return

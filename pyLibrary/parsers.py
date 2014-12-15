@@ -1,5 +1,5 @@
 from urlparse import urlparse
-from .struct import Struct
+from pyLibrary.structs.dicts import Struct
 
 
 def URL(value):

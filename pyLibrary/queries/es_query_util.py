@@ -12,7 +12,6 @@ from __future__ import division
 
 from datetime import datetime
 
-from pyLibrary import struct
 from pyLibrary import convert
 from pyLibrary import strings
 from pyLibrary.collections import COUNT
@@ -21,7 +20,9 @@ from pyLibrary.env.elasticsearch import Index
 from pyLibrary.env.logs import Log
 from pyLibrary.maths import Math
 from pyLibrary.queries import domains, MVEL, filters
-from pyLibrary.struct import nvl, StructList, Struct, split_field, join_field
+from pyLibrary.structs.dicts import Struct
+from pyLibrary.structs import set_default, split_field, join_field, nvl
+from pyLibrary.structs.lists import StructList
 from pyLibrary.structs.wraps import wrap
 from pyLibrary.times import durations
 
@@ -50,7 +51,7 @@ def loadColumns(es, frum):
             return INDEX_CACHE[frum.name]
 
     # FILL frum WITH DEFAULTS FROM es.settings
-    struct.set_default(frum, es.settings)
+    set_default(frum, es.settings)
 
     if not frum.host:
         Log.error("must have host defined")
@@ -149,7 +150,7 @@ def parseColumns(index_name, parent_path, esProperties):
             INDEX_CACHE[path].columns = childColumns
 
             columns.append({
-                "name": struct.join_field(split_field(path)[1::]),
+                "name": join_field(split_field(path)[1::]),
                 "type": property.type,
                 "useSource": True
             })
@@ -173,14 +174,14 @@ def parseColumns(index_name, parent_path, esProperties):
             for i, n, p in enumerate(property.fields):
                 if n == name:
                     # DEFAULT
-                    columns.append({"name": struct.join_field(split_field(path)[1::]), "type": p.type, "useSource": p.index == "no"})
+                    columns.append({"name": join_field(split_field(path)[1::]), "type": p.type, "useSource": p.index == "no"})
                 else:
-                    columns.append({"name": struct.join_field(split_field(path)[1::]) + "\\." + n, "type": p.type, "useSource": p.index == "no"})
+                    columns.append({"name": join_field(split_field(path)[1::]) + "\\." + n, "type": p.type, "useSource": p.index == "no"})
             continue
 
         if property.type in ["string", "boolean", "integer", "date", "long", "double"]:
             columns.append({
-                "name": struct.join_field(split_field(path)[1::]),
+                "name": join_field(split_field(path)[1::]),
                 "type": property.type,
                 "useSource": property.index == "no"
             })
@@ -192,7 +193,7 @@ def parseColumns(index_name, parent_path, esProperties):
                 })
         elif not property.enabled:
             columns.append({
-                "name": struct.join_field(split_field(path)[1::]),
+                "name": join_field(split_field(path)[1::]),
                 "type": property.type,
                 "useSource": "yes"
             })

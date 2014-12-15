@@ -22,7 +22,9 @@ try:
 except ImportError:
     from io import StringIO
 
-from six import text_type, binary_type, integer_types
+integer_types = (int, long)
+text_type = unicode
+binary_type = str
 
 from . import relativedelta
 from . import tz

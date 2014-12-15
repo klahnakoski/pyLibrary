@@ -9,14 +9,16 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
-from pyLibrary import struct
-from .dimensions import Dimension
-from .domains import Domain
+from pyLibrary import structs
 from pyLibrary.collections import AND, reverse
 from pyLibrary.env.logs import Log
 from pyLibrary.queries import MVEL, _normalize_select, INDEX_CACHE
+from pyLibrary.queries.dimensions import Dimension
+from pyLibrary.queries.domains import Domain
 from pyLibrary.queries.filters import TRUE_FILTER, simplify
-from pyLibrary.struct import nvl, Struct, EmptyList, split_field, join_field, StructList, Null
+from pyLibrary.structs.dicts import Struct
+from pyLibrary.structs import nvl, split_field, join_field, Null
+from pyLibrary.structs.lists import StructList
 from pyLibrary.structs.wraps import wrap, unwrap, listwrap
 
 
@@ -74,7 +76,7 @@ class Query(object):
         output = object.__new__(Query)
         source = object.__getattribute__(self, "__dict__")
         dest = object.__getattribute__(output, "__dict__")
-        struct.set_default(dest, source)
+        structs.set_default(dest, source)
         return output
 
 
@@ -139,7 +141,7 @@ def _normalize_domain(domain=None, schema=None):
     if not domain.name:
         domain = domain.copy()
         domain.name = domain.type
-    return Domain(**struct.unwrap(domain))
+    return Domain(**unwrap(domain))
 
 
 def _normalize_window(window, schema=None):
@@ -326,7 +328,7 @@ def _normalize_sort(sort=None):
     """
 
     if not sort:
-        return EmptyList
+        return StructList.EMPTY
 
     output = StructList()
     for s in listwrap(sort):

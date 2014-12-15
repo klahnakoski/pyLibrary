@@ -12,13 +12,13 @@ from __future__ import division
 
 from datetime import datetime
 import re
-from pyLibrary import struct
 from pyLibrary import convert
 from pyLibrary.collections import reverse
 from pyLibrary.env.logs import Log
 from pyLibrary.maths import Math
 from pyLibrary.queries.filters import TRUE_FILTER
-from pyLibrary.struct import Struct, nvl, split_field, join_field, Null
+from pyLibrary.structs import split_field, Struct, Null, join_field, nvl
+from pyLibrary.structs.wraps import listwrap
 from pyLibrary.times.durations import Duration
 
 

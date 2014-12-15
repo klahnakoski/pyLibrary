@@ -15,13 +15,13 @@ from datetime import datetime as builtin_datetime
 import re
 import math
 import __builtin__
+from pyLibrary.structs import nvl
 
-from . import struct
-from .structs.wraps import wrap
+from pyLibrary.structs.wraps import wrap
 
 
 def datetime(value):
-    from . import convert
+    from pyLibrary import convert
 
     if isinstance(value, (date, builtin_datetime)):
         pass
@@ -34,7 +34,7 @@ def datetime(value):
 
 
 def unix(value):
-    from . import convert
+    from pyLibrary import convert
 
     if isinstance(value, (date, builtin_datetime)):
         pass
@@ -49,14 +49,14 @@ def url(value):
     """
     CONVERT FROM dict OR string TO URL PARAMETERS
     """
-    from . import convert
+    from pyLibrary import convert
     return convert.value2url(value)
 
 def html(value):
     """
     CONVERT FROM unicode TO HTML OF THE SAME
     """
-    from . import convert
+    from pyLibrary import convert
     return convert.unicode2HTML(value)
 
 def upper(value):
@@ -76,7 +76,7 @@ def replace(value, find, replace):
     return value.replace(find, replace)
 
 def json(value):
-    from . import convert
+    from pyLibrary import convert
 
     return convert.object2JSON(value)
 
@@ -105,7 +105,7 @@ def outdent(value):
                 num = min(num, len(l) - len(l.lstrip()))
         return u"\n".join([l[num:] for l in lines])
     except Exception, e:
-        from .env.logs import Log
+        from pyLibrary.env.logs import Log
 
         Log.error("can not outdent value", e)
 
@@ -197,11 +197,11 @@ def _expand(template, seq):
         for d in data:
             s = seq + (d,)
             output.append(_expand(template.template, s))
-        return struct.nvl(template.separator, "").join(output)
+        return nvl(template.separator, "").join(output)
     elif isinstance(template, list):
         return "".join(_expand(t, seq) for t in template)
     else:
-        from .env.logs import Log
+        from pyLibrary.env.logs import Log
 
         Log.error("can not handle")
 
@@ -235,7 +235,7 @@ def _simple_expand(template, seq):
                     val = toString(val)
                     return val
             except Exception, f:
-                from .env.logs import Log
+                from pyLibrary.env.logs import Log
 
                 Log.warning("Can not expand " + "|".join(ops) + " in template: {{template|json}}", {
                     "template": template
@@ -257,7 +257,7 @@ def toString(val):
     if val == None:
         return ""
     elif isinstance(val, (dict, list, set)):
-        from .jsons import json_encoder
+        from pyLibrary.jsons import json_encoder
 
         return json_encoder(val, pretty=True)
     elif hasattr(val, "__json__"):
@@ -269,7 +269,7 @@ def toString(val):
     try:
         return unicode(val)
     except Exception, e:
-        from .env.logs import Log
+        from pyLibrary.env.logs import Log
 
         Log.error(str(type(val))+" type can not be converted to unicode", e)
 
@@ -328,7 +328,7 @@ def apply_diff(text, diff, reverse=False):
 
     matches = DIFF_PREFIX.match(diff[0].strip())
     if not matches:
-        from .env.logs import Log
+        from pyLibrary.env.logs import Log
 
         Log.error("Can not handle {{diff}}\n", {"diff": diff[0]})
 
@@ -368,7 +368,7 @@ def utf82unicode(value):
     try:
         return value.decode("utf8")
     except Exception, e:
-        from .env.logs import Log, Except
+        from pyLibrary.env.logs import Log, Except
 
         if not isinstance(value, basestring):
             Log.error("Can not convert {{type}} to unicode because it's not a string", {"type": type(value).__name__})
