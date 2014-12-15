@@ -75,18 +75,21 @@ by downstream tools.
 Windows 7 Install Instructions for Python
 -----------------------------------------
 
+Update November 2014, for Python 2.7.8
+
 Python was really made for Linux, and installation will be easier there.
 Technically, Python works on Windows too, but there are a few gotchas you can
 avoid by following these instructions.
 
-  * Download Python 2.7 (32bit ONLY!!! Many native libs are 32 bit)
+  * Download Python 2.7
+    * 32bit ONLY!!! Many native libs are 32 bit
+    * Varsion 2.7.8 or higher (includes pip, so install is easier)
   * Install Python at ```c:\Python27``` (The space in the "Program Files" may screw up installs of native libs)
   * Add to you path: ```c:\Python27;c:\Python27\scripts;```
-  * Download ```http://python-distribute.org/distribute_setup.py```
+  * Download ```https://bootstrap.pypa.io/get-pip.py```
 
-        CALL python distribute_setup.py
-        CALL easy_install pip
-        CALL easy_install virtualenv
+        CALL python get-pip.py
+        CALL pip install virtualenv
 
   * Many "Python Powered" native installs require a pointer to the python installation, but they have no idea where to
   look in 64bit windows.  You must alter the registry ([http://stackoverflow.com/questions/3652625/installing-setuptools-on-64-bit-windows](http://stackoverflow.com/questions/3652625/installing-setuptools-on-64-bit-windows)):
@@ -122,7 +125,7 @@ PyPy core libraries, and the second call finishes the install.
     c:\PyPy27\bin\virtualenv <name_of_dir>
 
 #### Activate environment:
-With CPython ```virtualenv``` puts it's executables in ```Scripts```.  The
+With CPython ```virtualenv``` places it's executables in ```Scripts```.  The
 PyPy version uses ```bin```
 
     <name_of_dir>\bin\activate
@@ -143,7 +146,11 @@ Deactivation is like normal
 If you plan to use any binary packages, ```virtualenv``` will not work
 directly.  Instead, install the binary (32 bit only!!) to the main python
 installation.  Then copy any newly installed files/directories from
-```C:\Python27\Lib\site-packages``` to ```<name_of_dir>\Lib\site-packages```
+```C:\Python27\Lib\site-packages``` to ```<name_of_dir>\Lib\site-packages```.
+
+### Binaries and PyPy
+
+This strategy for installing binaries into Virtual Environments is almmost identical to installing binaries into your PyPy environment: Install Numpy and Scipy to your CPython installation using a windows installer (which has precompiled binaries), and then copy the ```C:\Python27\Lib\site-packages\<package>``` to ```c:\PyPy\site-packages\```; note lack of ```Lib``` subdirectory.
 
 
 Installing pyLibrary

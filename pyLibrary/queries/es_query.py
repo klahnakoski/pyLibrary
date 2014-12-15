@@ -25,6 +25,7 @@ from pyLibrary.queries.MVEL import _MVEL
 from pyLibrary.struct import Struct, split_field, StructList, nvl
 from pyLibrary.structs.wraps import wrap, unwrap, listwrap
 
+
 class ESQuery(object):
     """
     SEND GENERAL Qb QUERIES TO ElasticSearch
