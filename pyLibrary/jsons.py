@@ -391,6 +391,18 @@ def pretty_json(value):
         elif hasattr(value, '__iter__'):
             return pretty_json(list(value))
         else:
+            try:
+                if int(value)==value:
+                    return str(int(value))
+            except Exception, e:
+                pass
+
+            try:
+                if float(value)==value:
+                    return str(float(value))
+            except Exception, e:
+                pass
+
             return encode(value)
 
     except Exception, e:

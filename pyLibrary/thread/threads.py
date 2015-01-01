@@ -22,9 +22,12 @@ import gc
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 from pyLibrary.structs import nvl, Struct
+from pyLibrary.times.dates import Date
+from pyLibrary.times.durations import Duration
 
 
 DEBUG = True
+
 
 class Lock(object):
     """
@@ -89,6 +92,10 @@ class Queue(object):
 
                 Log.warning("Tell me about what happened here", e)
 
+        from pyLibrary.debugs.logs import Log
+        Log.note ("queue iterator is done")
+
+
     def add(self, value):
         with self.lock:
             self.wait_for_queue_space()
@@ -145,7 +152,15 @@ class Queue(object):
                     if value is Thread.STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                         self.keep_running = False
                     return value
-                self.lock.wait()
+
+                try:
+                    self.lock.wait()
+                except Exception, e:
+                    pass
+
+            from pyLibrary.debugs.logs import Log
+            Log.note("queue stopped")
+
             return Thread.STOP
 
     def pop_all(self):
@@ -340,13 +355,62 @@ class Thread(object):
         return output
 
     @staticmethod
-    def sleep(seconds=None, till=None):
+    def sleep(seconds=None, till=None, please_stop=None):
+
+        if please_stop is not None or isinstance(till, Signal):
+            if isinstance(till, Signal):
+                please_stop = till
+                till = Date.MAX
+
+            if seconds is not None:
+                till = datetime.utcnow() + (Duration.SECOND * seconds)
+            elif till is None:
+                till = Date.MAX
+
+            while not please_stop:
+                if till > datetime.utcnow():
+                    time.sleep(1)
+            return
+
         if seconds is not None:
             time.sleep(seconds)
-        if till is not None:
-            duration = (till - datetime.utcnow()).total_seconds()
+        elif till is not None:
+            if isinstance(till, datetime):
+                duration = (till - datetime.utcnow()).total_seconds()
+            else:
+                duration = (till - datetime.utcnow()).total_seconds
+
             if duration > 0:
-                time.sleep(duration)
+                try:
+                    time.sleep(duration)
+                except Exception, e:
+                    raise e
+        else:
+            while True:
+                time.sleep(10)
+
+
+    @staticmethod
+    def wait_for_shutdown_signal(please_stop=False):
+        """
+        SLEEP UNTIL keyboard interrupt
+
+        please_stop - ASSIGN SIGNAL TO STOP EARLY
+
+        """
+        if Thread.current() != MAIN_THREAD:
+            from pyLibrary.debugs.logs import Log
+            Log.error("Only the main thread can sleep forever (waiting for KeyboardInterrupt)")
+
+        try:
+            while not please_stop:
+                try:
+                    Thread.sleep(please_stop=please_stop)
+                except Exception, e:
+                    pass
+        except KeyboardInterrupt:
+            pass
+
 
     @staticmethod
     def current():

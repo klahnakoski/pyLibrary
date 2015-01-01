@@ -56,8 +56,7 @@ def read_settings(filename=None, defs=None):
             Log.error("Can not file settings file {{filename}}", {
                 "filename": settings_file.abspath
             })
-        json = settings_file.read()
-        settings = convert.JSON2object(json, flexible=True)
+        settings = settings_file.read_json()
         if defs:
             settings.args = _argparse(defs)
         return settings
@@ -79,8 +78,7 @@ def read_settings(filename=None, defs=None):
             })
             settings = Struct()
         else:
-            json = settings_file.read()
-            settings = convert.JSON2object(json, flexible=True)
+            settings = settings_file.read_json()
 
         settings.args = args
         return settings

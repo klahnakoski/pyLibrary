@@ -31,7 +31,7 @@ from pyLibrary.structs.wraps import wrap, wrap_dot, unwrap
 """
 DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
 """
-def object2JSON(obj, pretty=False):
+def value2json(obj, pretty=False):
     try:
         json = json_encoder(obj, pretty=pretty)
         if json == None:
@@ -42,15 +42,44 @@ def object2JSON(obj, pretty=False):
         Log.error("Can not encode into JSON: {{value}}", {"value": repr(obj)}, e)
 
 
-def JSON2object(json_string, params=None, flexible=False, paths=False):
-    with Profiler("JSON2Object"):
+def remove_line_comment(line):
+    mode = 0  # 0=code, 1=inside_string, 2=escaping
+    for i, c in enumerate(line):
+        if c == '"':
+            if mode == 0:
+                mode = 1
+            elif mode == 1:
+                mode = 0
+            else:
+                mode = 1
+        elif c == '\\':
+            if mode == 0:
+                mode = 0
+            elif mode == 1:
+                mode = 2
+            else:
+                mode = 1
+        elif mode == 2:
+            mode = 1
+        elif c == "#" and mode == 0:
+            return line[0:i]
+        elif c == "/" and mode == 0 and line[i + 1] == "/":
+            return line[0:i]
+    return line
+
+
+
+def json2value(json_string, params=None, flexible=False, paths=False):
+    with Profiler("json2value"):
         try:
             if flexible:
                 # REMOVE """COMMENTS""", # COMMENTS, //COMMENTS, AND \n \r
                 # DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py# L58
-                json_string = re.sub(r"\"\"\".*?\"\"\"|[ \t]+//.*\n|^//.*\n|#.*?\n", r"\n", json_string, flags=re.MULTILINE)
+                json_string = re.sub(r"\"\"\".*?\"\"\"", r"\n", json_string, flags=re.MULTILINE)
+                json_string = "\n".join(remove_line_comment(l) for l in json_string.split("\n"))
                 # ALLOW DICTIONARY'S NAME:VALUE LIST TO END WITH COMMA
                 json_string = re.sub(r",\s*\}", r"}", json_string)
+
             if params:
                 params = dict([(k, value2quote(v)) for k, v in params.items()])
                 json_string = expand_template(json_string, params)
@@ -58,9 +87,6 @@ def JSON2object(json_string, params=None, flexible=False, paths=False):
                 Log.error("only unicode json accepted")
 
             # LOOKUP REFERENCES
-
-
-
             value = wrap(json_decoder(json_string))
 
             if paths:
@@ -165,7 +191,7 @@ def list2tab(rows):
 
     output = []
     for r in rows:
-        output.append("\t".join(object2JSON(r[k]) for k in keys))
+        output.append("\t".join(value2json(r[k]) for k in keys))
 
     return "\t".join(keys) + "\n" + "\n".join(output)
 

@@ -103,7 +103,11 @@ class File(object):
         """
         path = self._filename.split("/")
         parts = path[-1].split(".")
-        parts[-1] = ext
+        if len(parts)==1:
+            parts.append(ext)
+        else:
+            parts[-1] = ext
+
         path[-1] = ".".join(parts)
         return File("/".join(path))
 
@@ -136,7 +140,7 @@ class File(object):
 
     def read_json(self, encoding="utf8"):
         content = self.read(encoding=encoding)
-        value = convert.JSON2object(content, flexible=True, paths=True)
+        value = convert.json2value(content, flexible=True, paths=True)
         return wrap(self._replace_ref(value))
 
     def _replace_ref(self, node):
@@ -155,7 +159,7 @@ class File(object):
             if ref.startswith("http://"):
                 import requests
 
-                return convert.JSON2object(requests.get(ref), flexible=True, paths=True)
+                return convert.json2value(requests.get(ref), flexible=True, paths=True)
             elif ref.startswith("file://"):
                 ref = ref[7::]
 
