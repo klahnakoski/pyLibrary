@@ -13,9 +13,9 @@ import unittest
 from pyLibrary import convert
 from pyLibrary.collections import MAX
 from pyLibrary.debugs.logs import Log
-from pyLibrary.structs.wraps import wrap, unwrap
-from pyLibrary.structs.dicts import Struct
-from pyLibrary.structs.nones import Null
+from pyLibrary.dot.wraps import wrap, unwrap
+from pyLibrary.dot.dicts import Dict
+from pyLibrary.dot.nones import Null
 
 
 
@@ -53,8 +53,8 @@ class TestStruct(unittest.TestCase):
         b = 0
         c = Null
         d = Null
-        e = Struct()
-        f = Struct()
+        e = Dict()
+        f = Dict()
 
         if a == b:
             pass
@@ -106,11 +106,11 @@ class TestStruct(unittest.TestCase):
         a = wrap({})
         _type = a.__class__
 
-        if _type is not Struct:
+        if _type is not Dict:
             Log.error("error")
 
     def test_int_null(self):
-        a = Struct()
+        a = Dict()
         value = a.b*1000
         assert value == Null
 
@@ -153,7 +153,7 @@ class TestStruct(unittest.TestCase):
                 "l": {"m": {"n": "test5"}}
             }
         }
-        if convert.object2JSON(expected) != convert.object2JSON(a):
+        if convert.value2json(expected) != convert.value2json(a):
             Log.error("error")
 
 
@@ -172,7 +172,7 @@ class TestStruct(unittest.TestCase):
                 "e": "test2"
             }
         }
-        if convert.object2JSON(expected) != convert.object2JSON(a):
+        if convert.value2json(expected) != convert.value2json(a):
             Log.error("error")
 
     def test_assign3(self):
@@ -182,27 +182,27 @@ class TestStruct(unittest.TestCase):
 
         b.c = None
         expected = {}
-        if convert.object2JSON(expected) != convert.object2JSON(a):
+        if convert.value2json(expected) != convert.value2json(a):
             Log.error("error")
 
         b.c.d = None
         expected = {}
-        if convert.object2JSON(expected) != convert.object2JSON(a):
+        if convert.value2json(expected) != convert.value2json(a):
             Log.error("error")
 
         b["c.d"] = None
         expected = {}
-        if convert.object2JSON(expected) != convert.object2JSON(a):
+        if convert.value2json(expected) != convert.value2json(a):
             Log.error("error")
 
         b.c.d.e = None
         expected = {}
-        if convert.object2JSON(expected) != convert.object2JSON(a):
+        if convert.value2json(expected) != convert.value2json(a):
             Log.error("error")
 
         b.c["d.e"] = None
         expected = {}
-        if convert.object2JSON(expected) != convert.object2JSON(a):
+        if convert.value2json(expected) != convert.value2json(a):
             Log.error("error")
 
     def test_assign4(self):
@@ -211,14 +211,14 @@ class TestStruct(unittest.TestCase):
         b = wrap(a)
         b.c.d = None
         expected = {"c": {}}
-        if convert.object2JSON(expected) != convert.object2JSON(a):
+        if convert.value2json(expected) != convert.value2json(a):
             Log.error("error")
 
         a = {"c": {"d": {}}}
         b = wrap(a)
         b.c = None
         expected = {}
-        if convert.object2JSON(expected) != convert.object2JSON(a):
+        if convert.value2json(expected) != convert.value2json(a):
             Log.error("error")
 
 

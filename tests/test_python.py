@@ -9,7 +9,7 @@
 #
 
 import unittest
-from pyLibrary.structs.lists import StructList
+from pyLibrary.dot.lists import DictList
 
 
 class NaiveList(list):
@@ -75,7 +75,7 @@ class TestPython(unittest.TestCase):
         assert 4 == len(my_list[1:9])
 
     def test_better_slice(self):
-        my_list = StructList(['a', 'b', 'c', 'd', 'e'])
+        my_list = DictList(['a', 'b', 'c', 'd', 'e'])
 
         assert 0 == len(my_list[-2:0:])
         assert 1 == len(my_list[-1:1:])
@@ -87,7 +87,7 @@ class TestPython(unittest.TestCase):
         assert 0 == len(my_list[5:7:])
 
     def test_better_over_slice_left(self):
-        my_list = StructList(['a', 'b', 'c', 'd', 'e'])
+        my_list = DictList(['a', 'b', 'c', 'd', 'e'])
 
         assert 2 == len(my_list[1:3:])
         assert 3 == len(my_list[0:3:])
@@ -98,7 +98,7 @@ class TestPython(unittest.TestCase):
 
 
     def test_better_over_slice_right(self):
-        my_list = StructList(['a', 'b', 'c', 'd', 'e'])
+        my_list = DictList(['a', 'b', 'c', 'd', 'e'])
 
         assert 3 == len(my_list[1:4:])
         assert 4 == len(my_list[1:5:])

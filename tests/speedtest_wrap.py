@@ -1,13 +1,14 @@
 from math import log, floor
 import gc
+from pyLibrary.debugs import profiles
 
-from pyLibrary.env import profiles
 from pyLibrary.debugs.logs import Log
+from pyLibrary.debugs.profiles import Profiler
 from pyLibrary.maths.randoms import Random
-from pyLibrary.struct import Struct, StructList
-from pyLibrary.structs.slow_wrap import slow_wrap
-from pyLibrary.structs.wraps import wrap
-from pyLibrary.env.profiles import Profiler
+from pyLibrary.dot import Dict
+from pyLibrary.dot.lists import DictList
+from pyLibrary.dot.slow_wrap import slow_wrap
+from pyLibrary.dot.wraps import wrap
 
 
 def baseline(v):
@@ -20,9 +21,9 @@ NUM_REPEAT = 10
 
 def test_wrap_1():
     switch = [
-        lambda: Struct(i=Random.int(2000)),
+        lambda: Dict(i=Random.int(2000)),
         lambda: {"i": Random.int(2000)},
-        lambda: StructList([{"i": Random.int(2000)}]),
+        lambda: DictList([{"i": Random.int(2000)}]),
         lambda: [{"i": Random.int(2000)}]
     ]
 
@@ -53,8 +54,8 @@ def test_wrap_1():
 def test_wrap_2():
     switch = [
         lambda: {"i": Random.int(2000)},
-        lambda: Struct(i=Random.int(2000)),
-        lambda: StructList([{"i": Random.int(2000)}]),
+        lambda: Dict(i=Random.int(2000)),
+        lambda: DictList([{"i": Random.int(2000)}]),
         lambda: [{"i": Random.int(2000)}]
     ]
 
@@ -86,8 +87,8 @@ def test_wrap_3():
     switch = [
         lambda: Random.string(20),
         lambda: {"i": Random.int(2000)},
-        lambda: Struct(i=Random.int(2000)),
-        lambda: StructList([{"i": Random.int(2000)}]),
+        lambda: Dict(i=Random.int(2000)),
+        lambda: DictList([{"i": Random.int(2000)}]),
         lambda: [{"i": Random.int(2000)}]
     ]
 
@@ -120,5 +121,5 @@ Log.start()
 test_wrap_1()
 test_wrap_2()
 test_wrap_3()
-profiles.write(Struct(filename="speedtest_wrap.tab"))
+profiles.write(Dict(filename="speedtest_wrap.tab"))
 Log.stop()

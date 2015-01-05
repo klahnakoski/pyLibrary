@@ -43,7 +43,7 @@ class TestESQuery(unittest.TestCase):
 
         expecting = {}
 
-        assert convert.object2JSON(esquery, pretty=True) == convert.object2JSON(expecting, pretty=True)
+        assert convert.value2json(esquery, pretty=True) == convert.value2json(expecting, pretty=True)
 
 
 class ESQueryTester(object):
@@ -63,7 +63,7 @@ class ESQueryTester(object):
             f = Except(ERROR, unicode(e), trace=extract_tb(1))
             try:
                 details = str(f)
-                query = convert.JSON2object(strings.between(details, ">>>>", "<<<<"))
+                query = convert.json2value(strings.between(details, ">>>>", "<<<<"))
                 return query
             except Exception, g:
                 Log.error("problem", f)
@@ -77,9 +77,9 @@ class FakeES(object):
         pass
 
     def search(self, query):
-        Log.error("<<<<\n{{query}}\n>>>>", {"query": convert.object2JSON(query)})
+        Log.error("<<<<\n{{query}}\n>>>>", {"query": convert.value2json(query)})
 
     def get_schema(self):
-        return convert.JSON2object(File("tests/resources/bug_version.json").read()).mappings.bug_version
+        return convert.json2value(File("tests/resources/bug_version.json").read()).mappings.bug_version
 
 

@@ -10,8 +10,8 @@ from __future__ import unicode_literals
 import unittest
 from pyLibrary import convert
 from pyLibrary.queries import Q
-from pyLibrary.structs.dicts import Struct
-from pyLibrary.structs.wraps import wrap, unwrap
+from pyLibrary.dot.dicts import Dict
+from pyLibrary.dot.wraps import wrap, unwrap
 
 
 class TestQ(unittest.TestCase):
@@ -54,7 +54,7 @@ class TestQ(unittest.TestCase):
 
         result = Q.select(data, ["point_result.confidence", "sustained_result.confidence"])
         expected = {"point_result": {"confidence": 0.15889902861667249}, "sustained_result": {"confidence": 0.85313030049257099}}
-        assert convert.object2JSON(result[0]) == convert.object2JSON(expected)
+        assert convert.value2json(result[0]) == convert.value2json(expected)
 
     def test_depth_select(self):
         data = [{
@@ -79,7 +79,7 @@ class TestQ(unittest.TestCase):
             {"bug_id": 123, "attachments": {"name": "test2"}},
             {"bug_id": 012, "attachments": {"name": "test3"}}
         ]
-        assert convert.object2JSON(result) == convert.object2JSON(expected), "expecting complex result"
+        assert convert.value2json(result) == convert.value2json(expected), "expecting complex result"
 
     def test_property_select(self):
         data = [
@@ -119,7 +119,7 @@ class TestQ(unittest.TestCase):
             }
         }
 
-        assert convert.object2JSON(result) == convert.object2JSON(expected), "expecting complex result"
+        assert convert.value2json(result) == convert.value2json(expected), "expecting complex result"
 
 
     def test_renaming(self):
@@ -138,14 +138,14 @@ class TestQ(unittest.TestCase):
 
         result = Q.select(data, [{"name": "id", "value": "attachments.attach_id"}])
         expected = [{"id": 456}, {"id": 789}, {"id": 345}]
-        assert convert.object2JSON(result) == convert.object2JSON(expected), "can not rename fields"
+        assert convert.value2json(result) == convert.value2json(expected), "can not rename fields"
 
         result = Q.select(data, {"name": "id", "value": "attachments.attach_id"})
         self.assertItemsEqual(result, [456, 789, 345], "can not pull simple fields")
 
         result = Q.select(data, [{"name": "attach.id", "value": "attachments.attach_id"}])
         expected = [{"attach": {"id": 456}}, {"attach": {"id": 789}}, {"attach": {"id": 345}}]
-        assert convert.object2JSON(result) == convert.object2JSON(expected), "can not rename fields"
+        assert convert.value2json(result) == convert.value2json(expected), "can not rename fields"
 
 
     def test_unicode_attribute(self):
@@ -158,7 +158,7 @@ class TestQ(unittest.TestCase):
 
 
     def test_simple_depth_filter(self):
-        data = [Struct(**{u'test_build': {u'name': u'Firefox'}})]
+        data = [Dict(**{u'test_build': {u'name': u'Firefox'}})]
         result = Q.filter(data, {u'term': {u'test_build.name': u'Firefox'}})
         assert len(result) == 1
 

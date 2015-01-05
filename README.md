@@ -6,15 +6,43 @@ A library of wonderful things!
 Motivation
 ----------
 
-Motivation has been scattered among the subdirectories to justify their own existence
+### Python is a Little Crufty ###
+
+Python is awesome now, but it was originally a procedural language invented
+before functional semantics, before OO, and even before the
+discovery of vowels.  As a consequence there are many procedures that alter
+their own parameters, or have disemvoweled names.  This library puts a facade
+over these relics of the past and uses convention to name methods.
+
+### More Motivation ###
+* [Logging and Exception Handling](https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/debugs/README.md)
+* [Manipulating Datastructures](https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/structs/README.md)
+* [Connecting to your environment](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary/env)
 
 
+Installing pyLibrary
+--------------------
+
+Python packages are easy to install, assuming you have Python (see below).
+
+    pip install pyLibrary
+
+Installing for Development
+--------------------------
+
+  * Download from Github:
+
+        git clone https://github.com/klahnakoski/pyLibrary.git
+
+  * Install requirements:
+
+        python setup.py develop
 
 
 Windows 7 Install Instructions for Python
 -----------------------------------------
 
-Update November 2014, for Python 2.7.8
+Updated November 2014, for Python 2.7.8
 
 Python was really made for Linux, and installation will be easier there.
 Technically, Python works on Windows too, but there are a few gotchas you can
@@ -80,7 +108,7 @@ Deactivation is like normal
 
     deactivate
 
-### Binaries and Virtual Environments
+### CPython Binaries and Virtual Environments
 
 If you plan to use any binary packages, ```virtualenv``` will not work
 directly.  Instead, install the binary (32 bit only!!) to the main python
@@ -89,26 +117,9 @@ installation.  Then copy any newly installed files/directories from
 
 ### Binaries and PyPy
 
-This strategy for installing binaries into Virtual Environments is almmost identical to installing binaries into your PyPy environment: Install Numpy and Scipy to your CPython installation using a windows installer (which has precompiled binaries), and then copy the ```C:\Python27\Lib\site-packages\<package>``` to ```c:\PyPy\site-packages\```; note lack of ```Lib``` subdirectory.
-
-
-Installing pyLibrary
---------------------
-
-Once Python is installed, other Python packages are are much easier.
-
-  * Install from PyPi:
-
-        pip install pyLibrary
-
-Installing for Development
---------------------------
-
-  * Download from Github:
-
-        git clone https://github.com/klahnakoski/pyLibrary.git
-
-  * Install requirements:
-
-        python setup.py develop
+This strategy for installing binaries into Virtual Environments is almost
+identical to installing binaries into your PyPy environment: Install Numpy
+and Scipy to your CPython installation using a windows installer (which has
+pre-compiled binaries), and then copy the ```C:\Python27\Lib\site-packages\<package>```
+to ```c:\PyPy\site-packages\```; note lack of ```Lib``` subdirectory.
 

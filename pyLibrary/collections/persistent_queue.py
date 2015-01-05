@@ -15,7 +15,7 @@ from pyLibrary import convert
 from pyLibrary.debugs.logs import Log
 from pyLibrary.env.files import File
 from pyLibrary.maths.randoms import Random
-from pyLibrary.structs import Struct, wrap, nvl
+from pyLibrary.dot import Dict, wrap
 from pyLibrary.thread.threads import Lock, Thread, Signal
 
 
@@ -35,7 +35,7 @@ class PersistentQueue(object):
         self.file = File.new_instance(_file)
         self.lock = Lock("lock for persistent queue using file " + self.file.name)
         self.please_stop = Signal()
-        self.db = Struct()
+        self.db = Dict()
         self.pending = []
 
         if self.file.exists:
@@ -51,7 +51,7 @@ class PersistentQueue(object):
             if DEBUG:
                 Log.note("Persistent queue {{name}} found with {{num}} items", {"name": self.file.abspath, "num": len(self)})
         else:
-            self.db.status = Struct(
+            self.db.status = Dict(
                 start=0,
                 end=0
             )
@@ -146,22 +146,25 @@ class PersistentQueue(object):
             if self.closed:
                 Log.error("Queue is closed, commit not allowed")
 
-            if self.db.status.end == self.start:
-                if DEBUG:
-                    Log.note("Clear persistent queue")
-                self.file.delete()
-                self.pending = []
-            elif self.db.status.end - self.start < 10 or Random.range(1000)==0:  # FORCE RE-WRITE TO LIMIT FILE SIZE
-                # SIMPLY RE-WRITE FILE
-                self.file.write(convert.value2json({"add": self.db}) + "\n")
-                self.pending = []
-            else:
-                self._apply({"add": {"status.start": self.start}})
-                for i in range(self.db.status.start, self.start):
-                    self._apply({"remove": str(i)})
+            old_start = self.db.status.start
+            try:
 
-                self.db.status.start = self.start
-                self._commit()
+                if self.db.status.end - self.start < 10 or Random.range(1000) == 0:  # FORCE RE-WRITE TO LIMIT FILE SIZE
+                    # SIMPLY RE-WRITE FILE
+                    if DEBUG:
+                        Log.note("Re-write persistent queue")
+                    self.db.status.start = self.start
+                    self.file.write(convert.value2json({"add": self.db}) + "\n")
+                    self.pending = []
+                else:
+                    self._apply({"add": {"status.start": self.start}})
+                    for i in range(self.db.status.start, self.start):
+                        self._apply({"remove": str(i)})
+
+                    self._commit()
+            except Exception, e:
+                self.db.status.start = old_start  # REALLY DOES NOTHING, WE LOST DATA AT THIS POINT
+                raise e
 
     def _commit(self):
         self.file.append("\n".join(convert.value2json(p) for p in self.pending))

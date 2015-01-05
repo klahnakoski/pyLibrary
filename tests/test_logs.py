@@ -11,7 +11,7 @@
 from __future__ import unicode_literals
 import unittest
 from pyLibrary.debugs.logs import Log, Except
-from pyLibrary.structs.wraps import wrap, listwrap
+from pyLibrary.dot.wraps import wrap, listwrap
 
 
 class TestExcept(unittest.TestCase):
