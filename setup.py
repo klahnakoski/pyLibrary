@@ -44,7 +44,7 @@ def find_packages(where='.', lib_prefix='', exclude=()):
 
 setup(
     name='pyLibrary',
-    version="0.3.15001",
+    version="0.4.15001",
     description='Library of Wonderful Things',
     long_description=long_desc,
     author='Kyle Lahnakoski',
@@ -52,7 +52,7 @@ setup(
     url='https://github.com/klahnakoski/pyLibrary',
     license='MPL 2.0',
     packages=find_packages(".", lib_prefix=""),
-    install_requires=['pymysql', 'requests'],
+    install_requires=['pymysql', 'requests', 'boto'],
     include_package_data=True,
     zip_safe=False,
     classifiers=[  #https://pypi.python.org/pypi?%3Aaction=list_classifiers

@@ -16,7 +16,7 @@ over these relics of the past and uses convention to name methods.
 
 ### More Motivation ###
 * [Logging and Exception Handling](https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/debugs/README.md)
-* [Manipulating Datastructures](https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/structs/README.md)
+* [Manipulating Datastructures](https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/dot/README.md)
 * [Connecting to your environment](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary/env)
 
 
