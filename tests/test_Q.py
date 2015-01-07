@@ -9,9 +9,9 @@
 from __future__ import unicode_literals
 import unittest
 from pyLibrary import convert
+from pyLibrary.dot import unwrap, wrap
 from pyLibrary.queries import Q
 from pyLibrary.dot.dicts import Dict
-from pyLibrary.dot.wraps import wrap, unwrap
 
 
 class TestQ(unittest.TestCase):

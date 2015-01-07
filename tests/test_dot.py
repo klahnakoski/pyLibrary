@@ -13,13 +13,11 @@ import unittest
 from pyLibrary import convert
 from pyLibrary.collections import MAX
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot.wraps import wrap, unwrap
-from pyLibrary.dot.dicts import Dict
-from pyLibrary.dot.nones import Null
+from pyLibrary.dot import wrap, Dict, Null
 
 
 
-class TestStruct(unittest.TestCase):
+class TestDot(unittest.TestCase):
     def test_none(self):
         a = 0
         b = 0

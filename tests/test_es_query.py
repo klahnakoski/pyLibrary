@@ -26,10 +26,12 @@ class TestESQuery(unittest.TestCase):
     # USUALLY I WOULD SIMPLY FORCE THE QUERY TO APPLY TO THE NESTED
     # DOCUMENTS ONLY.  RETURNING THE PARENT DOCUMENT IS WHAT'S
     # AMBIGUOUS
-    def not_done_test1(self):
-        esq = ESQueryTester("private_bugs")
 
-        esquery = esq.query({
+    def setUp(self):
+        self.esq=ESQueryTester("private_bugs")
+
+    def not_done_test1(self):
+        esquery = self.esq.query({
             "from": "private_bugs",
             "select": "*",
             "where": {"and": [

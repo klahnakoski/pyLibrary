@@ -14,6 +14,7 @@ import StringIO
 import base64
 import cgi
 import datetime
+import hashlib
 import json
 import re
 import time
@@ -79,6 +80,8 @@ def json2value(json_string, params=None, flexible=False, paths=False):
                 json_string = "\n".join(remove_line_comment(l) for l in json_string.split("\n"))
                 # ALLOW DICTIONARY'S NAME:VALUE LIST TO END WITH COMMA
                 json_string = re.sub(r",\s*\}", r"}", json_string)
+                # ALLOW LISTS TO END WITH COMMA
+                json_string = re.sub(r",\s*\]", r"]", json_string)
 
             if params:
                 params = dict([(k, value2quote(v)) for k, v in params.items()])
@@ -294,6 +297,11 @@ def base642bytearray(value):
 def bytearray2base64(value):
     return base64.b64encode(value)
 
+def bytearray2sha1(value):
+    if isinstance(value, unicode):
+        Log.error("can not convert unicode to sha1")
+    sha = hashlib.sha1(value)
+    return sha.hexdigest()
 
 def value2intlist(value):
     if value == None:
