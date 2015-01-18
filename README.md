@@ -6,6 +6,11 @@ A library of wonderful things!
 Motivation
 ----------
 
+This library is born from my version of the `utils` library everyone makes.
+Only, instead of being utils that are specific to the task, these utils
+are for programming in general: They assume logs should be structured,
+all data should be JSONizable, and OO is preferred, and more.
+
 ### Python is a Little Crufty ###
 
 Python is awesome now, but it was originally a procedural language invented
@@ -14,10 +19,11 @@ discovery of vowels.  As a consequence there are many procedures that alter
 their own parameters, or have disemvoweled names.  This library puts a facade
 over these relics of the past and uses convention to name methods.
 
-### More Motivation ###
-* [Logging and Exception Handling](https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/debugs/README.md)
-* [Manipulating Datastructures](https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/dot/README.md)
-* [Connecting to your environment](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary/env)
+### Specifics ###
+* [Converting data, i/o JSON, and using templates](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary)
+* [Manipulating Datastructures](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary/dot)
+* [Logging and Exception Handling](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary/debugs)
+* [Connecting to your environment](https://github.com/klahnakoski/tree/master/pyLibrary/pyLibrary/env)
 
 
 Installing pyLibrary
