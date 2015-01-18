@@ -23,7 +23,7 @@ over these relics of the past and uses convention to name methods.
 * [Converting data, i/o JSON, and using templates](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary)
 * [Manipulating Datastructures](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary/dot)
 * [Logging and Exception Handling](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary/debugs)
-* [Connecting to your environment](https://github.com/klahnakoski/tree/master/pyLibrary/pyLibrary/env)
+* [Connecting to your environment](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary/env)
 
 
 Installing pyLibrary
