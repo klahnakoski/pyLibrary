@@ -10,24 +10,28 @@
 from __future__ import unicode_literals
 from __future__ import division
 import HTMLParser
-
 import StringIO
 import base64
 import cgi
 import datetime
+import gzip
 import hashlib
+from io import BytesIO
 import json
 import re
+from tempfile import TemporaryFile
 import time
 
-from pyLibrary import jsons
-from pyLibrary.times.dates import Date
-from pyLibrary.jsons import json_encoder
+from pyLibrary import strings
+from pyLibrary.dot import wrap, wrap_dot, unwrap
 from pyLibrary.collections.multiset import Multiset
 from pyLibrary.debugs.profiles import Profiler
-from pyLibrary.debugs.logs import Log
+from pyLibrary.debugs.logs import Log, Except
+from pyLibrary.env.big_data import FileString, safe_size
+from pyLibrary.jsons import quote
+from pyLibrary.jsons.encoder import json_encoder
 from pyLibrary.strings import expand_template
-from pyLibrary.dot import wrap, wrap_dot, unwrap
+from pyLibrary.times.dates import Date
 
 
 """
@@ -72,6 +76,13 @@ def remove_line_comment(line):
 
 
 def json2value(json_string, params=None, flexible=False, paths=False):
+    """
+    :param json_string: THE JSON
+    :param params: STANDARD JSON PARAMS
+    :param flexible: REMOVE COMMENTS
+    :param paths: ASSUME JSON KEYS ARE DOT-DELIMITED
+    :return: Python value
+    """
     with Profiler("json2value"):
         try:
             if flexible:
@@ -85,7 +96,6 @@ def json2value(json_string, params=None, flexible=False, paths=False):
                 json_string = re.sub(r",\s*\]", r"]", json_string)
 
             if params:
-                params = dict([(k, value2quote(v)) for k, v in params.items()])
                 json_string = expand_template(json_string, params)
             if isinstance(json_string, str):
                 Log.error("only unicode json accepted")
@@ -99,6 +109,23 @@ def json2value(json_string, params=None, flexible=False, paths=False):
             return value
 
         except Exception, e:
+            e = Except.wrap(e)
+            if "Expecting '" in e and "' delimiter: line" in e:
+                line_index = int(strings.between(e.message, " line ", " column ")) - 1
+                column = int(strings.between(e.message, " column ", " "))-1
+                line = json_string.split("\n")[line_index]
+                if column > 20:
+                    sample = "..." + line[column - 20:]
+                    pointer = "   " + (" " * 20) + "^"
+                else:
+                    sample = line
+                    pointer = (" " * column) + "^"
+
+                if len(sample) > 43:
+                    sample = sample[:43] + "..."
+
+                Log.error("Can not decode JSON at:\n\t"+sample+"\n\t"+pointer+"\n", e)
+
             Log.error("Can not decode JSON:\n\t" + str(json_string), e)
 
 
@@ -217,7 +244,18 @@ def value2quote(value):
 
 
 def string2quote(value):
-    return jsons.quote(value)
+    if value == None:
+        return "None"
+    return quote(value)
+
+
+def string2url(value):
+    if isinstance(value, unicode):
+        return "".join([_map2url[c] for c in unicode2latin1(value)])
+    elif isinstance(value, str):
+        return "".join([_map2url[c] for c in value])
+    else:
+        Log.error("Expecting a string")
 
 
 def value2url(value):
@@ -225,7 +263,7 @@ def value2url(value):
         Log.error("")
 
     if isinstance(value, dict):
-        output = "&".join([value2url(k) + "=" + value2url(v) for k, v in value.items()])
+        output = "&".join([value2url(k) + "=" + (value2url(v) if isinstance(v, basestring) else value2url(value2json(v))) for k,v in value.items()])
     elif isinstance(value, unicode):
         output = "".join([_map2url[c] for c in unicode2latin1(value)])
     elif isinstance(value, str):
@@ -235,6 +273,41 @@ def value2url(value):
     else:
         output = unicode(value)
     return output
+
+
+def url_param2value(param):
+    """
+    CONVERT URL QUERY PARAMETERS INTO DICT
+    """
+
+    def _decode(v):
+        if isinstance(v, basestring):
+            try:
+                return json2value(v)
+            except Exception:
+                pass
+        return v
+
+
+    query = {}
+    for p in param.split('&'):
+        if not p:
+            continue
+        if p.find("=") == -1:
+            k = p
+            v = True
+        else:
+            k, v = p.split("=")
+
+        l = query.get(k)
+        if l is None:
+            query[k] = v
+        elif isinstance(l, list):
+            l.append(v)
+        else:
+            query[k] = [l, v]
+
+    return query
 
 
 def html2unicode(value):
@@ -280,6 +353,10 @@ def char2ascii(char):
     return ord(char)
 
 
+def ascii2unicode(value):
+    return value.decode("latin1")
+
+
 def latin12hex(value):
     return value.encode("hex")
 
@@ -292,18 +369,18 @@ def hex2bytearray(value):
     return bytearray(value.decode("hex"))
 
 
-def bytearray2hex(value):
-    return value.decode("latin1").encode("hex")
+def bytes2hex(value, separator=" "):
+    return separator.join("%02X" % ord(x) for x in value)
 
 
 def base642bytearray(value):
     return bytearray(base64.b64decode(value))
 
 
-def bytearray2base64(value):
+def bytes2base64(value):
     return base64.b64encode(value)
 
-def bytearray2sha1(value):
+def bytes2sha1(value):
     if isinstance(value, unicode):
         Log.error("can not convert unicode to sha1")
     sha = hashlib.sha1(value)
@@ -342,7 +419,7 @@ def value2number(v):
 
 
 def utf82unicode(value):
-    return unicode(value.decode('utf8'))
+    return value.decode('utf8')
 
 
 def unicode2utf8(value):
@@ -386,6 +463,67 @@ def pipe2value(value):
         return output
 
     return [pipe2value(v) for v in output.split("|")]
+
+
+def zip2bytes(compressed):
+    """
+    UNZIP DATA
+    """
+    if hasattr(compressed, "read"):
+        return gzip.GzipFile(fileobj=compressed, mode='r')
+
+    buff = BytesIO(compressed)
+    archive = gzip.GzipFile(fileobj=buff, mode='r')
+    return safe_size(archive)
+
+
+def bytes2zip(bytes):
+    """
+    RETURN COMPRESSED BYTES
+    """
+    if hasattr(bytes, "read"):
+        buff = TemporaryFile()
+        archive = gzip.GzipFile(fileobj=buff, mode='w')
+        for b in bytes:
+            archive.write(b)
+        archive.close()
+        buff.seek(0)
+        return FileString(buff)
+
+    buff = BytesIO()
+    archive = gzip.GzipFile(fileobj=buff, mode='w')
+    archive.write(bytes)
+    archive.close()
+    return buff.getvalue()
+
+
+def ini2value(ini_content):
+    """
+    INI FILE CONTENT TO Dict
+    """
+    from ConfigParser import ConfigParser
+
+    buff = StringIO.StringIO(ini_content)
+    config = ConfigParser()
+    config._read(buff, "dummy")
+
+    output = {}
+    for section in config.sections():
+        output[section]=s = {}
+        for k, v in config.items(section):
+            s[k]=v
+    return wrap(output)
+
+
+
+
+
+
+
+
+
+
+
 
 
 _map2url = {chr(i): latin12unicode(chr(i)) for i in range(32, 256)}

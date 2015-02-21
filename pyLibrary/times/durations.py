@@ -9,15 +9,21 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
-
-from datetime import timedelta, datetime
+import datetime
 
 from pyLibrary import regex
-from pyLibrary.times.dates import Date
 from pyLibrary.vendor.dateutil.relativedelta import relativedelta
 from pyLibrary.collections import MIN
 from pyLibrary.maths import Math
 from pyLibrary.dot import wrap
+
+
+Date = None
+Log = None
+def _delayed_import():
+    global Date
+    from pyLibrary.times.dates import Date
+    _ = Date(None)
 
 
 class Duration(object):
@@ -36,7 +42,7 @@ class Duration(object):
         output = object.__new__(cls)
         if value == None:
             if kwargs:
-                output.milli = timedelta(**kwargs).total_seconds() * 1000
+                output.milli = datetime.timedelta(**kwargs).total_seconds() * 1000
                 output.month = 0
                 return output
             else:
@@ -66,6 +72,9 @@ class Duration(object):
         return output
 
     def __radd__(self, other):
+        if not Date:
+            _delayed_import()
+
         if isinstance(other, datetime.datetime):
             return Date(other).add(self)
         elif isinstance(other, Date):
@@ -92,7 +101,7 @@ class Duration(object):
         return output
 
     def __div__(self, amount):
-        if isinstance(amount, Duration) and not amount.month:
+        if isinstance(amount, Duration) and amount.month:
             m = self.month
             r = self.milli
 
@@ -142,15 +151,23 @@ class Duration(object):
             return time - relativedelta(months=self.month, seconds=self.milli/1000)
 
     def __lt__(self, other):
+        if other == None:
+            return False
         return self.milli < Duration(other).milli
 
     def __le__(self, other):
+        if other == None:
+            return False
         return self.milli <= Duration(other).milli
 
     def __ge__(self, other):
+        if other == None:
+            return True
         return self.milli >= Duration(other).milli
 
     def __gt__(self, other):
+        if other == None:
+            return True
         return self.milli > Duration(other).milli
 
     @property

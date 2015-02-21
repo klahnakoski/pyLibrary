@@ -19,7 +19,7 @@ class TestDB(unittest.TestCase):
     def test_aes(self):
         crypto.DEBUG = True
 
-        key = convert.bytearray2base64(Random.bytes(32))
+        key = convert.bytes2base64(Random.bytes(32))
 
         crypto.encrypt("this is a test", Random.bytes(32))
         crypto.encrypt("this is a longer test with more than 16bytes", Random.bytes(32))

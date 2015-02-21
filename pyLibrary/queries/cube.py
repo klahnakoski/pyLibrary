@@ -10,10 +10,11 @@
 from __future__ import unicode_literals
 from __future__ import division
 from pyLibrary import dot
+from pyLibrary import convert
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.collections import MAX, OR
 from pyLibrary.queries.query import _normalize_edge
-from pyLibrary.dot import Null
+from pyLibrary.dot import Null, Dict
 from pyLibrary.dot.lists import DictList
 from pyLibrary.dot import wrap, wrap_dot, listwrap
 from pyLibrary.debugs.logs import Log
@@ -33,6 +34,11 @@ class Cube(object):
 
         self.is_value = False if isinstance(select, list) else True
         self.select = select
+        self.meta = Dict(format="cube")       # PUT EXTRA MARKUP HERE
+        self.is_none = False
+
+        if not all(data.values()):
+            is_none = True
 
         # ENSURE frum IS PROPER FORM
         if isinstance(select, list):
@@ -50,7 +56,7 @@ class Cube(object):
                 # EXPECTING NO MORE THAN ONE rownum EDGE IN THE DATA
                 length = MAX([len(v) for v in data.values()])
                 if length >= 1:
-                    self.edges = wrap([{"name": "rownum", "domain": {"type": "index"}}])
+                    self.edges = wrap([{"name": "rownum", "domain": {"type": "rownum"}}])
                 else:
                     self.edges = DictList.EMPTY
             elif isinstance(data, list):
@@ -58,7 +64,7 @@ class Cube(object):
                     Log.error("not expecting a list of records")
 
                 data = {select.name: Matrix.wrap(data)}
-                self.edges = wrap([{"name": "rownum", "domain": {"type": "index"}}])
+                self.edges = wrap([{"name": "rownum", "domain": {"type": "rownum", "min": 0, "max": len(data), "interval": 1}}])
             elif isinstance(data, Matrix):
                 if isinstance(select, list):
                     Log.error("not expecting a list of records")
@@ -101,6 +107,8 @@ class Cube(object):
 
     @property
     def value(self):
+        if self.is_none:
+            return Null
         if self.edges:
             Log.error("can not get value of with dimension")
         if isinstance(self.select, list):
@@ -329,3 +337,13 @@ class Cube(object):
         else:
             return float(self.data)
 
+    def as_dict(self):
+        return Dict(
+            select=self.select,
+            edges=self.edges,
+            data={k: v.cube for k, v in self.data.items()},
+            meta=self.meta
+        )
+
+    def __json__(self):
+        return convert.value2json(self.as_dict())

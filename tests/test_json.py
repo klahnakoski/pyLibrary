@@ -56,8 +56,23 @@ class TestJSON(unittest.TestCase):
 
     def test_bad_key(self):
         test = {24: "value"}
-        output = convert.value2json(test)
+        self.assertRaises(Exception, convert.value2json, *[test])
 
+    def test_bad_long_json(self):
+        test = convert.value2json({"values": [i for i in range(1000)]})
+        test = test[:1000] + "|" + test[1000:]
+        expected = u"Can not decode JSON at:\n\t..., 216, 217, 218, 219|, 220, 221, 222, 22...\n\t                       ^\n"
+        try:
+            output = convert.json2value(test)
+            Log.error("Expecting error")
+        except Exception, e:
+            if e.message != expected:
+                Log.error("Expecting good error message")
+
+    #
+    # def test_whitespace_prefix(self):
+    #     test = u'\n {"thread": "MainThread", "level": "INFO", "pid": 1318, "component": "wptserve", "source": "web-platform-tests", "time": 1423605050806, "action": "log", "message": "Starting http server on 127.0.0.1:8000"}\n'
+    #     self.assertRaises(Exception, convert.json2value, *[test])
 
     def test_default_python(self):
 

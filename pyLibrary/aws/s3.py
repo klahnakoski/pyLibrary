@@ -11,20 +11,23 @@ from __future__ import unicode_literals
 from __future__ import division
 import StringIO
 import gzip
+from io import BytesIO
 import zipfile
 
 import boto
 from boto.s3.connection import Location
 
 from pyLibrary import convert
-from pyLibrary.aws import cleanup
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import nvl, Null, wrap
+from pyLibrary.dot import wrap
+from pyLibrary.env.big_data import safe_size, MAX_STRING_SIZE, GzipLines, LazyLines
+from pyLibrary.meta import use_settings
 from pyLibrary.times.dates import Date
+from pyLibrary.times.timer import Timer
 
 
 READ_ERROR = "S3 read error"
-
+MAX_FILE_SIZE = 100*1024*1024
 
 class File(object):
     def __init__(self, bucket, key):
@@ -34,6 +37,9 @@ class File(object):
     def read(self):
         return self.bucket.read(self.key)
 
+    def read_lines(self):
+        return self.bucket.read_lines(self.key)
+
     def write(self, value):
         self.bucket.write(self.key, value)
 
@@ -41,20 +47,19 @@ class File(object):
     def meta(self):
         return self.bucket.meta(self.key)
 
+
 class Connection(object):
-    def __init__(self, settings):
-        """
-        SETTINGS:
-        region - NAME OF AWS REGION, REQUIRED FOR SOME BUCKETS
-        bucket - NAME OF THE BUCKET
-        aws_access_key_id - CREDENTIAL
-        aws_secret_access_key - CREDENTIAL
-        """
+    @use_settings
+    def __init__(
+        self,
+        aws_access_key_id,  # CREDENTIAL
+        aws_secret_access_key,  # CREDENTIAL
+        region=None,  # NAME OF AWS REGION, REQUIRED FOR SOME BUCKETS
+        settings=None
+    ):
         self.settings = settings
 
         try:
-            cleanup(self.settings)
-
             if not settings.region:
                 self.connection = boto.connect_s3(
                     aws_access_key_id=self.settings.aws_access_key_id,
@@ -80,9 +85,10 @@ class Connection(object):
 
 
     def get_bucket(self, name):
-        output = Bucket(Null)
+        output = SkeletonBucket()
         output.bucket = self.connection.get_bucket(name, validate=False)
         return output
+
 
 
 class Bucket(object):
@@ -93,22 +99,20 @@ class Bucket(object):
     JUSTIFY IT
     """
 
-
-    def __init__(self, settings, public=False):
-        """
-        SETTINGS:
-        region - NAME OF AWS REGION, REQUIRED FOR SOME BUCKETS
-        bucket - NAME OF THE BUCKET
-        aws_access_key_id - CREDENTIAL
-        aws_secret_access_key - CREDENTIAL
-        """
+    @use_settings
+    def __init__(
+        self,
+        bucket,  # NAME OF THE BUCKET
+        aws_access_key_id,  # CREDENTIAL
+        aws_secret_access_key,  # CREDENTIAL
+        region=None,  # NAME OF AWS REGION, REQUIRED FOR SOME BUCKETS
+        public=False,
+        debug=False,
+        settings=None
+    ):
         self.settings = settings
-        self.settings.public = nvl(self.settings.public, public)
         self.connection = None
         self.bucket = None
-
-        if settings == None:
-            return
 
         try:
             self.connection = Connection(settings).connection
@@ -147,7 +151,7 @@ class Bucket(object):
 
     def metas(self, prefix=None):
         """
-        RETURN THE METATDATA DESCRIPTORS
+        RETURN THE METADATA DESCRIPTORS FOR EACH KEY
         """
 
         keys = self.bucket.list(prefix=prefix)
@@ -167,7 +171,7 @@ class Bucket(object):
         source = self.get_meta(key)
 
         try:
-            json = source.get_contents_as_string()
+            json = safe_size(source)
         except Exception, e:
             Log.error(READ_ERROR, e)
 
@@ -177,23 +181,50 @@ class Bucket(object):
         if source.key.endswith(".zip"):
             json = _unzip(json)
         elif source.key.endswith(".gz"):
-            json = _ungzip(json)
+            json = convert.zip2bytes(json)
 
         return convert.utf82unicode(json)
 
+    def read_lines(self, key):
+        source = self.get_meta(key)
+        if source.size < MAX_STRING_SIZE:
+            if source.key.endswith(".gz"):
+                return GzipLines(source.read(key))
+            else:
+                return convert.utf82unicode(source.read(key)).split("\n")
+
+        if source.key.endswith(".gz"):
+            buff = BytesIO(safe_size(source))
+            archive = gzip.GzipFile(fileobj=buff, mode='r')
+            return LazyLines(archive)
+        else:
+            return LazyLines(source)
 
     def write(self, key, value):
         if key.endswith(".json") or key.endswith(".zip"):
             Log.error("Expecting a pure key")
 
         try:
-            if len(value) > 200 * 1000:
+            if hasattr(value, "read"):
+                storage = self.bucket.new_key(key + ".json.gz")
+                string_length = len(value)
+                value = convert.bytes2zip(value)
+                file_length = len(value)
+                Log.note("Sending contents with length {{file_length|comma}} (from string with length {{string_length|comma}})", {"file_length": file_length, "string_length":string_length})
+                value.seek(0)
+                storage.set_contents_from_file(value)
+
+                if self.settings.public:
+                    storage.set_acl('public-read')
+                return
+
+            if len(value) > 20 * 1000:
                 self.bucket.delete_key(key + ".json")
                 if isinstance(value, str):
-                    value = new_zipfile(key + ".json", value)
+                    value = convert.bytes2zip(value)
                     key += ".json.gz"
                 else:
-                    value = new_zipfile(key + ".json", convert.unicode2utf8(value))
+                    value = convert.bytes2zip(convert.unicode2utf8(value))
                     key += ".json.gz"
 
             else:
@@ -203,22 +234,58 @@ class Bucket(object):
                 else:
                     key += ".json"
 
-            key = self.bucket.new_key(key)
-            key.set_contents_from_string(value)
+            storage = self.bucket.new_key(key)
+            storage.set_contents_from_string(value)
 
             if self.settings.public:
-                key.set_acl('public-read')
+                storage.set_acl('public-read')
         except Exception, e:
             Log.error("Problem writing {{bytes}} bytes to {{key}} in {{bucket}}", {
-                "key": key.key,
+                "key": storage.key,
                 "bucket": self.bucket.name,
                 "bytes": len(value)
             }, e)
 
+    def write_lines(self, key, *lines):
+        storage = self.bucket.new_key(key + ".json.gz")
+
+        buff = BytesIO()
+        archive = gzip.GzipFile(fileobj=buff, mode='w')
+        count=0
+        for l in lines:
+            if hasattr(l, "__iter__"):
+                for ll in l:
+                    archive.write(ll.encode("utf8"))
+                    archive.write(b"\n")
+                    count+=1
+            else:
+                archive.write(l.encode("utf8"))
+                archive.write(b"\n")
+                count += 1
+        archive.close()
+        file_length = buff.tell()
+        buff.seek(0)
+        with Timer("Sending {{count}} lines in {{file_length|comma}} bytes", {"file_length": file_length, "count": count}, debug=self.settings.debug):
+            storage.set_contents_from_file(buff)
+
+        if self.settings.public:
+            storage.set_acl('public-read')
+        return
 
     @property
     def name(self):
         return self.settings.bucket
+
+
+class SkeletonBucket(Bucket):
+    """
+    LET CALLER WORRY ABOUT SETTING PROPERTIES
+    """
+    def __init__(self):
+        object.__init__(self)
+        self.connection = None
+        self.bucket = None
+
 
 
 def strip_extension(key):
@@ -228,18 +295,6 @@ def strip_extension(key):
     return key[:e]
 
 
-def new_zipfile(filename, content):
-    buff = StringIO.StringIO()
-    archive = gzip.GzipFile(fileobj=buff, mode='w')
-    archive.write(content)
-    archive.close()
-    return buff.getvalue()
-
-
-def _ungzip(compressed):
-    buff = StringIO.StringIO(compressed)
-    archive = gzip.GzipFile(fileobj=buff, mode='r')
-    return archive.read()
 
 def _unzip(compressed):
     buff = StringIO.StringIO(compressed)

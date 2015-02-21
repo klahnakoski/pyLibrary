@@ -14,7 +14,7 @@ from pyLibrary.queries import Q
 from pyLibrary.dot.dicts import Dict
 
 
-class TestQ(unittest.TestCase):
+class TestQb(unittest.TestCase):
     def test_groupby(self):
         data = []
         for g, d in Q.groupby(data, size=5):

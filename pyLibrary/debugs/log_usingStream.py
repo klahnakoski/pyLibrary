@@ -43,7 +43,7 @@ class Log_usingStream(BaseLog):
         if use_UTF8:
             def utf8_appender(value):
                 if isinstance(value, unicode):
-                    value = value.encode('utf-8')
+                    value = value.encode('utf8')
                 self.stream.write(value)
 
             appender = utf8_appender
@@ -106,7 +106,7 @@ def time_delta_pusher(please_stop, appender, queue, interval):
                         please_stop.go()
                         next_run = datetime.utcnow()
                     else:
-                        expanded = expand_template(log.get("template", None), log.get("params", None))
+                        expanded = expand_template(log.get("template"), log.get("params"))
                         lines.append(expanded)
                 except Exception, e:
                     Log.warning("Trouble formatting logs", e)

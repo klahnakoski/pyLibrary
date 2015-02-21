@@ -13,7 +13,8 @@ from decimal import Decimal
 import time
 import json
 from pyLibrary import jsons
-from pyLibrary.jsons import cPythonJSONEncoder, json_encoder, json_scrub
+from pyLibrary.jsons import scrub
+from pyLibrary.jsons.encoder import cPythonJSONEncoder, json_encoder
 from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import Null, wrap
 
@@ -68,7 +69,7 @@ def test_json(description, method, n):
 
             Log.note("{{interpreter}}: {{description}} {{type}}: {{json}}", {
                 "description": description,
-                "interpreter": "PyPy" if jsons.use_pypy else "CPython",
+                "interpreter": "PyPy" if jsons.encoder.use_pypy else "CPython",
                 "type": case,
                 "json": example
             })
@@ -80,7 +81,7 @@ def test_json(description, method, n):
             data, count = globals()[case]
             if description == "default json.dumps":
                 #SCRUB BEFORE SENDING TO C ROUTINE (NOT FAIR, BUT WE GET TO SEE HOW FAST ENCODING GOES)
-                data = json_scrub(data)
+                data = scrub(data)
             t0 = time.time()
             try:
                 for i in range(n):
@@ -92,7 +93,7 @@ def test_json(description, method, n):
 
             Log.note("{{interpreter}}: {{description}} {{type}} x {{num}} x {{count}} = {{time}}", {
                 "description": description,
-                "interpreter": "PyPy" if jsons.use_pypy else "CPython",
+                "interpreter": "PyPy" if jsons.encoder.use_pypy else "CPython",
                 "time": duration,
                 "type": case,
                 "num": n,
@@ -125,8 +126,8 @@ class EnhancedJSONEncoder(json.JSONEncoder):
 def main(num):
     try:
         Log.start()
-        test_json("util.jsons.json_encoder", json_encoder, num)
-        test_json("util.jsons.json_encoder (again)", json_encoder, num)
+        test_json("jsons.encoder", json_encoder, num)
+        test_json("jsons.encoder (again)", json_encoder, num)
         test_json("scrub before json.dumps", cPythonJSONEncoder().encode, num)
         test_json("override JSONEncoder.default()", EnhancedJSONEncoder().encode, num)
         test_json("default json.dumps", json.dumps, num)  # WILL CRASH, CAN NOT HANDLE DIVERSITY OF TYPES

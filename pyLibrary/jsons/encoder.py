@@ -12,14 +12,16 @@ from __future__ import division
 
 import json
 from math import floor
-import re
 import time
 import sys
 from datetime import datetime, date, timedelta
 from decimal import Decimal
+
 from pyLibrary.strings import utf82unicode
-from pyLibrary.dot.dicts import Dict
-from pyLibrary.dot.lists import DictList
+from pyLibrary.dot import Dict, DictList
+from pyLibrary.jsons import quote, ESCAPE_DCT, scrub
+from pyLibrary.times.dates import Date
+from pyLibrary.times.durations import Duration
 
 json_decoder = json.JSONDecoder().decode
 
@@ -59,7 +61,7 @@ except Exception, e:
 append = UnicodeBuilder.append
 
 
-def encode(value, pretty=False):
+def _encode(value, pretty=False):
     """
     pypy DOES NOT OPTIMIZE GENERATOR CODE WELL
     """
@@ -105,7 +107,7 @@ class cPythonJSONEncoder(object):
             return pretty_json(value)
 
         try:
-            scrubbed = json_scrub(value)
+            scrubbed = scrub(value)
             return unicode(self.encoder.encode(scrubbed))
         except Exception, e:
             from pyLibrary.debugs.logs import Log
@@ -153,13 +155,15 @@ def _value2json(value, _buffer):
         elif type in (set, list, tuple, DictList):
             _list2json(value, _buffer)
         elif type is date:
-            append(_buffer, unicode(long(time.mktime(value.timetuple()) * 1000)))
+            append(_buffer, unicode(long(time.mktime(value.timetuple()))))
         elif type is datetime:
-            append(_buffer, unicode(long(time.mktime(value.timetuple()) * 1000)))
+            append(_buffer, unicode(long(time.mktime(value.timetuple()))))
+        elif type is Date:
+            append(_buffer, unicode(long(time.mktime(value.value.timetuple()))))
         elif type is timedelta:
-            append(_buffer, "\"")
             append(_buffer, unicode(value.total_seconds()))
-            append(_buffer, "second\"")
+        elif type is Duration:
+            append(_buffer, unicode(value.total_seconds))
         elif hasattr(value, '__json__'):
             j = value.__json__()
             append(_buffer, j)
@@ -210,74 +214,6 @@ def _dict2json(value, _buffer):
         _value2json(v, _buffer)
     append(_buffer, u"}")
 
-
-ESCAPE_DCT = {
-    u"\\": u"\\\\",
-    u"\"": u"\\\"",
-    u"\b": u"\\b",
-    u"\f": u"\\f",
-    u"\n": u"\\n",
-    u"\r": u"\\r",
-    u"\t": u"\\t",
-}
-for i in range(0x20):
-    ESCAPE_DCT.setdefault(chr(i), u'\\u{0:04x}'.format(i))
-
-
-def json_scrub(value):
-    """
-    REMOVE/REPLACE VALUES THAT CAN NOT BE JSON-IZED
-    """
-    return _scrub(value)
-
-
-def _scrub(value):
-    if value == None:
-        return None
-
-    type = value.__class__
-
-    if type in (date, datetime):
-        return datetime2milli(value, type)
-    elif type is timedelta:
-        return unicode(value.total_seconds()) + "second"
-    elif type is str:
-        return utf82unicode(value)
-    elif type is Decimal:
-        return float(value)
-    elif isinstance(value, dict):
-        output = {}
-        for k, v in value.iteritems():
-            v = _scrub(v)
-            output[k] = v
-        return output
-    elif type in (list, DictList):
-        output = []
-        for v in value:
-            v = _scrub(v)
-            output.append(v)
-        return output
-    elif type.__name__ == "bool_":  # DEAR ME!  Numpy has it's own booleans (value==False could be used, but 0==False in Python.  DOH!)
-        if value == False:
-            return False
-        else:
-            return True
-    elif hasattr(value, '__json__'):
-        try:
-            output=json._default_decoder.decode(value.__json__())
-            return output
-        except Exception, e:
-            from pyLibrary.debugs.logs import Log
-
-            Log.error("problem with calling __json__()", e)
-    elif hasattr(value, '__iter__'):
-        output = []
-        for v in value:
-            v = _scrub(v)
-            output.append(v)
-        return output
-    else:
-        return value
 
 
 ARRAY_ROW_LENGTH = 80
@@ -408,7 +344,7 @@ def pretty_json(value):
             except Exception, e:
                 pass
 
-            return encode(value)
+            return _encode(value)
 
     except Exception, e:
         problem_serializing(value, e)
@@ -439,14 +375,6 @@ def problem_serializing(value, e=None):
             "value": rep,
             "type": typename
         }, e)
-
-
-
-ESCAPE = re.compile(ur'[\x00-\x1f\\"\b\f\n\r\t]')
-def replace(match):
-    return ESCAPE_DCT[match.group(0)]
-def quote(value):
-    return "\""+ESCAPE.sub(replace, value)+"\""
 
 
 def indent(value, prefix=INDENT):
@@ -493,6 +421,6 @@ def datetime2milli(d, type):
 # http://liangnuren.wordpress.com/2012/08/13/python-json-performance/
 # http://morepypy.blogspot.ca/2011/10/speeding-up-json-encoding-in-pypy.html
 if use_pypy:
-    json_encoder = encode
+    json_encoder = _encode
 else:
     json_encoder = cPythonJSONEncoder().encode

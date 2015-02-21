@@ -15,6 +15,7 @@ from datetime import datetime as builtin_datetime
 import re
 import math
 import __builtin__
+
 from pyLibrary.dot import nvl, wrap
 
 
@@ -116,8 +117,17 @@ def outdent(value):
         Log.error("can not outdent value", e)
 
 
-def round(value, decimal=None, digits=None):
+def round(value, decimal=None, digits=None, places=None):
+    """
+    :param value:  THE VALUE TO ROUND
+    :param decimal: NUMBER OF DECIMAL PLACES TO ROUND (NEGTIVE IS LEFT-OF-DECIMAL)
+    :param digits: ROUND TO SIGNIFICANT NUMBER OF digits
+    :param places: SAME AS digits
+    :return:
+    """
+
     value = float(value)
+    digits = nvl(digits, places)
     if digits != None:
         m = pow(10, math.ceil(math.log10(abs(value))))
         return __builtin__.round(value / m, digits) * m
@@ -166,6 +176,50 @@ def left(value, len):
     if len <= 0:
         return u""
     return value[0:len]
+
+
+def comma(value):
+    """
+    FORMAT WITH THOUSANDS COMMA (,) SEPARATOR
+    """
+    try:
+        if float(value) == round(float(value), 0):
+            output = "{:,}".format(int(value))
+        else:
+            output = "{:,}".format(float(value))
+    except Exception:
+        output = unicode(value)
+
+    return output
+
+
+def quote(value):
+    from pyLibrary import convert
+    return convert.string2quote(value)
+
+
+def split(value, sep="\n"):
+    # GENERATOR VERSION OF split()
+    # SOMETHING TERRIBLE HAPPENS, SOMETIMES, IN PYPY
+    s = 0
+    len_sep = len(sep)
+    n = value.find(sep, s)
+    while n > -1:
+        yield value[s:n]
+        s = n + len_sep
+        n = value.find(sep, s)
+    yield value[s:]
+    value = None
+
+def common_prefix(*args):
+    prefix = args[0]
+    for a in args[1:]:
+        for i in range(min(len(prefix), len(a))):
+            if a[i] != prefix[i]:
+                prefix = prefix[:i]
+                break
+    return prefix
+
 
 
 def find_first(value, find_arr, start=0):
@@ -231,7 +285,9 @@ def _simple_expand(template, seq):
         var = path.lstrip(".")
         depth = min(len(seq), max(1, len(path) - len(var)))
         try:
-            val = seq[-depth][var]
+            val = seq[-depth]
+            if var:
+                val = val[var]
             for filter in ops[1:]:
                 parts = filter.split('(')
                 if len(parts) > 1:
@@ -280,7 +336,7 @@ def toString(val):
     if val == None:
         return ""
     elif isinstance(val, (dict, list, set)):
-        from pyLibrary.jsons import json_encoder
+        from pyLibrary.jsons.encoder import json_encoder
 
         return json_encoder(val, pretty=True)
     elif hasattr(val, "__json__"):
