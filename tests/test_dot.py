@@ -8,16 +8,13 @@
 #
 
 
-import unittest
-
-from pyLibrary import convert
 from pyLibrary.collections import MAX
 from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import wrap, Dict, Null
+from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
-
-class TestDot(unittest.TestCase):
+class TestDot(FuzzyTestCase):
     def test_none(self):
         a = 0
         b = 0
@@ -151,8 +148,7 @@ class TestDot(unittest.TestCase):
                 "l": {"m": {"n": "test5"}}
             }
         }
-        if convert.value2json(expected) != convert.value2json(a):
-            Log.error("error")
+        self.assertEqual(a, expected)
 
 
     def test_assign2(self):
@@ -170,8 +166,7 @@ class TestDot(unittest.TestCase):
                 "e": "test2"
             }
         }
-        if convert.value2json(expected) != convert.value2json(a):
-            Log.error("error")
+        self.assertEqual(a, expected)
 
     def test_assign3(self):
         # IMPOTENT ASSIGNMENTS DO NOTHING
@@ -180,28 +175,23 @@ class TestDot(unittest.TestCase):
 
         b.c = None
         expected = {}
-        if convert.value2json(expected) != convert.value2json(a):
-            Log.error("error")
+        self.assertEqual(a, expected)
 
         b.c.d = None
         expected = {}
-        if convert.value2json(expected) != convert.value2json(a):
-            Log.error("error")
+        self.assertEqual(a, expected)
 
         b["c.d"] = None
         expected = {}
-        if convert.value2json(expected) != convert.value2json(a):
-            Log.error("error")
+        self.assertEqual(a, expected)
 
         b.c.d.e = None
         expected = {}
-        if convert.value2json(expected) != convert.value2json(a):
-            Log.error("error")
+        self.assertEqual(a, expected)
 
         b.c["d.e"] = None
         expected = {}
-        if convert.value2json(expected) != convert.value2json(a):
-            Log.error("error")
+        self.assertEqual(a, expected)
 
     def test_assign4(self):
         # IMPOTENT ASSIGNMENTS DO NOTHING
@@ -209,15 +199,40 @@ class TestDot(unittest.TestCase):
         b = wrap(a)
         b.c.d = None
         expected = {"c": {}}
-        if convert.value2json(expected) != convert.value2json(a):
-            Log.error("error")
+        self.assertEqual(a, expected)
 
         a = {"c": {"d": {}}}
         b = wrap(a)
         b.c = None
         expected = {}
-        if convert.value2json(expected) != convert.value2json(a):
-            Log.error("error")
+        self.assertEqual(a, expected)
+
+
+    def test_assign5(self):
+        a = {}
+        b = wrap(a)
+
+        b.c["d\.e"].f = 2
+        expected = {"c": {"d.e": {"f": 2}}}
+        self.assertEqual(a, expected)
+
+
+    def test_increment(self):
+        a = {}
+        b = wrap(a)
+        b.c1.d += 1
+        b.c2.e += "e"
+        b.c3.f += ["f"]
+        b["c\\.a"].d += 1
+
+        self.assertEqual(a,  {"c1": {"d": 1}, "c2": {"e": "e"}, "c3": {"f": ["f"]}, "c.a": {"d": 1}})
+
+        b.c1.d += 2
+        b.c2.e += "f"
+        b.c3.f += ["g"]
+        b["c\\.a"].d += 3
+        self.assertEqual(a,  {"c1": {"d": 3}, "c2": {"e": "ef"}, "c3": {"f": ["f", "g"]}, "c.a": {"d": 4}})
+
 
 
     def test_slicing(self):

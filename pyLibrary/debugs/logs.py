@@ -39,7 +39,7 @@ class Log(object):
     logging_multi = None
     profiler = None   # simple pypy-friendly profiler
     cprofiler = None  # screws up with pypy, but better than nothing
-    cprofiler_stats = Queue()  # ACCUMULATION OF STATS FROM ALL THREADS
+    cprofiler_stats = Queue("cprofiler stats")  # ACCUMULATION OF STATS FROM ALL THREADS
     error_mode = False  # prevent error loops
 
     @classmethod
@@ -58,20 +58,12 @@ class Log(object):
         """
         if not settings:
             return
+        settings = wrap(settings)
 
         cls.settings = settings
         cls.trace = cls.trace | nvl(settings.trace, False)
         if cls.trace:
             from pyLibrary.thread.threads import Thread
-
-        if not settings.log:
-            return
-
-        cls.logging_multi = Log_usingMulti()
-        cls.main_log = Log_usingThread(cls.logging_multi)
-
-        for log in listwrap(settings.log):
-            Log.add_log(Log.new_instance(log))
 
         if settings.cprofile:
             if isinstance(settings.cprofile, bool):
@@ -86,6 +78,7 @@ class Log(object):
             from pyLibrary.debugs import profiles
 
             if isinstance(settings.profile, bool):
+                profiles.ON = True
                 settings.profile = {"enabled": True, "filename": "profile.tab"}
 
             if settings.profile.enabled:
@@ -93,6 +86,18 @@ class Log(object):
 
         if settings.constants:
             constants.set(settings.constants)
+
+        if not settings.log:
+            return
+
+        cls.logging_multi = Log_usingMulti()
+        cls.main_log = Log_usingThread(cls.logging_multi)
+
+        for log in listwrap(settings.log):
+            Log.add_log(Log.new_instance(log))
+
+
+
 
     @classmethod
     def stop(cls):
@@ -535,7 +540,7 @@ class Log_usingThread(BaseLog):
         # DELAYED LOAD FOR THREADS MODULE
         from pyLibrary.thread.threads import Queue
 
-        self.queue = Queue(max=10000, silent=True)
+        self.queue = Queue("logs", max=10000, silent=True)
         self.logger = logger
 
         def worker(please_stop):

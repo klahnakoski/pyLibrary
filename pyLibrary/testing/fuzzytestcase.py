@@ -11,7 +11,7 @@
 import unittest
 from pyLibrary import dot
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import nvl
+from pyLibrary.dot import nvl, Dict, literal_field
 from pyLibrary.maths import Math
 from pyLibrary.dot import wrap
 from pyLibrary.strings import expand_template
@@ -47,8 +47,8 @@ class FuzzyTestCase(unittest.TestCase):
         else:
             assertAlmostEqual(test_value, expected, msg=msg, digits=digits, places=nvl(places, self.default_places), delta=delta)
 
-    def assertEqual(self, first, second, msg=None, digits=None, places=None, delta=None):
-        self.assertAlmostEqual(first, second, msg=msg, digits=digits, places=places, delta=delta)
+    def assertEqual(self, test_value, expected, msg=None, digits=None, places=None, delta=None):
+        self.assertAlmostEqual(test_value, expected, msg=msg, digits=digits, places=places, delta=delta)
 
 
 def zipall(*args):
@@ -72,11 +72,15 @@ def zipall(*args):
 
 
 def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=None):
+    show_detail=True
     try:
         if isinstance(expected, dict):
-            expected = wrap(expected)
             for k, v2 in expected.items():
-                v1 = dot.get_attr(test, k)
+                if isinstance(k, basestring):
+                    v1 = dot.get_attr(test, literal_field(k))
+                else:
+                    show_deta=False
+                    v1 = test[k]
                 assertAlmostEqual(v1, v2, msg=msg, digits=digits, places=places, delta=delta)
         elif hasattr(test, "__iter__") and hasattr(expected, "__iter__"):
             for a, b in zipall(test, expected):
@@ -85,8 +89,8 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
             assertAlmostEqualValue(test, expected, msg=msg, digits=digits, places=places, delta=delta)
     except Exception, e:
         Log.error("{{test|json}} does not match expected {{expected|json}}", {
-            "test": test,
-            "expected": expected
+            "test": test if show_detail else "[can not show]",
+            "expected": expected if show_detail else "[can not show]"
         }, e)
 
 

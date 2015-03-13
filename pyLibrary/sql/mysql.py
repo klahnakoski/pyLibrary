@@ -24,7 +24,7 @@ from pyLibrary.strings import expand_template
 from pyLibrary.dot import nvl, wrap, listwrap, unwrap
 from pyLibrary import convert
 from pyLibrary.debugs.logs import Log, Except
-from pyLibrary.queries import Q
+from pyLibrary.queries import qb
 from pyLibrary.strings import indent
 from pyLibrary.strings import outdent
 from pyLibrary.env.files import File
@@ -36,7 +36,7 @@ MAX_BATCH_SIZE = 100
 all_db = []
 
 
-class DB(object):
+class MySQL(object):
     """
     Parameterize SQL by name rather than by position.  Return records as objects
     rather than tuples.
@@ -363,7 +363,7 @@ class DB(object):
         settings.schema = nvl(settings.schema, settings.database)
 
         if param:
-            with DB(settings) as temp:
+            with MySQL(settings) as temp:
                 sql = expand_template(sql, temp.quote_param(param))
 
         # MWe have no way to execute an entire SQL file in bulk, so we
@@ -416,11 +416,11 @@ class DB(object):
         sql = File(filename).read()
         if ignore_errors:
             try:
-                DB.execute_sql(sql=sql, param=param, settings=settings)
+                MySQL.execute_sql(sql=sql, param=param, settings=settings)
             except Exception, e:
                 pass
         else:
-            DB.execute_sql(settings, sql, param)
+            MySQL.execute_sql(settings, sql, param)
 
     def _execute_backlog(self):
         if not self.backlog: return
@@ -441,7 +441,7 @@ class DB(object):
             self.cursor.close()
             self.cursor = self.db.cursor()
         else:
-            for i, g in Q.groupby(backlog, size=MAX_BATCH_SIZE):
+            for i, g in qb.groupby(backlog, size=MAX_BATCH_SIZE):
                 sql = self.preamble + ";\n".join(g)
                 try:
                     if self.debug:
@@ -496,7 +496,7 @@ class DB(object):
         keys = set()
         for r in records:
             keys |= set(r.keys())
-        keys = Q.sort(keys)
+        keys = qb.sort(keys)
 
         try:
             command = \
@@ -600,7 +600,7 @@ class DB(object):
             return SQL(column_name.value + " AS " + self.quote_column(column_name.name))
 
     def sort2sqlorderby(self, sort):
-        sort = Q.normalize_sort_parameters(sort)
+        sort = qb.normalize_sort_parameters(sort)
         return ",\n".join([self.quote_column(s.field) + (" DESC" if s.sort == -1 else " ASC") for s in sort])
 
 
@@ -615,22 +615,6 @@ def utf8_to_unicode(v):
 
 
 
-class SQL(unicode):
-    """
-    ACTUAL SQL, DO NOT QUOTE THIS STRING
-    """
-    def __init__(self, template='', param=None):
-        unicode.__init__(self)
-        self.template = template
-        self.param = param
-
-    @property
-    def sql(self):
-        return expand_template(self.template, self.param)
-
-    def __str__(self):
-        Log.error("do not do this")
-
 
 def int_list_packer(term, values):
     """
@@ -643,7 +627,7 @@ def int_list_packer(term, values):
     ranges = []
     exclude = set()
 
-    sorted = Q.sort(values)
+    sorted = qb.sort(values)
 
     last = sorted[0]
     curr_start = last
@@ -701,10 +685,10 @@ def int_list_packer(term, values):
     if ranges:
         r = {"or": [{"range": {term: r}} for r in ranges]}
         if exclude:
-            r = {"and": [r, {"not": {"terms": {term: Q.sort(exclude)}}}]}
+            r = {"and": [r, {"not": {"terms": {term: qb.sort(exclude)}}}]}
         if singletons:
             return {"or": [
-                {"terms": {term: Q.sort(singletons)}},
+                {"terms": {term: qb.sort(singletons)}},
                 r
             ]}
         else:

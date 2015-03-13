@@ -72,6 +72,9 @@ class Index(object):
 
         self.path = "/" + index + "/" + type
 
+    @property
+    def url(self):
+        return self.cluster.path + "/" + self.path
 
     def get_schema(self, retry=True):
         if self.settings.explore_metadata:
@@ -106,17 +109,30 @@ class Index(object):
             if re.match(re.escape(prefix) + "\\d{8}_\\d{6}", a.index) and a.index != name:
                 self.cluster.delete_index(a.index)
 
-    def add_alias(self):
-        self.cluster_metadata = None
-        self.cluster._post(
-            "/_aliases",
-            data=convert.unicode2utf8(convert.value2json({
-                "actions": [
-                    {"add": {"index": self.settings.index, "alias": self.settings.alias}}
-                ]
-            })),
-            timeout=nvl(self.settings.timeout, 30)
-        )
+    def add_alias(self, alias=None):
+        if alias:
+            self.cluster_metadata = None
+            self.cluster._post(
+                "/_aliases",
+                data=convert.unicode2utf8(convert.value2json({
+                    "actions": [
+                        {"add": {"index": self.settings.index, "alias": alias}}
+                    ]
+                })),
+                timeout=nvl(self.settings.timeout, 30)
+            )
+        else:
+            # SET ALIAS ACCORDING TO LIFECYCLE RULES
+            self.cluster_metadata = None
+            self.cluster._post(
+                "/_aliases",
+                data=convert.unicode2utf8(convert.value2json({
+                    "actions": [
+                        {"add": {"index": self.settings.index, "alias": self.settings.alias}}
+                    ]
+                })),
+                timeout=nvl(self.settings.timeout, 30)
+            )
 
     def get_proto(self, alias):
         """
@@ -227,6 +243,7 @@ class Index(object):
             except Exception, e:
                 Log.error("can not make request body from\n{{lines|indent}}", {"lines": lines}, e)
 
+
             response = self.cluster._post(
                 self.path + "/_bulk",
                 data=data_bytes,
@@ -273,18 +290,24 @@ class Index(object):
         else:
             interval = unicode(seconds) + "s"
 
-        response = self.cluster.put(
-            "/" + self.settings.index + "/_settings",
-            data='{"index":{"refresh_interval":' + convert.value2json(interval) + '}}'
-        )
-
-        result = convert.json2value(utf82unicode(response.content))
         if self.cluster.version.startswith("0.90."):
+            response = self.cluster.put(
+                "/" + self.settings.index + "/_settings",
+                data='{"index":{"refresh_interval":' + convert.value2json(interval) + '}}'
+            )
+
+            result = convert.json2value(utf82unicode(response.content))
             if not result.ok:
                 Log.error("Can not set refresh interval ({{error}})", {
                     "error": utf82unicode(response.content)
                 })
         elif self.cluster.version.startswith("1.4."):
+            response = self.cluster.put(
+                "/" + self.settings.index + "/_settings",
+                data=convert.unicode2utf8('{"index":{"refresh_interval":' + convert.value2json(interval) + '}}')
+            )
+
+            result = convert.json2value(utf82unicode(response.content))
             if not result.acknowledged:
                 Log.error("Can not set refresh interval ({{error}})", {
                     "error": utf82unicode(response.content)
@@ -313,8 +336,8 @@ class Index(object):
                 "query": query
             }, e)
 
-    def threaded_queue(self, size=None, period=None):
-        return ThreadedQueue(self, size=size, period=period)
+    def threaded_queue(self, batch_size=None, max_size=None, period=None, silent=False):
+        return ThreadedQueue("elasticsearch: " + self.settings.index, self, batch_size=batch_size, max_size=max_size, period=period, silent=silent)
 
     def delete(self):
         self.cluster.delete_index(index=self.settings.index)
@@ -345,12 +368,12 @@ class Cluster(object):
         limit_replicas=None,
         settings=None
     ):
-        from pyLibrary.queries import Q
+        from pyLibrary.queries import qb
 
         settings = deepcopy(settings)
         aliases = self.get_aliases()
 
-        indexes = Q.sort([
+        indexes = qb.sort([
             a
             for a in aliases
             if (a.alias == settings.index and settings.alias == None) or
@@ -383,6 +406,21 @@ class Cluster(object):
             return Index(settings)
         Log.error("Can not find index {{index_name}}", {"index_name": settings.index})
 
+    def get_alias(self, alias):
+        """
+        RETURN REFERENCE TO ALIAS (MANY INDEXES)
+        USER MUST BE SURE NOT TO SEND UPDATES
+        """
+        aliases = self.get_aliases()
+        if alias in aliases.alias:
+            settings = self.settings.copy()
+            settings.alias = alias
+            settings.index = alias
+            return Index(settings)
+        Log.error("Can not find any index with alias {{alias_name}}", {"alias_name": alias})
+
+
+
     @use_settings
     def create_index(
         self,
@@ -400,7 +438,7 @@ class Cluster(object):
             Log.error("Expecting index name to conform to pattern")
 
         if settings.schema_file:
-            Log.error('schema_file attribute not suported.  Use {"$ref":<filename>} instead')
+            Log.error('schema_file attribute not supported.  Use {"$ref":<filename>} instead')
 
         if isinstance(schema, basestring):
             schema = convert.json2value(schema, paths=True)
@@ -460,11 +498,7 @@ class Cluster(object):
         url = self.settings.host + ":" + unicode(self.settings.port) + path
 
         try:
-            kwargs = wrap(kwargs)
-            kwargs.setdefault("timeout", 600)
-            kwargs.headers["Accept-Encoding"] = "gzip,deflate"
-            kwargs = unwrap(kwargs)
-
+            wrap(kwargs).headers["Accept-Encoding"] = "gzip,deflate"
 
             if "data" in kwargs and not isinstance(kwargs["data"], str):
                 Log.error("data must be utf8 encoded string")
@@ -488,15 +522,19 @@ class Cluster(object):
             else:
                 suggestion = ""
 
-            Log.error("Problem with call to {{url}}" + suggestion + "\n{{body|left(10000}}", {
-                "url": url,
-                "body": kwargs["data"][0:10000] if self.debug else kwargs["data"][0:100]
-            }, e)
+            if kwargs.get("data"):
+                Log.error("Problem with call to {{url}}" + suggestion + "\n{{body|left(10000}}", {
+                    "url": url,
+                    "body": kwargs["data"][0:10000] if self.debug else kwargs["data"][0:100]
+                }, e)
+            else:
+                Log.error("Problem with call to {{url}}" + suggestion, {"url": url}, e)
+
+
 
     def get(self, path, **kwargs):
         url = self.settings.host + ":" + unicode(self.settings.port) + path
         try:
-            kwargs.setdefault("timeout", 600)
             response = http.get(url, **kwargs)
             if self.debug:
                 Log.note("response: {{response}}", {"response": utf82unicode(response.content)[:130]})
@@ -514,8 +552,6 @@ class Cluster(object):
             sample = kwargs["data"][:300]
             Log.note("PUT {{url}}:\n{{data|indent}}", {"url": url, "data": sample})
         try:
-            kwargs = wrap(kwargs)
-            kwargs.setdefault("timeout", 60)
             response = http.put(url, **kwargs)
             if self.debug:
                 Log.note("response: {{response}}", {"response": utf82unicode(response.content)[0:300:]})
@@ -526,7 +562,6 @@ class Cluster(object):
     def delete(self, path, **kwargs):
         url = self.settings.host + ":" + unicode(self.settings.port) + path
         try:
-            kwargs.setdefault("timeout", 60)
             response = convert.json2value(utf82unicode(http.delete(url, **kwargs).content))
             if self.debug:
                 Log.note("delete response {{response}}", {"response": response})
@@ -594,4 +629,48 @@ def _scrub(r):
     except Exception, e:
         Log.warning("Can not scrub: {{json}}", {"json": r})
 
+
+
+class Alias(object):
+    @use_settings
+    def __init__(self, type, alias, explore_metadata=True, debug=False, settings=None):
+        """
+        alias - NAME OF THE ALIAS
+        type - SCHEMA NAME
+        explore_metadata == True - IF PROBING THE CLUSTER FOR METADATA IS ALLOWED
+        timeout == NUMBER OF SECONDS TO WAIT FOR RESPONSE, OR SECONDS TO WAIT FOR DOWNLOAD (PASSED TO requests)
+        """
+        self.debug = debug
+        if self.debug:
+            Log.alert("elasticsearch debugging on index {{index}} is on", {"index": settings.index})
+
+        self.settings = settings
+        self.cluster = Cluster(settings)
+
+        self.path = "/" + alias + "/" + type
+
+    @property
+    def url(self):
+        return self.cluster.path + "/" + self.path
+
+    def search(self, query, timeout=None):
+        query = wrap(query)
+        try:
+            if self.debug:
+                if len(query.facets.keys()) > 20:
+                    show_query = query.copy()
+                    show_query.facets = {k: "..." for k in query.facets.keys()}
+                else:
+                    show_query = query
+                Log.note("Query:\n{{query|indent}}", {"query": show_query})
+            return self.cluster._post(
+                self.path + "/_search",
+                data=convert.value2json(query).encode("utf8"),
+                timeout=nvl(timeout, self.settings.timeout)
+            )
+        except Exception, e:
+            Log.error("Problem with search (path={{path}}):\n{{query|indent}}", {
+                "path": self.path + "/_search",
+                "query": query
+            }, e)
 

@@ -18,10 +18,10 @@ from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 class TestRef(FuzzyTestCase):
 
 
-    def test_doc(self):
+    def test_doc1(self):
         os.environ["test_variable"] = "abc"
 
-        doc = jsons.ref.get("file://tests/resources/json_ref/sample_ref.json")
+        doc = jsons.ref.get("file://tests/resources/json_ref/test_ref1.json")
 
         self.assertEqual(doc.env_variable, "abc")
         self.assertEqual(doc.relative_file1, "*_ts")
@@ -30,3 +30,15 @@ class TestRef(FuzzyTestCase):
         self.assertEqual(doc.absolute_doc, "another value")
         self.assertEqual(doc.env_variable, "abc")
         self.assertEqual(doc.relative_object_doc, {"key":"new value", "another_key":"another value"})
+
+    def test_doc2(self):
+        # BETTER TEST OF RECURSION
+        doc = jsons.ref.get("file://tests/resources/json_ref/test_ref2.json")
+
+        self.assertEqual(doc, {
+            "a": "some_value",
+            "test_key": "test_value",
+            "b": {
+                "test_key": "test_value"
+            }
+        })

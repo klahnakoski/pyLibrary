@@ -33,7 +33,7 @@ class Date(object):
 
     def __new__(cls, *args, **kwargs):
         if len(args) == 1 and args[0] == None:
-            return None
+            return Null
         return object.__new__(cls, *args)
 
     def __init__(self, *args):
@@ -52,7 +52,7 @@ class Date(object):
                     else:
                         self.value = datetime.utcfromtimestamp(a0)
                 elif isinstance(a0, basestring):
-                    self.value = unicode2datetime(a0).value
+                    self.value = unicode2datetime(a0)
                 else:
                     self.value = datetime(*args)
             else:
@@ -68,6 +68,9 @@ class Date(object):
     def floor(self, duration=None):
         if duration is None:  # ASSUME DAY
             return Date(math.floor(self.milli / 86400000) * 86400000)
+        elif duration.milli % (7*86400000) ==0:
+            offset = 4*86400000
+            return Date(math.floor((self.milli+offset) / duration.milli) * duration.milli - offset)
         elif not duration.month:
             return Date(math.floor(self.milli / duration.milli) * duration.milli)
         else:
@@ -275,12 +278,12 @@ def unicode2datetime(value, format=None):
 
     value = value.strip()
     if value.lower() == "now":
-        return Date.now()
+        return Date.now().value
     elif value.lower() == "today":
-        return Date.today()
+        return Date.today().value
 
     if any(value.lower().find(n) >= 0 for n in ["now", "today"] + list(MILLI_VALUES.keys())):
-        return parse(value)
+        return parse(value).value
 
     if format != None:
         try:

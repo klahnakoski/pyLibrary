@@ -14,10 +14,10 @@ from pyLibrary import strings
 from pyLibrary import convert
 from pyLibrary.env.files import File
 from pyLibrary.debugs.logs import Log, Except, extract_tb, ERROR
-from pyLibrary.queries.es_query import ESQuery
+from pyLibrary.queries.qb_usingES import FromES
 
 
-class TestESQuery(unittest.TestCase):
+class TestFromES(unittest.TestCase):
     # THE COMPLICATION WITH THIS TEST IS KNOWING IF
     # THE NESTED TERMS ARE andED TOGETHER ON EACH
     # NESTED DOCUMENT, OR *ANY* OF THE NESTED DOCUMENTS
@@ -28,7 +28,7 @@ class TestESQuery(unittest.TestCase):
     # AMBIGUOUS
 
     def setUp(self):
-        self.esq=ESQueryTester("private_bugs")
+        self.esq=FromESTester("private_bugs")
 
     def not_done_test1(self):
         esquery = self.esq.query({
@@ -48,13 +48,13 @@ class TestESQuery(unittest.TestCase):
         assert convert.value2json(esquery, pretty=True) == convert.value2json(expecting, pretty=True)
 
 
-class ESQueryTester(object):
+class FromESTester(object):
     def __init__(self, index):
         self.es = FakeES({
             "host":"example.com",
             "index":"index"
         })
-        self.esq = ESQuery(self.es)
+        self.esq = FromES(self.es)
 
     def query(self, query):
         try:

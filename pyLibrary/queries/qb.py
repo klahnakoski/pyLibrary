@@ -14,12 +14,12 @@ import __builtin__
 from pyLibrary import dot
 
 from pyLibrary.collections import UNION, MIN
-from pyLibrary.queries import flat_list, query, group_by, _normalize_select
+from pyLibrary.queries import flat_list, query, group_by
 from pyLibrary.queries.container import Container
 from pyLibrary.queries.filters import TRUE_FILTER, FALSE_FILTER
 from pyLibrary.queries.flat_list import FlatList
 from pyLibrary.queries.index import Index
-from pyLibrary.queries.query import Query, _normalize_selects, sort_direction
+from pyLibrary.queries.query import Query, _normalize_selects, sort_direction, _normalize_select
 from pyLibrary.queries.cube import Cube
 from pyLibrary.maths import Math
 from pyLibrary.debugs.logs import Log
@@ -30,8 +30,8 @@ from pyLibrary.dot import listwrap, wrap, unwrap
 
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)
-# Qb QUERY DOCUMENTATION: https://github.com/klahnakoski/Qb/tree/master/docs
-# START HERE: https://github.com/klahnakoski/Qb/blob/master/docs/Qb_Reference.md
+# qb QUERY DOCUMENTATION: https://github.com/klahnakoski/qb/tree/master/docs
+# START HERE: https://github.com/klahnakoski/qb/blob/master/docs/Qb_Reference.md
 # TODO: USE http://docs.sqlalchemy.org/en/latest/core/tutorial.html AS DOCUMENTATION FRAMEWORK
 
 def run(query):
@@ -419,7 +419,7 @@ def _select_deep_meta(field, depth):
 
 
 def get_columns(data):
-    return [{"name": n} for n in UNION(set(d.keys()) for d in data)]
+    return wrap([{"name": n} for n in UNION(set(d.keys()) for d in data)])
 
 
 def sort(data, fieldnames=None):
@@ -444,7 +444,7 @@ def sort(data, fieldnames=None):
                 return DictList([unwrap(d) for d in sorted(data, cmp=comparer)])
             else:
                 # EXPECTING {"field":f, "sort":i} FORMAT
-                fieldnames.sort = sort_direction[fieldnames.sort]
+                fieldnames.sort = sort_direction.get(fieldnames.sort, 0)
                 fieldnames.field = nvl(fieldnames.field, fieldnames.value)
                 if fieldnames.field==None:
                     Log.error("Expecting sort to have 'field' attribute")

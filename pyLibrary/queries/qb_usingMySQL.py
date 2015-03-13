@@ -13,7 +13,8 @@ from __future__ import division
 from pyLibrary import convert
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.meta import use_settings
-from pyLibrary.sql.db import int_list_packer, SQL, DB
+from pyLibrary.sql import SQL
+from pyLibrary.sql.mysql import int_list_packer, MySQL
 from pyLibrary.debugs.logs import Log
 from pyLibrary.strings import indent, expand_template
 from pyLibrary.dot import nvl
@@ -21,9 +22,9 @@ from pyLibrary.dot.lists import DictList
 from pyLibrary.dot import wrap, listwrap, unwrap
 
 
-class DBQuery(object):
+class FromMySQL(object):
     """
-    Qb to MySQL DATABASE QUERIES
+    qb to MySQL DATABASE QUERIES
     """
     @use_settings
     def __init__(
@@ -38,9 +39,9 @@ class DBQuery(object):
         readonly=False,
         settings=None
     ):
-        from pyLibrary.sql.db import DB
+        from pyLibrary.sql.mysql import MySQL
         self.settings = settings
-        self._db = DB(settings)
+        self._db = MySQL(settings)
 
     def as_dict(self):
         settings = self.settings.copy()
@@ -52,7 +53,7 @@ class DBQuery(object):
 
     def query(self, query, stacked=False):
         """
-        TRANSLATE Qb QUERY ON SINGLE TABLE TO SQL QUERY
+        TRANSLATE qb QUERY ON SINGLE TABLE TO SQL QUERY
         """
         from pyLibrary.queries.query import Query
         query = Query(query)

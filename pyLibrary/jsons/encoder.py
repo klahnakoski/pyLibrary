@@ -111,7 +111,7 @@ class cPythonJSONEncoder(object):
             return unicode(self.encoder.encode(scrubbed))
         except Exception, e:
             from pyLibrary.debugs.logs import Log
-            Log.warning("problem serializing\n{{json|indent}}", {"json": pretty_json(value)}, e)
+            Log.warning("problem serializing {{type}}", {"type": repr(value)}, e)
             raise e
 
 
@@ -163,7 +163,7 @@ def _value2json(value, _buffer):
         elif type is timedelta:
             append(_buffer, unicode(value.total_seconds()))
         elif type is Duration:
-            append(_buffer, unicode(value.total_seconds))
+            append(_buffer, unicode(value.seconds))
         elif hasattr(value, '__json__'):
             j = value.__json__()
             append(_buffer, j)
@@ -331,6 +331,8 @@ def pretty_json(value):
             return pretty_json(json_decoder(j))
         elif hasattr(value, '__iter__'):
             return pretty_json(list(value))
+        elif hasattr(value, '__call__'):
+            return "null"
         else:
             try:
                 if int(value)==value:

@@ -23,7 +23,7 @@ import gc
 
 from pyLibrary.dot import nvl, Dict
 from pyLibrary.times.dates import Date
-from pyLibrary.times.durations import Duration
+from pyLibrary.times.durations import Duration, SECOND
 
 
 Log=None
@@ -73,18 +73,20 @@ class Lock(object):
 
 class Queue(object):
     """
-    SIMPLE MESSAGE QUEUE, multiprocessing.Queue REQUIRES SERIALIZATION, WHICH IS HARD TO USE JUST BETWEEN THREADS
+     SIMPLE MESSAGE QUEUE, multiprocessing.Queue REQUIRES SERIALIZATION, WHICH
+     IS DIFFICULT TO USE JUST BETWEEN THREADS (SERIALIZATION REQUIRED)
     """
 
-    def __init__(self, max=None, silent=False):
+    def __init__(self, name, max=None, silent=False):
         """
         max - LIMIT THE NUMBER IN THE QUEUE, IF TOO MANY add() AND extend() WILL BLOCK
         silent - COMPLAIN IF THE READERS ARE TOO SLOW
         """
+        self.name = name
         self.max = nvl(max, 2 ** 10)
         self.silent = silent
         self.keep_running = True
-        self.lock = Lock("lock for queue")
+        self.lock = Lock("lock for queue " + name)
         self.queue = deque()
         self.next_warning = datetime.utcnow()  # FOR DEBUGGING
         self.gc_count = 0
@@ -135,7 +137,8 @@ class Queue(object):
                     now = datetime.utcnow()
                     if self.next_warning < now:
                         self.next_warning = now + timedelta(seconds=wait_time)
-                        Log.warning("Queue is full ({{num}}} items), thread(s) have been waiting {{wait_time}} sec", {
+                        Log.alert("Queue {{name}} is full ({{num}} items), thread(s) have been waiting {{wait_time}} sec", {
+                            "name": self.name,
                             "num": len(self.queue),
                             "wait_time": wait_time
                         })
@@ -171,12 +174,14 @@ class Queue(object):
                     except Exception, e:
                         pass
             else:
-                while self.keep_running and Date.now() < till:
+                while self.keep_running:
                     if self.queue:
                         value = self.queue.popleft()
                         if value is Thread.STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                             self.keep_running = False
                         return value
+                    elif Date.now() > till:
+                        break
 
                     try:
                         self.lock.wait(till=till)
@@ -552,51 +557,94 @@ class ThreadedQueue(Queue):
 
     def __init__(
         self,
+        name,
         queue,  # THE SLOWER QUEUE
-        size=None,  # THE MAX SIZE OF BATCHES SENT TO THE SLOW QUEUE
-        max=None,  # SET THE MAXIMUM SIZE OF THE QUEUE, WRITERS WILL BLOCK IF QUEUE IS OVER THIS LIMIT
+        batch_size=None,  # THE MAX SIZE OF BATCHES SENT TO THE SLOW QUEUE
+        max_size=None,  # SET THE MAXIMUM SIZE OF THE QUEUE, WRITERS WILL BLOCK IF QUEUE IS OVER THIS LIMIT
         period=None,  # MAX TIME BETWEEN FLUSHES TO SLOWER QUEUE
         silent=False  # WRITES WILL COMPLAIN IF THEY ARE WAITING TOO LONG
     ):
         if not Log:
             _late_import()
 
-        size = nvl(size, 900)  # REASONABLE DEFAULT
-        max = nvl(max, size)  # REASONABLE DEFAULT
-        period = nvl(period, Duration.SECOND)
+        batch_size = nvl(batch_size, int(max_size/2), 900)
+        max_size = nvl(max_size, batch_size * 2)  # REASONABLE DEFAULT
+        period = nvl(period, SECOND)
+        bit_more_time = 5 * SECOND
 
-        Queue.__init__(self, max=max, silent=silent)
+        Queue.__init__(self, name=name, max=max_size, silent=silent)
 
         def worker_bee(please_stop):
             please_stop.on_go(lambda: self.add(Thread.STOP))
 
-            buffer = []
-            next_time = Date.now() + period
+            _buffer = []
+            next_time = Date.now() + period   # THE TIME WE SHOULD DO A PUSH
 
             while not please_stop:
                 try:
+                    if not _buffer:
+                        item = self.pop()
+                        now = Date.now()
+
+                        if item is Thread.STOP:
+                            queue.extend(_buffer)
+                            please_stop.go()
+                            return
+                        elif item is not None:
+                            _buffer.append(item)
+
+                        next_time = now + period  # NO NEED TO SEND TOO EARLY
+                        continue
+
                     item = self.pop(till=next_time)
+                    now = Date.now()
+
                     if item is Thread.STOP:
-                        queue.extend(buffer)
+                        queue.extend(_buffer)
                         please_stop.go()
-                        break
-                    elif item is None:
-                        pass
-                    else:
-                        buffer.append(item)
+                        return
+                    elif item is not None:
+                        _buffer.append(item)
+
                 except Exception, e:
-                    Log.warning("Unexpected problem", e)
+                    Log.warning("Unexpected problem", {
+                        "name": name,
+                    }, e)
 
                 try:
-                    if len(buffer) >= size or Date.now() > next_time:
-                        next_time = Date.now() + period
-                        if buffer:
-                            queue.extend(buffer)
-                            buffer = []
-                except Exception, e:
-                    Log.warning("Problem with pushing {{num}} items to data sink", {"num": len(buffer)}, e)
+                    if len(_buffer) >= batch_size or now > next_time:
+                        next_time = now + period
+                        if _buffer:
+                            queue.extend(_buffer)
+                            _buffer = []
+                            # A LITTLE MORE TIME TO FILL THE NEXT BUFFER
+                            now = Date.now()
+                            if now > next_time:
+                                next_time = now + bit_more_time
 
-        self.thread = Thread.run("threaded queue " + unicode(id(self)), worker_bee)
+                except Exception, e:
+                    Log.warning("Problem with {{name}} pushing {{num}} items to data sink", {
+                        "name": name,
+                        "num": len(_buffer)
+                    }, e)
+
+        self.thread = Thread.run("threaded queue for " + name, worker_bee)
+
+
+    def add(self, value):
+        with self.lock:
+            self.wait_for_queue_space()
+            if self.keep_running:
+                self.queue.append(value)
+        return self
+
+    def extend(self, values):
+        with self.lock:
+            # ONCE THE queue IS BELOW LIMIT, ALLOW ADDING MORE
+            self.wait_for_queue_space()
+            if self.keep_running:
+                self.queue.extend(values)
+        return self
 
 
     def __enter__(self):

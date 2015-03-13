@@ -10,6 +10,7 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from pyLibrary import strings
 
 from pyLibrary.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
@@ -40,3 +41,14 @@ class TestCNV(FuzzyTestCase):
         self.assertEqual(result, "Kyle Lahnakoski is 40 years old")
 
 
+    def test_percent(self):
+
+        self.assertEqual(strings.percent(.123, digits=1), "10%")
+        self.assertEqual(strings.percent(.123, digits=2), "12%")
+        self.assertEqual(strings.percent(.123, digits=3), "12.3%")
+        self.assertEqual(strings.percent(.120, digits=3), "12.0%")
+
+        self.assertEqual(strings.percent(.0123, digits=1), "1%")
+        self.assertEqual(strings.percent(.0123, digits=2), "1.2%")
+        self.assertEqual(strings.percent(.0123, digits=3), "1.23%")
+        self.assertEqual(strings.percent(.0120, digits=3), "1.20%")
