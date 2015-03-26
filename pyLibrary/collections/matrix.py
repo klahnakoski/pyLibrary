@@ -70,9 +70,12 @@ class Matrix(object):
             else:
                 return self.cube[index]
 
+        if len(index) == 0:
+            return self.cube
+
         def _getitem(c, i):
-            select = i[0]
             if len(i)==1:
+                select = i[0]
                 if select == None:
                     return (len(c), ), c
                 elif isinstance(select, slice):
@@ -82,6 +85,7 @@ class Matrix(object):
                 else:
                     return (), c[select]
             else:
+                select = i[0]
                 if select == None:
                     dims, cube = zip(*[_getitem(cc, i[1::]) for cc in c])
                     return (len(cube),)+dims[0], cube
@@ -91,6 +95,7 @@ class Matrix(object):
                     return (len(cube),)+dims[0], cube
                 else:
                     return _getitem(c[select], i[1::])
+
 
         dims, cube = _getitem(self.cube, index)
 
@@ -107,6 +112,11 @@ class Matrix(object):
         try:
             if len(key) != self.num:
                 Log.error("Expecting coordinates to match the number of dimensions")
+
+            if self.num == 0:
+                self.cube = value
+                return
+
             last = self.num - 1
             m = self.cube
             for k in key[0:last:]:

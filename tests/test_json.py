@@ -13,7 +13,8 @@ import datetime
 import unittest
 from pyLibrary import convert
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import Dict
+from pyLibrary.dot import Dict, wrap
+from pyLibrary.jsons.encoder import pretty_json
 
 
 class TestJSON(unittest.TestCase):
@@ -82,10 +83,16 @@ class TestJSON(unittest.TestCase):
         expecting = u'{"add": {"start": " â€"}}'
         self.assertEqual(expecting, output, "expecting correct json")
 
+    def test_empty_dict(self):
+        test = convert.value2json(wrap({"match_all": wrap({})}))
+        expecting = u'{"match_all": {}}'
+        self.assertEqual(test, expecting, "expecting empty dict to serialize")
 
-
-
-
+    def test_pretty_json(self):
+        j = wrap({"not":{"match_all": wrap({})}})
+        test = pretty_json(j)
+        expecting = u'{"not": {"match_all": {}}}'
+        self.assertEqual(test, expecting, "expecting empty dict to serialize")
 
 if __name__ == '__main__':
     try:

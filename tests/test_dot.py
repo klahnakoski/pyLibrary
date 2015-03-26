@@ -233,8 +233,6 @@ class TestDot(FuzzyTestCase):
         b["c\\.a"].d += 3
         self.assertEqual(a,  {"c1": {"d": 3}, "c2": {"e": "ef"}, "c3": {"f": ["f", "g"]}, "c.a": {"d": 4}})
 
-
-
     def test_slicing(self):
 
         def diff(record, index, records):
@@ -257,3 +255,29 @@ class TestDot(FuzzyTestCase):
         result2 = [diff(r, i, data2_list) for i, r in enumerate(data2_list)]
         assert result2 == [None, None, 2, 2, 2, 2, 2, 2, 2]
 
+    def test_delete1(self):
+        a = wrap({"b": {"c": 1}})
+
+        del a.b.c
+        self.assertEqual({}, a)
+        self.assertEqual(a, {})
+
+        a = wrap({"b": {"c": 1}})
+
+        a.b.c=None
+        self.assertEqual({}, a)
+        self.assertEqual(a, {})
+
+
+
+    def test_delete2(self):
+        a = wrap({"b": {"c": 1, "d": 2}})
+
+        del a.b.c
+        self.assertEqual({"b": {"d": 2}}, a)
+        self.assertEqual(a, {"b": {"d": 2}})
+        a = wrap({"b": {"c": 1, "d": 2}})
+
+        a.b.c=None
+        self.assertEqual({"b": {"d": 2}}, a)
+        self.assertEqual(a, {"b": {"d": 2}})
