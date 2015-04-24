@@ -12,6 +12,9 @@ from __future__ import unicode_literals
 from __future__ import division
 import os
 from pyLibrary import jsons
+from pyLibrary.dot import Dict
+from pyLibrary.parsers import URL
+from pyLibrary.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
@@ -42,3 +45,13 @@ class TestRef(FuzzyTestCase):
                 "test_key": "test_value"
             }
         })
+
+    def test_json_parameter(self):
+        url = "file://tests/resources/json_ref/test_ref_w_parameters.json?{{.|url}}"
+        url = expand_template(url, {"metadata": Dict()})
+        result = jsons.ref.get(url)
+        self.assertEqual(result, {"test_result": {}}, "expecting proper parameter expansion")
+
+    def test_parameter_list(self):
+        url = "file://tests/resources/json_ref/test_ref_w_parameters.json?test1=a&test1=b&test2=c&test1=d"
+        self.assertEqual(URL(url).query, {"test1":["a", "b", "d"], "test2":"c"}, "expecting test1 to be an array")
