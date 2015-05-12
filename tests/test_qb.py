@@ -7,14 +7,15 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
-import unittest
+
 from pyLibrary import convert
 from pyLibrary.dot import unwrap, wrap
 from pyLibrary.queries import qb
 from pyLibrary.dot.dicts import Dict
+from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
-class TestQb(unittest.TestCase):
+class TestQb(FuzzyTestCase):
     def test_groupby(self):
         data = []
         for g, d in qb.groupby(data, size=5):
@@ -172,12 +173,22 @@ class TestQb(unittest.TestCase):
     def test_deep_value_selector(self):
         data = [{'bug_id': 35, 'blocked': [686525, 123456]}]
         result = qb.run({
-               "from": data,
-               "where": {"exists": {"field": "blocked"}},
-               "select": [
-                   "blocked.",  # SINCE blocked IS A LIST, WE USE "." SUFFIX TO INDICATE WE ARE SELECTING THE VALUES OF THE LIST, NOT THE LIST ITSELF
-                   "bug_id"
-               ]
-           })
+            "from": data,
+            "where": {"exists": {"field": "blocked"}},
+            "select": [
+                "blocked.",  # SINCE blocked IS A LIST, WE USE "." SUFFIX TO INDICATE WE ARE SELECTING THE VALUES OF THE LIST, NOT THE LIST ITSELF
+                "bug_id"
+            ]
+        }).data
         assert result[0].blocked == 686525
         assert result[1].blocked == 123456
+
+    def test_sort_value(self):
+        data = [4, 5, 3, 2, 1]
+        result = qb.sort(data, {"value": ".", "sort": -1})
+        expected = [5, 4, 3, 2, 1]
+        self.assertEqual(result, expected)
+
+        result = qb.sort(data, ".")
+        expected = [1, 2, 3, 4, 5]
+        self.assertEqual(result, expected)
