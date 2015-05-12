@@ -60,12 +60,13 @@ You may continue to use `**kwargs`; which provides a way to overlay one paramete
 		login(username="klahnakoski", password="password123")
 
 
-
-```
-
-**Motivation** - Using dependency injection, and managing the configuration for each of the components being injected can result in some spectacularly complex system configuration.  One way to reduce the complexity is to use configuration templates that contain useful defaults, and simply overwrite the properties that need to be changed for the new configuration.  `@use_settings` has been created to provide this templating system for Python function calls (primarily class constructors).
-
-
+**Motivation** - Using dependency injection, and managing the configuration 
+for each of the components being injected can result in some spectacularly 
+complex system configuration.  One way to reduce the complexity is to use 
+configuration templates that contain useful defaults, and simply overwrite 
+the properties that need to be changed for the new configuration.  
+`@use_settings` has been created to provide this templating system for Python 
+function calls (primarily class constructors).
 
 
 Module `strings`
