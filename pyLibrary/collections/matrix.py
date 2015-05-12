@@ -14,7 +14,7 @@ from __future__ import division
 from pyLibrary.collections import PRODUCT, reverse, MAX, MIN, OR
 from pyLibrary import convert
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import Null, Dict, nvl
+from pyLibrary.dot import Null, Dict, coalesce
 from pyLibrary.meta import use_settings
 
 
@@ -25,7 +25,7 @@ class Matrix(object):
     ZERO = None
 
     @use_settings
-    def __init__(self, dims=[], list=None, value=None, settings=None, zeros=False):
+    def __init__(self, dims=[], list=None, value=None, zeros=False, settings=None):
         if list:
             self.num = 1
             self.dims = (len(list), )
@@ -72,30 +72,6 @@ class Matrix(object):
 
         if len(index) == 0:
             return self.cube
-
-        def _getitem(c, i):
-            if len(i)==1:
-                select = i[0]
-                if select == None:
-                    return (len(c), ), c
-                elif isinstance(select, slice):
-                    sub = c[select]
-                    dims, cube = zip(*[_getitem(cc, i[1::]) for cc in sub])
-                    return (len(cube),)+dims[0], cube
-                else:
-                    return (), c[select]
-            else:
-                select = i[0]
-                if select == None:
-                    dims, cube = zip(*[_getitem(cc, i[1::]) for cc in c])
-                    return (len(cube),)+dims[0], cube
-                elif isinstance(select, slice):
-                    sub = c[select]
-                    dims, cube = zip(*[_getitem(cc, i[1::]) for cc in sub])
-                    return (len(cube),)+dims[0], cube
-                else:
-                    return _getitem(c[select], i[1::])
-
 
         dims, cube = _getitem(self.cube, index)
 
@@ -193,6 +169,8 @@ class Matrix(object):
     def groupby(self, io_select):
         """
         SLICE THIS MATRIX INTO ONES WITH LESS DIMENSIONALITY
+        io_select - 1 IF GROUPING BY THIS DIMENSION, 0 IF FLATTENING
+        return -
         """
 
         # offsets WILL SERVE TO MASK DIMS WE ARE NOT GROUPING BY, AND SERVE AS RELATIVE INDEX FOR EACH COORDINATE
@@ -236,6 +214,15 @@ class Matrix(object):
             method(self[c], c, self.cube)
 
 
+    def items(self):
+        """
+        ITERATE THROUGH ALL coord, value PAIRS
+        """
+        for c in self._all_combos():
+            _, value = _getitem(self.cube, c)
+            yield c, value
+
+
     def _all_combos(self):
         """
         RETURN AN ITERATOR OF ALL COORDINATES
@@ -244,7 +231,7 @@ class Matrix(object):
         if not combos:
             return
 
-        calc = [(nvl(PRODUCT(self.dims[i+1:]), 1), mm) for i, mm in enumerate(self.dims)]
+        calc = [(coalesce(PRODUCT(self.dims[i+1:]), 1), mm) for i, mm in enumerate(self.dims)]
 
         for c in xrange(combos):
             yield tuple(int(c / dd) % mm for dd, mm in calc)
@@ -330,5 +317,35 @@ def _groupby(cube, depth, intervals, offset, output, group, new_coord):
     else:
         for i, c in enumerate(cube):
             _groupby(c, depth + 1, intervals, offset, output, group + (-1, ), new_coord + [i])
+
+
+
+
+
+def _getitem(c, i):
+    if len(i)==1:
+        select = i[0]
+        if select == None:
+            return (len(c), ), c
+        elif isinstance(select, slice):
+            sub = c[select]
+            dims, cube = zip(*[_getitem(cc, i[1::]) for cc in sub])
+            return (len(cube),) + dims[0], cube
+        else:
+            return (), c[select]
+    else:
+        select = i[0]
+        if select == None:
+            dims, cube = zip(*[_getitem(cc, i[1::]) for cc in c])
+            return (len(cube),)+dims[0], cube
+        elif isinstance(select, slice):
+            sub = c[select]
+            dims, cube = zip(*[_getitem(cc, i[1::]) for cc in sub])
+            return (len(cube),)+dims[0], cube
+        else:
+            try:
+                return _getitem(c[select], i[1::])
+            except Exception, _:
+                pass
 
 
