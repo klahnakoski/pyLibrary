@@ -146,21 +146,9 @@ class Log(object):
             from .log_usingEmail import Log_usingEmail
             return Log_usingEmail(settings)
 
-
     @classmethod
     def add_log(cls, log):
         cls.logging_multi.add_log(log)
-
-    @classmethod
-    def debug(cls, template=None, params=None):
-        """
-        USE THIS FOR DEBUGGING (AND EVENTUAL REMOVAL)
-        """
-        Log.note(coalesce(template, ""), params, stack_depth=1)
-
-    @classmethod
-    def println(cls, template, params=None):
-        Log.note(template, params, stack_depth=1)
 
     @classmethod
     def note(cls, template, params=None, stack_depth=0, **more_params):
@@ -169,7 +157,7 @@ class Log(object):
 
         log_params = Dict(
             template=template,
-            params=set_default({}, params, more_params),
+            params=set_default(more_params, params),
             timestamp=datetime.utcnow(),
         )
 
@@ -207,12 +195,11 @@ class Log(object):
             {
                 "warning": {
                     "template": template,
-                    "params": params,
+                    "params": set_default(more_params, params),
                     "cause": cause,
                     "trace": trace
                 }
-            },
-            **more_params
+            }
         )
 
     @classmethod
@@ -239,8 +226,7 @@ class Log(object):
             cause = params
             params = None
 
-        if more_params:
-            params = set_default({}, params, more_params)
+        params = set_default(more_params, params)
 
         if cause and not isinstance(cause, Except):
             cause = Except(ERROR, unicode(cause), trace=extract_tb(0))
@@ -277,8 +263,7 @@ class Log(object):
             cause = params
             params = None
 
-        if more_params:
-            params = set_default({}, params, more_params)
+        params = set_default(more_params, params)
 
         add_to_trace = False
         if cause == None:
@@ -317,8 +302,7 @@ class Log(object):
             cause = params
             params = None
 
-        if more_params:
-            params = set_default({}, params, more_params)
+        params = set_default(more_params, params)
 
         if cause == None:
             cause = []
