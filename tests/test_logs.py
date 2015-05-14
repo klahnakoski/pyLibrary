@@ -109,6 +109,9 @@ class TestExcept(FuzzyTestCase):
             Log.warning("test: {{a}}: {{b}}", params, e)
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + A + ': ' + B + CAUSE)
 
+            Log.warning("test: {{a}}: {{b}}", params, e, a=b)
+            self.assertEqual(Log.main_log.pop(), WARNING + ': ' + B + ': ' + B + CAUSE)
+
             Log.warning("test: {{a.c}}", a=a)
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + AC)
 
@@ -154,6 +157,12 @@ class TestExcept(FuzzyTestCase):
 
             Log.note("test: {{a.c}}", a=a)
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + AC)
+
+            Log.note("test: {{a}}: {{b}}", params)
+            self.assertEqual(Log.main_log.pop(), WARNING + ': ' + A + ': ' + B)
+
+            Log.note("test: {{a}}: {{b}}", params, a=b)
+            self.assertEqual(Log.main_log.pop(), WARNING + ': ' + B + ': ' + B)
 
             Log.note("test: {{a.c}}: {{a.b}}", a=a, b=b)
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + AC + ': ' + AB)
