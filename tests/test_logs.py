@@ -13,7 +13,7 @@ import unittest
 
 from pyLibrary.debugs.log_usingQueue import Log_usingQueue
 from pyLibrary.debugs.logs import Log, Except
-from pyLibrary.dot import listwrap
+from pyLibrary.dot import listwrap, wrap
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
@@ -112,6 +112,9 @@ class TestExcept(FuzzyTestCase):
             Log.warning("test: {{a}}: {{b}}", params, e, a=b)
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + B + ': ' + B + CAUSE)
 
+            Log.warning("test: {{a}}: {{b}}", wrap(params), e, a=b)
+            self.assertEqual(Log.main_log.pop(), WARNING + ': ' + B + ': ' + B + CAUSE)
+
             Log.warning("test: {{a.c}}", a=a)
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + AC)
 
@@ -162,6 +165,9 @@ class TestExcept(FuzzyTestCase):
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + A + ': ' + B)
 
             Log.note("test: {{a}}: {{b}}", params, a=b)
+            self.assertEqual(Log.main_log.pop(), WARNING + ': ' + B + ': ' + B)
+
+            Log.note("test: {{a}}: {{b}}", wrap(params), a=b)
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + B + ': ' + B)
 
             Log.note("test: {{a.c}}: {{a.b}}", a=a, b=b)
