@@ -9,6 +9,7 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
+from UserDict import UserDict
 from pyLibrary import dot
 from pyLibrary.collections import AND, reverse
 from pyLibrary.debugs.logs import Log
@@ -283,7 +284,15 @@ def _normalize_domain(domain=None, schema=None):
     if not domain.name:
         domain = domain.copy()
         domain.name = domain.type
-    return Domain(**unwrap(domain))
+
+    if not isinstance(domain.partitions, list):
+        domain.partitions = list(domain.partitions)
+
+    if isinstance(UserDict(), dict):
+        Log.note("yay")
+    else:
+        Log.note("boo!")
+    return Domain(**domain)
 
 
 def _normalize_window(window, schema=None):

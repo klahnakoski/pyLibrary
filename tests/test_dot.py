@@ -6,7 +6,7 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
+from UserDict import UserDict
 
 from pyLibrary.collections import MAX
 from pyLibrary.debugs.logs import Log
@@ -15,6 +15,46 @@ from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestDot(FuzzyTestCase):
+
+    def test_userdict(self):
+        def show_kwargs(**kwargs):
+            return kwargs
+
+        a = UserDict(a=1, b=2)
+        d = show_kwargs(**a)
+        self.assertAlmostEqual(d, {"a":1, "b":2})
+
+    def test__userdict(self):
+        def show_kwargs(**kwargs):
+            return kwargs
+
+        a = _UserDict()
+        a.data["a"] = 1
+        a.data["b"] = 2
+        d = show_kwargs(**a)
+        self.assertAlmostEqual(d, {"a":1, "b":2})
+
+    def test_dict_args(self):
+        def show_kwargs(**kwargs):
+            return kwargs
+
+        a = Dict()
+        a["a"] = 1
+        a["b"] = 2
+        d = show_kwargs(**a)
+        self.assertAlmostEqual(d, {"a": 1, "b": 2})
+
+    def test_arguments(self):
+        def show_kwargs(**kwargs):
+            return kwargs
+
+        a = Dict()
+        a.data["a"] = 1
+        a.data["b"] = 2
+        d = show_kwargs(**a)
+        self.assertAlmostEqual(d, {"a": 1, "b": 2})
+
+
     def test_none(self):
         a = 0
         b = 0
@@ -281,3 +321,20 @@ class TestDot(FuzzyTestCase):
         a.b.c=None
         self.assertEqual({"b": {"d": 2}}, a)
         self.assertEqual(a, {"b": {"d": 2}})
+
+
+class _UserDict:
+    """
+    COPY OF UserDict
+    """
+    def __init__(self, **kwargs):
+        self.data = {}
+    def __getitem__(self, key):
+        if key in self.data:
+            return self.data[key]
+        if hasattr(self.__class__, "__missing__"):
+            return self.__class__.__missing__(self, key)
+        raise KeyError(key)
+    def keys(self):
+        return self.data.keys()
+

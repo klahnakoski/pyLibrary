@@ -9,9 +9,11 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from UserDict import DictMixin, UserDict
 from copy import deepcopy
-from types import NoneType
+
 from pyLibrary.dot import split_field, _getdefault, hash_value, literal_field, coalesce
+
 
 _get = object.__getattribute__
 _set = object.__setattr__
@@ -19,27 +21,27 @@ _set = object.__setattr__
 DEBUG = False
 
 
-class Dict(dict):
+class Dict(UserDict):
     """
     Please see README.md
     """
 
-    def __init__(self, **map):
+    def __init__(self, **kwargs):
         """
         CALLING Dict(**something) WILL RESULT IN A COPY OF something, WHICH
         IS UNLIKELY TO BE USEFUL. USE wrap() INSTEAD
         """
         dict.__init__(self)
-        if not map:
+        if not kwargs:
             return
 
         if DEBUG:
             d = _get(self, "__dict__")
-            for k, v in map.items():
+            for k, v in kwargs.items():
                 d[literal_field(k)] = unwrap(v)
         else:
             d = _get(self, "__dict__")
-            for k, v in map.items():
+            for k, v in kwargs.items():
                 if v != None:
                     d[literal_field(k)] = unwrap(v)
 

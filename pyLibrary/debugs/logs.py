@@ -151,11 +151,11 @@ class Log(object):
         cls.logging_multi.add_log(log)
 
     @classmethod
-    def note(cls, template, params={}, stack_depth=0, **more_params):
+    def note(cls, template, default_params={}, stack_depth=0, **more_params):
         if len(template) > 10000:
             template = template[:10000]
 
-        params = dict(unwrap(params), **more_params)
+        params = dict(unwrap(default_params), **more_params)
 
         log_params = Dict(
             template=template,
@@ -182,12 +182,12 @@ class Log(object):
         cls.main_log.write(log_template, log_params)
 
     @classmethod
-    def unexpected(cls, template, params={}, cause=None, **more_params):
-        if isinstance(params, BaseException):
-            cause = params
-            params = {}
+    def unexpected(cls, template, default_params={}, cause=None, **more_params):
+        if isinstance(default_params, BaseException):
+            cause = default_params
+            default_params = {}
 
-        params = dict(unwrap(params), **more_params)
+        params = dict(unwrap(default_params), **more_params)
 
         if cause and not isinstance(cause, Except):
             cause = Except(UNEXPECTED, unicode(cause), trace=extract_tb(0))
@@ -221,16 +221,16 @@ class Log(object):
     def warning(
         cls,
         template,
-        params={},
+        default_params={},
         cause=None,
         stack_depth=0,       # stack trace offset (==1 if you do not want to report self)
         **more_params
     ):
-        if isinstance(params, BaseException):
-            cause = params
-            params = {}
+        if isinstance(default_params, BaseException):
+            cause = default_params
+            default_params = {}
 
-        params = dict(unwrap(params), **more_params)
+        params = dict(unwrap(default_params), **more_params)
 
         if cause and not isinstance(cause, Except):
             cause = Except(ERROR, unicode(cause), trace=extract_tb(0))
@@ -255,7 +255,7 @@ class Log(object):
     def error(
         cls,
         template, # human readable template
-        params={}, # parameters for template
+        default_params={}, # parameters for template
         cause=None, # pausible cause
         stack_depth=0,        # stack trace offset (==1 if you do not want to report self)
         **more_params
@@ -263,11 +263,11 @@ class Log(object):
         """
         raise an exception with a trace for the cause too
         """
-        if params and isinstance(listwrap(params)[0], BaseException):
-            cause = params
-            params = {}
+        if default_params and isinstance(listwrap(default_params)[0], BaseException):
+            cause = default_params
+            default_params = {}
 
-        params = dict(unwrap(params), **more_params)
+        params = dict(unwrap(default_params), **more_params)
 
         add_to_trace = False
         if cause == None:
@@ -294,7 +294,7 @@ class Log(object):
     def fatal(
         cls,
         template,  # human readable template
-        params={},  # parameters for template
+        default_params={},  # parameters for template
         cause=None,  # pausible cause
         stack_depth=0,  # stack trace offset (==1 if you do not want to report self)
         **more_params
@@ -302,11 +302,11 @@ class Log(object):
         """
         SEND TO STDERR
         """
-        if params and isinstance(listwrap(params)[0], BaseException):
-            cause = params
-            params = {}
+        if default_params and isinstance(listwrap(default_params)[0], BaseException):
+            cause = default_params
+            default_params = {}
 
-        params = dict(unwrap(params), **more_params)
+        params = dict(unwrap(default_params), **more_params)
 
         if cause == None:
             cause = []
