@@ -7,6 +7,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from UserDict import UserDict
+from collections import Mapping
 
 from pyLibrary.collections import MAX
 from pyLibrary.debugs.logs import Log
@@ -44,16 +45,8 @@ class TestDot(FuzzyTestCase):
         d = show_kwargs(**a)
         self.assertAlmostEqual(d, {"a": 1, "b": 2})
 
-    def test_arguments(self):
-        def show_kwargs(**kwargs):
-            return kwargs
-
-        a = Dict()
-        a.data["a"] = 1
-        a.data["b"] = 2
-        d = show_kwargs(**a)
-        self.assertAlmostEqual(d, {"a": 1, "b": 2})
-
+    def test_is_dict(self):
+        self.assertTrue(isinstance(Dict(), Mapping), "All Dict must be dicts")
 
     def test_none(self):
         a = 0
@@ -134,7 +127,7 @@ class TestDot(FuzzyTestCase):
 
         if a.a != 1:
             Log.error("error")
-        if not isinstance(a.b, dict):
+        if not isinstance(a.b, Mapping):
             Log.error("error")
 
     def test_get_class(self):

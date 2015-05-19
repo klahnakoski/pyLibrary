@@ -10,6 +10,9 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
+
+from collections import Mapping
 from datetime import timedelta, date
 from datetime import datetime as builtin_datetime
 import re
@@ -331,7 +334,7 @@ def _expand(template, seq):
     """
     if isinstance(template, basestring):
         return _simple_expand(template, seq)
-    elif isinstance(template, dict):
+    elif isinstance(template, Mapping):
         template = wrap(template)
         assert template["from"], "Expecting template to have 'from' attribute"
         assert template.template, "Expecting template to have 'template' attribute"
@@ -416,7 +419,7 @@ def deformat(value):
 def toString(val):
     if val == None:
         return ""
-    elif isinstance(val, (dict, list, set)):
+    elif isinstance(val, (Mapping, list, set)):
         from pyLibrary.jsons.encoder import json_encoder
 
         return json_encoder(val, pretty=True)

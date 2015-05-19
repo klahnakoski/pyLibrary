@@ -9,6 +9,7 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 from datetime import date, datetime
 from decimal import Decimal
 from types import NoneType, GeneratorType
@@ -71,7 +72,7 @@ def dictwrap(v):
 
     if type_ is dict:
         m = Dict()
-        _set(m, "__dict__", v)  # INJECT m.__dict__=v SO THERE IS NO COPY
+        _set(m, "_dict", v)  # INJECT m.__dict__=v SO THERE IS NO COPY
         return m
     elif type_ is NoneType:
         return None   # So we allow `is None`

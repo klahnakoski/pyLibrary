@@ -11,13 +11,15 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
+from collections import Mapping
 
 from datetime import datetime
 import os
 import sys
 
 from pyLibrary.debugs import constants
-from pyLibrary.dot import coalesce, Dict, listwrap, wrap, unwrap, Null
+from pyLibrary.dot import coalesce, Dict, listwrap, wrap, unwrap
 from pyLibrary.jsons.encoder import json_encoder
 from pyLibrary.thread.threads import Thread, Lock, Queue
 from pyLibrary.strings import indent, expand_template
@@ -65,7 +67,7 @@ class Log(object):
         if cls.trace:
             from pyLibrary.thread.threads import Thread
 
-        if settings.cprofile is True or (isinstance(settings.cprofile, dict) and settings.cprofile.enabled):
+        if settings.cprofile is True or (isinstance(settings.cprofile, Mapping) and settings.cprofile.enabled):
             if isinstance(settings.cprofile, bool):
                 settings.cprofile = {"enabled": True, "filename": "cprofile.tab"}
 
@@ -74,7 +76,7 @@ class Log(object):
             cls.cprofiler = cProfile.Profile()
             cls.cprofiler.enable()
 
-        if settings.profile is True or (isinstance(settings.profile, dict) and settings.profile.enabled):
+        if settings.profile is True or (isinstance(settings.profile, Mapping) and settings.profile.enabled):
             from pyLibrary.debugs import profiles
 
             if isinstance(settings.profile, bool):
