@@ -152,12 +152,6 @@ class Bucket(object):
 
     def get_meta(self, key, conforming=True):
         try:
-            if key.endswith(".json") or key.endswith(".zip") or key.endswith(".gz"):
-                Log.error("Expecting a pure key")
-        except Exception, e:
-            Log.error("bad key format {{key}}",  key=key, cause=e)
-
-        try:
             # key_prefix("2")
             metas = list(self.bucket.list(prefix=key))
             metas = wrap([m for m in metas if m.name.find(".json") != -1])
@@ -332,6 +326,7 @@ class Bucket(object):
             )
 
     def write_lines(self, key, *lines):
+        self._verify_key_format(key)
         storage = self.bucket.new_key(key + ".json.gz")
 
         buff = BytesIO()
@@ -366,9 +361,11 @@ class Bucket(object):
             return
 
         if self.key_format != _scrub_key(key):
-            Log.error("key {{key}} in bucket {{bucket}} is of the wrong format",
-                key= key,
-                bucket= self.bucket.name)
+            Log.error(
+                "key {{key}} in bucket {{bucket}} is of the wrong format",
+                key=key,
+                bucket=self.bucket.name
+            )
 
 
 class SkeletonBucket(Bucket):

@@ -76,7 +76,7 @@ def list_aggs(frum, query):
                         acc = windows.name2accumulator.get(agg)
                         if acc == None:
                             Log.error("select aggregate {{agg}} is not recognized",  agg= agg)
-                        acc = acc(**unwrap(s))
+                        acc = acc(**s)
                         mat[c] = acc
                     for e, cc in zip(query.edges, c):  # BECAUSE WE DO NOT KNOW IF s.exec NEEDS THESE EDGES, SO WE PASS THEM ANYWAY
                         d[e.name] = e.domain.partitions[cc]

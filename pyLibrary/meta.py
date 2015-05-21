@@ -56,7 +56,7 @@ def new_instance(settings):
         pass
 
     try:
-        return constructor(**unwrap(settings))
+        return constructor(**settings)
     except Exception, e:
         Log.error("Can not create instance of {{name}}",  name= ".".join(path), cause=e)
 

@@ -45,7 +45,7 @@ def _argparse(defs):
         args = d.copy()
         name = args.name
         args.name = None
-        parser.add_argument(*unwrap(listwrap(name)), **unwrap(args))
+        parser.add_argument(*unwrap(listwrap(name)), **args)
     namespace = parser.parse_args()
     output = {k: getattr(namespace, k) for k in vars(namespace)}
     return wrap(output)

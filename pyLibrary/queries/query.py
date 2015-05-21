@@ -290,10 +290,6 @@ def _normalize_domain(domain=None, schema=None):
     if not isinstance(domain.partitions, list):
         domain.partitions = list(domain.partitions)
 
-    if isinstance(UserDict(), Mapping):
-        Log.note("yay")
-    else:
-        Log.note("boo!")
     return Domain(**domain)
 
 

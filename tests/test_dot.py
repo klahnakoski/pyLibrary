@@ -12,6 +12,7 @@ from collections import Mapping
 from pyLibrary.collections import MAX
 from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import wrap, Dict, Null
+from pyLibrary.dot.objects import dictwrap
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
@@ -316,6 +317,14 @@ class TestDot(FuzzyTestCase):
         self.assertEqual(a, {"b": {"d": 2}})
 
 
+    def test_object_wrap(self):
+        d = Data()
+        dd = dictwrap(d)
+
+        self.assertEqual(dd["a"], 20)
+        self.assertEqual(dd, {"a": 20, "b": 30})
+
+
 class _UserDict:
     """
     COPY OF UserDict
@@ -331,3 +340,12 @@ class _UserDict:
     def keys(self):
         return self.data.keys()
 
+
+class Data(object):
+
+    def __init__(self):
+        self.a = 20
+        self.b = 30
+
+    def __str__(self):
+        return str(self.a)+str(self.b)
