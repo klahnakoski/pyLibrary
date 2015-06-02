@@ -149,9 +149,9 @@ class Date(object):
         if other == None:
             return None
         if isinstance(other, datetime):
-            return Duration(self.milli-Date(other).milli)
+            return Duration(self.unix - Date(other).unix)
         if isinstance(other, Date):
-            return Duration(self.milli-other.milli)
+            return Duration(self.unix - other.unix)
 
         return self.add(-other)
 
@@ -387,6 +387,7 @@ def unicode2datetime(value, format=None):
         "%d%B%Y",
         "%d%B%y",
         "%Y%m%d%H%M%S",
+        "%Y%m%dT%H%M%S",
         "%d%m%Y%H%M%S",
         "%d%m%y%H%M%S",
         "%d%b%Y%H%M%S",

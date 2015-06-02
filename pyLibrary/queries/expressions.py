@@ -71,10 +71,7 @@ def qb_expression_to_esfilter(expr):
     return converter_map.get(k, _no_convert)(k, v)
 
 
-
-
 def qb_expression_to_ruby(expr):
-
     if expr == None:
         return "nil"
     elif Math.is_number(expr):
@@ -242,7 +239,7 @@ def get_all_vars(expr):
             if op == "eq":
                 output = set()
                 for a, b in term.items():
-                    output |= get_all_vars(a)  # {k:v} kIS VARIABLE, v IS A VALUE
+                    output |= get_all_vars(a)  # {k:v} k IS VARIABLE, v IS A VALUE
                 return output
             else:
                 a, b = term.items()[0]
@@ -784,6 +781,7 @@ converter_map = {
     "terms": _convert_in,
     "eq": _convert_eq,
     "ne": _convert_not_equal,
+    "neq": _convert_not_equal,
     "in": _convert_in,
     "missing": _convert_field,
     "exists": _convert_field,
