@@ -40,6 +40,16 @@ class TestCNV(FuzzyTestCase):
         self.assertEqual(call_count, 1)
 
 
+    def test_forever_cache_many(self):
+        global call_count
+        call_count = 0
+
+        for i in range(10000):
+            self.assertEqual(forever_func(), 42)
+        self.assertEqual(call_count, 1)
+
+
+
     def test_single_cache(self):
         global call_count
         call_count = 0

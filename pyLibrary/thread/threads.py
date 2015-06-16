@@ -221,6 +221,9 @@ class Queue(object):
         with self.lock:
             self.keep_running = False
 
+    def commit(self):
+        pass
+
     def __enter__(self):
         return self
 
@@ -333,8 +336,13 @@ class Thread(object):
         self.cprofiler = None
         self.children = []
 
-        self.parent = kwargs.get("parent_thread", Thread.current())
-        self.parent.add_child(self)
+        if "parent_thread" in kwargs:
+            del self.kwargs["parent_thread"]
+            self.parent = kwargs["parent_thread"]
+        else:
+            self.parent = Thread.current()
+            self.parent.add_child(self)
+
 
     def __enter__(self):
         return self
@@ -382,8 +390,7 @@ class Thread(object):
 
         try:
             if self.target is not None:
-                a, k = self.args, self.kwargs
-                self.args, self.kwargs = None, None
+                a, k, self.args, self.kwargs = self.args, self.kwargs, None, None
                 response = self.target(*a, **k)
                 with self.synch_lock:
                     self.response = Dict(response=response)
@@ -529,12 +536,7 @@ class Thread(object):
             if allow_exit:
                 _wait_for_exit(please_stop)
             else:
-                while not please_stop:
-                    Log.note("inside wait-for-shutdown loop")
-                    try:
-                        Thread.sleep(please_stop=please_stop)
-                    except Exception, _:
-                        pass
+                _wait_for_interrupt(please_stop)
         except (KeyboardInterrupt, SystemExit), _:
             please_stop.go()
             Log.alert("SIGINT Detected!  Stopping...")
@@ -715,7 +717,7 @@ class ThreadedQueue(Queue):
                 # ONE LAST PUSH, DO NOT HAVE TIME TO DEAL WITH ERRORS
                 queue.extend(_buffer)
 
-        self.thread = Thread.run("threaded queue for " + name, worker_bee)
+        self.thread = Thread.run("threaded queue for " + name, worker_bee, parent_thread=self)
 
     def add(self, value):
         with self.lock:
@@ -742,6 +744,11 @@ class ThreadedQueue(Queue):
             self.thread.please_stop.go()
         self.thread.join()
 
+    def stop(self):
+        self.add(Thread.STOP)
+        self.thread.join()
+
+
 
 def _wait_for_exit(please_stop):
     """
@@ -750,11 +757,19 @@ def _wait_for_exit(please_stop):
     cr_count = 0  # COUNT NUMBER OF BLANK LINES
 
     while not please_stop:
-        Log.note("inside wait-for-shutdown loop")
+        # if DEBUG:
+        #     Log.note("inside wait-for-shutdown loop")
         if cr_count > 30:
             Thread.sleep(seconds=3, please_stop=please_stop)
-        line = sys.stdin.readline()
-        Log.note("read line {{line|quote}}, count={{count}}", line=line, count=cr_count)
+        try:
+            line = sys.stdin.readline()
+        except Exception, e:
+            if "Bad file descriptor" in e:
+                _wait_for_interrupt(please_stop)
+                break
+
+        # if DEBUG:
+        #     Log.note("read line {{line|quote}}, count={{count}}", line=line, count=cr_count)
         if line == "":
             cr_count += 1
         else:
@@ -763,3 +778,13 @@ def _wait_for_exit(please_stop):
         if strings.strip(line) == "exit":
             Log.alert("'exit' Detected!  Stopping...")
             return
+
+
+def _wait_for_interrupt(please_stop):
+    while not please_stop:
+        if DEBUG:
+            Log.note("inside wait-for-shutdown loop")
+        try:
+            Thread.sleep(please_stop=please_stop)
+        except Exception, _:
+            pass

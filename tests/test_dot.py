@@ -47,7 +47,7 @@ class TestDot(FuzzyTestCase):
         self.assertAlmostEqual(d, {"a": 1, "b": 2})
 
     def test_is_dict(self):
-        self.assertTrue(isinstance(Dict(), Mapping), "All Dict must be dicts")
+        self.assertTrue(isinstance(Dict(), dict), "All Dict must be dicts")
 
     def test_none(self):
         a = 0
