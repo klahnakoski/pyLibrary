@@ -29,7 +29,7 @@ class TestCNV(FuzzyTestCase):
         self.assertEqual(forever_func(), 42)
         self.assertEqual(forever_func(), 42)
         self.assertEqual(forever_func(), 42)
-        self.assertEqual(call_count, 1)
+        self.assertEqual(call_count, 0)
 
         Thread.sleep(seconds=CACHE_DURATION.seconds)
 
@@ -37,7 +37,7 @@ class TestCNV(FuzzyTestCase):
         self.assertEqual(forever_func(), 42)
         self.assertEqual(forever_func(), 42)
         self.assertEqual(forever_func(), 42)
-        self.assertEqual(call_count, 1)
+        self.assertEqual(call_count, 0)
 
 
     def test_forever_cache_many(self):
@@ -46,7 +46,7 @@ class TestCNV(FuzzyTestCase):
 
         for i in range(10000):
             self.assertEqual(forever_func(), 42)
-        self.assertEqual(call_count, 1)
+        self.assertEqual(call_count, 0)
 
 
 
@@ -129,18 +129,14 @@ def forever_func():
     call_count += 1
     return 42
 
-@cache(duration=CACHE_DURATION)
-def single_func():
-    global call_count
-    call_count += 1
-    return 42
-
+forever_func()
 
 @cache(duration=CACHE_DURATION)
 def single_func():
     global call_count
     call_count += 1
     return 42
+
 
 
 class MyType(object):

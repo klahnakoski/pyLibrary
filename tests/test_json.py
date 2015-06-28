@@ -10,56 +10,59 @@
 
 import datetime
 import unittest
+
 from pyLibrary import convert
 from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import Dict, wrap
+from pyLibrary.jsons.encoder import pypy_json_encode as pypy_json_encode
 from pyLibrary.jsons.encoder import pretty_json
 
 
 class TestJSON(unittest.TestCase):
+
     def test_date(self):
-        output = convert.value2json({"test": datetime.date(2013, 11, 13)})
+        output = pypy_json_encode({"test": datetime.date(2013, 11, 13)})
         Log.note("JSON = {{json}}", {"json": output})
 
 
     def test_unicode1(self):
-        output = convert.value2json({"comment": u"Open all links in the current tab, except the pages opened from external apps â€” open these ones in new windows"})
+        output = pypy_json_encode({"comment": u"Open all links in the current tab, except the pages opened from external apps â€” open these ones in new windows"})
         assert output == u'{"comment": "Open all links in the current tab, except the pages opened from external apps â€” open these ones in new windows"}'
 
         if not isinstance(output, unicode):
             Log.error("expecting unicode json")
 
     def test_unicode2(self):
-        output = convert.value2json({"comment": b"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"})
+        output = pypy_json_encode({"comment": b"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"})
 
         assert output == u'{"comment": "testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"}'
         if not isinstance(output, unicode):
             Log.error("expecting unicode json")
 
     def test_unicode3(self):
-        output = convert.value2json({"comment": u"testing accented char ŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"})
+        output = pypy_json_encode({"comment": u"testing accented char ŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"})
         assert output == u'{"comment": "testing accented char ŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"}'
         if not isinstance(output, unicode):
             Log.error("expecting unicode json")
 
     def test_double(self):
         test = {"value": 5.2025595183536973e-07}
-        output = convert.value2json(test)
+        output = pypy_json_encode(test)
         if output != u'{"value": 5.202559518353697e-07}':
             Log.error("expecting correct value")
 
     def test_generator(self):
         test = {"value": (x for x in [])}
-        output = convert.value2json(test)
+        output = pypy_json_encode(test)
         if output != u'{"value": []}':
             Log.error("expecting correct value")
 
     def test_bad_key(self):
         test = {24: "value"}
-        self.assertRaises(Exception, convert.value2json, *[test])
+        self.assertRaises(Exception, pypy_json_encode, *[test])
 
     def test_bad_long_json(self):
-        test = convert.value2json({"values": [i for i in range(1000)]})
+        test = pypy_json_encode({"values": [i for i in range(1000)]})
         test = test[:1000] + "|" + test[1000:]
         expected = u"Can not decode JSON at:\n\t..., 216, 217, 218, 219|, 220, 221, 222, 22...\n\t                       ^\n"
         try:
@@ -77,14 +80,19 @@ class TestJSON(unittest.TestCase):
     def test_default_python(self):
 
         test = {"add": Dict(start=b"".join([" ", u"â€"]))}
-        output = convert.value2json(test)
+        output = pypy_json_encode(test)
 
         expecting = u'{"add": {"start": " â€"}}'
         self.assertEqual(expecting, output, "expecting correct json")
 
     def test_empty_dict(self):
-        test = convert.value2json(wrap({"match_all": wrap({})}))
+        test = pypy_json_encode(wrap({"match_all": wrap({})}))
         expecting = u'{"match_all": {}}'
+        self.assertEqual(test, expecting, "expecting empty dict to serialize")
+
+    def test_deep_empty_dict(self):
+        test = pypy_json_encode(wrap({"query": {"match_all": {}}, "size": 20000}))
+        expecting = u'{"query": {"match_all": {}}, "size": 20000}'
         self.assertEqual(test, expecting, "expecting empty dict to serialize")
 
     def test_pretty_json(self):
