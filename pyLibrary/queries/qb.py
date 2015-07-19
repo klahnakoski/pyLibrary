@@ -21,17 +21,19 @@ from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import set_default, Null, Dict, split_field, coalesce, join_field
 from pyLibrary.dot.lists import DictList
 from pyLibrary.dot import listwrap, wrap, unwrap
-from pyLibrary.dot.objects import DictClass, DictObject
+from pyLibrary.dot.objects import DictObject
 from pyLibrary.maths import Math
 from pyLibrary.queries import flat_list, query, group_by
-from pyLibrary.queries.container import Container
+from pyLibrary.queries.containers import Container
 from pyLibrary.queries.cubes.aggs import cube_aggs
 from pyLibrary.queries.expressions import TRUE_FILTER, FALSE_FILTER, compile_expression, qb_expression_to_function
 from pyLibrary.queries.flat_list import FlatList
 from pyLibrary.queries.index import Index
-from pyLibrary.queries.query import Query, _normalize_selects, sort_direction, _normalize_select
-from pyLibrary.queries.cube import Cube
+from pyLibrary.queries.containers.cube import Cube
+from pyLibrary.queries.normalize import _normalize_sort, _normalize_select, _normalize_selects
+from pyLibrary.queries.query import Query
 from pyLibrary.queries.unique_index import UniqueIndex
+
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)
 # qb QUERY DOCUMENTATION: https://github.com/klahnakoski/qb/tree/master/docs
@@ -44,58 +46,9 @@ def run(query):
     THIS FUNCTION IS SIMPLY SWITCHING BASED ON THE query["from"] CONTAINER,
     BUT IT IS ALSO PROCESSING A list CONTAINER; SEPARATE TO A ListContainer
     """
-    query = Query(query)
-    frum = query["from"]
-    if isinstance(frum, Container):
-        with frum:
-            return frum.query(query)
-    elif isinstance(frum, (list, set, GeneratorType)):
-        frum = wrap(list(frum))
-    elif isinstance(frum, Cube):
-        if is_aggs(query):
-            return cube_aggs(frum, query)
-
-    elif isinstance(frum, Query):
-        frum = run(frum).data
-    else:
-        Log.error("Do not know how to handle {{type}}",  type=frum.__class__.__name__)
-
-    if is_aggs(query):
-        frum = list_aggs(frum, query)
-    else:  # SETOP
-        try:
-            if query.filter != None or query.esfilter != None:
-                Log.error("use 'where' clause")
-        except AttributeError, e:
-            pass
-
-        if query.where is not TRUE_FILTER:
-            frum = filter(frum, query.where)
-
-        if query.sort:
-            frum = sort(frum, query.sort)
-
-        if query.select:
-            frum = select(frum, query.select)
-
-    if query.window:
-        if isinstance(frum, Cube):
-            frum = list(frum.values())
-
-        for param in query.window:
-            window(frum, param)
-
-    # AT THIS POINT frum IS IN LIST FORMAT, NOW PACKAGE RESULT
-    if query.format == "table":
-        frum = convert.list2table(frum)
-        frum.meta.format = "table"
-    else:
-        frum = wrap({
-            "meta": {"format": "list"},
-            "data": frum
-        })
-
-    return frum
+    frum = Container.new_instance(query["from"])
+    q = Query(query, frum)
+    return frum.query(q)
 
 
 groupby = group_by.groupby
@@ -274,7 +227,6 @@ def select_one(record, selection):
         Log.error("Do not know how to handle")
 
 
-
 def select(data, field_name):
     """
     return list with values from field_name
@@ -443,8 +395,8 @@ def _select_deep_meta(field, depth):
             return assign
 
 
-def get_columns(data):
-    return wrap([{"name": n} for n in UNION(set(d.keys()) for d in data)])
+# def get_columns(data):
+#     return wrap([{"name": n} for n in UNION(set(d.keys()) for d in data)])
 
 
 def sort(data, fieldnames=None):
@@ -458,19 +410,11 @@ def sort(data, fieldnames=None):
         if fieldnames == None:
             return wrap(sorted(data))
 
-        fieldnames = listwrap(fieldnames)
+        fieldnames = _normalize_sort(fieldnames)
         if len(fieldnames) == 1:
             fieldnames = fieldnames[0]
+
             # SPECIAL CASE, ONLY ONE FIELD TO SORT BY
-            if isinstance(fieldnames, (basestring, int)):
-                fieldnames = wrap({"field": fieldnames, "sort": 1})
-
-            # EXPECTING {"field":f, "sort":i} FORMAT
-            fieldnames.sort = sort_direction.get(fieldnames.sort, 1)
-            fieldnames.field = coalesce(fieldnames.field, fieldnames.value)
-            if fieldnames.field==None:
-                Log.error("Expecting sort to have 'field' attribute")
-
             if fieldnames.field == ".":
                 #VALUE COMPARE
                 def _compare_v(l, r):

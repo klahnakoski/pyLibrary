@@ -26,7 +26,7 @@ import json
 import re
 from tempfile import TemporaryFile
 
-from pyLibrary import strings
+from pyLibrary import strings, meta
 from pyLibrary.dot import wrap, wrap_dot, unwrap
 from pyLibrary.collections.multiset import Multiset
 from pyLibrary.debugs.logs import Log, Except
@@ -48,7 +48,7 @@ def value2json(obj, pretty=False):
             Log.error("Not valid JSON: " + str(obj) + " of type " + str(type(obj)))
         return json
     except Exception, e:
-        Log.error("Can not encode into JSON: {{value}}",  value= meta.repr(obj), cause=e)
+        Log.error("Can not encode into JSON: {{value}}", value=meta.repr(obj), cause=e)
 
 
 def remove_line_comment(line):
@@ -103,7 +103,6 @@ def json2value(json_string, params={}, flexible=False, paths=False):
         if params:
             json_string = expand_template(json_string, params)
 
-
         # LOOKUP REFERENCES
         value = wrap(json_decoder(json_string))
 
@@ -114,10 +113,10 @@ def json2value(json_string, params={}, flexible=False, paths=False):
 
     except Exception, e:
         e = Except.wrap(e)
-        if "Expecting '" in e and "' delimiter: line" in e:
+        if ("Expecting '" in e and "' delimiter: line" in e) or "Expecting property name enclosed in double quotes: " in e:
             line_index = int(strings.between(e.message, " line ", " column ")) - 1
             column = int(strings.between(e.message, " column ", " ")) - 1
-            line = json_string.split("\n")[line_index]
+            line = json_string.split("\n")[line_index].replace("\t", " ")
             if column > 20:
                 sample = "..." + line[column - 20:]
                 pointer = "   " + (" " * 20) + "^"
@@ -548,7 +547,7 @@ def ini2value(ini_content):
 
     buff = StringIO.StringIO(ini_content)
     config = ConfigParser()
-    config._read(buff, "dummy")
+    config.read(buff, "dummy")
 
     output = {}
     for section in config.sections():

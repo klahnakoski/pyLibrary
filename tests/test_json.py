@@ -90,6 +90,16 @@ class TestJSON(unittest.TestCase):
         expecting = u'{"match_all": {}}'
         self.assertEqual(test, expecting, "expecting empty dict to serialize")
 
+    def test_empty_list1(self):
+        test = pypy_json_encode(wrap({"a": []}))
+        expecting = u'{"a": []}'
+        self.assertEqual(test, expecting, "expecting empty list to serialize")
+
+    def test_empty_list2(self):
+        test = pypy_json_encode(wrap({"a": [], "b": 1}))
+        expecting = u'{"a": [], "b": 1}'
+        self.assertEqual(test, expecting, "expecting empty list to serialize")
+
     def test_deep_empty_dict(self):
         test = pypy_json_encode(wrap({"query": {"match_all": {}}, "size": 20000}))
         expecting = u'{"query": {"match_all": {}}, "size": 20000}'

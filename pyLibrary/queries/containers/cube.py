@@ -15,14 +15,15 @@ from pyLibrary import dot
 from pyLibrary import convert
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.collections import MAX, OR
-from pyLibrary.queries.query import _normalize_edge
+from pyLibrary.queries.containers import Container
+# from pyLibrary.queries.query import _normalize_edge
 from pyLibrary.dot import Null, Dict
 from pyLibrary.dot.lists import DictList
 from pyLibrary.dot import wrap, wrap_dot, listwrap
 from pyLibrary.debugs.logs import Log
 
 
-class Cube(object):
+class Cube(Container):
     """
     A CUBE IS LIKE A NUMPY ARRAY, ONLY WITH THE DIMENSIONS TYPED AND NAMED.
     CUBES ARE BETTER THAN PANDAS BECAUSE THEY DEAL WITH NULLS GRACEFULLY

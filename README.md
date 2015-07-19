@@ -20,10 +20,10 @@ their own parameters, or have disemvoweled names.  This library puts a facade
 over these relics of the past and uses convention to name methods.
 
 ### Specifics ###
-* [Converting data, i/o JSON, and using templates](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary)
-* [Manipulating Datastructures](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary/dot)
-* [Logging and Exception Handling](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary/debugs)
-* [Connecting to your environment](https://github.com/klahnakoski/pyLibrary/tree/master/pyLibrary/env)
+* [Converting data, i/o JSON, and using templates](https://github.com/klahnakoski/pyLibrary/tree/dev/pyLibrary)
+* [Manipulating Datastructures](https://github.com/klahnakoski/pyLibrary/tree/dev/pyLibrary/dot)
+* [Logging and Exception Handling](https://github.com/klahnakoski/pyLibrary/tree/dev/pyLibrary/debugs)
+* [Connecting to your environment](https://github.com/klahnakoski/pyLibrary/tree/dev/pyLibrary/env)
 
 
 Installing pyLibrary
