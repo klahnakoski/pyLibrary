@@ -9,7 +9,11 @@
 #
 
 from __future__ import unicode_literals
+
+import logging
 import unittest
+
+from future.utils import raise_from
 
 from pyLibrary.debugs.log_usingQueue import Log_usingQueue
 from pyLibrary.debugs.logs import Log, Except
@@ -176,6 +180,14 @@ class TestExcept(FuzzyTestCase):
             Log.note("test: {{a.c}}: {{b.c}}", a=a, b=b)
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + AC + ': ' + BC)
 
+    #NORMAL LOGGING
+    def test_python_logging(self):
+        try:
+            problem_x()
+        except Exception, e:
+            logging.exception("failure")
+
+
 
 def problem_a():
     problem_b()
@@ -190,6 +202,20 @@ def problem_a2():
         problem_b()
     except Exception, e:
         Log.error("this is a problem", e)
+
+
+
+def problem_y():
+    raise Exception("this is the root cause")
+
+
+def problem_x():
+    try:
+        problem_y()
+    except Exception, e:
+        raise_from(Exception("this is a problem"), e)
+
+
 
 
 if __name__ == '__main__':
