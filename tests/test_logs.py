@@ -14,10 +14,12 @@ import logging
 import unittest
 
 from future.utils import raise_from
+from pyLibrary import convert
 
 from pyLibrary.debugs.log_usingQueue import Log_usingQueue
 from pyLibrary.debugs.logs import Log, Except
 from pyLibrary.dot import listwrap, wrap
+from pyLibrary.dot.objects import DictObject
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
@@ -180,12 +182,49 @@ class TestExcept(FuzzyTestCase):
             Log.note("test: {{a.c}}: {{b.c}}", a=a, b=b)
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + AC + ': ' + BC)
 
-    #NORMAL LOGGING
-    def test_python_logging(self):
+    #NORMAL RAISING
+    def test_python_raise_from(self):
+        def problem_y():
+            raise Exception("this is the root cause")
+
+        def problem_x():
+            try:
+                problem_y()
+            except Exception, e:
+                raise_from(Exception("this is a problem"), e)
+
         try:
             problem_x()
         except Exception, e:
-            logging.exception("failure")
+            class _catcher(logging.Handler):
+                def handle(self, record):
+                    o = convert.value2json(DictObject(record))
+                    if record:
+                        pass
+                    if "this is a problem" not in e:
+                        Log.error("We expect Python to, at least, report the first order problem")
+                    if "this is the root cause" in e:
+                        Log.error("We do not expect Python to report exception chains")
+
+            log=logging.getLogger()
+            log.addHandler(_catcher())
+            log.exception("problem")
+
+    #NORMAL RE-RAISE
+    def test_python_re_raise(self):
+        def problem_y():
+            raise Exception("this is the root cause")
+
+        def problem_x():
+            try:
+                problem_y()
+            except Exception, e:
+                raise e
+
+        try:
+            problem_x()
+        except Exception, e:
+            Log.error("failure", e)
 
 
 
@@ -205,15 +244,6 @@ def problem_a2():
 
 
 
-def problem_y():
-    raise Exception("this is the root cause")
-
-
-def problem_x():
-    try:
-        problem_y()
-    except Exception, e:
-        raise_from(Exception("this is a problem"), e)
 
 
 

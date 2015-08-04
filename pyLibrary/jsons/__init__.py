@@ -6,6 +6,7 @@ import re
 from types import NoneType
 
 from pyLibrary.dot import DictList, NullType
+from pyLibrary.dot.objects import DictObject
 from pyLibrary.times.dates import Date
 
 from pyLibrary.times.durations import Duration
@@ -63,21 +64,23 @@ def scrub(value):
 
 
 def _scrub(value, is_done):
-    type = value.__class__
+    type_ = value.__class__
 
-    if type in (NoneType, NullType):
+    if type_ in (NoneType, NullType):
         return None
-    elif type in (date, datetime):
+    elif type_ in (unicode, int, float, long, bool):
+        return value
+    elif type_ in (date, datetime):
         return float(datetime2unix(value))
-    elif type is timedelta:
+    elif type_ is timedelta:
         return value.total_seconds()
-    elif type is Date:
+    elif type_ is Date:
         return float(value.unix)
-    elif type is Duration:
+    elif type_ is Duration:
         return value.seconds
-    elif type is str:
+    elif type_ is str:
         return utf82unicode(value)
-    elif type is Decimal:
+    elif type_ is Decimal:
         return float(value)
     elif isinstance(value, Mapping):
         _id = id(value)
@@ -95,13 +98,15 @@ def _scrub(value, is_done):
 
         is_done.discard(_id)
         return output
-    elif type in (list, DictList):
+    elif type_ in (tuple, list, DictList):
         output = []
         for v in value:
             v = _scrub(v, is_done)
             output.append(v)
         return output
-    elif type.__name__ == "bool_":  # DEAR ME!  Numpy has it's own booleans (value==False could be used, but 0==False in Python.  DOH!)
+    elif type_ is type:
+        return value.__name__
+    elif type_.__name__ == "bool_":  # DEAR ME!  Numpy has it's own booleans (value==False could be used, but 0==False in Python.  DOH!)
         if value == False:
             return False
         else:
@@ -112,6 +117,8 @@ def _scrub(value, is_done):
             return output
         except Exception, e:
             _Log.error("problem with calling __json__()", e)
+    elif hasattr(value, 'co_code') or hasattr(value, "f_locals"):
+        return None
     elif hasattr(value, '__iter__'):
         output = []
         for v in value:
@@ -121,7 +128,7 @@ def _scrub(value, is_done):
     elif hasattr(value, '__call__'):
         return repr(value)
     else:
-        return value
+        return _scrub(DictObject(value), is_done)
 
 
 from . import encoder as json_encoder
