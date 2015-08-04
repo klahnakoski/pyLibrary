@@ -218,13 +218,14 @@ class TestExcept(FuzzyTestCase):
         def problem_x():
             try:
                 problem_y()
-            except Exception, e:
-                raise e
+            except Exception, f:
+                raise f
 
         try:
             problem_x()
         except Exception, e:
-            Log.error("failure", e)
+            e = Except.wrap(e)
+            self.assertEqual(e.cause, None)  # REALLY, THE CAUSE IS problem_y()
 
 
 
