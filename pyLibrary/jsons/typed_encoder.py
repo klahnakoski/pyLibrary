@@ -10,12 +10,14 @@
 from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
+from collections import deque
 
 import json
 import re
 import time
 from datetime import datetime, date, timedelta
 from decimal import Decimal
+from pyLibrary.debugs.logs import Log
 
 from pyLibrary.dot import Dict, DictList, NullType
 from pyLibrary.jsons import ESCAPE_DCT
@@ -187,22 +189,19 @@ PRIMITIVE = 1
 BEGIN_OBJECT = 2
 OBJECT = 3
 KEYWORD = 4
-ESCAPE_K = 5
 STRING = 6
-ESCAPE_S = 7
+ESCAPE = 5
 
 
 def json2typed(json):
     """
     every ': {' gets converted to ': {"$object": ".", '
     every ': <value>' gets converted to '{"$value": <value>}'
-    :param json:
-    :return:
     """
     # MODE VALUES
     #
 
-
+    context = deque()
     output = UnicodeBuilder(1024)
     mode = VALUE
     for c in json:
@@ -210,12 +209,19 @@ def json2typed(json):
             append(output, c)
         elif mode == VALUE:
             if c == "{":
+                context.append(mode)
                 mode = BEGIN_OBJECT
+                append(output, '{"$object": "."')
+                continue
             elif c == '[':
+                context.append(mode)
                 mode = VALUE
-            elif c in ",]}":
-                mode = OBJECT
+            elif c == ",":
+                mode = context.pop()
+            elif c in "]}":
+                mode = context.pop()
             elif c == '"':
+                context.append(mode)
                 mode = STRING
                 append(output, '{"$value": ')
             else:
@@ -223,44 +229,60 @@ def json2typed(json):
                 append(output, '{"$value": ')
             append(output, c)
         elif mode == PRIMITIVE:
-            if c in ",]}":
-                mode = VALUE
-                append(output, "}")
+            if c == ",":
+                append(output, '}')
+                mode = context.pop()
+                if mode == 0:
+                    context.append(mode)
+            elif c == "]":
+                append(output, '}')
+                mode = context.pop()
+            elif c == "}":
+                append(output, '}')
+                mode = context.pop()
+                mode = context.pop()
             append(output, c)
         elif mode == BEGIN_OBJECT:
             if c == '"':
-                mode = KEYWORD
-                append(output, '"$object": ".", ')
+                context.append(OBJECT)
+                context.append(KEYWORD)
+                mode = STRING
+                append(output, ', ')
+            elif c == "}":
+                mode = context.pop()
+                mode = context.pop()
             else:
-                mode = OBJECT
-                append(output, '"$object": "."')
+                Log.error("not expected")
             append(output, c)
         elif mode == KEYWORD:
             append(output, c)
-            if c == '"':
-                mode = OBJECT
-            elif c == '\\':
-                mode = ESCAPE_K
+            if c == ':':
+                mode = VALUE
+            else:
+                Log.error("Not expected")
         elif mode == STRING:
             append(output, c)
             if c == '"':
-                mode = OBJECT
-                append(output, "}")
+                mode = context.pop()
+                if mode != KEYWORD:
+                    append(output, '}')
             elif c == '\\':
-                mode = ESCAPE_S
-        elif mode == ESCAPE_K:
-            mode = KEYWORD
-            append(output, c)
-        elif mode == ESCAPE_S:
-            mode = STRING
+                context.append(mode)
+                mode = ESCAPE
+        elif mode == ESCAPE:
+            mode = context.pop()
             append(output, c)
         elif mode == OBJECT:
             if c == '"':
-                mode = KEYWORD
-            elif c == '{':
-                mode = BEGIN_OBJECT
-            elif c == ':':
-                mode = VALUE
+                context.append(mode)
+                context.append(KEYWORD)
+                mode = STRING
+            elif c == ",":
+                pass
+            elif c == '}':
+                mode = context.pop()
+            else:
+                Log.error("not expected")
 
             append(output, c)
 

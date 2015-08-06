@@ -67,6 +67,14 @@ class TestJSON(unittest.TestCase):
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
+    def test_nested(self):
+        value = {"a": {}, "b": {}}
+        test1 = typed_encode(value)
+        test2 = json2typed(pypy_json_encode(value))
+        expected = u'{"$object": ".", "a": {"$object": "."}, "b": {"$object": "."}}'
+        self.assertEqual(test1, expected)
+        self.assertEqual(test2, expected)
+
     def test_empty_list_value(self):
         value = []
         test1 = typed_encode(value)
@@ -158,6 +166,15 @@ class TestJSON(unittest.TestCase):
         expected = u'{"$object": ".", "match_all": {"$object": "."}}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
+
+    def test_complex_object(self):
+        value = wrap({"s": 0, "r": 5})
+        test1 = typed_encode(value)
+        test2 = json2typed(pypy_json_encode(value))
+        expected = u'{"$object": ".", "s": {"$value": 0}, "r": {"$value": 5}}'
+        self.assertEqual(test1, expected)
+        self.assertEqual(test2, expected)
+
 
     def test_empty_list1(self):
         value = wrap({"a": []})
