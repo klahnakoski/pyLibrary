@@ -218,7 +218,13 @@ def json2typed(json):
                 mode = VALUE
             elif c == ",":
                 mode = context.pop()
-            elif c in "]}":
+                if mode != OBJECT:
+                    context.append(mode)
+                    mode = VALUE
+            elif c in "]":
+                mode = context.pop()
+            elif c in "}":
+                mode = context.pop()
                 mode = context.pop()
             elif c == '"':
                 context.append(mode)
@@ -249,7 +255,6 @@ def json2typed(json):
                 mode = STRING
                 append(output, ', ')
             elif c == "}":
-                mode = context.pop()
                 mode = context.pop()
             else:
                 Log.error("not expected")

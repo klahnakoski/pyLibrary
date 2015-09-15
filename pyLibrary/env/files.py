@@ -16,7 +16,8 @@ import shutil
 
 from pyLibrary.strings import utf82unicode
 from pyLibrary.maths import crypto
-from pyLibrary.dot import coalesce
+from pyLibrary.dot import coalesce, set_default, split_field, join_field
+from pyLibrary.dot import listwrap, wrap
 from pyLibrary import convert
 
 
@@ -154,7 +155,7 @@ class File(object):
         from pyLibrary.jsons import ref
 
         content = self.read(encoding=encoding)
-        value = convert.json2value(content, flexible=True, paths=True)
+        value = convert.json2value(content, flexible=True, leaves=True)
         abspath = self.abspath
         if os.sep == "\\":
             abspath = "/" + abspath.replace(os.sep, "/")

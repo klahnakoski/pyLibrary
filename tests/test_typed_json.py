@@ -75,6 +75,14 @@ class TestJSON(unittest.TestCase):
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
+    def test_list_of_objects(self):
+        value = {"a": [{}, "b"]}
+        test1 = typed_encode(value)
+        test2 = json2typed(pypy_json_encode(value))
+        expected = u'{"$object": ".", "a": [{"$object": "."}, {"$value": "b"}]}'
+        self.assertEqual(test1, expected)
+        self.assertEqual(test2, expected)
+
     def test_empty_list_value(self):
         value = []
         test1 = typed_encode(value)

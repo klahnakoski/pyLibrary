@@ -12,6 +12,7 @@ from __future__ import division
 from __future__ import absolute_import
 
 import datetime
+from decimal import Decimal
 
 from pyLibrary import regex
 from pyLibrary.vendor.dateutil.relativedelta import relativedelta
@@ -22,8 +23,6 @@ from pyLibrary.dot import wrap
 
 _Date = None
 _Log = None
-
-
 def _delayed_import():
     global _Date
     from pyLibrary.times.dates import Date as _Date
@@ -93,7 +92,7 @@ class Duration(object):
 
         if isinstance(other, datetime.datetime):
             return _Date(other).add(self)
-        elif isinstance(other, _Date):
+        elif isinstance(other, Date):
             return other.add(self)
         return self + other
 
@@ -212,10 +211,10 @@ class Duration(object):
 
     @property
     def seconds(self):
-        return self.milli / 1000.0
+        return float(self.milli) / 1000.0
 
     def total_seconds(self):
-        return self.milli / 1000.0
+        return float(self.milli) / 1000.0
 
     def __str__(self):
         return str(self.__unicode__())

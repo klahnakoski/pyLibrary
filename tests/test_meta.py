@@ -20,7 +20,7 @@ CACHE_DURATION = 5 * SECOND
 call_count = 0
 
 
-class TestCNV(FuzzyTestCase):
+class TestMeta(FuzzyTestCase):
     def test_forever_cache(self):
         global call_count
         call_count = 0

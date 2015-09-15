@@ -143,6 +143,15 @@ class TestDot(FuzzyTestCase):
         value = a.b*1000
         assert value == Null
 
+    def test_dot_self(self):
+        a = Dict(b=42)
+        assert a["."] == a
+        assert a["."].b == 42
+
+        a["."] = {"c": 42}
+        assert a.c == 42
+        assert a.b == None
+
 
     def test_list(self):
         if not []:

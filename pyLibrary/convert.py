@@ -27,7 +27,7 @@ import re
 from tempfile import TemporaryFile
 
 from pyLibrary import strings, meta
-from pyLibrary.dot import wrap, wrap_dot, unwrap
+from pyLibrary.dot import wrap, wrap_leaves, unwrap, unwraplist
 from pyLibrary.collections.multiset import Multiset
 from pyLibrary.debugs.logs import Log, Except
 from pyLibrary.env.big_data import FileString, safe_size
@@ -78,12 +78,12 @@ def remove_line_comment(line):
 
 
 
-def json2value(json_string, params={}, flexible=False, paths=False):
+def json2value(json_string, params={}, flexible=False, leaves=False):
     """
     :param json_string: THE JSON
     :param params: STANDARD JSON PARAMS
     :param flexible: REMOVE COMMENTS
-    :param paths: ASSUME JSON KEYS ARE DOT-DELIMITED
+    :param leaves: ASSUME JSON KEYS ARE DOT-DELIMITED
     :return: Python value
     """
     if isinstance(json_string, str):
@@ -103,17 +103,18 @@ def json2value(json_string, params={}, flexible=False, paths=False):
         if params:
             json_string = expand_template(json_string, params)
 
+
         # LOOKUP REFERENCES
         value = wrap(json_decoder(json_string))
 
-        if paths:
-            value = wrap_dot(value)
+        if leaves:
+            value = wrap_leaves(value)
 
         return value
 
     except Exception, e:
         e = Except.wrap(e)
-        if ("Expecting '" in e and "' delimiter: line" in e) or "Expecting property name enclosed in double quotes: " in e:
+        if "Expecting '" in e and "' delimiter: line" in e:
             line_index = int(strings.between(e.message, " line ", " column ")) - 1
             column = int(strings.between(e.message, " column ", " ")) - 1
             line = json_string.split("\n")[line_index].replace("\t", " ")
@@ -243,20 +244,50 @@ def list2tab(rows):
     return "\t".join(keys) + "\n" + "\n".join(output)
 
 
-def list2table(rows):
-    columns = set()
-    for r in rows:
-        columns |= set(r.keys())
-    keys = list(columns)
+def list2table(rows, column_names=None):
+    if column_names:
+        keys = list(set(column_names))
+    else:
+        columns = set()
+        for r in rows:
+            columns |= set(r.keys())
+        keys = list(columns)
 
-    output = []
-    for r in rows:
-        output.append([r[k] for k in keys])
+    output = [[unwraplist(r[k]) for k in keys] for r in rows]
 
     return wrap({
+        "meta": {"format": "table"},
         "header": keys,
         "data": output
     })
+
+
+def list2cube(rows, column_names=None):
+    if column_names:
+        keys = column_names
+    else:
+        columns = set()
+        for r in rows:
+            columns |= set(r.keys())
+        keys = list(columns)
+
+    data = {k: [] for k in keys}
+    output = wrap({
+        "meta": {"format": "cube"},
+        "edges": [
+            {
+                "name": "rownum",
+                "domain": {"type": "rownum", "min": 0, "max": len(rows), "interval": 1}
+            }
+        ],
+        "data": data
+    })
+
+    for r in rows:
+        for k in keys:
+            data[k].append(r[k])
+
+    return output
 
 
 def value2string(value):
@@ -547,7 +578,7 @@ def ini2value(ini_content):
 
     buff = StringIO.StringIO(ini_content)
     config = ConfigParser()
-    config.read(buff, "dummy")
+    config._read(buff, "dummy")
 
     output = {}
     for section in config.sections():

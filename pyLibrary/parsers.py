@@ -1,6 +1,6 @@
-from urlparse import urlparse
-
-from pyLibrary.dot import wrap
+from urlparse import urlparse, parse_qs
+from pyLibrary.dot import Null, coalesce, wrap
+from pyLibrary.dot.dicts import Dict
 
 
 _convert = None
@@ -92,7 +92,7 @@ class URL(object):
         if self.query:
             url = url + '?' + _convert.value2url(self.query)
         if self.fragment:
-            url = url + '#' + _convert.value2url(self.fragment)
+            url = url + '#' + convert.value2url(self.fragment)
         return url
 
 

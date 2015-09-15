@@ -70,12 +70,18 @@ class Dict(MutableMapping):
     def __getitem__(self, key):
         if key == None:
             return Null
+        if key == ".":
+            output = _get(self, "_dict")
+            if isinstance(output, Mapping):
+                return self
+            else:
+                return output
+
         if isinstance(key, str):
             key = key.decode("utf8")
         elif not isinstance(key, unicode):
             from pyLibrary.debugs.logs import Log
             Log.error("only string keys are supported")
-
 
         d = _get(self, "_dict")
 
@@ -96,6 +102,13 @@ class Dict(MutableMapping):
             from pyLibrary.debugs.logs import Log
 
             Log.error("key is empty string.  Probably a bad idea")
+        if key == ".":
+            # SOMETHING TERRIBLE HAPPENS WHEN value IS NOT A Mapping;
+            # HOPEFULLY THE ONLY OTHER METHOD RUN ON self IS unwrap()
+            v = unwrap(value)
+            _set(self, "_dict", v)
+            return v
+
         if isinstance(key, str):
             key = key.decode("utf8")
 
@@ -220,7 +233,8 @@ class Dict(MutableMapping):
         return Dict(**self)
 
     def __copy__(self):
-        return Dict(**self)
+        d = _get(self, "_dict")
+        return Dict(**d)
 
     def __deepcopy__(self, memo):
         d = _get(self, "_dict")
@@ -257,13 +271,13 @@ class Dict(MutableMapping):
         try:
             return "Dict("+dict.__str__(_get(self, "_dict"))+")"
         except Exception, e:
-            return "{}"
+            return "Dict{}"
 
     def __repr__(self):
         try:
             return "Dict("+dict.__repr__(_get(self, "_dict"))+")"
         except Exception, e:
-            return "Dict{}"
+            return "Dict()"
 
 
 class _DictUsingSelf(dict):
@@ -458,7 +472,6 @@ class _DictUsingSelf(dict):
             return "Dict("+dict.__repr__(self)+")"
         except Exception, e:
             return "Dict()"
-
 
 
 # KEEP TRACK OF WHAT ATTRIBUTES ARE REQUESTED, MAYBE SOME (BUILTIN) ARE STILL USEFUL
