@@ -249,6 +249,7 @@ def _get_attr(obj, path):
             Log.error(AMBIGUOUS_PATH_FOUND+" {{paths}}",  paths=attr_name)
         else:
             return _get_attr(obj[attr_name[0]], path[1:])
+
     try:
         obj = getattr(obj, attr_name)
         return _get_attr(obj, path[1:])
