@@ -11,24 +11,24 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
 from copy import copy
+from itertools import product
 
 from pyLibrary import convert
-from pyLibrary.env import elasticsearch
-from pyLibrary.env.elasticsearch import ES_NUMERIC_TYPES
 from pyLibrary.meta import use_settings
 from pyLibrary.queries import qb
-from pyLibrary.queries.containers import Container
 from pyLibrary.queries.query import Query
 from pyLibrary.debugs.logs import Log
 from pyLibrary.dot.dicts import Dict
 from pyLibrary.dot import coalesce, set_default, Null, literal_field, listwrap, split_field, join_field
 from pyLibrary.dot import wrap
 from pyLibrary.strings import expand_template
-from pyLibrary.thread.threads import Queue, Thread, Lock
+from pyLibrary.thread.threads import Queue, Thread
 from pyLibrary.times.dates import Date
 from pyLibrary.times.durations import HOUR, MINUTE
 
+_elasticsearch = None
 
+ENABLE_META_SCAN = False
 DEBUG = True
 TOO_OLD = 2*HOUR
 singlton = None
@@ -49,15 +49,17 @@ class FromESMetadata(object):
 
     @use_settings
     def __init__(self, host, index, alias=None, name=None, port=9200, settings=None):
+        global _elasticsearch
         if hasattr(self, "settings"):
             return
 
         from pyLibrary.queries.containers.lists import ListContainer
+        from pyLibrary.env import elasticsearch as _elasticsearch
 
         self.settings = settings
         self.default_name = coalesce(name, alias, index)
-        self.default_es = elasticsearch.Cluster(settings=settings)
-        self.todo = Queue("refresh metadata", max=100000)
+        self.default_es = _elasticsearch.Cluster(settings=settings)
+        self.todo = Queue("refresh metadata", max=100000, unique=True)
 
         table_columns = metadata_tables()
         column_columns = metadata_columns()
@@ -66,8 +68,10 @@ class FromESMetadata(object):
         self.columns.insert(column_columns)
         self.columns.insert(table_columns)
         # TODO: fix monitor so it does not bring down ES
-        # self.worker = Thread.run("refresh metadata", self.monitor)
-        self.worker = Thread.run("refresh metadata", self.not_monitor)
+        if ENABLE_META_SCAN:
+            self.worker = Thread.run("refresh metadata", self.monitor)
+        else:
+            self.worker = Thread.run("refresh metadata", self.not_monitor)
         return
 
     @property
@@ -87,13 +91,19 @@ class FromESMetadata(object):
         if not existing_columns:
             self.columns.add(c)
             cols = filter(lambda r: r.table == "meta.columns", self.columns.data)
-            for c in cols:
-                c.partitions = c.cardinality = c.last_updated = None
+            for cc in cols:
+                cc.partitions = cc.cardinality = cc.last_updated = None
             self.todo.add(c)
             self.todo.extend(cols)
         else:
             set_default(existing_columns[0], c)
             self.todo.add(existing_columns[0])
+
+            # TEST CONSISTENCY
+            for c, d in product(list(self.todo.queue), list(self.todo.queue)):
+                if c.abs_name==d.abs_name and c.table==d.table and c!=d:
+                    Log.error("")
+
 
     def _get_columns(self, table=None):
         # TODO: HANDLE MORE THEN ONE ES, MAP TABLE SHORT_NAME TO ES INSTANCE
@@ -103,7 +113,7 @@ class FromESMetadata(object):
         metadata = self.default_es.get_metadata(index=index)
         for index, meta in qb.sort(metadata.indices.items(), {"value": 0, "sort": -1}):
             for _, properties in meta.mappings.items():
-                columns = elasticsearch.parse_properties(index, None, properties.properties)
+                columns = _elasticsearch.parse_properties(index, None, properties.properties)
                 with self.columns.locker:
                     for c in columns:
                         # ABSOLUTE
@@ -216,7 +226,7 @@ class FromESMetadata(object):
                         "where": {"eq": {"table": c.table, "name": c.name}}
                     })
                 return
-            elif c.type in ES_NUMERIC_TYPES and cardinality > 30:
+            elif c.type in _elasticsearch.ES_NUMERIC_TYPES and cardinality > 30:
                 Log.note("{{field}} has {{num}} parts", field=c.name, num=cardinality)
                 with self.columns.locker:
                     self.columns.update({
@@ -278,9 +288,18 @@ class FromESMetadata(object):
             try:
                 if not self.todo:
                     with self.columns.locker:
-                        old_columns = filter(lambda c: (c.last_updated == None or c.last_updated < Date.now()-TOO_OLD) and c.type not in ["object", "nested"], self.columns)
+                        old_columns = filter(
+                            lambda c: (c.last_updated == None or c.last_updated < Date.now()-TOO_OLD) and c.type not in ["object", "nested"],
+                            self.columns
+                        )
                         if old_columns:
                             self.todo.extend(old_columns)
+                            # TEST CONSISTENCY
+                            for c, d in product(list(self.todo.queue), list(self.todo.queue)):
+                                if c.abs_name==d.abs_name and c.table==d.table and c!=d:
+                                    Log.error("")
+
+
                         else:
                             Log.note("no more metatdata to update")
 
@@ -288,7 +307,7 @@ class FromESMetadata(object):
                 if column:
                     if column.type in ["object", "nested"]:
                         continue
-                    if column.last_updated >= Date.now()-TOO_OLD:
+                    elif column.last_updated >= Date.now()-TOO_OLD:
                         continue
                     try:
                         self._update_cardinality(column)
@@ -299,19 +318,21 @@ class FromESMetadata(object):
                 Log.warning("problem in cardinality monitor", cause=e)
 
     def not_monitor(self, please_stop):
+        Log.warning("metadata scan has been disabled")
         while not please_stop:
             c = self.todo.pop()
-            self.columns.update({
-                "set": {
-                    "last_updated": Date.now()
-                },
-                "clear":[
-                    "count",
-                    "cardinality",
-                    "partitions",
-                ],
-                "where": {"eq": {"table": c.table, "abs_name": c.abs_name}}
-            })
+            with self.columns.locker:
+                self.columns.update({
+                    "set": {
+                        "last_updated": Date.now()
+                    },
+                    "clear":[
+                        "count",
+                        "cardinality",
+                        "partitions",
+                    ],
+                    "where": {"eq": {"table": c.table, "abs_name": c.abs_name}}
+                })
             Log.note("Could not get {{col.table}}.{{col.abs_name}} info", col=c)
 
 
@@ -324,7 +345,7 @@ def _counting_query(c):
             "aggs": {
                 "_nested": {"cardinality": {
                     "field": c.name,
-                    "precision_threshold": 10 if c.type in ES_NUMERIC_TYPES else 100
+                    "precision_threshold": 10 if c.type in _elasticsearch.ES_NUMERIC_TYPES else 100
                 }}
             }
         }

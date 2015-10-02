@@ -14,8 +14,10 @@ import unittest
 from pyLibrary import convert
 from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import Dict, wrap
-from pyLibrary.jsons.encoder import pypy_json_encode as pypy_json_encode
-from pyLibrary.jsons.encoder import pretty_json
+from pyLibrary.env.elasticsearch import scrub
+from pyLibrary.jsons.encoder import pypy_json_encode as pypy_json_encode, cPythonJSONEncoder, pretty_json
+
+cpython_json_encoder = cPythonJSONEncoder().encode
 
 
 class TestJSON(unittest.TestCase):
@@ -85,6 +87,11 @@ class TestJSON(unittest.TestCase):
         expecting = u'{"add": {"start": " â€"}}'
         self.assertEqual(expecting, output, "expecting correct json")
 
+    def test_false(self):
+        test = pypy_json_encode(wrap({"value": False}))
+        expecting = u'{"value": false}'
+        self.assertEqual(test, expecting, "expecting False to serialize as 'false'")
+
     def test_empty_dict(self):
         test = pypy_json_encode(wrap({"match_all": wrap({})}))
         expecting = u'{"match_all": {}}'
@@ -110,6 +117,7 @@ class TestJSON(unittest.TestCase):
         test = pretty_json(j)
         expecting = u'{"not": {"match_all": {}}}'
         self.assertEqual(test, expecting, "expecting empty dict to serialize")
+
 
 if __name__ == '__main__':
     try:

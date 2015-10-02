@@ -18,7 +18,7 @@ import time
 
 from pyLibrary import convert
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import coalesce, Null, Dict, set_default, join_field, split_field, unwraplist, listwrap
+from pyLibrary.dot import coalesce, Null, Dict, set_default, join_field, split_field, unwraplist, listwrap, literal_field
 from pyLibrary.dot.lists import DictList
 from pyLibrary.dot import wrap
 from pyLibrary.env import http
@@ -74,9 +74,6 @@ class Index(Features):
 
         self.cluster_state = None
         self.debug = debug
-        if self.debug:
-            Log.alert("elasticsearch debugging for index {{index}} is on", index=settings.index)
-
         self.settings = settings
         self.cluster = Cluster(settings)
 
@@ -107,6 +104,9 @@ class Index(Features):
             Log.error("not allowed")
 
         self.path = "/" + full_index + "/" + type
+
+        if self.debug:
+            Log.alert("elasticsearch debugging for index {{url}} is on", index=self.url)
 
     @property
     def url(self):
@@ -369,7 +369,7 @@ class Index(Features):
                 Log.note("Query:\n{{query|indent}}", query=show_query)
             return self.cluster.post(
                 self.path + "/_search",
-                data=convert.value2json(query).encode("utf8"),
+                data=query,
                 timeout=coalesce(timeout, self.settings.timeout)
             )
         except Exception, e:
@@ -454,7 +454,8 @@ class Cluster(object):
         index = settings.index
         meta = self.get_metadata(index=index)
         columns = parse_properties(index, [], meta.indices[index].mappings.values()[0].properties)
-        settings.tjson = any(c.name.endswith("$value") for c in columns)
+        if len(columns)!=0:
+            settings.tjson = any(c.name.endswith("$value") for c in columns)
 
         return Index(settings)
 
@@ -565,7 +566,7 @@ class Cluster(object):
 
         self.post(
             "/" + settings.index,
-            data=convert.value2json(schema).encode("utf8"),
+            data=schema,
             headers={"Content-Type": "application/json"}
         )
         while True:
@@ -607,7 +608,11 @@ class Cluster(object):
                     self.version = self.cluster_state.version.number
                 elif index:  # UPDATE THE MAPPING FOR ONE INDEX ONLY
                     response = self.get("/"+index+"/_mapping")
-                    self._metadata.indices[index].mappings = qb.sort(response.items(), 0).last()[1].mappings
+                    if self.version.startswith("0.90."):
+                        best = qb.sort(response.items(), 0).last()
+                        self._metadata.indices[index].mappings = best[1]
+                    else:
+                        self._metadata.indices[index].mappings = qb.sort(response.items(), 0).last()[1].mappings
                     return Dict(indices={index: self._metadata.indices[index]})
             else:
                 Log.error("Metadata exploration has been disabled")
@@ -819,6 +824,8 @@ class Alias(Features):
             # FIND MAPPING WITH MOST PROPERTIES (AND ASSUME THAT IS THE CANONICAL TYPE)
             max_prop = -1
             for _type, mapping in index.mappings.items():
+                if _type == "_default_":
+                    continue
                 num_prop = len(mapping.properties.keys())
                 if max_prop < num_prop:
                     max_prop = num_prop
@@ -920,7 +927,6 @@ class Alias(Features):
                             message=status._shards.failures[0].reason
                         )
 
-
     def search(self, query, timeout=None):
         query = wrap(query)
         try:
@@ -930,10 +936,10 @@ class Alias(Features):
                     show_query.facets = {k: "..." for k in query.facets.keys()}
                 else:
                     show_query = query
-                Log.note("Query:\n{{query|indent}}", query=show_query)
+                Log.note("Query {{path}}\n{{query|indent}}", path=self.path + "/_search", query=show_query)
             return self.cluster.post(
                 self.path + "/_search",
-                data=convert.value2json(query).encode("utf8"),
+                data=query,
                 timeout=coalesce(timeout, self.settings.timeout)
             )
         except Exception, e:
@@ -997,12 +1003,14 @@ def parse_properties(parent_index_name, parent_query_path, esProperties):
                     columns.append(Column(
                         table=index_name,
                         name=query_path,
+                        abs_name=query_path,
                         type=p.type
                     ))
                 else:
                     columns.append(Column(
                         table=index_name,
-                        name=query_path + "." + n,
+                        name=query_path + "\\." + n,
+                        abs_name=query_path + "\\." + n,
                         type=p.type
                     ))
             continue
@@ -1017,7 +1025,8 @@ def parse_properties(parent_index_name, parent_query_path, esProperties):
             if property.index_name and name != property.index_name:
                 columns.append(Column(
                     table=index_name,
-                    name=property.index_name,
+                    abs_name=query_path,
+                    name=query_path,
                     type=property.type
                 ))
         elif property.enabled == None or property.enabled == False:

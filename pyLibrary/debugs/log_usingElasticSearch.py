@@ -16,6 +16,7 @@ from pyLibrary.env.elasticsearch import Cluster
 from pyLibrary.meta import use_settings
 from pyLibrary.thread.threads import Thread
 from .logs import BaseLog
+from pyLibrary.times.durations import MINUTE
 
 
 class Log_usingElasticSearch(BaseLog):
@@ -28,23 +29,20 @@ class Log_usingElasticSearch(BaseLog):
         self.es = Cluster(settings).get_or_create_index(
             schema=convert.json2value(convert.value2json(SCHEMA), leaves=True),
             limit_replicas=True,
-            tjson=True,
+            tjson=False,
             settings=settings
         )
         self.queue = self.es.threaded_queue(max_size=max_size, batch_size=batch_size)
 
     def write(self, template, params):
-        try:
-            if params.get("template"):
-                # DETECTED INNER TEMPLATE, ASSUME TRACE IS ON, SO DO NOT NEED THE OUTER TEMPLATE
-                self.queue.add({"value": params})
-            else:
-                if len(template) > 2000:
-                    template = template[:1997] + "..."
-                self.queue.add({"value": {"template": template, "params": params}})
-            return self
-        except Exception, e:
-            raise e  # OH NO!
+        if params.get("template"):
+            # DETECTED INNER TEMPLATE, ASSUME TRACE IS ON, SO DO NOT NEED THE OUTER TEMPLATE
+            self.queue.add({"value": params})
+        else:
+            if len(template) > 2000:
+                template = template[:1997] + "..."
+            self.queue.add({"value": {"template": template, "params": params}}, timeout=3*MINUTE)
+        return self
 
     def stop(self):
         try:
@@ -60,7 +58,7 @@ class Log_usingElasticSearch(BaseLog):
 
 SCHEMA = {
     "settings": {
-        "index.number_of_shards": 1,
+        "index.number_of_shards": 2,
         "index.number_of_replicas": 2
     },
     "mappings": {
@@ -99,8 +97,25 @@ SCHEMA = {
                         "match_pattern": "regex",
                         "path_match": ".*"
                     }
+                },
+                {
+                    "default_param_values": {
+                        "mapping": {
+                            "index": "not_analyzed",
+                            "doc_values": True
+                        },
+                        "match": "*$value"
+                    }
+                },
+                {
+                    "default_params": {
+                        "mapping": {
+                            "enabled": False,
+                            "source": "yes"
+                        },
+                        "path_match": "params.*"
+                    }
                 }
-
             ],
             "_all": {
                 "enabled": False
@@ -110,16 +125,8 @@ SCHEMA = {
                 "enabled": True
             },
             "properties": {
-                "timestamp": {
-                    "type": "object",
-                    "properties": {
-                        "$value": {
-                            "type": "double",
-                            "index": "not_analyzed",
-                            "store": "yes",
-                            "doc_values": True
-                        }
-                    }
+                "params": {
+                    "enabled": False
                 }
             }
         }

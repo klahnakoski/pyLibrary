@@ -14,6 +14,7 @@ from __future__ import absolute_import
 from copy import copy
 
 from collections import Mapping
+import sys
 from pyLibrary import convert
 from pyLibrary.env import elasticsearch, http
 from pyLibrary.meta import use_settings
@@ -66,6 +67,7 @@ class FromES(Container):
         self.edges = Dict()
         self.worker = None
         self._columns = self.get_columns()
+        self.schema = {c.name: c for c in self._columns}
         # SWITCH ON TYPED MODE
         self.typed = any(c.name in ("$value", "$object") for c in self._columns)
 
@@ -207,6 +209,10 @@ class FromES(Container):
             self.edges[d.full_name] = d
 
     def __getitem__(self, item):
+        c = self.schema.get(item)
+        if c:
+             return c
+
         e = self.edges[item]
         return e
 

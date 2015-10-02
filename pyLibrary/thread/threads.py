@@ -21,18 +21,17 @@ import thread
 import threading
 import time
 import sys
-import gc
 
 from pyLibrary import strings
 from pyLibrary.dot import coalesce, Dict
 from pyLibrary.times.dates import Date
-from pyLibrary.times.durations import SECOND
+from pyLibrary.times.durations import SECOND, MINUTE
 
 
 _Log = None
 DEBUG = True
 MAX_DATETIME = datetime(2286, 11, 20, 17, 46, 39)
-
+DEFAULT_WAIT_TIME = 5*MINUTE
 
 def _late_import():
     global _Log
@@ -82,14 +81,16 @@ class Queue(object):
      IS DIFFICULT TO USE JUST BETWEEN THREADS (SERIALIZATION REQUIRED)
     """
 
-    def __init__(self, name, max=None, silent=False):
+    def __init__(self, name, max=None, silent=False, unique=False):
         """
         max - LIMIT THE NUMBER IN THE QUEUE, IF TOO MANY add() AND extend() WILL BLOCK
         silent - COMPLAIN IF THE READERS ARE TOO SLOW
+        unique - SET True IF YOU WANT ONLY ONE INSTANCE IN THE QUEUE AT A TIME
         """
         self.name = name
         self.max = coalesce(max, 2 ** 10)
         self.silent = silent
+        self.unique = unique
         self.keep_running = True
         self.lock = Lock("lock for queue " + name)
         self.queue = deque()
@@ -107,11 +108,15 @@ class Queue(object):
         _Log.note("queue iterator is done")
 
 
-    def add(self, value):
+    def add(self, value, timeout=None):
         with self.lock:
-            self._wait_for_queue_space()
+            self._wait_for_queue_space(timeout=None)
             if self.keep_running:
-                self.queue.append(value)
+                if self.unique:
+                    if value not in self.queue:
+                        self.queue.append(value)
+                else:
+                    self.queue.append(value)
         return self
 
     def push(self, value):
@@ -124,27 +129,40 @@ class Queue(object):
                 self.queue.appendleft(value)
         return self
 
-
-
     def extend(self, values):
         with self.lock:
             # ONCE THE queue IS BELOW LIMIT, ALLOW ADDING MORE
             self._wait_for_queue_space()
             if self.keep_running:
-                self.queue.extend(values)
+                if self.unique:
+                    for v in values:
+                        if v not in self.queue:
+                            self.queue.append(v)
+                else:
+                    self.queue.extend(values)
         return self
 
-    def _wait_for_queue_space(self):
+    def _wait_for_queue_space(self, timeout=DEFAULT_WAIT_TIME):
         """
         EXPECT THE self.lock TO BE HAD, WAITS FOR self.queue TO HAVE A LITTLE SPACE
         """
         wait_time = 5
 
         now = datetime.utcnow()
+        if timeout:
+            time_to_stop_waiting = now + timeout
+        else:
+            time_to_stop_waiting = Date.MAX
+
         if self.next_warning < now:
             self.next_warning = now + timedelta(seconds=wait_time)
 
         while self.keep_running and len(self.queue) > self.max:
+            if now > time_to_stop_waiting:
+                if not _Log:
+                    _late_import()
+                _Log.error(Thread.TIMEOUT)
+
             if self.silent:
                 self.lock.wait()
             else:
@@ -434,7 +452,11 @@ class Thread(object):
         finally:
             children = copy(self.children)
             for c in children:
-                c.stop()
+                try:
+                    c.stop()
+                except Exception:
+                    pass
+
             for c in children:
                 try:
                     c.join()
@@ -446,12 +468,12 @@ class Thread(object):
             with ALL_LOCK:
                 del ALL[self.id]
 
-        if self.cprofiler:
-            import pstats
+            if self.cprofiler:
+                import pstats
 
-            self.cprofiler.disable()
-            _Log.cprofiler_stats.add(pstats.Stats(self.cprofiler))
-            del self.cprofiler
+                self.cprofiler.disable()
+                _Log.cprofiler_stats.add(pstats.Stats(self.cprofiler))
+                del self.cprofiler
 
     def is_alive(self):
         return not self.stopped
@@ -751,9 +773,9 @@ class ThreadedQueue(Queue):
 
         self.thread = Thread.run("threaded queue for " + name, worker_bee, parent_thread=self)
 
-    def add(self, value):
+    def add(self, value, timeout=None):
         with self.lock:
-            self._wait_for_queue_space()
+            self._wait_for_queue_space(timeout=timeout)
             if self.keep_running:
                 self.queue.append(value)
         return self
