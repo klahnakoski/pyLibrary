@@ -60,7 +60,7 @@ class TestMeta(FuzzyTestCase):
         self.assertEqual(single_func(), 42)
         self.assertEqual(call_count, 1)
 
-        Thread.sleep(seconds=CACHE_DURATION.seconds)
+        Thread.sleep(seconds=CACHE_DURATION.seconds+1)
 
         self.assertEqual(single_func(), 42)
         self.assertEqual(single_func(), 42)

@@ -13,7 +13,7 @@ from __future__ import absolute_import
 
 import json
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import split_field, join_field
+from pyLibrary.dot import split_field, join_field, unwrap, Dict
 from pyLibrary.env.http import MIN_READ_SIZE
 
 DEBUG = False
@@ -116,7 +116,11 @@ def parse(json, path, expected_vars=NO_VARS):
                 index = jump_to_end(index, c)
                 value = json_decoder(json.release(index).decode("utf8"))
         else:
-            value, index = simple_token(index, c)
+            if expected_vars and expected_vars[0] == ".":
+                value, index = simple_token(index, c)
+            else:
+                index = jump_to_end(index, c)
+                value = None
 
         return value, index
 

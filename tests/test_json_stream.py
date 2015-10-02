@@ -46,6 +46,17 @@ class TestJsonStream(FuzzyTestCase):
         ]
         self.assertEqual(result, expected)
 
+    def test_select_from_diverse_list(self):
+        json = slow_stream('{"1":["test", {"a":"c"}]}')
+
+        result = list(stream.parse(json, "1", ["1.a"]))
+        expected = [
+            {"1": {}},
+            {"1": {"a": "c"}}
+        ]
+        self.assertEqual(result[0]["1"], None)
+        self.assertEqual(result, expected)
+
     def test_select_from_deep_many_list(self):
         #                   0123456789012345678901234567890123
         json = slow_stream('{"1":{"2":[{"a":"b"}, {"a":"c"}]}}')
