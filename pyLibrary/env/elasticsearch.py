@@ -16,7 +16,7 @@ from datetime import datetime
 import re
 import time
 
-from pyLibrary import convert
+from pyLibrary import convert, strings
 from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import coalesce, Null, Dict, set_default, join_field, split_field, unwraplist, listwrap, literal_field
 from pyLibrary.dot.lists import DictList
@@ -106,7 +106,7 @@ class Index(Features):
         self.path = "/" + full_index + "/" + type
 
         if self.debug:
-            Log.alert("elasticsearch debugging for index {{url}} is on", index=self.url)
+            Log.alert("elasticsearch debugging for {{url}} is on", url=self.url)
 
     @property
     def url(self):
@@ -250,7 +250,7 @@ class Index(Features):
                 id = r.get("id")
 
                 if id == None:
-                    id = Random.hex(40)
+                    id = random_id()
 
                 if "json" in r:
                     # if id != coalesce(wrap(convert.json2value(r["json"])).value._id, id):
@@ -300,14 +300,15 @@ class Index(Features):
                 elif any(map(self.cluster.version.startswith, ["1.4.", "1.5.", "1.6.", "1.7."])):
                     if item.index.status not in [200, 201]:
                         Log.error(
-                            "{{num}} {{error}} while loading line into {{index}}:\n{{line}}",
+                            "{{num}} {{error}} while loading line id={{id}} into index {{index|quote}}:\n{{line}}",
                             num=item.index.status,
                             error=item.index.error,
-                            line=lines[i * 2 + 1],
-                            index=self.settings.index
+                            line=strings.limit(lines[i * 2 + 1], 300),
+                            index=self.settings.index,
+                            id=item.index._id
                         )
                 else:
-                    Log.error("version not supported {{version}}",  version=self.cluster.version)
+                    Log.error("version not supported {{version}}", version=self.cluster.version)
 
             if self.debug:
                 Log.note("{{num}} documents added", num=len(items))
@@ -357,7 +358,7 @@ class Index(Features):
         else:
             Log.error("Do not know how to handle ES version {{version}}",  version=self.cluster.version)
 
-    def search(self, query, timeout=None):
+    def search(self, query, timeout=None, retry=None):
         query = wrap(query)
         try:
             if self.debug:
@@ -370,7 +371,8 @@ class Index(Features):
             return self.cluster.post(
                 self.path + "/_search",
                 data=query,
-                timeout=coalesce(timeout, self.settings.timeout)
+                timeout=coalesce(timeout, self.settings.timeout),
+                retry=retry
             )
         except Exception, e:
             Log.error(
@@ -1042,6 +1044,8 @@ def parse_properties(parent_index_name, parent_query_path, esProperties):
     return columns
 
 
+def random_id():
+    return Random.hex(40)
 
 def _merge_mapping(a, b):
     """

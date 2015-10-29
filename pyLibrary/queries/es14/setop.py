@@ -16,7 +16,7 @@ from collections import Mapping
 from pyLibrary import queries
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.collections import AND
-from pyLibrary.dot import coalesce, split_field, set_default, Dict, unwraplist, literal_field, join_field, unwrap
+from pyLibrary.dot import coalesce, split_field, set_default, Dict, unwraplist, literal_field, join_field, unwrap, wrap
 from pyLibrary.dot.lists import DictList
 from pyLibrary.dot import listwrap
 from pyLibrary.maths import Math
@@ -66,30 +66,39 @@ def es_setop(es, query):
 
 def extract_rows(es, es_query, query):
     is_list = isinstance(query.select, list)
+    select = wrap([s.copy() for s in listwrap(query.select)])
     new_select = DictList()
     column_names = set(c.name for c in query.frum.get_columns() if c.type not in ["object"] and (not c.nested_path or c.abs_name == c.nested_path or not c.nested_path))
     source = "fields"
 
     i = 0
-    for s in listwrap(query.select):
+    for s in select:
         # IF THERE IS A *, THEN INSERT THE EXTRA COLUMNS
         if s.value == "*":
             es_query.fields = None
             source = "_source"
 
-            net_columns = column_names - set(listwrap(query.select).name)
+            net_columns = column_names - set(select.name)
             for n in net_columns:
-                new_select.append({"name": n, "value": n, "put": {"name": n, "index": i, "child": "."}})
+                new_select.append({
+                    "name": n,
+                    "value": n,
+                    "put": {"name": n, "index": i, "child": "."}
+                })
                 i += 1
         elif s.value == ".":
             es_query.fields = None
             source = "_source"
 
-            new_select.append({"name": s.name if is_list else ".", "value": s.value, "put": {"name": s.name, "index": i, "child": "."}})
+            new_select.append({
+                "name": s.name,
+                "value": s.value,
+                "put": {"name": s.name, "index": i, "child": "."}
+            })
             i += 1
         elif s.value == "_id":
             new_select.append({
-                "name": s.name if is_list else ".",
+                "name": s.name,
                 "value": s.value,
                 "pull": "_id",
                 "put": {"name": s.name, "index": i, "child": "."}
@@ -103,7 +112,11 @@ def extract_rows(es, es_query, query):
                     if es_query.fields is not None:
                         es_query.fields.append(c)
 
-                    new_select.append({"name": s.name + "." + c[prefix:], "value": c, "put": {"name": s.name + "." + c[prefix:], "index": i, "child": "."}})
+                    new_select.append({
+                        "name": s.name + "." + c[prefix:],
+                        "value": c,
+                        "put": {"name": s.name + "." + c[prefix:], "index": i, "child": "."}
+                    })
                     i += 1
         elif isinstance(s.value, basestring) and is_keyword(s.value):
             parent = s.value + "."
@@ -112,12 +125,20 @@ def extract_rows(es, es_query, query):
             if not net_columns:
                 if es_query.fields is not None:
                     es_query.fields.append(s.value)
-                new_select.append({"name": s.name if is_list else ".", "value": s.value, "put": {"name": s.name, "index": i, "child": "."}})
+                new_select.append({
+                    "name": s.name,
+                    "value": s.value,
+                    "put": {"name": s.name, "index": i, "child": "."}
+                })
             else:
                 for n in net_columns:
                     if es_query.fields is not None:
                         es_query.fields.append(n)
-                    new_select.append({"name": s.name if is_list else ".", "value": n, "put": {"name": s.name, "index": i, "child": n[prefix:]}})
+                    new_select.append({
+                        "name": s.name,
+                        "value": n,
+                        "put": {"name": s.name, "index": i, "child": n[prefix:]}
+                    })
             i += 1
         elif isinstance(s.value, list):
             Log.error("need an example")
@@ -126,7 +147,7 @@ def extract_rows(es, es_query, query):
         else:
             es_query.script_fields[literal_field(s.name)] = {"script": qb_expression_to_ruby(s.value)}
             new_select.append({
-                "name": s.name if is_list else ".",
+                "name": s.name,
                 "pull": "fields." + literal_field(s.name),
                 "put": {"name": s.name, "index": i, "child": "."}
             })
@@ -159,11 +180,19 @@ def extract_rows(es, es_query, query):
 
 def format_list(T, select, query=None):
     data = []
-    for row in T:
-        r = Dict()
-        for s in select:
-            r[s.name][s.put.child] = unwraplist(row[s.pull])
-        data.append(r if r else None)
+    if isinstance(query.select, list) or (isinstance(query.select.value, basestring) and query.select.value.endswith("*")):
+        for row in T:
+            r = Dict()
+            for s in select:
+                r[s.put.name][s.put.child] = unwraplist(row[s.pull])
+            data.append(r if r else None)
+    else:
+        for row in T:
+            r = Dict()
+            for s in select:
+                r[s.put.child] = unwraplist(row[s.pull])
+            data.append(r if r else None)
+
     return Dict(
         meta={"format": "list"},
         data=data
@@ -195,7 +224,7 @@ def format_table(T, select, query=None):
     for s in select:
         if header[s.put.index]:
             continue
-        header[s.put.index] = s.put.name
+        header[s.put.index] = s.name
 
     return Dict(
         meta={"format": "table"},

@@ -12,10 +12,7 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
 import __builtin__
-
-from __builtin__ import filter as builtin_filter
 from collections import Mapping
-from numbers import Number
 from types import GeneratorType
 
 from pyLibrary import dot, convert
@@ -24,12 +21,12 @@ from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import set_default, Null, Dict, split_field, coalesce, join_field
 from pyLibrary.dot.lists import DictList
 from pyLibrary.dot import listwrap, wrap, unwrap
-from pyLibrary.dot.objects import DictClass, DictObject
+from pyLibrary.dot.objects import DictObject
 from pyLibrary.maths import Math
 from pyLibrary.queries import flat_list, query, group_by
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.cubes.aggs import cube_aggs
-from pyLibrary.queries.expressions import TRUE_FILTER, FALSE_FILTER, compile_expression, qb_expression_to_function, qb_expression_to_python
+from pyLibrary.queries.expressions import TRUE_FILTER, FALSE_FILTER, compile_expression, qb_expression_to_function
 from pyLibrary.queries.flat_list import FlatList
 from pyLibrary.queries.index import Index
 from pyLibrary.queries.query import Query, _normalize_selects, sort_direction, _normalize_select
@@ -60,7 +57,7 @@ def run(query, frum=None):
             return cube_aggs(frum, query)
 
     elif isinstance(frum, Query):
-        frum = run(frum).data
+        frum = run(frum)
     else:
         Log.error("Do not know how to handle {{type}}",  type=frum.__class__.__name__)
 
@@ -449,8 +446,11 @@ def _select_deep_meta(field, depth):
             return assign
 
 
-def get_columns(data):
-    return wrap([{"name": n} for n in UNION(set(d.keys()) for d in data)])
+def get_columns(data, leaves=False):
+    if not leaves:
+        return wrap([{"name": n} for n in UNION(set(d.keys()) for d in data)])
+    else:
+        return wrap([{"name": leaf} for leaf in set(leaf for row in data for leaf, _ in row.leaves())])
 
 _ = """
 DEEP ITERATOR FOR NESTED DOCUMENTS
@@ -524,8 +524,8 @@ def sort(data, fieldnames=None):
         if data == None:
             return Null
 
-        if fieldnames == None:
-            return wrap(sorted(data))
+        if not fieldnames:
+            return wrap(sorted(data, value_compare))
 
         fieldnames = listwrap(fieldnames)
         if len(fieldnames) == 1:
@@ -539,7 +539,7 @@ def sort(data, fieldnames=None):
             # EXPECTING {"field":f, "sort":i} FORMAT
             fieldnames.sort = sort_direction.get(fieldnames.sort, 1)
             fieldnames.value = coalesce(fieldnames.value, fieldnames.field)
-            if fieldnames.value==None:
+            if fieldnames.value == None:
                 Log.error("Expecting sort to have 'value' attribute")
 
             if fieldnames.value == ".":
@@ -552,20 +552,21 @@ def sort(data, fieldnames=None):
                 def _compare_o(left, right):
                     return value_compare(func(coalesce(left)), func(coalesce(right)), fieldnames.sort)
                 return DictList([unwrap(d) for d in sorted(data, cmp=_compare_o)])
-
             else:
                 def _compare_o(left, right):
                     return value_compare(coalesce(left)[fieldnames.value], coalesce(right)[fieldnames.value], fieldnames.sort)
                 return DictList([unwrap(d) for d in sorted(data, cmp=_compare_o)])
 
         formal = query._normalize_sort(fieldnames)
+        for f in formal:
+            f.func = qb_expression_to_function(f.value)
 
         def comparer(left, right):
             left = coalesce(left)
             right = coalesce(right)
             for f in formal:
                 try:
-                    result = value_compare(left[f.value], right[f.value], f.sort)
+                    result = value_compare(f.func(left), f.func(right), f.sort)
                     if result != 0:
                         return result
                 except Exception, e:
@@ -593,6 +594,22 @@ def value_compare(l, r, ordering=1):
             return - ordering
     elif r == None:
         return ordering
+
+    if isinstance(l, list) or isinstance(r, list):
+        for a, b in zip(listwrap(l), listwrap(r)):
+            c = value_compare(a, b) * ordering
+            if c != 0:
+                return c
+    elif isinstance(l, Mapping):
+        if isinstance(r, Mapping):
+            for k in set(l.keys()) | set(r.keys()):
+                c = value_compare(l[k], r[k]) * ordering
+                if c != 0:
+                    return c
+        else:
+            return 1
+    elif isinstance(r, Mapping):
+        return -1
     else:
         return cmp(l, r) * ordering
 
@@ -622,15 +639,15 @@ def filter(data, where):
     if len(data) == 0 or where == None or where == TRUE_FILTER:
         return data
 
-    if isinstance(data, Cube):
+    if isinstance(data, Container):
         return data.filter(where)
 
-    if isinstance(data, list):
+    if isinstance(data, (list, set)):
         temp = qb_expression_to_function(where)
         dd = wrap(data)
         return [d for i, d in enumerate(data) if temp(wrap(d), i, dd)]
     else:
-        Log.error("Do not know how to handle")
+        Log.error("Do not know how to handle type {{type}}", type=data.__class__.__name__)
 
     try:
         return drill_filter(where, data)
@@ -1040,5 +1057,12 @@ def reverse(vals):
         output[l] = v
 
     return wrap(output)
+
+def countdown(vals):
+    remaining = len(vals) - 1
+    return [(remaining - i, v) for i, v in enumerate(vals)]
+
+
+
 
 from pyLibrary.queries.lists.aggs import is_aggs, list_aggs

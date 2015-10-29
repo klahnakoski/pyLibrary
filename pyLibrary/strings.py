@@ -126,6 +126,19 @@ def json(value):
     return _convert.value2json(value, pretty=True)
 
 
+def tab(value):
+    if not _convert:
+        _late_import()
+
+    if isinstance(value, Mapping):
+        h, d = zip(*wrap(value).leaves())
+        return \
+            "\t".join(map(_convert.value2json, h)) + \
+            "\n" + \
+            "\t".join(map(_convert.value2json, d))
+    else:
+        unicode(value)
+
 def indent(value, prefix=u"\t", indent=None):
     if indent != None:
         prefix = prefix * indent
@@ -308,6 +321,20 @@ def quote(value):
         _late_import()
 
     return _convert.string2quote(value)
+
+
+_SNIP = "...<snip>..."
+
+def limit(value, length):
+    # LIMIT THE STRING value TO GIVEN LENGTH
+    if len(value) <= length:
+        return value
+    elif length < len(_SNIP) * 2:
+        return value[0:length]
+    else:
+        lhs = int(round((length - len(_SNIP)) / 2, 0))
+        rhs = length - len(_SNIP) - lhs
+        return value[:lhs] + _SNIP + value[-rhs:]
 
 
 def split(value, sep="\n"):

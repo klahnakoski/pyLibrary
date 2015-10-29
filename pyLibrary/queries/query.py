@@ -82,9 +82,9 @@ class Query(object):
             self.select = _normalize_select(select, schema=schema)
         else:
             if query.edges or query.groupby:
-                self.select = {"name": "count", "value": ".", "aggregate": "count"}
+                self.select = Dict(name="count", value=".", aggregate="count")
             else:
-                self.select = {"name": ".", "value": ".", "aggregate": "none"}
+                self.select = Dict(name=".", value=".", aggregate="none")
 
         if query.groupby and query.edges:
             Log.error("You can not use both the `groupby` and `edges` clauses in the same query!")
@@ -121,7 +121,7 @@ class Query(object):
         else:
             columns = []
 
-        query_path = coalesce(self.frum.query_path, "")
+        query_path = coalesce(self.frum.query_path, ".")
         vars = query_get_all_vars(self, exclude_where=True)  # WE WILL EXCLUDE where VARIABLES
         for c in columns:
             if c.name in vars and not query_path.startswith(coalesce(listwrap(c.nested_path)[0], "")):
@@ -130,6 +130,10 @@ class Query(object):
     @property
     def columns(self):
         return listwrap(self.select) + coalesce(self.edges, self.groupby)
+
+    @property
+    def query_path(self):
+        return "."
 
     def __getitem__(self, item):
         if item == "from":
@@ -266,9 +270,9 @@ def _normalize_edge(edge, schema=None):
     else:
         edge = wrap(edge)
         if not edge.name and not isinstance(edge.value, basestring):
-            Log.error("You must name compound edges: {{edge}}",  edge= edge)
+            Log.error("You must name compound edges: {{edge}}", edge=edge)
 
-        if isinstance(edge.value, (Mapping, list)) and not edge.domain:
+        if isinstance(edge.value, (list, set)) and not edge.domain:
             # COMPLEX EDGE IS SHORT HAND
             domain = _normalize_domain(schema=schema)
             domain.dimension = Dict(fields=edge.value)
@@ -432,27 +436,27 @@ def _map_term_using_schema(master, path, term, schema_edges):
     return {"and": output}
 
 
-def _move_nested_term(master, where, schema):
-    """
-    THE WHERE CLAUSE CAN CONTAIN NESTED PROPERTY REFERENCES, THESE MUST BE MOVED
-    TO A NESTED FILTER
-    """
-    items = where.term.items()
-    if len(items) != 1:
-        Log.error("Expecting only one term")
-    k, v = items[0]
-    nested_path = _get_nested_path(k, schema)
-    if nested_path:
-        return {"nested": {
-            "path": nested_path,
-            "query": {"filtered": {
-                "query": {"match_all": {}},
-                "filter": {"and": [
-                    {"term": {k: v}}
-                ]}
-            }}
-        }}
-    return where
+# def _move_nested_term(master, where, schema):
+#     """
+#     THE WHERE CLAUSE CAN CONTAIN NESTED PROPERTY REFERENCES, THESE MUST BE MOVED
+#     TO A NESTED FILTER
+#     """
+#     items = where.term.items()
+#     if len(items) != 1:
+#         Log.error("Expecting only one term")
+#     k, v = items[0]
+#     nested_path = _get_nested_path(k, schema)
+#     if nested_path:
+#         return {"nested": {
+#             "path": nested_path,
+#             "query": {"filtered": {
+#                 "query": {"match_all": {}},
+#                 "filter": {"and": [
+#                     {"term": {k: v}}
+#                 ]}
+#             }}
+#         }}
+#     return where
 
 
 # def _get_nested_path(field, schema):
