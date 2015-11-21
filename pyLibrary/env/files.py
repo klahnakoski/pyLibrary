@@ -80,7 +80,10 @@ class File(object):
 
             return home_path + self._filename[1::]
         else:
-            return os.path.abspath(self._filename)
+            if os.sep == "\\":
+                return os.path.abspath(self._filename).replace(os.sep, "/")
+            else:
+                return os.path.abspath(self._filename)
 
     @staticmethod
     def add_suffix(filename, suffix):
@@ -155,7 +158,7 @@ class File(object):
         from pyLibrary.jsons import ref
 
         content = self.read(encoding=encoding)
-        value = convert.json2value(content, flexible=True, paths=True)
+        value = convert.json2value(content, flexible=True, leaves=True)
         abspath = self.abspath
         if os.sep == "\\":
             abspath = "/" + abspath.replace(os.sep, "/")
@@ -224,11 +227,14 @@ class File(object):
             except Exception, e:
                 from pyLibrary.debugs.logs import Log
 
-                Log.error("Can not read line from {{filename}}", {"filename": self._filename}, e)
+                Log.error("Can not read line from {{filename}}",  filename= self._filename, cause=e)
 
         return output()
 
     def append(self, content):
+        """
+        add a line to file
+        """
         if not self.parent.exists:
             self.parent.create()
         with open(self._filename, "ab") as output_file:
@@ -286,7 +292,7 @@ class File(object):
         except Exception, e:
             from pyLibrary.debugs.logs import Log
 
-            Log.error("Could not make directory {{dir_name}}", {"dir_name": self._filename}, e)
+            Log.error("Could not make directory {{dir_name}}",  dir_name= self._filename, cause=e)
 
     @property
     def children(self):

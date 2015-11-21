@@ -10,3 +10,4 @@ pyLibrary.egg-info
 *.json
 *.tab
 
+/examples

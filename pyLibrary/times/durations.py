@@ -9,7 +9,9 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 import datetime
+from decimal import Decimal
 
 from pyLibrary import regex
 from pyLibrary.vendor.dateutil.relativedelta import relativedelta
@@ -18,26 +20,22 @@ from pyLibrary.maths import Math
 from pyLibrary.dot import wrap
 
 
-Date = None
-Log = None
+_Date = None
+_Log = None
+
+
 def _delayed_import():
-    global Date
-    from pyLibrary.times.dates import Date
-    _ = Date(None)
+    global _Date
+    global _Log
+
+    from pyLibrary.times.dates import Date as _Date
+    from pyLibrary.debugs.logs import Log as _Log
+
+    _ = _Date
+    _ = _Log
 
 
 class Duration(object):
-    ZERO = None
-    SECOND = None
-    MINUTE = None
-    HOUR = None
-    DAY = None
-    WEEK = None
-    MONTH = None
-    QUARTER = None
-    YEAR = None
-
-
     def __new__(cls, value=None, **kwargs):
         output = object.__new__(cls)
         if value == None:
@@ -48,8 +46,8 @@ class Duration(object):
             else:
                 return None
         if Math.is_number(value):
-            output.milli = value
-            output.month = 0
+            output._milli = Decimal(value*1000)
+            output.month = Decimal(0)
             return output
         elif isinstance(value, basestring):
             return parse(value)
@@ -67,7 +65,9 @@ class Duration(object):
     @staticmethod
     def range(start, stop, step):
         if not step:
-            Log.error("Expecting a non-zero duration for interval")
+            if not _Log:
+                _delayed_import()
+            _Log.error("Expecting a non-zero duration for interval")
         output = []
         c = start
         while c < stop:
@@ -84,12 +84,12 @@ class Duration(object):
         return output
 
     def __radd__(self, other):
-        if not Date:
+        if not _Date:
             _delayed_import()
 
         if isinstance(other, datetime.datetime):
-            return Date(other).add(self)
-        elif isinstance(other, Date):
+            return _Date(other).add(self)
+        elif isinstance(other, _Date):
             return other.add(self)
         return self + other
 
@@ -107,6 +107,7 @@ class Duration(object):
 
 
     def __rmul__(self, amount):
+        amount = Decimal(amount)
         output = Duration(0)
         output.milli = self.milli * amount
         output.month = self.month * amount
@@ -148,10 +149,10 @@ class Duration(object):
         return self.__rdiv__(other)
 
     def __sub__(self, duration):
-            output = Duration(0)
-            output.milli = self.milli - duration.milli
-            output.month = self.month - duration.month
-            return output
+        output = Duration(0)
+        output.milli = self.milli - duration.milli
+        output.month = self.month - duration.month
+        return output
 
     def __rsub__(self, time):
         if isinstance(time, Duration):
@@ -208,12 +209,26 @@ class Duration(object):
 
     @property
     def seconds(self):
-        return self.milli / 1000
+        return Decimal(self.milli) / 1000
+
+    @property
+    def milli(self):
+        return self._milli
+
+    @milli.setter
+    def milli(self, value):
+        if not isinstance(value, Decimal):
+            from pyLibrary.debugs.logs import Log
+            Log.error("not allowed")
+        self._milli = value
 
     def total_seconds(self):
-        return self.milli / 1000
+        return Decimal(self.milli) / 1000
 
     def __str__(self):
+        return str(self.__unicode__())
+
+    def __unicode__(self):
         if not self.milli:
             return "zero"
 
@@ -225,25 +240,25 @@ class Duration(object):
         # MILLI
         rem = rest % 1000
         if rem != 0:
-            output = "+" + rem + "milli" + output
+            output = "+" + unicode(rem) + "milli" + output
         rest = Math.floor(rest / 1000)
 
         # SECOND
         rem = rest % 60
         if rem != 0:
-            output = "+" + rem + "second" + output
+            output = "+" + unicode(rem) + "second" + output
         rest = Math.floor(rest / 60)
 
         # MINUTE
         rem = rest % 60
         if rem != 0:
-            output = "+" + rem + "minute" + output
+            output = "+" + unicode(rem) + "minute" + output
         rest = Math.floor(rest / 60)
 
         # HOUR
         rem = rest % 24
         if rem != 0:
-            output = "+" + rem + "hour" + output
+            output = "+" + unicode(rem) + "hour" + output
         rest = Math.floor(rest / 24)
 
         # DAY
@@ -255,11 +270,11 @@ class Duration(object):
             rest = Math.floor(rest / 7)
 
         if rem != 0:
-            output = "+" + str(rem) + "day" + output
+            output = "+" + unicode(rem) + "day" + output
 
         # WEEK
         if rest != 0:
-            output = "+" + str(rest) + "week" + output
+            output = "+" + unicode(rest) + "week" + output
 
         if isNegative:
             output = output.replace("+", "-")
@@ -270,13 +285,13 @@ class Duration(object):
             month = Math.abs(self.month)
 
             if month <= 18 and month != 12:
-                output = sign + month + "month" + output
+                output = sign + unicode(month) + "month" + output
             else:
                 m = month % 12
                 if m != 0:
-                    output = sign + m + "month" + output
+                    output = sign + unicode(m) + "month" + output
                 y = Math.floor(month / 12)
-                output = sign + str(y) + "year" + output
+                output = sign + unicode(y) + "year" + output
 
         if output[0] == "+":
             output = output[1::]
@@ -299,7 +314,7 @@ def _string2Duration(text):
     CONVERT SIMPLE <float><type> TO A DURATION OBJECT
     """
     if text == "" or text == "zero":
-        return Duration(0)
+        return ZERO
 
     amount, interval = regex.match(r"([\d\.]*)(.*)", text)
     amount = int(amount) if amount else 1
@@ -332,15 +347,16 @@ def parse(value):
 
 
 MILLI_VALUES = wrap({
-    "year": 52 * 7 * 24 * 60 * 60 * 1000, # 52weeks
-    "quarter": 13 * 7 * 24 * 60 * 60 * 1000, # 13weeks
-    "month": 28 * 24 * 60 * 60 * 1000, # 4weeks
-    "week": 7 * 24 * 60 * 60 * 1000,
-    "day": 24 * 60 * 60 * 1000,
-    "hour": 60 * 60 * 1000,
-    "minute": 60 * 1000,
-    "second": 1000,
-    "milli": 1
+    "year": Decimal(52 * 7 * 24 * 60 * 60 * 1000),  # 52weeks
+    "quarter": Decimal(13 * 7 * 24 * 60 * 60 * 1000),  # 13weeks
+    "month": Decimal(28 * 24 * 60 * 60 * 1000),  # 4weeks
+    "week": Decimal(7 * 24 * 60 * 60 * 1000),
+    "day": Decimal(24 * 60 * 60 * 1000),
+    "hour": Decimal(60 * 60 * 1000),
+    "minute": Decimal(60 * 1000),
+    "second": Decimal(1000),
+    "milli": Decimal(1),
+    "zero": Decimal(0)
 })
 
 MONTH_VALUES = wrap({
@@ -377,19 +393,6 @@ WEEK = Duration("week")
 MONTH = Duration("month")
 QUARTER = Duration("quarter")
 YEAR = Duration("year")
-
-Duration.ZERO = ZERO
-Duration.SECOND = SECOND
-Duration.MINUTE = MINUTE
-Duration.HOUR = HOUR
-Duration.DAY = DAY
-Duration.WEEK = WEEK
-Duration.MONTH = MONTH
-Duration.QUARTER = QUARTER
-Duration.YEAR = YEAR
-
-
-
 
 COMMON_INTERVALS = [
     Duration("second"),

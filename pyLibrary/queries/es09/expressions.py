@@ -9,6 +9,8 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
+from collections import Mapping
 
 from datetime import datetime
 import re
@@ -18,7 +20,6 @@ from pyLibrary.debugs.logs import Log
 from pyLibrary.maths import Math
 from pyLibrary.dot import split_field, Dict, Null, join_field, coalesce
 from pyLibrary.dot import listwrap
-from pyLibrary.queries.expressions import TRUE_FILTER
 from pyLibrary.times.durations import Duration
 
 
@@ -80,12 +81,8 @@ class _MVEL(object):
         path = split_field(fromPath)
 
         # ADD LOCAL VARIABLES
-        from pyLibrary.queries.es09.util import INDEX_CACHE
-
         columns = INDEX_CACHE[path[0]].columns
         for i, c in enumerate(columns):
-            if c.name=="attachments":
-                Log.debug("")
             if c.name.find("\\.") >= 0:
                 self.prefixMap.insert(0, {
                     "path": c.name,
@@ -169,7 +166,7 @@ class _MVEL(object):
 
         term = []
         if len(split_field(self.fromData.name)) == 1 and fields:
-            if isinstance(fields, dict):
+            if isinstance(fields, Mapping):
                 # CONVERT UNORDERED FIELD DEFS
                 qb_fields, es_fields = zip(*[(k, fields[k]) for k in sorted(fields.keys())])
             else:
@@ -347,7 +344,7 @@ def setValues(expression, constants):
         if isinstance(value, list):
             continue  # DO NOT MESS WITH ARRAYS
 
-        if isinstance(value, dict):
+        if isinstance(value, Mapping):
             for k, v in value.items():
                 constants.append({"name": n + "." + k, "value": v})
 
@@ -390,7 +387,7 @@ def unpack_terms(facet, selects):
 #  PASS esFilter SIMPLIFIED ElasticSearch FILTER OBJECT
 #  RETURN MVEL EXPRESSION
 def _where(esFilter, _translate):
-    if not esFilter or esFilter is TRUE_FILTER:
+    if not esFilter or esFilter is True:
         return "true"
 
     keys = esFilter.keys()

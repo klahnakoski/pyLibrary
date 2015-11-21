@@ -14,7 +14,7 @@ import unittest
 from pyLibrary import convert
 
 
-class TestCNV(unittest.TestCase):
+class TestConvert(unittest.TestCase):
     def test_datetime(self):
 
         result = convert.datetime2milli(datetime.datetime(2012, 07, 24))

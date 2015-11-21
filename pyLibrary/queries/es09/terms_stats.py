@@ -9,11 +9,12 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.collections import COUNT, PRODUCT
 from pyLibrary.queries import domains
-from pyLibrary.queries.cube import Cube
+from pyLibrary.queries.containers.cube import Cube
 from pyLibrary.queries.domains import is_keyword
 from pyLibrary.queries.es09.util import aggregates, build_es_query, compileEdges2Term
 from pyLibrary.debugs.logs import Log
@@ -99,7 +100,7 @@ def es_terms_stats(esq, mvel, query):
 
         counts["count"].forall(add_facet)
 
-        Log.note("{{theory_count}} theoretical combinations, {{real_count}} actual combos found", {"real_count": len(esFacets), "theory_count":total_facets})
+        Log.note("{{theory_count}} theoretical combinations, {{real_count}} actual combos found",  real_count= len(esFacets),  theory_count=total_facets)
 
         if not esFacets:
             # MAKE EMPTY CUBE

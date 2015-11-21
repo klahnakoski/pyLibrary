@@ -10,9 +10,11 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 import sys
 import math
-from pyLibrary.queries.cube import Cube
+
+from pyLibrary.queries.containers.cube import Cube
 from pyLibrary.queries.index import value2key
 from pyLibrary.dot.dicts import Dict
 from pyLibrary.dot.lists import DictList
@@ -37,7 +39,8 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
     if isinstance(data, Cube):
         return data.groupby(keys)
 
-    keys = listwrap(keys)
+    if not isinstance(keys, (tuple, list)):
+        keys = (keys,)
     def get_keys(d):
         output = Dict()
         for k in keys:
@@ -69,7 +72,10 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
         agg = {}
         for d in data:
             key = value2key(keys, d)
-            pair = agg.get(key)
+            try:
+                pair = agg.get(key)
+            except Exception, e:
+                Log.error("")
             if pair is None:
                 pair = (get_keys(d), DictList())
                 agg[key] = pair
@@ -128,9 +134,11 @@ def groupby_Multiset(data, min_size, max_size):
             g = [k]
 
         if total >= max_size:
-            Log.error("({{min}}, {{max}}) range is too strict given step of {{increment}}", {
-                "min": min_size, "max": max_size, "increment": c
-            })
+            Log.error("({{min}}, {{max}}) range is too strict given step of {{increment}}",
+                min=min_size,
+                max=max_size,
+                increment=c
+            )
 
     if g:
         yield (i, g)

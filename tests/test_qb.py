@@ -7,6 +7,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+from unittest import skip
 
 from pyLibrary import convert
 from pyLibrary.dot import unwrap, wrap
@@ -170,13 +171,19 @@ class TestQb(FuzzyTestCase):
         result = qb.filter(data, {u'and': [{u'term': {u'testrun.suite': u'tp5o'}}, {u'term': {u'result.test_name': u'digg.com'}}]})
         assert len(result) == 1
 
+
+    @skip("Not implemented")
     def test_deep_value_selector(self):
+
         data = [{'bug_id': 35, 'blocked': [686525, 123456]}]
         result = qb.run({
-            "from": data,
+            "from": {
+                "from": data,
+                "path": "blocked"
+            },
             "where": {"exists": {"field": "blocked"}},
             "select": [
-                "blocked.",  # SINCE blocked IS A LIST, WE USE "." SUFFIX TO INDICATE WE ARE SELECTING THE VALUES OF THE LIST, NOT THE LIST ITSELF
+                "blocked",
                 "bug_id"
             ]
         }).data

@@ -10,13 +10,14 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 from pyLibrary import strings
 
 from pyLibrary.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
-class TestCNV(FuzzyTestCase):
+class TestStrings(FuzzyTestCase):
     def setUp(self):
         pass
 
@@ -52,3 +53,5 @@ class TestCNV(FuzzyTestCase):
         self.assertEqual(strings.percent(.0123, digits=2), "1.2%")
         self.assertEqual(strings.percent(.0123, digits=3), "1.23%")
         self.assertEqual(strings.percent(.0120, digits=3), "1.20%")
+
+        self.assertEqual(strings.percent(0.5), "50%")

@@ -9,10 +9,15 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
+from __future__ import absolute_import
+
 import HTMLParser
 import StringIO
+import ast
 import base64
 import cgi
+from collections import Mapping
 import datetime
 from decimal import Decimal
 import gzip
@@ -23,28 +28,36 @@ import re
 from tempfile import TemporaryFile
 
 from pyLibrary import strings
-from pyLibrary.dot import wrap, wrap_dot, unwrap
+from pyLibrary.dot import wrap, wrap_leaves, unwrap, unwraplist
 from pyLibrary.collections.multiset import Multiset
 from pyLibrary.debugs.logs import Log, Except
 from pyLibrary.env.big_data import FileString, safe_size
 from pyLibrary.jsons import quote
-from pyLibrary.jsons.encoder import json_encoder
+from pyLibrary.jsons.encoder import json_encoder, pypy_json_encode
 from pyLibrary.strings import expand_template
 from pyLibrary.times.dates import Date
 
 
 """
 DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
+IN <from_type> "2" <to_type> FORMAT
 """
 def value2json(obj, pretty=False):
     try:
         json = json_encoder(obj, pretty=pretty)
         if json == None:
-            Log.note(str(type(obj)) + " is not valid{{type}}JSON", {"type": " (pretty) " if pretty else " "})
+            Log.note(str(type(obj)) + " is not valid{{type}}JSON",  type= " (pretty) " if pretty else " ")
             Log.error("Not valid JSON: " + str(obj) + " of type " + str(type(obj)))
         return json
     except Exception, e:
-        Log.error("Can not encode into JSON: {{value}}", {"value": repr(obj)}, e)
+        e = Except.wrap(e)
+        try:
+            json = pypy_json_encode(obj)
+            return json
+        except Exception:
+            pass
+
+        Log.error("Can not encode into JSON: {{value}}", value=repr(obj), cause=e)
 
 
 def remove_line_comment(line):
@@ -74,12 +87,12 @@ def remove_line_comment(line):
 
 
 
-def json2value(json_string, params=None, flexible=False, paths=False):
+def json2value(json_string, params={}, flexible=False, leaves=False):
     """
     :param json_string: THE JSON
     :param params: STANDARD JSON PARAMS
     :param flexible: REMOVE COMMENTS
-    :param paths: ASSUME JSON KEYS ARE DOT-DELIMITED
+    :param leaves: ASSUME JSON KEYS ARE DOT-DELIMITED
     :return: Python value
     """
     if isinstance(json_string, str):
@@ -103,8 +116,8 @@ def json2value(json_string, params=None, flexible=False, paths=False):
         # LOOKUP REFERENCES
         value = wrap(json_decoder(json_string))
 
-        if paths:
-            value = wrap_dot(value)
+        if leaves:
+            value = wrap_leaves(value)
 
         return value
 
@@ -113,7 +126,7 @@ def json2value(json_string, params=None, flexible=False, paths=False):
         if "Expecting '" in e and "' delimiter: line" in e:
             line_index = int(strings.between(e.message, " line ", " column ")) - 1
             column = int(strings.between(e.message, " column ", " ")) - 1
-            line = json_string.split("\n")[line_index]
+            line = json_string.split("\n")[line_index].replace("\t", " ")
             if column > 20:
                 sample = "..." + line[column - 20:]
                 pointer = "   " + (" " * 20) + "^"
@@ -126,11 +139,12 @@ def json2value(json_string, params=None, flexible=False, paths=False):
 
             Log.error("Can not decode JSON at:\n\t" + sample + "\n\t" + pointer + "\n")
 
-        if len(json_string)>1000:
-            json_string = json_string[:50] + " ... <snip " + unicode(len(json_string) - 100) + " characters> ... " + json_string[-50:]
-        base_str = unicode2utf8(json_string)
+        base_str = unicode2utf8(strings.limit(json_string, 1000))
         hexx_str = bytes2hex(base_str, " ")
-        char_str = " " + ("  ".join((latin12unicode(c) if ord(c) >= 32 else ".") for c in base_str))
+        try:
+            char_str = " " + ("  ".join(c.decode("latin1") if ord(c) >= 32 else ".") for c in base_str)
+        except Exception:
+            char_str = " "
         Log.error("Can not decode JSON:\n" + char_str + "\n" + hexx_str + "\n", e)
 
 
@@ -159,12 +173,12 @@ def datetime2unix(d):
         elif isinstance(d, datetime.date):
             epoch = datetime.date(1970, 1, 1)
         else:
-            Log.error("Can not convert {{value}} of type {{type}}", {"value": d, "type": d.__class__})
+            Log.error("Can not convert {{value}} of type {{type}}",  value= d,  type= d.__class__)
 
         diff = d - epoch
         return Decimal(long(diff.total_seconds() * 1000000)) / 1000000
     except Exception, e:
-        Log.error("Can not convert {{value}}", {"value": d}, e)
+        Log.error("Can not convert {{value}}",  value= d, cause=e)
 
 
 def datetime2milli(d):
@@ -183,7 +197,7 @@ def unix2datetime(u):
             return datetime.datetime(2286, 11, 20, 17, 46, 39)
         return datetime.datetime.utcfromtimestamp(u)
     except Exception, e:
-        Log.error("Can not convert {{value}} to datetime", {"value": u}, e)
+        Log.error("Can not convert {{value}} to datetime",  value= u, cause=e)
 
 
 def milli2datetime(u):
@@ -216,34 +230,74 @@ def table2list(
 ):
     return wrap([dict(zip(column_names, r)) for r in rows])
 
+def table2tab(
+    column_names, # tuple of columns names
+    rows          # list of tuples
+):
+    def row(r):
+        return "\t".join(map(value2json, r))
+
+    return row(column_names)+"\n"+("\n".join(row(r) for r in rows))
+
+
 
 def list2tab(rows):
     columns = set()
-    for r in rows:
-        columns |= set(r.keys())
+    for r in wrap(rows):
+        columns |= set(k for k, v in r.leaves())
     keys = list(columns)
 
     output = []
-    for r in rows:
+    for r in wrap(rows):
         output.append("\t".join(value2json(r[k]) for k in keys))
 
     return "\t".join(keys) + "\n" + "\n".join(output)
 
 
-def list2table(rows):
-    columns = set()
-    for r in rows:
-        columns |= set(r.keys())
-    keys = list(columns)
+def list2table(rows, column_names=None):
+    if column_names:
+        keys = list(set(column_names))
+    else:
+        columns = set()
+        for r in rows:
+            columns |= set(r.keys())
+        keys = list(columns)
 
-    output = []
-    for r in rows:
-        output.append([r[k] for k in keys])
+    output = [[unwraplist(r[k]) for k in keys] for r in rows]
 
     return wrap({
+        "meta": {"format": "table"},
         "header": keys,
         "data": output
     })
+
+
+def list2cube(rows, column_names=None):
+    if column_names:
+        keys = column_names
+    else:
+        columns = set()
+        for r in rows:
+            columns |= set(r.keys())
+        keys = list(columns)
+
+    data = {k: [] for k in keys}
+    output = wrap({
+        "meta": {"format": "cube"},
+        "edges": [
+            {
+                "name": "rownum",
+                "domain": {"type": "rownum", "min": 0, "max": len(rows), "interval": 1}
+            }
+        ],
+        "data": data
+    })
+
+    for r in rows:
+        for k in keys:
+            data[k].append(r[k])
+
+    return output
 
 
 def value2string(value):
@@ -267,6 +321,9 @@ def string2quote(value):
     return quote(value)
 
 
+string2regexp = re.escape
+
+
 def string2url(value):
     if isinstance(value, unicode):
         return "".join([_map2url[c] for c in unicode2latin1(value)])
@@ -280,7 +337,7 @@ def value2url(value):
     if value == None:
         Log.error("")
 
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         output = "&".join([value2url(k) + "=" + (value2url(v) if isinstance(v, basestring) else value2url(value2json(v))) for k,v in value.items()])
     elif isinstance(value, unicode):
         output = "".join([_map2url[c] for c in unicode2latin1(value)])
@@ -358,10 +415,10 @@ def unicode2latin1(value):
 
 
 def quote2string(value):
-    if value[0] == "\"" and value[-1] == "\"":
-        value = value[1:-1]
-
-    return value.replace("\\\\", "\\").replace("\\\"", "\"").replace("\\'", "'").replace("\\\n", "\n").replace("\\\t", "\t")
+    try:
+        return ast.literal_eval(value)
+    except Exception:
+        pass
 
 # RETURN PYTHON CODE FOR THE SAME
 
@@ -453,7 +510,7 @@ def value2number(v):
         try:
             return float(v)
         except Exception, e:
-            Log.error("Not a number ({{value}})", {"value": v}, e)
+            Log.error("Not a number ({{value}})",  value= v, cause=e)
 
 
 def utf82unicode(value):
@@ -470,7 +527,7 @@ def latin12unicode(value):
     try:
         return unicode(value.decode('iso-8859-1'))
     except Exception, e:
-        Log.error("Can not convert {{value|quote}} to unicode", {"value": value})
+        Log.error("Can not convert {{value|quote}} to unicode", value=value)
 
 
 def pipe2value(value):
@@ -481,7 +538,7 @@ def pipe2value(value):
         return value2number(value[1::])
 
     if type != 's' and type != 'a':
-        Log.error("unknown pipe type ({{type}}) in {{value}}", {"type": type, "value": value})
+        Log.error("unknown pipe type ({{type}}) in {{value}}",  type= type,  value= value)
 
     # EXPECTING MOST STRINGS TO NOT HAVE ESCAPED CHARS
     output = _unPipe(value)

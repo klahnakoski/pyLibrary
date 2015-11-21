@@ -9,6 +9,7 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 
 from datetime import timedelta
 from time import clock
@@ -16,6 +17,7 @@ from time import clock
 from pyLibrary.dot import coalesce, Dict
 from pyLibrary.dot import wrap
 from pyLibrary.debugs.logs import Log
+from pyLibrary.times.durations import Duration
 
 
 class Timer(object):
@@ -32,7 +34,7 @@ class Timer(object):
 
     def __init__(self, description, param=None, debug=True, silent=False):
         self.template = description
-        self.param = coalesce(wrap(param), {})
+        self.param = wrap(coalesce(param, {}))
         self.debug = debug
         self.silent = silent
         self.interval = None
@@ -40,7 +42,7 @@ class Timer(object):
     def __enter__(self):
         if self.debug:
             if not self.silent:
-                Log.note("Timer start: " + self.template, self.param, stack_depth=1)
+                Log.note("Timer start: " + self.template, stack_depth=1, **self.param)
         self.start = clock()
         return self
 
@@ -56,12 +58,4 @@ class Timer(object):
 
     @property
     def duration(self):
-        return timedelta(seconds=self.interval)
-
-    def total_seconds(self):
-        return self.interval
-
-    @property
-    def seconds(self):
-        return self.interval
-
+        return Duration(self.interval)

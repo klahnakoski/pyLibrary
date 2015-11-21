@@ -10,7 +10,9 @@
 
 from __future__ import unicode_literals
 from __future__ import division
-from pyLibrary.jsons import Log
+from __future__ import absolute_import
+
+from pyLibrary.debugs.logs import Log
 from pyLibrary.strings import expand_template
 
 

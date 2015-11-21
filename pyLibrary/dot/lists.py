@@ -9,14 +9,29 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 from copy import deepcopy
-from pyLibrary.dot.nones import Null
-from pyLibrary.dot import wrap, unwrap
 
+from pyLibrary.dot.nones import Null
+from pyLibrary.dot import wrap, unwrap, coalesce
+
+_emit_slice_warning = True
 
 _get = object.__getattribute__
 _set = object.__setattr__
+_Log = None
+_dictwrap = None
 
+
+def _late_import():
+    global _Log
+    global _dictwrap
+
+    from pyLibrary.debugs.logs import Log as _Log
+    from pyLibrary.dot.objects import dictwrap as _dictwrap
+
+    _ = _Log
+    _ = _dictwrap
 
 class DictList(list):
     """
@@ -39,8 +54,9 @@ class DictList(list):
         if isinstance(index, slice):
             # IMPLEMENT FLAT SLICES (for i not in range(0, len(self)): assert self[i]==None)
             if index.step is not None:
-                from pyLibrary.debugs.logs import Log
-                Log.error("slice step must be None, do not know how to deal with values")
+                if not _Log:
+                    _late_import()
+                _Log.error("slice step must be None, do not know how to deal with values")
             length = len(_get(self, "list"))
 
             i = index.start
@@ -57,7 +73,11 @@ class DictList(list):
         return wrap(_get(self, "list")[index])
 
     def __setitem__(self, i, y):
-        _get(self, "list")[i] = unwrap(y)
+        _list = _get(self, "list")
+        if i <= len(_list):
+            for i in range(len(_list), i):
+                _list.append(None)
+        _list[i] = unwrap(y)
 
     def __getattribute__(self, key):
         try:
@@ -70,7 +90,13 @@ class DictList(list):
         return DictList.select(self, key)
 
     def select(self, key):
-        return DictList(vals=[unwrap(wrap(v)[key]) for v in _get(self, "list")])
+        """
+        simple `select`
+        """
+        if not _dictwrap:
+            _late_import()
+
+        return DictList(vals=[unwrap(coalesce(_dictwrap(v), Null)[key]) for v in _get(self, "list")])
 
     def filter(self, _filter):
         return DictList(vals=[unwrap(u) for u in (wrap(v) for v in _get(self, "list")) if _filter(u)])
@@ -92,9 +118,18 @@ class DictList(list):
         return _get(self, "list").__len__()
 
     def __getslice__(self, i, j):
-        from pyLibrary.debugs.logs import Log
+        global _emit_slice_warning
 
-        Log.error("slicing is broken in Python 2.7: a[i:j] == a[i+len(a), j] sometimes.  Use [start:stop:step] (see https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/dot/README.md#slicing-is-broken-in-python-27)")
+        if _emit_slice_warning:
+            _emit_slice_warning=False
+            if not _Log:
+                _late_import()
+
+            _Log.warning("slicing is broken in Python 2.7: a[i:j] == a[i+len(a), j] sometimes.  Use [start:stop:step] (see https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/dot/README.md#the-slice-operator-in-python27-is-inconsistent)")
+        return self[i:j:]
+
+    def __list__(self):
+        return self.list
 
     def copy(self):
         return DictList(list(_get(self, "list")))
@@ -162,7 +197,7 @@ class DictList(list):
 
         return DictList(_get(self, "list")[:num])
 
-    def leftBut(self, num):
+    def not_right(self, num):
         """
         WITH SLICES BEING FLAT, WE NEED A SIMPLE WAY TO SLICE FROM THE LEFT [:-num:]
         """
@@ -173,9 +208,9 @@ class DictList(list):
 
         return DictList(_get(self, "list")[:-num:])
 
-    def rightBut(self, num):
+    def not_left(self, num):
         """
-        NOT REQUIRED, EXISTS AS OPPOSITE OF leftBut()
+        NOT REQUIRED, EXISTS AS OPPOSITE OF not_right()
         """
         if num == None:
             return DictList([_get(self, "list")[-1]])
@@ -201,4 +236,3 @@ class DictList(list):
 
 
 DictList.EMPTY = Null
-

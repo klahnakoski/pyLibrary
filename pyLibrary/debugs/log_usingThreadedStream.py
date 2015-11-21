@@ -11,16 +11,18 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 
 from datetime import datetime, timedelta
 import sys
-from .logs import BaseLog, DEBUG_LOGGING, Log
+from pyLibrary.debugs.text_logs import TextLog, DEBUG_LOGGING
+from pyLibrary.debugs.logs import Log
 from pyLibrary.strings import expand_template
 from pyLibrary.thread.threads import Thread
 
 
 
-class Log_usingThreadedStream(BaseLog):
+class TextLog_usingThreadedStream(TextLog):
     # stream CAN BE AN OBJCET WITH write() METHOD, OR A STRING
     # WHICH WILL eval() TO ONE
     def __init__(self, stream):
@@ -52,6 +54,7 @@ class Log_usingThreadedStream(BaseLog):
 
         self.queue = Queue("log to stream", max=10000, silent=True)
         self.thread = Thread("log to " + name, time_delta_pusher, appender=appender, queue=self.queue, interval=timedelta(seconds=0.3))
+        self.thread.parent.remove_child(self.thread)  # LOGGING WILL BE RESPONSIBLE FOR THREAD stop()
         self.thread.start()
 
     def write(self, template, params):
@@ -64,11 +67,11 @@ class Log_usingThreadedStream(BaseLog):
     def stop(self):
         try:
             if DEBUG_LOGGING:
-                sys.stdout.write("Log_usingThreadedStream sees stop, adding stop to queue\n")
+                sys.stdout.write("TextLog_usingThreadedStream sees stop, adding stop to queue\n")
             self.queue.add(Thread.STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
             self.thread.join()
             if DEBUG_LOGGING:
-                sys.stdout.write("Log_usingThreadedStream done\n")
+                sys.stdout.write("TextLog_usingThreadedStream done\n")
         except Exception, e:
             if DEBUG_LOGGING:
                 raise e

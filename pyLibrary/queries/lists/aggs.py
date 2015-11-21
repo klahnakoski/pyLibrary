@@ -9,17 +9,16 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 import itertools
 
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import listwrap, unwrap, set_default
+from pyLibrary.dot import listwrap, wrap
 from pyLibrary.queries import windows
-from pyLibrary.queries.cube import Cube
+from pyLibrary.queries.containers.cube import Cube
 from pyLibrary.queries.domains import SimpleSetDomain, DefaultDomain
-# from pyLibrary.queries.py.util import util_filter
 from pyLibrary.queries.expressions import qb_expression_to_function
-from pyLibrary.queries.query import qb
 
 
 def is_aggs(query):
@@ -29,12 +28,13 @@ def is_aggs(query):
 
 
 def list_aggs(frum, query):
+    frum = wrap(frum)
     select = listwrap(query.select)
 
     is_join = False  # True IF MANY TO MANY JOIN WITH AN EDGE
     for e in query.edges:
         if isinstance(e.domain, DefaultDomain):
-            e.domain = SimpleSetDomain(partitions=list(sorted(set(frum.select(e.value)))))
+            e.domain = SimpleSetDomain(partitions=list(sorted(set(frum.select(e)))))
 
     for s in listwrap(query.select):
         s["exec"] = qb_expression_to_function(s.value)
@@ -74,8 +74,8 @@ def list_aggs(frum, query):
                     if acc == None:
                         acc = windows.name2accumulator.get(agg)
                         if acc == None:
-                            Log.error("select aggregate {{agg}} is not recognized", {"agg": agg})
-                        acc = acc(**unwrap(s))
+                            Log.error("select aggregate {{agg}} is not recognized",  agg= agg)
+                        acc = acc(**s)
                         mat[c] = acc
                     for e, cc in zip(query.edges, c):  # BECAUSE WE DO NOT KNOW IF s.exec NEEDS THESE EDGES, SO WE PASS THEM ANYWAY
                         d[e.name] = e.domain.partitions[cc]

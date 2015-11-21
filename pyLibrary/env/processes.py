@@ -10,6 +10,7 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 
 
 import subprocess
@@ -58,6 +59,9 @@ class Process(object):
                 stderr=subprocess.STDOUT,
                 bufsize=-1
             )
+
+    def communicate(self):
+        return self.proc.communicate()
 
     def readline(self):
         return self.proc.stdout.readline()

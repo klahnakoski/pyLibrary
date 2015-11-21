@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 import random
 import string
 
@@ -32,8 +33,8 @@ class Random(object):
         return SEED.randrange(*args)
 
     @staticmethod
-    def range(*args):
-        return SEED.randrange(*args)
+    def range(start, stop, *args):
+        return SEED.randrange(start, stop, *args)
 
     @staticmethod
     def float(*args):

@@ -8,6 +8,7 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 
 import gzip
 from io import BytesIO
@@ -36,7 +37,7 @@ class FileString(object):
 
     def decode(self, encoding):
         if encoding != "utf8":
-            Log.error("can not handle {{encoding}}", {"encoding": encoding})
+            Log.error("can not handle {{encoding}}",  encoding= encoding)
         self.encoding = encoding
         return self
 
@@ -112,11 +113,11 @@ def safe_size(source):
                     data.write(b)
                     b = source.read(MIN_READ_SIZE)
                 data.seek(0)
-                Log.note("Using file of size {{length}} instead of str()", {"length": total_bytes})
+                Log.note("Using file of size {{length}} instead of str()",  length= total_bytes)
 
                 return data
             except Exception, e:
-                Log.error("Could not write file > {{num}} bytes", {"num": total_bytes}, e)
+                Log.error("Could not write file > {{num}} bytes",  num= total_bytes, cause=e)
         b = source.read(MIN_READ_SIZE)
 
     data = b"".join(bytes)
@@ -129,11 +130,12 @@ class LazyLines(object):
     SIMPLE LINE ITERATOR, BUT WITH A BIT OF CACHING TO LOOK LIKE AN ARRAY
     """
 
-    def __init__(self, source):
+    def __init__(self, source, encoding="utf8"):
         """
         ASSUME source IS A LINE ITERATOR OVER utf8 ENCODED BYTE STREAM
         """
         self.source = source
+        self.encoding = encoding
         self._iter = self.__iter__()
         self._last = None
         self._next = 0
@@ -144,13 +146,16 @@ class LazyLines(object):
         Log.error("Do not know how to slice this generator")
 
     def __iter__(self):
-        def output():
+        def output(encoding):
             for v in self.source:
-                self._last = v.decode("utf8")
+                if not encoding:
+                    self._last = v
+                else:
+                    self._last = v.decode(encoding)
                 self._next += 1
                 yield self._last
 
-        return output()
+        return output(self.encoding)
 
     def __getitem__(self, item):
         try:
@@ -170,17 +175,17 @@ class CompressedLines(LazyLines):
     WHILE PULLING OUT ONE LINE AT A TIME FOR PROCESSING
     """
 
-    def __init__(self, compressed):
+    def __init__(self, compressed, encoding="utf8"):
         """
         USED compressed BYTES TO DELIVER LINES OF TEXT
         LIKE LazyLines, BUT HAS POTENTIAL TO seek()
         """
         self.compressed = compressed
-        LazyLines.__init__(self, None)
+        LazyLines.__init__(self, None, encoding=encoding)
         self._iter = self.__iter__()
 
     def __iter__(self):
-        return LazyLines(ibytes2ilines(compressed_bytes2ibytes(self.compressed, MIN_READ_SIZE))).__iter__()
+        return LazyLines(ibytes2ilines(compressed_bytes2ibytes(self.compressed, MIN_READ_SIZE)), self.encoding).__iter__()
 
     def __getslice__(self, i, j):
         if i == self._next:
@@ -224,7 +229,7 @@ class CompressedLines(LazyLines):
 
 def compressed_bytes2ibytes(compressed, size):
     """
-    CONVERT AN ARRAY TO A BYTE-BLOCK GENERATOR
+    CONVERT AN ARRAY OF BYTES TO A BYTE-BLOCK GENERATOR
     USEFUL IN THE CASE WHEN WE WANT TO LIMIT HOW MUCH WE FEED ANOTHER
     GENERATOR (LIKE A DECOMPRESSOR)
     """
@@ -280,12 +285,12 @@ class GzipLines(CompressedLines):
     SAME AS CompressedLines, BUT USING THE GzipFile FORMAT FOR COMPRESSED BYTES
     """
 
-    def __init__(self, compressed):
-        CompressedLines.__init__(self, compressed)
+    def __init__(self, compressed, encoding="utf8"):
+        CompressedLines.__init__(self, compressed, encoding=encoding)
 
     def __iter__(self):
         buff = BytesIO(self.compressed)
-        return LazyLines(gzip.GzipFile(fileobj=buff, mode='r')).__iter__()
+        return LazyLines(gzip.GzipFile(fileobj=buff, mode='r'), encoding=self.encoding).__iter__()
 
 
 class ZipfileLines(CompressedLines):
@@ -293,14 +298,14 @@ class ZipfileLines(CompressedLines):
     SAME AS CompressedLines, BUT USING THE ZipFile FORMAT FOR COMPRESSED BYTES
     """
 
-    def __init__(self, compressed):
-        CompressedLines.__init__(self, compressed)
+    def __init__(self, compressed, encoding="utf8"):
+        CompressedLines.__init__(self, compressed, encoding=encoding)
 
     def __iter__(self):
         buff = BytesIO(self.compressed)
         archive = zipfile.ZipFile(buff, mode='r')
         names = archive.namelist()
         if len(names) != 1:
-            Log.error("*.zip file has {{num}} files, expecting only one.", {"num": len(names)})
+            Log.error("*.zip file has {{num}} files, expecting only one.",  num= len(names))
         stream = archive.open(names[0], "r")
-        return LazyLines(sbytes2ilines(stream)).__iter__()
+        return LazyLines(sbytes2ilines(stream), encoding=self.encoding).__iter__()

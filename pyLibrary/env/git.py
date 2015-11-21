@@ -10,10 +10,13 @@
 
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
 
 from pyLibrary.env.processes import Process
+from pyLibrary.meta import cache
 
 
+@cache
 def get_git_revision():
     """
     GET THE CURRENT GIT REVISION
@@ -32,3 +35,18 @@ def get_git_revision():
             proc.join()
         except Exception:
             pass
+
+@cache
+def get_remote_revision(url, branch):
+    """
+    GET REVISION OF A REMOTE BRANCH
+    """
+    from fabric.api import local
+
+    result = local("git ls-remote " + url + " ref/head/" + branch, capture=True)
+    for line in list(result.split("\n")):
+        if not line:
+            continue
+        if line.startswith("commit "):
+            return line[7:]
+    return None

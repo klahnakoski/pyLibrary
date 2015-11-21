@@ -9,11 +9,13 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
+from collections import Mapping
 
 from pyLibrary.dot import Null
 from pyLibrary.dot.lists import DictList
 from pyLibrary.dot import wrap, unwrap
-from pyLibrary.jsons.encoder import UnicodeBuilder, use_pypy, _encode
+from pyLibrary.jsons.encoder import UnicodeBuilder, use_pypy, pypy_json_encode
 
 DEBUG = False
 
@@ -45,7 +47,7 @@ def decode(json):
                 pass
             elif c == "]":
                 curr = stack.pop()
-                if isinstance(curr, dict):
+                if isinstance(curr, Mapping):
                     mode = OBJECT
                 else:
                     mode = ARRAY
@@ -77,7 +79,7 @@ def decode(json):
                 mode = VALUE
             elif c == "}":
                 curr = stack.pop()
-                if isinstance(curr, dict):
+                if isinstance(curr, Mapping):
                     mode = OBJECT
                 else:
                     mode = ARRAY
@@ -88,7 +90,7 @@ def decode(json):
                 pass
             elif c == "}":
                 curr = stack.pop()
-                if isinstance(curr, dict):
+                if isinstance(curr, Mapping):
                     mode = OBJECT
                 else:
                     mode = ARRAY
@@ -396,7 +398,7 @@ class JSONList(object):
             return Null
         return DictList(self.list[-num])
 
-    def leftBut(self, num):
+    def not_right(self, num):
         """
         WITH SLICES BEING FLAT, WE NEED A SIMPLE WAY TO SLICE FROM THE LEFT [:-num:]
         """
@@ -427,12 +429,7 @@ class JSONList(object):
         if self.json is not None:
             return self.json[self.start:self.end]
         else:
-            return _encode(self)
-
-
-
-
-
+            return pypy_json_encode(self)
 
 
 if use_pypy:

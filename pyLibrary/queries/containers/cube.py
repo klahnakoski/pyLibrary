@@ -9,18 +9,21 @@
 #
 from __future__ import unicode_literals
 from __future__ import division
+from __future__ import absolute_import
+from collections import Mapping
 from pyLibrary import dot
 from pyLibrary import convert
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.collections import MAX, OR
-from pyLibrary.queries.query import _normalize_edge
+from pyLibrary.queries.containers import Container
 from pyLibrary.dot import Null, Dict
 from pyLibrary.dot.lists import DictList
-from pyLibrary.dot import wrap, wrap_dot, listwrap
+from pyLibrary.dot import wrap, wrap_leaves, listwrap
 from pyLibrary.debugs.logs import Log
+from pyLibrary.queries.query import _normalize_edge
 
 
-class Cube(object):
+class Cube(Container):
     """
     A CUBE IS LIKE A NUMPY ARRAY, ONLY WITH THE DIMENSIONS TYPED AND NAMED.
     CUBES ARE BETTER THAN PANDAS BECAUSE THEY DEAL WITH NULLS GRACEFULLY
@@ -52,7 +55,7 @@ class Cube(object):
 
                 data = {select.name: Matrix.ZERO}
                 self.edges = DictList.EMPTY
-            elif isinstance(data, dict):
+            elif isinstance(data, Mapping):
                 # EXPECTING NO MORE THAN ONE rownum EDGE IN THE DATA
                 length = MAX([len(v) for v in data.values()])
                 if length >= 1:
@@ -182,17 +185,16 @@ class Cube(object):
         # EDGE REMOVES THAT EDGE FROM THIS RESULT, OR ADDS THE PART
         # AS A select {"name":edge.name, "value":edge.domain.partitions[coord]}
         # PROBABLY NOT, THE value IS IDENTICAL OVER THE REMAINING
-        if isinstance(item, dict):
+        if isinstance(item, Mapping):
             coordinates = [None] * len(self.edges)
 
             # MAP DICT TO NUMERIC INDICES
             for name, v in item.items():
                 ei, parts = wrap([(i, e.domain.partitions) for i, e in enumerate(self.edges) if e.name == name])[0]
                 if not parts:
-                    Log.error("Can not find {{name}}=={{value|quote}} in list of edges, maybe this feature is not implemented yet", {
-                        "name": name,
-                        "value": v
-                    })
+                    Log.error("Can not find {{name}}=={{value|quote}} in list of edges, maybe this feature is not implemented yet",
+                        name= name,
+                        value= v)
                 part = wrap([p for p in parts if p.value == v])[0]
                 if not part:
                     return Null
@@ -214,11 +216,11 @@ class Cube(object):
             # RETURN A VALUE CUBE
             if self.is_value:
                 if item != self.select.name:
-                    Log.error("{{name}} not found in cube", {"name": item})
+                    Log.error("{{name}} not found in cube",  name= item)
                 return self
 
             if item not in self.select.name:
-                Log.error("{{name}} not found in cube", {"name": item})
+                Log.error("{{name}} not found in cube",  name= item)
 
             output = Cube(
                 select=[s for s in self.select if s.name == item][0],
@@ -270,7 +272,7 @@ class Cube(object):
         if len(self.edges)==1 and self.edges[0].domain.type=="index":
             # USE THE STANDARD LIST FILTER
             from pyLibrary.queries import qb
-            return qb.filter(where, self.data.values()[0].cube)
+            return qb.filter(self.data.values()[0].cube, where)
         else:
             # FILTER DOES NOT ALTER DIMESIONS, JUST WHETHER THERE ARE VALUES IN THE CELLS
             Log.unexpected("Incomplete")
@@ -347,7 +349,7 @@ class Cube(object):
         lookup = [[getKey[i](p) for p in e.domain.partitions+([None] if e.allowNulls else [])] for i, e in enumerate(self.edges)]
 
         def coord2term(coord):
-            output = wrap_dot({keys[i]: lookup[i][c] for i, c in enumerate(coord)})
+            output = wrap_leaves({keys[i]: lookup[i][c] for i, c in enumerate(coord)})
             return output
 
         if isinstance(self.select, list):
@@ -381,6 +383,12 @@ class Cube(object):
             )
 
         return output
+
+    def format(self, format):
+        if format == None or format == "cube":
+            return self
+        else:
+            Log.error("Do not know how to handle")
 
     def __str__(self):
         if self.is_value:
