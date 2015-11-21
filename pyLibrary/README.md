@@ -112,7 +112,7 @@ performed by feeding properties to functions using the pipe (`|`) symbol:
             [10, 11, 14, 80]
 ```
 
-Look into the [`pyLibrary.strings.py`](https://github.com/klahnakoski/pyLibrary/blob/master/pyLibrary/strings.py) to see a full list of transformation
+Look into the [`pyLibrary.strings.py`](https://github.com/klahnakoski/pyLibrary/blob/dev/pyLibrary/strings.py) to see a full list of transformation
 functions.
 
 Variables are not limited to simple names: You may use dot (`.`) to specify

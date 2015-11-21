@@ -1,3 +1,14 @@
+More JSON Tools!
+================
+
+This set of modules solves three problems:
+
+* JSON encoding is slow (`jsons.encode`)
+* We want to iterate over massive JSON easily (`jsons.stream`)
+* JSON is great for configuration, but is missing hyperlinks (`jsons.ref`)
+
+
+
 
 
 Module `jsons.encode`
@@ -7,7 +18,7 @@ Function: `jsons.encode.json_encoder()`
 -------------------------------------
 
 Fast JSON encoder used in `convert.value2json()` when running in Pypy.  Run the
-[speedtest](https://github.com/klahnakoski/pyLibrary/blob/master/tests/speedtest_json.py)
+[speedtest](https://github.com/klahnakoski/pyLibrary/blob/dev/tests/speedtest_json.py)
 to compare with default implementation and ujson
 
 
@@ -140,8 +151,8 @@ Load your settings easily:
 The file format is JSON, with three important features.
 
 1. Comments
-2. References (using `$ref`)
-3. Parameterization
+2. References: in the form of URLs, using the `$ref` property
+3. Parameterization: using URL parameters
 
 
 Comments
@@ -173,12 +184,12 @@ Multiline comments are also allowed, using either Python's triple-quotes
 ```
 
 
-Reference Other JSON
---------------------
+Reference Other JSON using URLs
+-------------------------------
 
-The `$ref` key is special.  Its value is interpreted as a URL pointing to more JSON
+The `$ref` property is special.  Its value is interpreted as a URL pointing to more JSON
 
-**Absolute Internal Reference**
+###Absolute Internal Reference
 
 The simplest form of URL is an absolute reference to a node in the same
 document:
@@ -201,7 +212,7 @@ with the value it points to:
     }
 ```
 
-**Relative Internal References**
+###Relative Internal References
 
 References that start with dot (`.`) are relative, with each additional dot
 referring to successive parents.   In this case the `..` refers to the
@@ -214,7 +225,7 @@ ref-object's parent, and expands just like the previous example:
     }
 ```
 
-**File References**
+###File References
 
 Configuration is often stored on the local file system.  You can in-line the
 JSON found in a file by using the `file://` scheme:
@@ -252,14 +263,14 @@ which will be expanded at run-time to:
 Please notice the triple slash (`///`) is referring to an absolute file
 reference.
 
-**Object References**
+###Object References
 
 Ref-objects that point to other objects (dicts) are not replaced completely,
 but rather are merged with the target; with the ref-object
 properties taking precedence.   This is seen in the example above: The "host"
 property is not overwritten by the target's.
 
-**Relative File Reference**
+###Relative File Reference
 
 Here is the same, using a relative file reference; which is relative to the
 file that contains this JSON
@@ -272,7 +283,7 @@ file that contains this JSON
     }
 ```
 
-**Home Directory Reference**
+###Home Directory Reference
 
 You may also use the tilde (`~`) to refer to the current user's home directory.
 Here is the same again, but this example can be anywhere in the file system.
@@ -285,7 +296,7 @@ Here is the same again, but this example can be anywhere in the file system.
     }
 ```
 
-**HTTP Reference**
+###HTTP Reference
 
 Configuration can be stored remotely, especially in the case of larger
 configurations which are too unwieldy to inline:
@@ -296,7 +307,7 @@ configurations which are too unwieldy to inline:
     }
 ```
 
-**Scheme-Relative Reference**
+###Scheme-Relative Reference
 
 You are also able to leave the scheme off, so that whole constellations of
 configuration files can refer to each other no matter if they are on the local
@@ -316,7 +327,7 @@ And, of course, relative references are also allowed:
     }
 ```
 
-**Fragment Reference**
+###Fragment Reference
 
 Some remote configuration files are quite large...
 
@@ -344,7 +355,7 @@ the dot-delimited path into the document:
     }
 ```
 
-**Environment Variables Reference**
+###Environment Variables Reference
 
 json.ref uses the unconventional `env` scheme for accessing environment variables:
 
@@ -356,8 +367,7 @@ json.ref uses the unconventional `env` scheme for accessing environment variable
     }
 ```
 
-Parametrized JSON
------------------
+##Parameterized JSON
 
 JSON documents are allowed named parameters, which are surrounded by moustaches `{{.}}`.
 
@@ -402,7 +412,39 @@ The `quote` transformation will deal with quoting, so ...
 	}
 ```
 
-Please see [`expand_template`](../README.md) for more on the parameter replacement, and transformations available
+Please see [`expand_template`](../README.md#function-expand_template) for more on the parameter replacement, and transformations available
+
+
+Module `typed_encoder`
+=====================
+
+
+One reason NoSQL documents stores are wonderful is the fact their schema can automatically expand to accept new properties.   Unfortunately, this flexibility is not limitless:  A string assigned to property prevents object being assigned to the same, or visa-versa.
+
+This module translates JSON documents into "typed" form; which allows document stores to store both objects and primitives in the same property value.  This allows storage of values with no containing object! 
+
+###How it works
+
+Typed JSON uses `$value` and `$object` properties to markup the original JSON:
+
+* All JSON objects are annotated with `"$object":"."`, which makes querying object existence (especially the empty object) easier.
+* All primitive values are replaced with an object with a single `$value` property: So `"value"` gets mapped to `{"$value": "value"}`.  
+
+Of course, the typed JSON has a different form than the original, and queries into the documents store must take this into account.  Fortunately, the use of typed JSON is intended to be hidden behind a query abstraction layer.
+
+
+Function `typed_encode()`
+------------------------
+
+Accepts a `dict`, `list`, or primitive value, and generates the typed JSON that can be inserted into a document store. 
+
+
+Function `json2typed()`
+-----------------------
+
+Converts an existing JSON unicode string and returns the typed JSON unicode string for the same. 
+
+
 
 ---
 
