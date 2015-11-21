@@ -29,6 +29,7 @@ from pyLibrary.meta import use_settings
 from pyLibrary.queries import qb
 from pyLibrary.strings import utf82unicode
 from pyLibrary.thread.threads import ThreadedQueue, Thread, Lock
+from pyLibrary.times.durations import MINUTE
 
 
 ES_NUMERIC_TYPES = ["long", "integer", "double", "float"]
@@ -978,7 +979,7 @@ def parse_properties(parent_index_name, parent_query_path, esProperties):
                 name=query_path,
                 abs_name=query_path,
                 type="nested",
-                nested_path=name
+                nested_path=query_path
             ))
 
             continue
