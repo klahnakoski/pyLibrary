@@ -17,7 +17,7 @@ from pyLibrary.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
-class TestCNV(FuzzyTestCase):
+class TestStrings(FuzzyTestCase):
     def setUp(self):
         pass
 

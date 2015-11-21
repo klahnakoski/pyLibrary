@@ -15,8 +15,8 @@ import unittest
 
 from future.utils import raise_from
 from pyLibrary import convert
+from pyLibrary.debugs.log_usingQueue import TextLog_usingQueue
 
-from pyLibrary.debugs.log_usingQueue import Log_usingQueue
 from pyLibrary.debugs.logs import Log, Except
 from pyLibrary.dot import listwrap, wrap
 from pyLibrary.dot.objects import DictObject
@@ -79,7 +79,7 @@ class TestExcept(FuzzyTestCase):
         AB = 'd'
         BC = 'b'
 
-        log_queue = Log_usingQueue()
+        log_queue = TextLog_usingQueue()
         Log.main_log = log_queue
 
         try:
@@ -149,7 +149,7 @@ class TestExcept(FuzzyTestCase):
         AB = 'd'
         BC = 'b'
 
-        log_queue = Log_usingQueue()
+        log_queue = TextLog_usingQueue()
         Log.main_log = log_queue
 
         try:

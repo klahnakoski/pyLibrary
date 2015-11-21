@@ -14,7 +14,7 @@ from pyLibrary.debugs.logs import Log
 from pyLibrary.maths import Math
 
 
-class TestJSON(unittest.TestCase):
+class TestMath(unittest.TestCase):
     def test_isnumber(self):
         assert Math.is_number(9999999999000)
 

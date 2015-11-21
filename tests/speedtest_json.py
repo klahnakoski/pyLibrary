@@ -10,13 +10,19 @@
 
 
 from decimal import Decimal
+import platform
 import time
 import json
-from pyLibrary import jsons
+try:
+    import ujson
+except Exception:
+    pass
+
+from pyLibrary import convert
 from pyLibrary.jsons import scrub
 from pyLibrary.jsons.encoder import cPythonJSONEncoder, json_encoder
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import Null, wrap
+from pyLibrary.dot import wrap, unwrap
 
 
 TARGET_RUNTIME = 10
@@ -53,53 +59,45 @@ cases = [
 ]
 
 
-def test_json(description, method, n):
+def test_json(results, description, method, n):
     output = []
 
     for case in cases:
         try:
             data, count = globals()[case]
-            if case == "HUGE":
-                example = "<too big to show>"
-            else:
-                try:
-                    example = method(data)
-                except Exception, e:
-                    example = "<CRASH>"
-
-            Log.note("{{interpreter}}: {{description}} {{type}}: {{json}}", {
-                "description": description,
-                "interpreter": "PyPy" if jsons.encoder.use_pypy else "CPython",
-                "type": case,
-                "json": example
-            })
-        except Exception, e:
-            Log.warning("problem with encoding: {{message}}", {"message": e.message}, e)
-
-    for case in cases:
-        try:
-            data, count = globals()[case]
-            if description == "default json.dumps":
+            if "scrub" in description:
                 #SCRUB BEFORE SENDING TO C ROUTINE (NOT FAIR, BUT WE GET TO SEE HOW FAST ENCODING GOES)
-                data = scrub(data)
+                data = unwrap(scrub(data))
+
+            try:
+                example = method(data)
+                if case == "HUGE":
+                    example = "<too big to show>"
+            except Exception, e:
+                Log.warning("json encoding failure", cause=e)
+                example = "<CRASH>"
+
             t0 = time.time()
             try:
                 for i in range(n):
                     for i in range(count):
                         output.append(method(data))
                 duration = time.time() - t0
-            except Exception, e:
-                duration = "<CRASH>"
+            except Exception:
+                duration = time.time() - t0
 
-            Log.note("{{interpreter}}: {{description}} {{type}} x {{num}} x {{count}} = {{time}}", {
+            summary = {
                 "description": description,
-                "interpreter": "PyPy" if jsons.encoder.use_pypy else "CPython",
+                "interpreter": platform.python_implementation(),
                 "time": duration,
                 "type": case,
                 "num": n,
-                "count": globals()[case][1],
-                "length": len(output)
-            })
+                "count": count,
+                "length": len(output),
+                "result": example
+            }
+            Log.note("{{interpreter}}: {{description}} {{type}} x {{num}} x {{count}} = {{time}} result={{result}}", **summary)
+            results.append(summary)
         except Exception, e:
             Log.warning("problem with encoding: {{message}}", {"message": e.message}, e)
 
@@ -114,7 +112,7 @@ class EnhancedJSONEncoder(json.JSONEncoder):
         json.JSONEncoder.__init__(self, sort_keys=True)
 
     def default(self, obj):
-        if obj == Null:
+        if obj == None:
             return None
         elif isinstance(obj, set):
             return list(obj)
@@ -126,11 +124,17 @@ class EnhancedJSONEncoder(json.JSONEncoder):
 def main(num):
     try:
         Log.start()
-        test_json("jsons.encoder", json_encoder, num)
-        test_json("jsons.encoder (again)", json_encoder, num)
-        test_json("scrub before json.dumps", cPythonJSONEncoder().encode, num)
-        test_json("override JSONEncoder.default()", EnhancedJSONEncoder().encode, num)
-        test_json("default json.dumps", json.dumps, num)  # WILL CRASH, CAN NOT HANDLE DIVERSITY OF TYPES
+        results = []
+        test_json(results, "jsons.encoder", json_encoder, num)
+        test_json(results, "jsons.encoder (again)", json_encoder, num)
+        test_json(results, "scrub before json.dumps", cPythonJSONEncoder().encode, num)
+        test_json(results, "override JSONEncoder.default()", EnhancedJSONEncoder().encode, num)
+        test_json(results, "default json.dumps", json.dumps, num)  # WILL CRASH, CAN NOT HANDLE DIVERSITY OF TYPES
+        try:
+            test_json(results, "scrubbed ujson", ujson.dumps, num)
+        except Exception:
+            pass
+        Log.note("\n{{summary}}", summary=convert.list2tab(results))
     finally:
         Log.stop()
 

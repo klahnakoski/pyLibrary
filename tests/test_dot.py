@@ -333,6 +333,12 @@ class TestDot(FuzzyTestCase):
         self.assertEqual(dd["a"], 20)
         self.assertEqual(dd, {"a": 20, "b": 30})
 
+    def test_deep_select(self):
+        d = wrap([{"a": {"b": 1}}, {"a": {"b": 2}}])
+
+        test = d.a.b
+        self.assertEqual(test, [1, 2])
+
 
 class _UserDict:
     """

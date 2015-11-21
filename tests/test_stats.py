@@ -13,7 +13,7 @@ from pyLibrary.maths.stats import ZeroMoment, ZeroMoment2Stats
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
-class TestCNV(FuzzyTestCase):
+class TestStats(FuzzyTestCase):
 
     def setUp(self):
         stats.DEBUG = True

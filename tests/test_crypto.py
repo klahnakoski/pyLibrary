@@ -15,7 +15,7 @@ from pyLibrary import convert
 from pyLibrary.maths.randoms import Random
 
 
-class TestDB(unittest.TestCase):
+class TestCrypto(unittest.TestCase):
     def test_aes(self):
         crypto.DEBUG = True
 
