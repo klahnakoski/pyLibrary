@@ -13,7 +13,6 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
 from collections import Mapping
-
 from datetime import datetime
 import os
 import platform
@@ -23,7 +22,7 @@ from pyLibrary.debugs import constants
 from pyLibrary.debugs.text_logs import TextLog_usingMulti, TextLog_usingThread, TextLog_usingStream, TextLog_usingFile
 from pyLibrary.dot import coalesce, Dict, listwrap, wrap, unwrap, unwraplist, Null, set_default
 from pyLibrary.jsons.encoder import json_encoder
-from pyLibrary.thread.threads import Thread, Lock, Queue
+from pyLibrary.thread.threads import Thread, Queue
 from pyLibrary.strings import indent, expand_template
 
 

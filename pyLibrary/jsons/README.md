@@ -142,17 +142,24 @@ produce a result.
 Module `jsons.ref`
 ==================
 
-A JSON-like storage format intended for configuration files
+A JSON-like storage format intended for configuration files.  
+
+Motivation
+----------
+
+This module has superficial similarity to the [JSON Reference Draft](https://tools.ietf.org/html/draft-pbryan-zyp-json-ref-03), which seems inspired by the committee-driven XPath specification.  Of course, there are a few differences:
+
+1. This `jsons.ref` module uses the dot (`.`) as a path separator in the URL fragment.  For example, an absolute reference looks like `{"$ref": "#message.type.name"}`, and a relative reference looks like `{"$ref": "#..type.name"}`.   This syntax better matches that used by Javascript.  
+2. The additional properties founf in a `$ref` object are used to override the referenced object. This allows you to reference a default document, and override the particular  properties needed. *more below*
+3. Furthermore, references can accept URL parameters: JSON is treated like a string template for more sophisticated value replacement. *see below*  
+4. You can reference files and environment variables in addition to general URLs.
+
+Usage
+-----
 
 Load your settings easily:
 
     settings = jsons.ref.get(url):
-
-The file format is JSON, with three important features.
-
-1. Comments
-2. References: in the form of URLs, using the `$ref` property
-3. Parameterization: using URL parameters
 
 
 Comments
@@ -184,8 +191,8 @@ Multiline comments are also allowed, using either Python's triple-quotes
 ```
 
 
-Reference Other JSON using URLs
--------------------------------
+Example References
+------------------
 
 The `$ref` property is special.  Its value is interpreted as a URL pointing to more JSON
 
@@ -263,7 +270,7 @@ which will be expanded at run-time to:
 Please notice the triple slash (`///`) is referring to an absolute file
 reference.
 
-###Object References
+###References To Objects
 
 Ref-objects that point to other objects (dicts) are not replaced completely,
 but rather are merged with the target; with the ref-object
@@ -367,7 +374,7 @@ json.ref uses the unconventional `env` scheme for accessing environment variable
     }
 ```
 
-##Parameterized JSON
+##Parameterized References
 
 JSON documents are allowed named parameters, which are surrounded by moustaches `{{.}}`.
 
