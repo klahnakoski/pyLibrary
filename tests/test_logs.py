@@ -41,7 +41,7 @@ class TestExcept(FuzzyTestCase):
         try:
             problem_a2()
         except Exception, e:
-            cause = e.cause[0]
+            cause = e.cause
             self.assertEqual(cause.template, "expected exception")
 
             for i, m in enumerate(listwrap(cause.trace).method):

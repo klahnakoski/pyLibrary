@@ -1,6 +1,3 @@
-Module `pyLibrary`
-==================
-
 
 Module `convert`
 ---------------
@@ -77,7 +74,7 @@ Module `strings`
 ----------------
 
 Contains several more string functions.  None of them are intended for direct 
-use in a python program, rather for use in the `expand_template` function.
+use in a Python program, rather for use in the `expand_template` function.
 
 
 ###Function `expand_template()`###
@@ -124,7 +121,9 @@ paths into the properties
     Kyle Lahnakoski is 40 years old
 ```
 
+**Nested Objects and Template Expansion**
+
 Templates are not limited to strings, but can also be queries to expand lists
 found in property paths:
 
-<incomplete>
+<incomplete, add more docs here>

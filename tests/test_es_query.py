@@ -13,7 +13,7 @@ import unittest
 from pyLibrary import strings
 from pyLibrary import convert
 from pyLibrary.env.files import File
-from pyLibrary.debugs.logs import Log, Except, extract_tb, ERROR
+from pyLibrary.debugs.logs import Log, Except, _extract_traceback, ERROR
 from pyLibrary.queries.qb_usingES import FromES
 
 
