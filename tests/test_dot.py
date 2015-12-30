@@ -11,7 +11,7 @@ from collections import Mapping
 
 from pyLibrary.collections import MAX
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import wrap, Dict, Null
+from pyLibrary.dot import wrap, Dict, Null, set_default, unwrap
 from pyLibrary.dot.objects import dictwrap
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
@@ -338,6 +338,19 @@ class TestDot(FuzzyTestCase):
 
         test = d.a.b
         self.assertEqual(test, [1, 2])
+
+    def test_set_default(self):
+        a = {"x": {"y": 1}}
+        b = {"x": {"z": 2}}
+        c = {}
+        d = set_default(c, a, b)
+
+        self.assertTrue(unwrap(d) is c, "expecting first parameter to be returned")
+        self.assertEqual(d.x.y, 1, "expecting d to have attributes of a")
+        self.assertEqual(d.x.z, 2, "expecting d to have attributes of b")
+
+        self.assertEqual(wrap(a).x.z, None, "a should not have been altered")
+
 
 
 class _UserDict:
