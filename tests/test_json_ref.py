@@ -20,8 +20,6 @@ from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestRef(FuzzyTestCase):
-
-
     def test_doc1(self):
         os.environ["test_variable"] = "abc"
 
@@ -33,7 +31,7 @@ class TestRef(FuzzyTestCase):
         self.assertEqual(doc.relative_doc, "value")
         self.assertEqual(doc.absolute_doc, "another value")
         self.assertEqual(doc.env_variable, "abc")
-        self.assertEqual(doc.relative_object_doc, {"key":"new value", "another_key":"another value"})
+        self.assertEqual(doc.relative_object_doc, {"key": "new value", "another_key": "another value"})
 
     def test_doc2(self):
         # BETTER TEST OF RECURSION
@@ -55,4 +53,21 @@ class TestRef(FuzzyTestCase):
 
     def test_parameter_list(self):
         url = "file://tests/resources/json_ref/test_ref_w_parameters.json?test1=a&test1=b&test2=c&test1=d"
-        self.assertEqual(URL(url).query, {"test1":["a", "b", "d"], "test2":"c"}, "expecting test1 to be an array")
+        self.assertEqual(URL(url).query, {"test1": ["a", "b", "d"], "test2": "c"}, "expecting test1 to be an array")
+
+    def test_inner_doc(self):
+        doc = jsons.ref.get("file://tests/resources/json_ref/inner.json")
+
+        self.assertEqual(doc, {
+            "area": {
+                "color": {"description": "css color"},
+                "border": {"properties": {"color": {"description": "css color"}}}
+            },
+            "definitions": {
+                "object_style": {
+                    "color": {"description": "css color"},
+                    "border": {"properties": {"color": {"description": "css color"}}}
+                },
+                "style": {"properties": {"color": {"description": "css color"}}}
+            }
+        }, "expecting proper expansion")

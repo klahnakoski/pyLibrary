@@ -149,7 +149,7 @@ class MyType(object):
         call_count += 1
         return 2
 
-    @cache(duration=CACHE_DURATION)
+    @cache(duration=CACHE_DURATION, lock=True)
     def method1(self, param):
         global call_count
         call_count += 1

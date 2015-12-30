@@ -9,18 +9,18 @@
 #
 
 from __future__ import unicode_literals
+from future.utils import raise_from
 
 import logging
 import unittest
 
-from future.utils import raise_from
 from pyLibrary import convert
 from pyLibrary.debugs.log_usingQueue import TextLog_usingQueue
-
 from pyLibrary.debugs.logs import Log, Except
 from pyLibrary.dot import listwrap, wrap
 from pyLibrary.dot.objects import DictObject
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
+from pyLibrary.thread.threads import Thread
 
 
 class TestExcept(FuzzyTestCase):
@@ -41,7 +41,7 @@ class TestExcept(FuzzyTestCase):
         try:
             problem_a2()
         except Exception, e:
-            cause = e.cause[0]
+            cause = e.cause
             self.assertEqual(cause.template, "expected exception")
 
             for i, m in enumerate(listwrap(cause.trace).method):
@@ -79,8 +79,8 @@ class TestExcept(FuzzyTestCase):
         AB = 'd'
         BC = 'b'
 
-        log_queue = TextLog_usingQueue()
-        Log.main_log = log_queue
+        log_queue = TextLog_usingQueue("abba")
+        backup_log, Log.main_log = Log.main_log, log_queue
 
         try:
             raise Exception("problem")
@@ -135,6 +135,8 @@ class TestExcept(FuzzyTestCase):
 
             Log.warning("test: {{a.c}}: {{b.c}}", a=a, b=b, cause=e)
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + AC + ': ' + BC + CAUSE)
+        finally:
+            Log.main_log = backup_log
 
 
     def test_note_keyword_parameters(self):
@@ -149,8 +151,11 @@ class TestExcept(FuzzyTestCase):
         AB = 'd'
         BC = 'b'
 
+        # DURING TESTING SOME OTHER THREADS MAY STILL BE WRITING TO THE LOG
+        Thread.sleep(1)
+        # HIGHJACK LOG FOR TESTING OUTPUT
         log_queue = TextLog_usingQueue()
-        Log.main_log = log_queue
+        backup_log, Log.main_log = Log.main_log, log_queue
 
         try:
             raise Exception("problem")
@@ -181,6 +186,9 @@ class TestExcept(FuzzyTestCase):
 
             Log.note("test: {{a.c}}: {{b.c}}", a=a, b=b)
             self.assertEqual(Log.main_log.pop(), WARNING + ': ' + AC + ': ' + BC)
+        finally:
+            Log.main_log = backup_log
+
 
     #NORMAL RAISING
     def test_python_raise_from(self):
