@@ -18,6 +18,18 @@ class TestMath(unittest.TestCase):
     def test_isnumber(self):
         assert Math.is_number(9999999999000)
 
+
+    def test_mod(self):
+        self.assertEqual(Math.mod(12, 12), 0)
+        self.assertEqual(Math.mod(11, 12), 11)
+        self.assertEqual(Math.mod(2, 12), 2)
+        self.assertEqual(Math.mod(1, 12), 1)
+        self.assertEqual(Math.mod(-0, 12), 0)
+        self.assertEqual(Math.mod(-1, 12), 11)
+        self.assertEqual(Math.mod(-2, 12), 10)
+        self.assertEqual(Math.mod(-12, 12), 0)
+
+
 if __name__ == '__main__':
     try:
         Log.start()
