@@ -14,6 +14,8 @@ from __future__ import absolute_import
 from collections import Mapping
 
 import os
+
+from pyLibrary import dot
 from pyLibrary.dot import set_default, wrap, unwrap
 from pyLibrary.parsers import URL
 
@@ -79,25 +81,23 @@ def _replace_ref(node, url):
         url.path = url.path[:-1]
 
     if isinstance(node, Mapping):
-        ref, raw_ref, node["$ref"] = URL(node["$ref"]), node["$ref"], None
-
-        # RECURS
-        return_value = node
-        candidate = {}
+        ref = None
+        output = {}
         for k, v in node.items():
-            new_v = _replace_ref(v, url)
-            candidate[k] = new_v
-            if new_v is not v:
-                return_value = candidate
+            if k == "$ref":
+                ref = URL(v)
+            else:
+                output[k] = _replace_ref(v, url)
+
         if not ref:
-            return return_value
-        else:
-            node = return_value
+            return output
+
+        node = output
 
         if not ref.scheme and not ref.path:
             # DO NOT TOUCH LOCAL REF YET
-            node["$ref"] = ref
-            return node
+            output["$ref"] = ref
+            return output
 
         if not ref.scheme:
             # SCHEME RELATIVE IMPLIES SAME PROTOCOL AS LAST TIME, WHICH
@@ -108,23 +108,21 @@ def _replace_ref(node, url):
         if ref.scheme in scheme_loaders:
             new_value = scheme_loaders[ref.scheme](ref, url)
         else:
-            raise _Log.error("unknown protocol {{scheme}}",  scheme= ref.scheme)
+            raise _Log.error("unknown protocol {{scheme}}", scheme=ref.scheme)
 
         if ref.fragment:
-            new_value = new_value[ref.fragment]
+            new_value = dot.get_attr(new_value, ref.fragment)
 
-        if isinstance(new_value, Mapping):
-            return set_default({}, node, new_value)
-        elif node.keys() and new_value == None:
-            return node
+        if not output:
+            return new_value
         else:
-            return wrap(new_value)
+            return unwrap(set_default(output, new_value))
 
     elif isinstance(node, list):
-        candidate = [_replace_ref(n, url) for n in node]
-        if all(p[0] is p[1] for p in zip(candidate, node)):
+        output = [_replace_ref(n, url) for n in node]
+        if all(p[0] is p[1] for p in zip(output, node)):
             return node
-        return candidate
+        return output
 
     return node
 
@@ -151,13 +149,13 @@ def _replace_locals(node, doc_path):
                 if p != ".":
                     if i>len(doc_path):
                         _Log.error("{{frag|quote}} reaches up past the root document",  frag=frag)
-                    new_value = doc_path[i-1][frag[i::]]
+                    new_value = dot.get_attr(doc_path[i-1], frag[i::])
                     break
             else:
                 new_value = doc_path[len(frag) - 1]
         else:
             # ABSOLUTE
-            new_value = doc_path[-1][frag]
+            new_value = dot.get_attr(doc_path[-1], frag)
 
         new_value = _replace_locals(new_value, [new_value] + doc_path)
 
