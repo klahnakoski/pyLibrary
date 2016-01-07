@@ -14,6 +14,7 @@ from __future__ import absolute_import
 import os
 from pyLibrary import jsons
 from pyLibrary.dot import Dict
+from pyLibrary.env.files import File
 from pyLibrary.parsers import URL
 from pyLibrary.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
@@ -71,3 +72,48 @@ class TestRef(FuzzyTestCase):
                 "style": {"properties": {"color": {"description": "css color"}}}
             }
         }, "expecting proper expansion")
+
+
+    def test_read_home(self):
+        file = "~/___test_file.json"
+        source = "tests/resources/json_ref/simple.json"
+        File.copy(File(source), File(file))
+        content = jsons.ref.get("file://"+file)
+
+        try:
+            self.assertEqual(
+                content,
+                {"test_key": "test_value"}
+            )
+        finally:
+            File(file).delete()
+
+    def test_array_expansion(self):
+        # BETTER TEST OF RECURSION
+        doc = jsons.ref.get("file://tests/resources/json_ref/test_array.json")
+
+        self.assertEqual(doc, {
+            "a": "some_value",
+            "list": {"deep": [
+                {
+                    "a": "a",
+                    "test_key": "test_value"
+                },
+                {
+                    "a": "b",
+                    "test_key": "test_value"
+                },
+                {
+                    "a": "c",
+                    "test_key": "test_value"
+                },
+                {
+                    "a": "d",
+                    "test_key": "test_value"
+                },
+                {
+                    "a": "e",
+                    "test_key": "test_value"
+                }
+            ]}
+        })
