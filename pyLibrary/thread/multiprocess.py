@@ -13,7 +13,8 @@ from __future__ import absolute_import
 import subprocess
 
 from pyLibrary import convert
-from pyLibrary.debugs.logs import Log, Except
+from pyLibrary.debugs.exceptions import Except
+from pyLibrary.debugs.logs import Log
 from pyLibrary.thread.threads import Queue, Thread, Signal, Lock
 
 DEBUG = True
@@ -106,6 +107,8 @@ class Process(object):
         except Exception, e:
             ee = Except.wrap(e)
             if 'The operation completed successfully' in ee:
+                return
+            if 'No such process' in ee:
                 return
 
             Log.warning("Failure to kill process {{process|quote}}", process=self.name, cause=ee)
