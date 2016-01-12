@@ -351,6 +351,11 @@ class TestDot(FuzzyTestCase):
 
         self.assertEqual(wrap(a).x.z, None, "a should not have been altered")
 
+    def test_Dict_of_Dict(self):
+        value = {"a": 1}
+        wrapped = Dict(Dict(value))
+        self.assertTrue(value is unwrap(wrapped), "expecting identical object")
+
 
 
 class _UserDict:
