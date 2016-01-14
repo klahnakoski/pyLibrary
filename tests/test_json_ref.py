@@ -117,3 +117,8 @@ class TestRef(FuzzyTestCase):
                 }
             ]}
         })
+
+    def test_grandparent_reference(self):
+        doc = jsons.ref.get("file://tests/resources/json_ref/child/grandchild/simple.json")
+
+        self.assertEqual(doc, {"test_key": "test_value"})
