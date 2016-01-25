@@ -73,7 +73,6 @@ class TestRef(FuzzyTestCase):
             }
         }, "expecting proper expansion")
 
-
     def test_read_home(self):
         file = "~/___test_file.json"
         source = "tests/resources/json_ref/simple.json"

@@ -13,6 +13,7 @@ from pyLibrary.collections import MAX
 from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import wrap, Dict, Null, set_default, unwrap
 from pyLibrary.dot.objects import dictwrap
+from pyLibrary.meta import DataClass
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
@@ -355,6 +356,25 @@ class TestDot(FuzzyTestCase):
         value = {"a": 1}
         wrapped = Dict(Dict(value))
         self.assertTrue(value is unwrap(wrapped), "expecting identical object")
+
+
+    def test_leaves_of_mappings(self):
+        a = wrap({"a": _TestMapping()})
+        a.a.a = {"a": 1}
+        a.a.b = {"b": 2}
+
+        leaves = wrap(dict(a.leaves()))
+        self.assertEqual(a.a.a['a'], leaves["a\.a\.a"], "expecting 1")
+        self.assertEqual(a.a.b['b'], leaves["a\.b\.b"], "expecting 2")
+
+
+
+
+_TestMapping = DataClass("_TestMapping", ["a", "b"])
+
+
+
+
 
 
 
