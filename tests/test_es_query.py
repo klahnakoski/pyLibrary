@@ -16,7 +16,7 @@ from pyLibrary import strings
 from pyLibrary.debugs.exceptions import Except, ERROR
 from pyLibrary.debugs.logs import Log
 from pyLibrary.env.files import File
-from pyLibrary.queries.qb_usingES import FromES
+from pyLibrary.queries.jx_usingES import FromES
 
 
 class TestFromES(unittest.TestCase):

@@ -11,7 +11,7 @@ from unittest import skip
 
 from pyLibrary import convert
 from pyLibrary.dot import unwrap, wrap
-from pyLibrary.queries import qb
+from pyLibrary.queries import jx
 from pyLibrary.dot.dicts import Dict
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
@@ -19,23 +19,23 @@ from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 class TestQb(FuzzyTestCase):
     def test_groupby(self):
         data = []
-        for g, d in qb.groupby(data, size=5):
+        for g, d in jx.groupby(data, size=5):
              assert False
 
         data = [1, 2, 3]
-        for g, d in qb.groupby(data, size=5):
+        for g, d in jx.groupby(data, size=5):
             assert d == [1, 2, 3]
 
         data = [1, 2, 3, 4, 5]
-        for g, d in qb.groupby(data, size=5):
+        for g, d in jx.groupby(data, size=5):
             assert d == [1, 2, 3, 4, 5]
 
         data = [1, 2, 3, 4, 5, 6]
-        for g, d in qb.groupby(data, size=5):
+        for g, d in jx.groupby(data, size=5):
             assert d == [1, 2, 3, 4, 5] or d == [6]
 
         data = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        for g, d in qb.groupby(data, size=5):
+        for g, d in jx.groupby(data, size=5):
             assert d == [1, 2, 3, 4, 5] or d == [6, 7, 8, 9]
 
 
@@ -51,10 +51,10 @@ class TestQb(FuzzyTestCase):
             }
         }]
 
-        result = qb.select(data, "point_result.confidence")
+        result = jx.select(data, "point_result.confidence")
         assert result[0] == 0.15889902861667249, "problem pulling deep values"
 
-        result = qb.select(data, ["point_result.confidence", "sustained_result.confidence"])
+        result = jx.select(data, ["point_result.confidence", "sustained_result.confidence"])
         expected = {"point_result": {"confidence": 0.15889902861667249}, "sustained_result": {"confidence": 0.85313030049257099}}
         assert convert.value2json(result[0]) == convert.value2json(expected)
 
@@ -72,10 +72,10 @@ class TestQb(FuzzyTestCase):
             ]
         }]
 
-        result = qb.select(data, "attachments.attach_id")
+        result = jx.select(data, "attachments.attach_id")
         self.assertItemsEqual(result, [456, 789, 345], "can not pull children")
 
-        result = qb.select(data, ["bug_id", "attachments.name"])
+        result = jx.select(data, ["bug_id", "attachments.name"])
         expected = [
             {"bug_id": 123, "attachments": {"name": "test1"}},
             {"bug_id": 123, "attachments": {"name": "test2"}},
@@ -98,7 +98,7 @@ class TestQb(FuzzyTestCase):
     #         }
     #     ]
     #
-    #     result = qb.run({
+    #     result = jx.run({
     #         "from": data,
     #         "select": {"value": "treeherder.job_id", "aggregate": "max"},
     #         "edges": [
@@ -139,17 +139,16 @@ class TestQb(FuzzyTestCase):
             ]
         }]
 
-        result = qb.select(data, [{"name": "id", "value": "attachments.attach_id"}])
+        result = jx.select(data, [{"name": "id", "value": "attachments.attach_id"}])
         expected = [{"id": 456}, {"id": 789}, {"id": 345}]
         assert convert.value2json(result) == convert.value2json(expected), "can not rename fields"
 
-        result = qb.select(data, {"name": "id", "value": "attachments.attach_id"})
+        result = jx.select(data, {"name": "id", "value": "attachments.attach_id"})
         self.assertItemsEqual(result, [456, 789, 345], "can not pull simple fields")
 
-        result = qb.select(data, [{"name": "attach.id", "value": "attachments.attach_id"}])
+        result = jx.select(data, [{"name": "attach.id", "value": "attachments.attach_id"}])
         expected = [{"attach": {"id": 456}}, {"attach": {"id": 789}}, {"attach": {"id": 345}}]
         assert convert.value2json(result) == convert.value2json(expected), "can not rename fields"
-
 
     def test_unicode_attribute(self):
         value = wrap({})
@@ -159,16 +158,14 @@ class TestQb(FuzzyTestCase):
         assert dict_value[u"é"] == "test", "not expecting problems"
         assert dict_value["é"] == "test", "not expecting problems"
 
-
     def test_simple_depth_filter(self):
         data = [Dict(**{u'test_build': {u'name': u'Firefox'}})]
-        result = qb.filter(data, {u'term': {u'test_build.name': u'Firefox'}})
+        result = jx.filter(data, {u'term': {u'test_build.name': u'Firefox'}})
         assert len(result) == 1
-
 
     def test_split_filter(self):
         data = [{u'testrun': {u'suite': u'tp5o'}, u'result': {u'test_name': u'digg.com'}}]
-        result = qb.filter(data, {u'and': [{u'term': {u'testrun.suite': u'tp5o'}}, {u'term': {u'result.test_name': u'digg.com'}}]})
+        result = jx.filter(data, {u'and': [{u'term': {u'testrun.suite': u'tp5o'}}, {u'term': {u'result.test_name': u'digg.com'}}]})
         assert len(result) == 1
 
 
@@ -176,7 +173,7 @@ class TestQb(FuzzyTestCase):
     def test_deep_value_selector(self):
 
         data = [{'bug_id': 35, 'blocked': [686525, 123456]}]
-        result = qb.run({
+        result = jx.run({
             "from": {
                 "from": data,
                 "path": "blocked"
@@ -192,10 +189,10 @@ class TestQb(FuzzyTestCase):
 
     def test_sort_value(self):
         data = [4, 5, 3, 2, 1]
-        result = qb.sort(data, {"value": ".", "sort": -1})
+        result = jx.sort(data, {"value": ".", "sort": -1})
         expected = [5, 4, 3, 2, 1]
         self.assertEqual(result, expected)
 
-        result = qb.sort(data, ".")
+        result = jx.sort(data, ".")
         expected = [1, 2, 3, 4, 5]
         self.assertEqual(result, expected)

@@ -52,7 +52,7 @@ def es_query_template(path):
         return output, wrap([f0])
 
 
-def qb_sort_to_es_sort(sort):
+def jx_sort_to_es_sort(sort):
     if not sort:
         return []
 
@@ -85,13 +85,15 @@ aggregates1_4 = {
     "median": "median",
     "percentile": "percentile",
     "N": "count",
-    "X0": "count",
-    "X1": "sum",
-    "X2": "sum_of_squares",
+    "s0": "count",
+    "s1": "sum",
+    "s2": "sum_of_squares",
     "std": "std_deviation",
     "stddev": "std_deviation",
+    "union": "union",
     "var": "variance",
-    "variance": "variance"
+    "variance": "variance",
+    "stats": "stats"
 }
 
 NON_STATISTICAL_AGGS = {"none", "one"}

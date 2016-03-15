@@ -12,9 +12,7 @@
 # WITH ADDED default_headers THAT CAN BE SET USING pyLibrary.debugs.settings
 # EG
 # {"debug.constants":{
-# "pyLibrary.env.http.default_headers={
-# "From":"klahnakoski@mozilla.com"
-#     }
+#     "pyLibrary.env.http.default_headers":{"From":"klahnakoski@mozilla.com"}
 # }}
 
 
@@ -32,7 +30,7 @@ from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import Dict, coalesce, wrap, set_default
 from pyLibrary.env.big_data import safe_size, CompressedLines, ZipfileLines, GzipLines
 from pyLibrary.maths import Math
-from pyLibrary.queries import qb
+from pyLibrary.queries import jx
 from pyLibrary.thread.threads import Thread
 from pyLibrary.times.durations import SECOND
 
@@ -76,7 +74,7 @@ def request(method, url, zip=None, retry=None, **kwargs):
     if isinstance(url, list):
         # TRY MANY URLS
         failures = []
-        for remaining, u in qb.countdown(url):
+        for remaining, u in jx.countdown(url):
             try:
                 response = request(method, u, zip=zip, retry=retry, **kwargs)
                 if Math.round(response.status_code, decimal=-2) not in [400, 500]:
@@ -192,12 +190,24 @@ def post_json(url, **kwargs):
     """
     ASSUME RESPONSE IN IN JSON
     """
-    kwargs["data"] = convert.unicode2utf8(convert.value2json(kwargs["data"]))
+    if b"json" in kwargs:
+        kwargs[b"data"] = convert.unicode2utf8(convert.value2json(kwargs[b"json"]))
+    elif b'data':
+        kwargs[b"data"] = convert.unicode2utf8(convert.value2json(kwargs[b"data"]))
+    else:
+        Log.error("Expecting `json` parameter")
 
     response = post(url, **kwargs)
-    c=response.content
-    return convert.json2value(convert.utf82unicode(c))
+    c = response.content
+    try:
+        details = convert.json2value(convert.utf82unicode(c))
+    except Exception, e:
+        Log.error("Unexpected return value {{content}}", content=c, cause=e)
 
+    if response.status_code != 200:
+        Log.error("Bad response", cause=Except.wrap(details))
+
+    return details
 
 def put(url, **kwargs):
     return HttpResponse(request(b'put', url, **kwargs))

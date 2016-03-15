@@ -110,11 +110,10 @@ def json2value(json_string, params={}, flexible=False, leaves=False):
             json_string = re.sub(r",\s*\]", r"]", json_string)
 
         if params:
+            # LOOKUP REFERENCES
             json_string = expand_template(json_string, params)
 
-
-        # LOOKUP REFERENCES
-        value = wrap(json_decoder(json_string))
+        value = wrap(json_decoder(unicode(json_string)))
 
         if leaves:
             value = wrap_leaves(value)
@@ -157,7 +156,12 @@ def str2datetime(value, format=None):
 
 
 def datetime2string(value, format="%Y-%m-%d %H:%M:%S"):
-    return Date(value).format(format=format)
+    try:
+        return value.strftime(format)
+    except Exception, e:
+        from pyLibrary.debugs.logs import Log
+
+        Log.error("Can not format {{value}} with {{format}}", value=value, format=format, cause=e)
 
 
 def datetime2str(value, format="%Y-%m-%d %H:%M:%S"):
@@ -644,7 +648,7 @@ json_decoder = json.JSONDecoder().decode
 
 
 def json_schema_to_markdown(schema):
-    from pyLibrary.queries import qb
+    from pyLibrary.queries import jx
 
     def _md_code(code):
         return "`"+code+"`"
@@ -676,7 +680,7 @@ def json_schema_to_markdown(schema):
     lines.append(schema.description)
     lines.append("")
 
-    for k, v in qb.sort(schema.properties.items(), 0):
+    for k, v in jx.sort(schema.properties.items(), 0):
         full_name = k
         if v.type in ["object", "array", "nested"]:
             lines.append("##"+_md_code(full_name)+" Property")

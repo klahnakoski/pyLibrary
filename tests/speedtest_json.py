@@ -22,8 +22,7 @@ from pyLibrary import convert
 from pyLibrary.jsons import scrub
 from pyLibrary.jsons.encoder import cPythonJSONEncoder, json_encoder
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import wrap, unwrap
-
+from pyLibrary.dot import wrap, unwrap, Dict
 
 TARGET_RUNTIME = 10
 
@@ -118,7 +117,8 @@ class EnhancedJSONEncoder(json.JSONEncoder):
             return list(obj)
         elif isinstance(obj, Decimal):
             return float(obj)
-        return json.JSONEncoder.default(self, obj)
+
+        return json.JSONEncoder.default(self, unwrap(obj))
 
 
 def main(num):
