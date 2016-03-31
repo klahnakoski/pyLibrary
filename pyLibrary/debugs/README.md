@@ -15,9 +15,9 @@ Motivation
 Exception handling and logging are undeniably linked.  There are many instances
 where exceptions are raised and must be logged, except when a subsuming system 
 can compensate.  Exception handling semantics are great because they 
-decouple the cause from the solution, but this can be at odds with clean logging
-- which couples raising and catching to make appropriate decisions about what to
-emit to the log.  
+decouple the cause from the solution, but this can be at odds with clean 
+logging - which couples raising and catching to make appropriate decisions 
+about what to emit to the log.  
 
 This logging module is additionally responsible for raising exceptions, 
 collecting the trace and context, and then deducing if it must be logged, or 
@@ -142,7 +142,7 @@ the `in` keyword:
         except Exception, e:
             if "Failure to work with {{key2}}" in e:
 				# Deal with exception thrown in above code, no matter
-				# how many other exception handlers where in the chain
+				# how many other exception handlers were in the chain
 ```
 
 **If you can deal with an exception, then it will never be logged**
@@ -298,9 +298,11 @@ Problems with Python Logging
 ----------------------------
 
 [Python's default `logging` module](https://docs.python.org/2/library/logging.html#logging.debug) 
-is deceptively close to doing the right thing:  
+comes close to doing the right thing, but fails:  
   * It has  keyword parameters, but they are expanded at call time so the values are lost in a string.  
   * It has `extra` parameters, but they are lost if not used by the matching `Formatter`.  
   * It even has stack trace with `exc_info` parameter, but only if an exception is being handled.
+
+Python 2.x has no builtin exception chaining, like [Python 3 does](https://www.python.org/dev/peps/pep-3134/)
 
 

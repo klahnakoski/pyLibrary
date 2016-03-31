@@ -65,7 +65,7 @@ a.b.c += [42]
 `Dict` is a common pattern in many frameworks even though it goes by
 different names and slightly different variations, some examples are:
 
- * [PEP 0505] calls this ["save navigation"](https://www.python.org/dev/peps/pep-0505/)
+ * [PEP 0505] calls this ["safe navigation"](https://www.python.org/dev/peps/pep-0505/)
  * `jinja2.environment.Environment.getattr()`  to allow convenient dot notation
  * `argparse.Environment()` - code performs `setattr(e, name, value)` on
   instances of Environment to provide dot(`.`) accessors
