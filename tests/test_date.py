@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import absolute_import
 from datetime import datetime
 from pyLibrary import strings
+from pyLibrary.collections import MAX
 
 from pyLibrary.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
@@ -27,4 +28,6 @@ class TestDate(FuzzyTestCase):
         expecting = Date(datetime(2015, 10, 04, 13, 53, 11))
         self.assertEqual(date, expecting)
 
-
+    def test_max(self):
+        date = Date("2015-10-04 13:53:11", '%Y-%m-%d %H:%M:%S.%f')
+        self.assertEqual(MAX([None, date]), date)

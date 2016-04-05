@@ -260,6 +260,26 @@ class TestDot(FuzzyTestCase):
         expected = {"c": {"d.e": {"f": 2}}}
         self.assertEqual(a, expected)
 
+    def test_assign_and_use1(self):
+        a = wrap({})
+        agg = a.b
+        agg.c = []
+        agg.c.append("test value")
+
+        self.assertEqual(a, {"b": {"c": ["test_value"]}})
+        self.assertEqual(a.b, {"c": ["test_value"]})
+        self.assertEqual(a.b.c, ["test_value"])
+
+    def test_assign_and_use2(self):
+        a = wrap({})
+        agg = a.b.c
+        agg = []
+        agg.append("test value")
+
+        self.assertEqual(a, {"b": {"c": ["test_value"]}})
+        self.assertEqual(a.b, {"c": ["test_value"]})
+        self.assertEqual(a.b.c, ["test_value"])
+
 
     def test_increment(self):
         a = {}
