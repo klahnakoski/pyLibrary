@@ -25,6 +25,7 @@ from pyLibrary.debugs.text_logs import TextLog_usingMulti, TextLog_usingThread, 
 from pyLibrary.dot import coalesce, listwrap, wrap, unwrap, unwraplist, Null, set_default
 from pyLibrary.strings import indent
 from pyLibrary.thread.threads import Thread, Queue
+from pyLibrary.times.durations import SECOND
 
 
 class Log(object):
@@ -145,6 +146,11 @@ class Log(object):
         if settings.log_type == "email":
             from .log_usingEmail import TextLog_usingEmail
             return TextLog_usingEmail(settings)
+        if settings.log_type == "ses":
+            from .log_usingSES import TextLog_usingSES
+            return TextLog_usingSES(settings)
+
+        Log.error("Log type of {{log_type|quote}} is not recognized", log_type=settings.log_type)
 
     @classmethod
     def add_log(cls, log):
@@ -352,7 +358,7 @@ class Log(object):
         params = dict(unwrap(default_params), **more_params)
 
         add_to_trace = False
-        cause = unwraplist([Except.wrap(c, stack_depth=1) for c in listwrap(cause)])
+        cause = wrap(unwraplist([Except.wrap(c, stack_depth=1) for c in listwrap(cause)]))
         trace = exceptions.extract_stack(stack_depth + 1)
 
         if add_to_trace:
@@ -440,21 +446,25 @@ def write_profile(profile_settings, stats):
 
 
 # GET THE MACHINE METADATA
-ec2 = Null
-try:
-    from pyLibrary import aws
-
-    ec2 = aws.get_instance_metadata()
-except Exception:
-    pass
-
 machine_metadata = wrap({
     "python": platform.python_implementation(),
     "os": (platform.system() + platform.release()).strip(),
-    "aws_instance_type": ec2.instance_type,
-    "name": coalesce(ec2.instance_id, platform.node())
+    "name": platform.node()
 })
 
+
+def _update_with_ec2_info(please_stop):
+    # GET EC2 MACHINE METADATA
+    try:
+        from pyLibrary import aws
+
+        ec2 = aws.get_instance_metadata()
+        machine_metadata.aws_instance_type = ec2.instance_type
+        machine_metadata.name = coalesce(ec2.instance_id, machine_metadata.name)
+    except Exception:
+        pass
+
+Thread.run("get ec2 info", _update_with_ec2_info)
 
 if not Log.main_log:
     Log.main_log = TextLog_usingStream(sys.stdout)

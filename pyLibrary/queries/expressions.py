@@ -20,6 +20,7 @@ from pyLibrary.collections import OR, MAX
 from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import coalesce, wrap, set_default, literal_field, listwrap, Null, split_field
 from pyLibrary.queries.domains import is_keyword
+from pyLibrary.queries.expression_compiler import compile_expression
 from pyLibrary.times.dates import Date
 
 ALLOW_SCRIPTING = False
@@ -33,7 +34,7 @@ _Query = None
 def _late_import():
     global _Query
 
-    from pyLibrary.queries.query import Query as _Query
+    from pyLibrary.queries.query import QueryOp as _Query
 
     _ = _Query
 
@@ -42,12 +43,18 @@ def jx_expression(expr):
     """
     WRAP A JSON EXPRESSION WITH OBJECT REPRESENTATION
     """
-    if expr in (True, False, None) or expr == None or isinstance(expr, (float, int, Decimal)) or isinstance(expr, Date):
+    if isinstance(expr, Expression):
+        Log.error("Expecting JSON, not expression")
+
+    if expr in (True, False, None) or expr == None or isinstance(expr, (float, int, Decimal, Date)):
         return Literal(None, expr)
-    elif is_keyword(expr):
-        return Variable(expr)
-    elif expr == "":
-        Log.error("expression is empty")
+    elif isinstance(expr, unicode):
+        if is_keyword(expr):
+            return Variable(expr)
+        else:
+            Log.error("expression is not recognized: {{expr}}", expr=expr)
+    elif isinstance(expr, (list, tuple)):
+        return TupleOp("tuple", expr)  # FORMALIZE
 
     expr = wrap(expr)
     if expr.date:
@@ -78,7 +85,7 @@ def jx_expression(expr):
         return class_(op, term)
     elif class_ is ScriptOp:
         if ALLOW_SCRIPTING:
-            Log.warning("Scripting has been activated:  This has known security holes!!\nscript = {{script||quote}}", script=term)
+            Log.warning("Scripting has been activated:  This has known security holes!!\nscript = {{script|quote}}", script=term)
             return class_(op, term)
         else:
             Log.error("scripting is disabled")
@@ -104,84 +111,22 @@ def jx_expression(expr):
             return class_(op, jx_expression(term), **clauses)
 
 
-def compile_expression(source):
-    # FORCE MODULES TO BE IN NAMESPACE
-    _ = coalesce
-    _ = Date
-    _ = convert
-
-    output = None
-    exec """
-def output(row, rownum=None, rows=None):
-    try:
-        return """ + source + """
-    except Exception, e:
-        Log.error("Problem with dynamic function {{func|quote}}",  func= """ + convert.value2quote(source) + """, cause=e)
-"""
-    return output
-
-
 def jx_expression_to_function(expr):
     """
     RETURN FUNCTION THAT REQUIRES PARAMETERS (row, rownum=None, rows=None):
     """
+    if isinstance(expr, Expression):
+        if isinstance(expr, ScriptOp) and not isinstance(expr.script, unicode):
+            return expr.script
+        else:
+            return compile_expression(expr.to_python())
     if expr != None and not isinstance(expr, (Mapping, list)) and hasattr(expr, "__call__"):
         return expr
     return compile_expression(jx_expression(expr).to_python())
 
 
-def query_get_all_vars(query, exclude_where=False):
-    """
-    :param query:
-    :param exclude_where: Sometimes we do not what to look at the where clause
-    :return: all variables in use by query
-    """
-    output = set()
-    for s in listwrap(query.select):
-        output |= select_get_all_vars(s)
-    for s in listwrap(query.edges):
-        output |= edges_get_all_vars(s)
-    for s in listwrap(query.groupby):
-        output |= edges_get_all_vars(s)
-    if not exclude_where:
-        output |= jx_expression(query.where).vars()
-    return output
-
-
-def select_get_all_vars(s):
-    if isinstance(s.value, list):
-        return set(s.value)
-    elif isinstance(s.value, basestring):
-        return {s.value}
-    elif s.value == None or s.value == ".":
-        return set()
-    else:
-        if s.value == "*":
-            return {"*"}
-        return jx_expression(s.value).vars()
-
-
-def edges_get_all_vars(e):
-    output = set()
-    if isinstance(e.value, basestring):
-        output.add(e.value)
-    if e.domain.key:
-        output.add(e.domain.key)
-    if e.domain.where:
-        output |= jx_expression(e.domain.where).vars()
-    if e.range:
-        output |= jx_expression(e.range.min).vars()
-        output |= jx_expression(e.range.max).vars()
-    if e.domain.partitions:
-        for p in e.domain.partitions:
-            if p.where:
-                output |= p.where.vars()
-    return output
-
-
 class Expression(object):
     has_simple_form = False
-
 
     def __init__(self, op, terms):
         if isinstance(terms, (list, tuple)):
@@ -195,6 +140,10 @@ class Expression(object):
         else:
             if not isinstance(terms, Expression):
                 Log.error("Expecting an expression")
+
+    @property
+    def name(self):
+        return self.__class_.__name__
 
     def to_ruby(self, not_null=False, boolean=False):
         """
@@ -211,6 +160,9 @@ class Expression(object):
         :return: Python code (unicode)
         """
         raise Log.error("{{type}} has no `to_python` method", type=self.__class__.__name__)
+
+    def to_sql(self, not_null=False, boolean=False):
+        raise Log.error("{{type}} has no `to_sql` method", type=self.__class__.__name__)
 
     def to_esfilter(self):
         raise Log.error("{{type}} has no `to_esfilter` method", type=self.__class__.__name__)
@@ -276,9 +228,27 @@ class Variable(Expression):
         agg = "row"
         if not path:
             return agg
+        elif path[0] in ["row", "rownum"]:
+            # MAGIC VARIABLES
+            agg = path[0]
+            path = path[1:]
+        elif path[0] == "rows":
+            if len(path) == 1:
+                return "rows"
+            elif path[1] in ["first", "last"]:
+                agg = "rows." + path[1] + "()"
+                path = path[2:]
+            else:
+                Log.error("do not know what {{var}} of `rows` is", var=path[1])
+
         for p in path[:-1]:
             agg = agg+".get("+convert.value2quote(p)+", EMPTY_DICT)"
         return agg+".get("+convert.value2quote(path[-1])+")"
+
+    def to_sql(self, not_null=False, boolean=False):
+        if self.var == ".":
+            return "*"
+        return convert.string2quote(self.var)
 
     def __call__(self, row, rownum=None, rows=None):
         path = split_field(self.var)
@@ -322,14 +292,54 @@ class Variable(Expression):
     def __str__(self):
         return str(self.var)
 
+class RowsOp(Expression):
+    has_simple_form = True
+
+    def __init__(self, op, term):
+        Expression.__init__(self, op, term)
+        self.var, self.offset = term
+        if isinstance(self.var, Variable) and not any(self.var.var.startswith(p) for p in ["row.", "rows.", "rownum"]):  # VARIABLES ARE INTERPRETED LITERALLY
+            self.var = Literal("literal", self.var.var)
+
+    def to_python(self, not_null=False, boolean=False):
+        path = split_field(self.var.to_python(not_null=True))
+        agg = "rows[rownum+" + unicode(self.offset) + "]"
+        if not path:
+            return agg
+
+        for p in path[:-1]:
+            agg = agg+".get("+convert.value2quote(p)+", EMPTY_DICT)"
+        return agg+".get("+convert.value2quote(path[-1])+")"
+
+    def to_dict(self):
+        if isinstance(self.var, Literal) and isinstance(self.offset, Literal):
+            return {"rows": {self.var.json, convert.json2value(self.offset.json)}}
+        else:
+            return {"rows": [self.var.to_dict(), self.offset.to_dict()]}
+
+    def vars(self):
+        return self.var.vars() | self.offset.vars() | {"rows", "rownum"}
+
+    def map(self, map_):
+        return BinaryOp("rows", [self.var.map(map_), self.offset.map(map_)])
+
+    def missing(self):
+        return MissingOp("missing", self)
+
 
 class ScriptOp(Expression):
+    """
+    ONLY FOR TESTING AND WHEN YOU TRUST THE SCRIPT SOURCE
+    """
 
     def __init__(self, op, script):
-        Expression.__init__(self, "", None)
+        Expression.__init__(self, op, None)
         self.script = script
 
     def to_ruby(self, not_null=False, boolean=False):
+        return self.script
+
+    def to_python(self, not_null=False, boolean=False):
         return self.script
 
     def vars(self):
@@ -410,6 +420,10 @@ class Literal(Expression):
     def to_python(self, not_null=False, boolean=False):
         return self.json
 
+    def to_sql(self, not_null=False, boolean=False):
+        value = convert.json2value(self.json)
+        return sql_quote(value)
+
     def to_esfilter(self):
         return convert.json2value(self.json)
 
@@ -454,6 +468,9 @@ class NullOp(Literal):
 
     def to_python(self, not_null=False, boolean=False):
         return "None"
+
+    def to_sql(self, not_null=False, boolean=False):
+        return "NULL"
 
     def to_esfilter(self):
         return {"not": {"match_all": {}}}
@@ -501,6 +518,9 @@ class TrueOp(Literal):
 
     def to_python(self, not_null=False, boolean=False):
         return "True"
+
+    def to_sql(self, not_null=False, boolean=False):
+        return "1=1"
 
     def to_esfilter(self):
         return {"match_all": {}}
@@ -552,6 +572,9 @@ class FalseOp(Literal):
     def to_python(self, not_null=False, boolean=False):
         return "False"
 
+    def to_python(self, not_null=False, boolean=False):
+        return "0"
+
     def to_esfilter(self):
         return {"not": {"match_all": {}}}
 
@@ -591,6 +614,9 @@ class DateOp(Literal):
     def to_python(self, not_null=False, boolean=False):
         return "Date("+convert.string2quote(self.value)+")"
 
+    def to_sql(self, not_null=False, boolean=False):
+        return sql_quote(unicode(self.value.unix))
+
     def to_esfilter(self):
         return convert.json2value(self.json)
 
@@ -605,6 +631,78 @@ class DateOp(Literal):
 
     def __str__(self):
         return str(self.json)
+
+
+class TupleOp(Expression):
+
+    def __init__(self, op, terms):
+        Expression.__init__(self, op, terms)
+        if terms == None:
+            self.terms = []
+        elif isinstance(terms, list):
+            self.terms = terms
+        else:
+            self.terms = [terms]
+
+    def to_ruby(self, not_null=False, boolean=False):
+        Log.error("not supported")
+
+    def to_python(self, not_null=False, boolean=False):
+        if len(self.terms) == 0:
+            return "tuple()"
+        elif len(self.terms) == 1:
+            return "(" + self.terms[0].to_python() + ",)"
+        else:
+            return "(" + (",".join(t.to_python() for t in self.terms)) + ")"
+
+    def to_esfilter(self):
+        Log.error("not supported")
+
+    def to_dict(self):
+        return {"tuple": [t.to_dict() for t in self.terms]}
+
+    def vars(self):
+        output = set()
+        for t in self.terms:
+            output |= t.vars()
+        return output
+
+    def map(self, map_):
+        return TupleOp("tuple", [t.map(map_) for t in self.terms])
+
+    def missing(self):
+        return False
+
+
+class LeavesOp(Expression):
+
+    def __init__(self, op, term):
+        Expression.__init__(self, op, term)
+        self.term = term
+
+    def to_ruby(self, not_null=False, boolean=False):
+        Log.error("not supported")
+
+    def to_python(self, not_null=False, boolean=False):
+        return "Dict(" + self.term.to_python() + ").leaves()"
+
+    def to_sql(self, not_null=False, boolean=False):
+        return "*"
+
+    def to_esfilter(self):
+        Log.error("not supported")
+
+    def to_dict(self):
+        return {"leaves": self.term.to_dict()}
+
+    def vars(self):
+        return self.term.vars()
+
+    def map(self, map_):
+        return LeavesOp("leaves", self.term.map(map_))
+
+    def missing(self):
+        return False
 
 
 class BinaryOp(Expression):
@@ -659,6 +757,10 @@ class BinaryOp(Expression):
         self.lhs, self.rhs = terms
         self.default = default
 
+    @property
+    def name(self):
+        return self.op;
+
     def to_ruby(self, not_null=False, boolean=False):
         lhs = self.lhs.to_ruby(not_null=True)
         rhs = self.rhs.to_ruby(not_null=True)
@@ -681,6 +783,9 @@ class BinaryOp(Expression):
 
     def to_python(self, not_null=False, boolean=False):
         return "(" + self.lhs.to_python() + ") " + BinaryOp.operators[self.op] + " (" + self.rhs.to_python()+")"
+
+    def to_sql(self, not_null=False, boolean=False):
+        return "(" + self.lhs.to_sql() + ") " + BinaryOp.operators[self.op] + " (" + self.rhs.to_sql()+")"
 
     def to_esfilter(self):
         if not isinstance(self.lhs, Variable) or not isinstance(self.rhs, Literal) or self.op in BinaryOp.algebra_ops:
@@ -717,7 +822,6 @@ class BinaryOp(Expression):
 class DivOp(Expression):
     has_simple_form = True
 
-
     def __init__(self, op, terms, default=NullOp()):
         Expression.__init__(self, op, terms)
         self.lhs, self.rhs = terms
@@ -740,7 +844,10 @@ class DivOp(Expression):
         return output
 
     def to_python(self, not_null=False, boolean=False):
-        return "(" + self.lhs.to_python() + ") / (" + self.rhs.to_python()+")"
+        return "None if ("+self.missing().to_python()+") else (" + self.lhs.to_python(not_null=True) + ") / (" + self.rhs.to_python(not_null=True)+")"
+
+    def to_sql(self, not_null=False, boolean=False):
+        return "(" + self.lhs.to_sql() + ") / (" + self.rhs.to_sql()+")"
 
     def to_esfilter(self):
         if not isinstance(self.lhs, Variable) or not isinstance(self.rhs, Literal):
@@ -800,6 +907,9 @@ class EqOp(Expression):
     def to_python(self, not_null=False, boolean=False):
         return "(" + self.lhs.to_python() + ") == (" + self.rhs.to_python()+")"
 
+    def to_sql(self, not_null=False, boolean=False):
+        return "(" + self.lhs.to_sql() + ") = (" + self.rhs.to_sql()+")"
+
     def to_esfilter(self):
         if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
             return {"term": {self.lhs.var: convert.json2value(self.rhs.json)}}
@@ -847,6 +957,11 @@ class NeOp(Expression):
         rhs = self.rhs.to_python()
         return "((" + lhs + ") != None and (" + rhs + ") != None and (" + lhs + ") != (" + rhs + "))"
 
+    def to_sql(self, not_null=False, boolean=False):
+        lhs = self.lhs.to_sql()
+        rhs = self.rhs.to_sql()
+        return "((" + lhs + ") IS NOT NULL AND (" + rhs + ") IS NOT NULL AND (" + lhs + ") != (" + rhs + "))"
+
     def to_esfilter(self):
         if isinstance(self.lhs, Variable) and isinstance(self.rhs, Literal):
             return {"not": {"term": {self.lhs.var: self.rhs.to_esfilter()}}}
@@ -884,6 +999,9 @@ class NotOp(Expression):
     def to_python(self, not_null=False, boolean=False):
         return "not (" + self.term.to_python() + ")"
 
+    def to_sql(self, not_null=False, boolean=False):
+        return "NOT (" + self.term.to_sql() + ")"
+
     def vars(self):
         return self.term.vars()
 
@@ -915,10 +1033,22 @@ class AndOp(Expression):
             self.terms = [terms]
 
     def to_ruby(self, not_null=False, boolean=False):
-        return " && ".join("(" + t.to_ruby() + ")" for t in self.terms)
+        if not self.terms:
+            return "true"
+        else:
+            return " && ".join("(" + t.to_ruby() + ")" for t in self.terms)
 
     def to_python(self, not_null=False, boolean=False):
-        return " and ".join("(" + t.to_python() + ")" for t in self.terms)
+        if not self.terms:
+            return "True"
+        else:
+            return " and ".join("(" + t.to_python() + ")" for t in self.terms)
+
+    def to_sql(self, not_null=False, boolean=False):
+        if not self.terms:
+            return "1=1"
+        else:
+            return " AND ".join("(" + t.to_sql() + ")" for t in self.terms)
 
     def to_esfilter(self):
         if not len(self.terms):
@@ -952,6 +1082,9 @@ class OrOp(Expression):
 
     def to_python(self, not_null=False, boolean=False):
         return " or ".join("(" + t.to_python() + ")" for t in self.terms)
+
+    def to_sql(self, not_null=False, boolean=False):
+        return " OR ".join("(" + t.to_sql() + ")" for t in self.terms)
 
     def to_esfilter(self):
         return {"or": [t.to_esfilter() for t in self.terms]}
@@ -988,6 +1121,10 @@ class LengthOp(Expression):
         value = self.term.to_python()
         return "len(" + value + ") if (" + value + ") != None else None"
 
+    def to_sql(self, not_null=False, boolean=False):
+        value = self.term.to_sql()
+        return "CASE WHEN (" + value + ") IS NULL THEN NULL ELSE LENGTH(" + value + ") END"
+
     def to_dict(self):
         return {"length": self.term.to_dict()}
 
@@ -1012,9 +1149,14 @@ class NumberOp(Expression):
         return "(" + test + ") ? null : (((" + value + ") instanceof String) ? Double.parseDouble(" + value + ") : (" + value + "))"
 
     def to_python(self, not_null=False, boolean=False):
-        test = self.term.missing().to_ruby(boolean=True)
-        value = self.term.to_ruby(not_null=True)
+        test = self.term.missing().to_python(boolean=True)
+        value = self.term.to_python(not_null=True)
         return "float(" + value + ") if (" + test + ") else None"
+
+    def to_sql(self, not_null=False, boolean=False):
+        test = self.term.missing().to_sql(boolean=True)
+        value = self.term.to_sql(not_null=True)
+        return "CASE WHEN ("+test+") THEN NULL ELSE CAST("+value+" as FLOAT) END"
 
     def to_dict(self):
         return {"number": self.term.to_dict()}
@@ -1040,9 +1182,15 @@ class StringOp(Expression):
         return "(" + missing + ") ? null : (((" + value + ") instanceof java.lang.Double) ? String.valueOf(" + value + ").replaceAll('\\\\.0$', '') : String.valueOf(" + value + "))"  #"\\.0$"
 
     def to_python(self, not_null=False, boolean=False):
+        missing = self.term.missing().to_python(boolean=True)
         value = self.term.to_python(not_null=True)
-        missing = self.term.missing().to_python()
         return "null if (" + missing + ") else unicode(" + value + ")"
+
+    def to_sql(self, not_null=False, boolean=False):
+        test = self.term.missing().to_sql(boolean=True)
+        value = self.term.to_sql(not_null=True)
+        return "CASE WHEN ("+test+") THEN NULL ELSE CAST("+value+" as TEXT) END"
+
 
     def to_dict(self):
         return {"string": self.term.to_dict()}
@@ -1069,6 +1217,9 @@ class CountOp(Expression):
 
     def to_python(self, not_null=False, boolean=False):
         return "+".join("(0 if (" + t.missing().to_python(boolean=True) + ") else 1)" for t in self.terms)
+
+    def to_sql(self, not_null=False, boolean=False):
+        return "+".join("CASE WHEN (" + t.missing().to_sql(boolean=True) + ") IS NULL THEN 0 ELSE 1 END" for t in self.terms)
 
     def to_dict(self):
         return {"count": [t.to_dict() for t in self.terms]}
@@ -1239,6 +1390,9 @@ class CoalesceOp(Expression):
     def to_python(self, not_null=False, boolean=False):
         return "coalesce(" + (",".join(t.to_python() for t in self.terms)) + ")"
 
+    def to_sql(self, not_null=False, boolean=False):
+        return "COALESCE(" + (",".join(t.to_sql() for t in self.terms)) + ")"
+
     def to_esfilter(self):
         return {"or": [{"exists": {"field": v}} for v in self.terms]}
 
@@ -1278,6 +1432,9 @@ class MissingOp(Expression):
     def to_python(self, not_null=False, boolean=False):
         return self.field.to_python() + " == None"
 
+    def to_sql(self, not_null=False, boolean=False):
+        return self.field.to_sql() + " IS NULL"
+
     def to_esfilter(self):
         if isinstance(self.field, Variable):
             return {"missing": {"field": self.field.var}}
@@ -1316,6 +1473,9 @@ class ExistsOp(Expression):
     def to_python(self, not_null=False, boolean=False):
         return self.field.to_python() + " != None"
 
+    def to_sql(self, not_null=False, boolean=False):
+        return self.field.to_sql() + " IS NOT NULL"
+
     def to_esfilter(self):
         if isinstance(self.field, Variable):
             return {"exists": {"field": self.field.var}}
@@ -1353,6 +1513,9 @@ class PrefixOp(Expression):
 
     def to_python(self, not_null=False, boolean=False):
         return "(" + self.field.to_python() + ").startswith(" + self.prefix.to_python() + ")"
+
+    def to_sql(self, not_null=False, boolean=False):
+        return "INSTR(" + self.field.to_sql() + ", " + self.prefix.to_python() + ")==1"
 
     def to_esfilter(self):
         if isinstance(self.field, Variable) and isinstance(self.prefix, Literal):
@@ -1395,7 +1558,12 @@ class LeftOp(Expression):
     def to_python(self, not_null=False, boolean=False):
         v = self.value.to_python()
         l = self.length.to_python()
-        return "None if " + v + " == None or " + l + " == None else " + v + "[0:min(0, " + l + ")]"
+        return "None if " + v + " == None or " + l + " == None else " + v + "[0:max(0, " + l + ")]"
+
+    def to_sql(self, not_null=False, boolean=False):
+        v = self.value.to_sql()
+        l = self.length.to_sql()
+        return "CASE WHEN " + v + " IS NULL THEN NULL WHEN " + l + " IS NULL THEN NULL ELSE SUBSTR(" + v + ", 1, " + l + ") END"
 
     def to_dict(self):
         if isinstance(self.value, Variable) and isinstance(self.length, Literal):
@@ -1560,6 +1728,12 @@ class InOp(Expression):
     def to_python(self, not_null=False, boolean=False):
         return self.field.to_python() + " in " + self.values.to_python()
 
+    def to_sql(self, not_null=False, boolean=False):
+        if not isinstance(self.values, Literal):
+            Log.error("Not supported")
+        var = self.field.to_sql()
+        return " OR ".join("(" + var + "==" + sql_quote(v) + ")" for v in convert.json2value(self.values))
+
     def to_esfilter(self):
         if isinstance(self.field, Variable):
             return {"terms": {self.field.var: convert.json2value(self.values.json)}}
@@ -1603,6 +1777,12 @@ class WhenOp(Expression):
 
     def to_python(self, not_null=False, boolean=False):
         return "(" + self.when.to_python(boolean=True) + ") ? (" + self.then.to_python(not_null=not_null) + ") : (" + self.els_.to_python(not_null=not_null) + ")"
+
+    def to_sql(self, not_null=False, boolean=False):
+        return "CASE WHEN " + self.when.to_sql(boolean=True) + \
+               " THEN " + self.then.to_sql(not_null=not_null) + \
+               " ELSE " + self.els_.to_sql(not_null=not_null) + \
+               " END"
 
     def to_esfilter(self):
         return {"or": [
@@ -1658,6 +1838,12 @@ class CaseOp(Expression):
             acc = "(" + w.when.to_python(boolean=True) + ") ? (" + w.then.to_python() + ") : (" + acc + ")"
         return acc
 
+    def to_sql(self, not_null=False, boolean=False):
+        acc = " ELSE " + self.whens[-1].to_sql() + " END"
+        for w in reversed(self.whens[0:-1]):
+            acc = " WHEN " + w.when.to_sql(boolean=True) + " THEN " + w.then.to_sql() + acc
+        return "CASE" + acc
+
     def to_esfilter(self):
         return {"script": {"script": self.to_ruby()}}
 
@@ -1692,7 +1878,7 @@ def simplify_esfilter(esfilter):
     except Exception, e:
         from pyLibrary.debugs.logs import Log
 
-        Log.unexpected("programmer error", e)
+        Log.unexpected("programmer error", cause=e)
 
 
 def removeOr(esfilter):
@@ -1900,6 +2086,7 @@ operators = {
     "gt": BinaryOp,
     "gte": BinaryOp,
     "in": InOp,
+    "instr": ContainsOp,
     "left": LeftOp,
     "length": LengthOp,
     "literal": Literal,
@@ -1925,6 +2112,7 @@ operators = {
     "regex": RegExpOp,
     "regexp": RegExpOp,
     "right": RightOp,
+    "rows": RowsOp,
     "script": ScriptOp,
     "string": StringOp,
     "sub": BinaryOp,
@@ -1932,6 +2120,19 @@ operators = {
     "sum": MultiOp,
     "term": EqOp,
     "terms": InOp,
+    "tuple": TupleOp,
     "when": WhenOp,
 }
 
+
+def sql_quote(value):
+    if value == Null:
+        return "NULL"
+    elif value is True:
+        return "0"
+    elif value is False:
+        return "1"
+    elif isinstance(value, unicode):
+        return "'" + value.replace("'", "''") + "'"
+    else:
+        return unicode(value)

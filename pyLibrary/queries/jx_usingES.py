@@ -7,42 +7,40 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
-
-from copy import copy
+from __future__ import division
+from __future__ import unicode_literals
 
 from collections import Mapping
-import sys
+
 from pyLibrary import convert
+from pyLibrary.debugs.exceptions import Except
+from pyLibrary.debugs.logs import Log
+from pyLibrary.dot import coalesce, split_field, literal_field, unwraplist, join_field
+from pyLibrary.dot import wrap, listwrap
+from pyLibrary.dot.dicts import Dict
+from pyLibrary.dot.lists import DictList
 from pyLibrary.env import elasticsearch, http
 from pyLibrary.meta import use_settings
-from pyLibrary.queries import jx, expressions, containers
+from pyLibrary.queries import jx, containers
 from pyLibrary.queries.containers import Container
+from pyLibrary.queries.dimensions import Dimension
 from pyLibrary.queries.domains import is_keyword
-from pyLibrary.queries.es09 import setop as es09_setop
 from pyLibrary.queries.es09 import aggop as es09_aggop
+from pyLibrary.queries.es09 import setop as es09_setop
 from pyLibrary.queries.es14.aggs import es_aggsop, is_aggsop
 from pyLibrary.queries.es14.deep import is_deepop, es_deepop
 from pyLibrary.queries.es14.setop import is_setop, es_setop
-from pyLibrary.queries.dimensions import Dimension
 from pyLibrary.queries.es14.util import aggregates1_4
 from pyLibrary.queries.expressions import jx_expression
 from pyLibrary.queries.meta import FromESMetadata
 from pyLibrary.queries.namespace.typed import Typed
-from pyLibrary.queries.query import Query, _normalize_where
-from pyLibrary.debugs.exceptions import Except
-from pyLibrary.debugs.logs import Log
-from pyLibrary.dot.dicts import Dict
-from pyLibrary.dot import coalesce, split_field, literal_field, unwraplist, join_field, unwrap
-from pyLibrary.dot.lists import DictList
-from pyLibrary.dot import wrap, listwrap
+from pyLibrary.queries.query import QueryOp
 
 
 class FromES(Container):
     """
-    SEND GENERAL jx QUERIES TO ElasticSearch
+    SEND jx QUERIES TO ElasticSearch
     """
 
     def __new__(cls, *args, **kwargs):
@@ -54,7 +52,7 @@ class FromES(Container):
             return Container.__new__(cls)
 
     @use_settings
-    def __init__(self, host, index, type=None, alias=None, name=None, port=9200, read_only=True, settings=None):
+    def __init__(self, host, index, type=None, alias=None, name=None, port=9200, read_only=True, typed=None, settings=None):
         Container.__init__(self, None)
         if not containers.config.default:
             containers.config.default.settings = settings
@@ -69,9 +67,12 @@ class FromES(Container):
         self.settings.type = self._es.settings.type
         self.edges = Dict()
         self.worker = None
-        self._columns = self.get_columns(table_name=index)
-        # SWITCH ON TYPED MODE
-        self.typed = any(c.name in ("$value", "$object") for c in self._columns)
+        if typed == None:
+            self._columns = self.get_columns(table_name=index)
+            # SWITCH ON TYPED MODE
+            self.typed = any(c.name in ("$value", "$object") for c in self._columns)
+        else:
+            self.typed = typed
 
     @property
     def schema(self):
@@ -90,7 +91,6 @@ class FromES(Container):
 
     def __json__(self):
         return convert.value2json(self.as_dict())
-
 
     def __enter__(self):
         Log.error("No longer used")
@@ -116,7 +116,7 @@ class FromES(Container):
 
     def query(self, _query):
         try:
-            query = Query(_query, schema=self)
+            query = QueryOp.wrap(_query, schema=self)
 
             for n in self.namespaces:
                 query = n.convert(query)
@@ -125,10 +125,14 @@ class FromES(Container):
 
             for s in listwrap(query.select):
                 if not aggregates1_4.get(s.aggregate):
-                    Log.error("ES can not aggregate " + s.name + " because '" + s.aggregate + "' is not a recognized aggregate")
+                    Log.error(
+                        "ES can not aggregate {{name}} because {{aggregate|quote}} is not a recognized aggregate",
+                        name=s.name,
+                        aggregate=s.aggregate
+                    )
 
             frum = query["from"]
-            if isinstance(frum, Query):
+            if isinstance(frum, QueryOp):
                 result = self.query(frum)
                 q2 = query.copy()
                 q2.frum = result
@@ -191,46 +195,6 @@ class FromES(Container):
 
     def __getattr__(self, item):
         return self.edges[item]
-
-    def normalize_edges(self, edges):
-        output = DictList()
-        for e in listwrap(edges):
-            output.extend(self._normalize_edge(e))
-        return output
-
-    def _normalize_edge(self, edge):
-        """
-        RETURN A EDGE DEFINITION INTO A SIMPLE ARRAY OF PATH-LEAF
-        DEFINITIONS [ {"name":<pathA>, "value":<pathB>}, ... ]
-
-        USEFUL FOR DECLARING HIGH-LEVEL DIMENSIONS, AND RELIEVING LOW LEVEL PATH PAIRS
-        """
-        if isinstance(edge, basestring):
-            e = self[edge]
-            if e:
-                domain = e.getDomain()
-                fields = domain.dimension.fields
-
-                if isinstance(fields, list):
-                    if len(fields) == 1:
-                        return [{"value": fields[0]}]
-                    else:
-                        return [{"name": (edge + "[" + str(i) + "]"), "value": v} for i, v in enumerate(fields)]
-                elif isinstance(fields, Mapping):
-                    return [{"name": (edge + "." + k), "value": v} for k, v in fields.items()]
-                else:
-                    Log.error("do not know how to handle")
-
-            return [{
-                        "name": edge,
-                        "value": edge
-                    }]
-        else:
-            return [{
-                        "name": coalesce(edge.name, edge.value),
-                        "value": edge.value
-                    }]
-
 
     def update(self, command):
         """
