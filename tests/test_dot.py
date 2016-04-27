@@ -266,19 +266,19 @@ class TestDot(FuzzyTestCase):
         agg.c = []
         agg.c.append("test value")
 
-        self.assertEqual(a, {"b": {"c": ["test_value"]}})
-        self.assertEqual(a.b, {"c": ["test_value"]})
-        self.assertEqual(a.b.c, ["test_value"])
+        self.assertEqual(a, {"b": {"c": ["test value"]}})
+        self.assertEqual(a.b, {"c": ["test value"]})
+        self.assertEqual(a.b.c, ["test value"])
 
     def test_assign_and_use2(self):
         a = wrap({})
         agg = a.b.c
-        agg = []
+        agg += []
         agg.append("test value")
 
-        self.assertEqual(a, {"b": {"c": ["test_value"]}})
-        self.assertEqual(a.b, {"c": ["test_value"]})
-        self.assertEqual(a.b.c, ["test_value"])
+        self.assertEqual(a, {"b": {"c": ["test value"]}})
+        self.assertEqual(a.b, {"c": ["test value"]})
+        self.assertEqual(a.b.c, ["test value"])
 
 
     def test_increment(self):

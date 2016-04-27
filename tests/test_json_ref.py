@@ -46,11 +46,17 @@ class TestRef(FuzzyTestCase):
             }
         })
 
-    def test_json_parameter(self):
+    def test_empty_object_as_json_parameter(self):
         url = "file://tests/resources/json_ref/test_ref_w_parameters.json?{{.|url}}"
         url = expand_template(url, {"metadata": Dict()})
         result = jsons.ref.get(url)
         self.assertEqual(result, {"test_result": {}}, "expecting proper parameter expansion")
+
+    def test_json_parameter(self):
+        url = "file://tests/resources/json_ref/test_ref_w_parameters.json?{{.|url}}"
+        url = expand_template(url, {"metadata": ["a", "b"]})
+        result = jsons.ref.get(url)
+        self.assertEqual(result, {"a": ["a", "b"]}, "expecting proper parameter expansion")
 
     def test_parameter_list(self):
         url = "file://tests/resources/json_ref/test_ref_w_parameters.json?test1=a&test1=b&test2=c&test1=d"
