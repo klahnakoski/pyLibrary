@@ -26,9 +26,10 @@ from copy import copy
 from datetime import datetime, timedelta
 
 from pyLibrary import strings
-from pyLibrary.debugs.exceptions import Except
+from pyLibrary.debugs.exceptions import Except, suppress_exception
 from pyLibrary.debugs.profiles import CProfiler
-from pyLibrary.dot import coalesce, Dict
+from pyLibrary.dot import coalesce, Dict, unwraplist
+from pyLibrary.maths import Math
 from pyLibrary.times.dates import Date
 from pyLibrary.times.durations import SECOND, Duration
 
@@ -219,10 +220,8 @@ class Queue(object):
                             self.keep_running = False
                         return value
 
-                    try:
+                    with suppress_exception:
                         self.lock.wait()
-                    except Exception, e:
-                        pass
             else:
                 while self.keep_running:
                     if self.queue:
@@ -233,10 +232,9 @@ class Queue(object):
                     elif Date.now() > till:
                         break
 
-                    try:
+                    with suppress_exception:
                         self.lock.wait(till=till)
-                    except Exception, e:
-                        pass
+
                 if self.keep_running:
                     return None
 
@@ -341,26 +339,37 @@ class MainThread(object):
         self.children.append(child)
 
     def remove_child(self, child):
-        try:
+        with suppress_exception:
             self.children.remove(child)
-        except Exception, _:
-            pass
 
     def stop(self):
         """
         BLOCKS UNTIL ALL THREADS HAVE STOPPED
         """
+        join_errors = []
+
         children = copy(self.children)
         for c in reversed(children):
             if c.name and DEBUG:
                 _Log.note("Stopping thread {{name|quote}}", name=c.name)
-            c.stop()
+            try:
+                c.stop()
+            except Exception, e:
+                join_errors.append(e)
+
         for c in children:
             if DEBUG and c.name:
                 _Log.note("Joining on thread {{name|quote}}", name=c.name)
-            c.join()
+            try:
+                c.join()
+            except Exception, e:
+                join_errors.append(e)
+
             if DEBUG and c.name:
                 _Log.note("Done join on thread {{name|quote}}", name=c.name)
+
+        if join_errors:
+            _Log.error("Problem while stopping {{name|quote}}", name=self.name, cause=unwraplist(join_errors))
 
         if DEBUG:
             _Log.note("Thread {{name|quote}} now stopped", name=self.name)
@@ -399,7 +408,7 @@ class Thread(object):
         self.please_stop = self.kwargs["please_stop"]
 
         self.thread = None
-        self.stopped = Signal()
+        self.stopped = Signal(name+" has stopped")
         self.cprofiler = None
         self.children = []
 
@@ -469,24 +478,22 @@ class Thread(object):
             except Exception, e:
                 with self.synch_lock:
                     self.end_of_thread = Dict(exception=_Except.wrap(e))
-                try:
-                    _Log.fatal("Problem in thread {{name|quote}}", name=self.name, cause=e)
-                except Exception:
-                    sys.stderr.write(b"ERROR in thread: " + str(self.name) + b" " + str(e) + b"\n")
+                if self not in self.parent.children:
+                    # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
+                    try:
+                        _Log.fatal("Problem in thread {{name|quote}}", name=self.name, cause=e)
+                    except Exception:
+                        sys.stderr.write(b"ERROR in thread: " + str(self.name) + b" " + str(e) + b"\n")
             finally:
                 try:
                     children = copy(self.children)
                     for c in children:
-                        try:
+                        with suppress_exception:
                             c.stop()
-                        except Exception:
-                            pass
 
                     for c in children:
-                        try:
+                        with suppress_exception:
                             c.join()
-                        except Exception, _:
-                            pass
 
                     self.stopped.go()
                     del self.target, self.args, self.kwargs
@@ -526,7 +533,8 @@ class Thread(object):
                             if not self.end_of_thread.exception:
                                 return self.end_of_thread.response
                             else:
-                                _Log.error("Thread did not end well", cause=self.end_of_thread.exception)
+                                # IF JOINING WITH A THREAD, YOU ARE EXPECTED TO HANDLE ITS EXCEPTION
+                                _Log.error("Thread {{name|quote}} did not end well", name=self.name, cause=self.end_of_thread.exception)
                         self.synch_lock.wait(0.5)
 
                 if DEBUG:
@@ -538,7 +546,7 @@ class Thread(object):
                 if not self.end_of_thread.exception:
                     return self.end_of_thread.response
                 else:
-                    _Log.error("Thread did not end well", cause=self.end_of_thread.exception)
+                    _Log.error("Thread {{name|quote}} did not end well", name=self.name, cause=self.end_of_thread.exception)
             else:
                 from pyLibrary.debugs.exceptions import Except
 
@@ -615,12 +623,21 @@ class Thread(object):
         if not isinstance(please_stop, Signal):
             please_stop = Signal()
 
-        please_stop.on_go(lambda: thread.start_new_thread(lambda: MAIN_THREAD.stop(), ()))
+        def stopper():
+            try:
+                MAIN_THREAD.stop()
+            except Exception, e:
+                e = Except.wrap(e)
+                _Log.warning("Problem with threads", cause=e)
+            sys.exit(0)
+
+        please_stop.on_go(lambda: thread.start_new_thread(stopper, ()))
 
         if Thread.current() != MAIN_THREAD:
             if not _Log:
                 _late_import()
             _Log.error("Only the main thread can sleep forever (waiting for KeyboardInterrupt)")
+
 
         try:
             if allow_exit:
@@ -653,7 +670,8 @@ class Signal(object):
     on_go() - METHOD FOR OTHER THREAD TO RUN WHEN ACTIVATING SIGNAL
     """
 
-    def __init__(self):
+    def __init__(self, name=None):
+        self._name = name
         self.lock = Lock()
         self._go = False
         self.job_queue = []
@@ -668,7 +686,6 @@ class Signal(object):
     def __nonzero__(self):
         with self.lock:
             return self._go
-
 
     def wait_for_go(self, timeout=None, till=None):
         """
@@ -688,6 +705,10 @@ class Signal(object):
             if self._go:
                 return
 
+            if DEBUG:
+                if not _Log:
+                    _late_import()
+                _Log.note("Thread {{thread|quote}} signaled {{name|quote}}", thread=Thread.current().name, name=self.name)
             self._go = True
             jobs = self.job_queue
             self.job_queue = []
@@ -715,9 +736,27 @@ class Signal(object):
 
         with self.lock:
             if self._go:
+                if DEBUG:
+                    if not _Log:
+                        _late_import()
+                    _Log.note("Signal {{name|quote}} already triggered, running job immediately", name=self.name)
                 target()
             else:
+                if DEBUG:
+                    if not _Log:
+                        _late_import()
+                    _Log.note("Adding job to signal {{name|quote}}", name=self.name)
                 self.job_queue.append(target)
+
+    @property
+    def name(self):
+        if not self._name:
+            return "anonymous signal"
+        else:
+            return self._name
+
+    def __str__(self):
+        return self.name.decode(unicode)
 
 
 class ThreadedQueue(Queue):
@@ -741,7 +780,7 @@ class ThreadedQueue(Queue):
         if not _Log:
             _late_import()
 
-        batch_size = coalesce(batch_size, int(coalesce(max_size, 0) / 2), 900)
+        batch_size = coalesce(batch_size, int(max_size / 2) if max_size else None, 900)
         max_size = coalesce(max_size, batch_size * 2)  # REASONABLE DEFAULT
         period = coalesce(period, SECOND)
         bit_more_time = 5 * SECOND
@@ -755,7 +794,15 @@ class ThreadedQueue(Queue):
             please_stop.on_go(stopper)
 
             _buffer = []
+            _post_push_functions = []
             next_time = Date.now() + period  # THE TIME WE SHOULD DO A PUSH
+
+            def push_to_queue():
+                queue.extend(_buffer)
+                del _buffer[:]
+                for f in _post_push_functions:
+                    f()
+                del _post_push_functions[:]
 
             while not please_stop:
                 try:
@@ -764,26 +811,28 @@ class ThreadedQueue(Queue):
                         now = Date.now()
 
                         if item is Thread.STOP:
-                            queue.extend(_buffer)
+                            push_to_queue()
                             please_stop.go()
                             break
                         elif isinstance(item, types.FunctionType):
-                            item()
+                            _post_push_functions.append(item)
                         elif item is not None:
                             _buffer.append(item)
 
-                        next_time = now + period  # NO NEED TO SEND TOO EARLY
+                        # DO NOT START AGAIN TOO SOON
+                        if next_time < now + period:
+                            next_time = now + period
                         continue
 
                     item = self.pop(till=next_time)
                     now = Date.now()
 
                     if item is Thread.STOP:
-                        queue.extend(_buffer)
+                        push_to_queue()
                         please_stop.go()
                         break
                     elif isinstance(item, types.FunctionType):
-                        item()
+                        _post_push_functions.append(item)
                     elif item is not None:
                         _buffer.append(item)
 
@@ -809,8 +858,7 @@ class ThreadedQueue(Queue):
                     if len(_buffer) >= batch_size or now > next_time:
                         next_time = now + period
                         if _buffer:
-                            queue.extend(_buffer)
-                            _buffer = []
+                            push_to_queue()
                             # A LITTLE MORE TIME TO FILL THE NEXT BUFFER
                             now = Date.now()
                             if now > next_time:
@@ -837,7 +885,7 @@ class ThreadedQueue(Queue):
 
             if _buffer:
                 # ONE LAST PUSH, DO NOT HAVE TIME TO DEAL WITH ERRORS
-                queue.extend(_buffer)
+                push_to_queue()
 
         self.thread = Thread.run("threaded queue for " + name, worker_bee, parent_thread=self)
 
@@ -906,11 +954,8 @@ def _wait_for_interrupt(please_stop):
     while not please_stop:
         if DEBUG:
             _Log.note("inside wait-for-shutdown loop")
-        try:
+        with suppress_exception:
             Thread.sleep(please_stop=please_stop)
-        except Exception, _:
-            pass
-
 
 
 class Till(Signal):
