@@ -9,6 +9,8 @@
 #
 
 from __future__ import unicode_literals
+
+import zlib
 from future.utils import raise_from
 
 import logging
@@ -234,6 +236,21 @@ class TestExcept(FuzzyTestCase):
         except Exception, e:
             e = Except.wrap(e)
             self.assertEqual(e.cause, None)  # REALLY, THE CAUSE IS problem_y()
+
+    def test_contains_from_zip_error(self):
+        def bad_unzip():
+            decompressor = zlib.decompressobj(16 + zlib.MAX_WBITS)
+            return decompressor.decompress(b'invlaid zip file')
+
+        try:
+            bad_unzip()
+            assert False
+        except Exception, e:
+            e = Except.wrap(e)
+            if "incorrect header check" in e:
+                pass
+            else:
+                assert False
 
 
 

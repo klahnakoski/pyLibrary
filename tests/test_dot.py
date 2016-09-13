@@ -19,6 +19,10 @@ from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 class TestDot(FuzzyTestCase):
 
+    def test_null_class(self):
+        self.assertFalse(isinstance(Null, Mapping))
+
+
     def test_userdict(self):
         def show_kwargs(**kwargs):
             return kwargs
