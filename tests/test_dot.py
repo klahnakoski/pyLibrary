@@ -19,6 +19,12 @@ from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 class TestDot(FuzzyTestCase):
 
+    def test_set_union_w_null(self):
+        s = set('a')
+        s |= Null
+        self.assertAlmostEqual(s, set('a'))
+
+
     def test_null_class(self):
         self.assertFalse(isinstance(Null, Mapping))
 

@@ -131,6 +131,9 @@ class NullType(object):
             return True
         return Null
 
+    def __ror__(self, other):
+        return other
+
     def __and__(self, other):
         if other is False:
             return False
