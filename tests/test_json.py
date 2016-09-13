@@ -67,7 +67,7 @@ class TestJSON(unittest.TestCase):
         test = pypy_json_encode({"values": [i for i in range(1000)]})
         test = test[:1000] + "|" + test[1000:]
         expected = u"Can not decode JSON at:\n\t..., 216, 217, 218, 219|, 220, 221, 222, 22...\n\t                       ^\n"
-        expected = u'Can not decode JSON at:\n\t...9,270,271,272,273,27|4,275,276,277,278,2...\n\t                       ^\n'
+        # expected = u'Can not decode JSON at:\n\t...9,270,271,272,273,27|4,275,276,277,278,2...\n\t                       ^\n'
         try:
             output = convert.json2value(test)
             Log.error("Expecting error")
