@@ -6,6 +6,11 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
+
 from UserDict import UserDict
 from collections import Mapping
 
@@ -268,6 +273,14 @@ class TestDot(FuzzyTestCase):
 
         b.c["d\.e"].f = 2
         expected = {"c": {"d.e": {"f": 2}}}
+        self.assertEqual(a, expected)
+
+    def test_setitem_and_deep(self):
+        a = {}
+        b = wrap(a)
+
+        b.c["d"].e.f = 3
+        expected = {"c": {"d": {"e": {"f": 3}}}}
         self.assertEqual(a, expected)
 
     def test_assign_and_use1(self):
