@@ -18,6 +18,7 @@ from pyLibrary.collections import MAX
 from pyLibrary.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.times.dates import Date
+from pyLibrary.times.durations import MONTH, YEAR
 
 
 class TestDate(FuzzyTestCase):
@@ -31,3 +32,25 @@ class TestDate(FuzzyTestCase):
     def test_max(self):
         date = Date("2015-10-04 13:53:11", '%Y-%m-%d %H:%M:%S.%f')
         self.assertEqual(MAX([None, date]), date)
+
+    def test_floor_quarter(self):
+        date = Date("2015-10-04 13:53:11", '%Y-%m-%d %H:%M:%S.%f')
+        f = date.floor(3*MONTH)
+        expected = Date("2015-10-01")
+        self.assertEqual(f, expected)
+
+    def test_floor_year(self):
+        date = Date("2015-10-04 13:53:11", '%Y-%m-%d %H:%M:%S.%f')
+        f = date.floor(YEAR)
+        expected = Date("2015-01-01")
+        self.assertEqual(f, expected)
+
+    def test_floor_year2(self):
+        date = Date("2015-10-04 13:53:11", '%Y-%m-%d %H:%M:%S.%f')
+        f = date.floor(2*YEAR)
+        expected = Date("2014-01-01")
+        self.assertEqual(f, expected)
+
+
+
+
