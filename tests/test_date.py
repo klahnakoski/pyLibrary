@@ -18,7 +18,7 @@ from pyLibrary.collections import MAX
 from pyLibrary.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.times.dates import Date
-from pyLibrary.times.durations import MONTH, YEAR
+from pyLibrary.times.durations import MONTH, YEAR, WEEK
 
 
 class TestDate(FuzzyTestCase):
@@ -51,6 +51,11 @@ class TestDate(FuzzyTestCase):
         expected = Date("2014-01-01")
         self.assertEqual(f, expected)
 
+    def test_floor_week(self):
+        date = Date('2016-09-30 15:51:50')
+        f = date.floor(WEEK)
+        expected = Date("2016-09-25")
+        self.assertEqual(f, expected)
 
 
 
