@@ -55,7 +55,7 @@ class TestJSON(unittest.TestCase):
         value = {"value": 5.2025595183536973e-07}
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "value": {"$value": 5.202559518353697e-07}}'
+        expected = u'{"$object": ".", "value": {"$value": 5.202559518353697e-7}}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 

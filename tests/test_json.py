@@ -11,11 +11,12 @@
 import datetime
 import unittest
 
-from pyLibrary import convert
+from pyLibrary import convert, jsons
 from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import Dict, wrap
 from pyLibrary.env.elasticsearch import scrub
 from pyLibrary.jsons.encoder import pypy_json_encode as pypy_json_encode, cPythonJSONEncoder, pretty_json
+from pyLibrary.times.dates import Date
 
 cpython_json_encoder = cPythonJSONEncoder().encode
 
@@ -47,10 +48,22 @@ class TestJSON(unittest.TestCase):
         if not isinstance(output, unicode):
             Log.error("expecting unicode json")
 
-    def test_double(self):
+    def test_double1(self):
         test = {"value": 5.2025595183536973e-07}
         output = pypy_json_encode(test)
-        if output != u'{"value": 5.202559518353697e-07}':
+        if output != u'{"value": 5.202559518353697e-7}':
+            Log.error("expecting correct value")
+
+    def test_double2(self):
+        test = {"value": 52}
+        output = pypy_json_encode(test)
+        if output != u'{"value": 52}':
+            Log.error("expecting correct value")
+
+    def test_double3(self):
+        test = {"value": .52}
+        output = pypy_json_encode(test)
+        if output != u'{"value": 0.52}':
             Log.error("expecting correct value")
 
     def test_generator(self):
@@ -118,6 +131,36 @@ class TestJSON(unittest.TestCase):
         test = pretty_json(j)
         expecting = u'{"not": {"match_all": {}}}'
         self.assertEqual(test, expecting, "expecting empty dict to serialize")
+
+    def test_Date(self):
+        test = Date(1430983248.0)
+        output = pypy_json_encode(test)
+        expecting='1430983248'
+        self.assertEqual(output, expecting, "expecting integer")
+
+    def test_float(self):
+        test = float(10.0)
+        output = pypy_json_encode(test)
+        expecting='10'
+        self.assertEqual(output, expecting, "expecting integer")
+
+    def test_nan(self):
+        test = float("nan")
+        output = pypy_json_encode(test)
+        expecting = cpython_json_encoder(jsons.scrub(test))
+        self.assertEqual(output, expecting, "expecting "+expecting)
+
+    def test_inf(self):
+        test = float("+inf")
+        output = pypy_json_encode(test)
+        expecting = cpython_json_encoder(jsons.scrub(test))
+        self.assertEqual(output, expecting, "expecting "+expecting)
+
+    def test_minus_inf(self):
+        test = float("-inf")
+        output = pypy_json_encode(test)
+        expecting = cpython_json_encoder(jsons.scrub(test))
+        self.assertEqual(output, expecting, "expecting "+expecting)
 
 
 if __name__ == '__main__':
