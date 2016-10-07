@@ -59,7 +59,7 @@ class FromESMetadata(Schema):
         if hasattr(self, "settings"):
             return
 
-        from pyLibrary.queries.containers.lists import ListContainer
+        from pyLibrary.queries.containers.list_usingPythonList import ListContainer
         from pyLibrary.env import elasticsearch as _elasticsearch
 
         self.settings = settings
@@ -101,7 +101,7 @@ class FromESMetadata(Schema):
         existing_columns = [r for r in self.meta.columns.data if r.table == c.table and r.name == c.name]
         if not existing_columns:
             self.meta.columns.add(c)
-            Log.note("todo: {{table}}.{{column}}", table=c.table, column=c.es_column)
+            Log.note("todo: {{table}}::{{column}}", table=c.table, column=c.es_column)
             self.todo.add(c)
 
             # MARK meta.columns AS DIRTY TOO
@@ -117,7 +117,7 @@ class FromESMetadata(Schema):
 
             for key in Column.__slots__:
                 canonical[key] = c[key]
-            Log.note("todo: {{table}}.{{column}}", table=canonical.table, column=canonical.es_column)
+            Log.note("todo: {{table}}::{{column}}", table=canonical.table, column=canonical.es_column)
             self.todo.add(canonical)
 
     def _get_columns(self, table=None):
@@ -136,59 +136,57 @@ class FromESMetadata(Schema):
             lambda r: not r.es_column.startswith("other.") and
                       not r.es_column.startswith("previous_values.cf_") and
                       not r.es_index.startswith("debug") and
-                      not r.es_coloun.find
+                      r.es_column.find("=")==-1 and
+                      r.es_column.find(" ")==-1
         )
         with Timer("upserting {{num}} columns", {"num": len(abs_columns)}, debug=DEBUG):
             def add_column(c, query_path):
                 c.last_updated = Date.now()
-                if query_path:
-                    c.table = c.es_index + "." + query_path.last()
-                else:
-                    c.table = c.es_index
+                c.table = join_field([c.es_index]+split_field(query_path[0]))
 
                 with self.meta.columns.locker:
                     self._upsert_column(c)
                     for alias in meta.aliases:
                         c = copy(c)
-                        if query_path:
-                            c.table = alias + "." + query_path.last()
-                        else:
-                            c.table = alias
+                        c.table = join_field([alias]+split_field(query_path[0]))
                         self._upsert_column(c)
 
-            # EACH query_path IS A LIST OF EVER-INCREASING PATHS THROUGH EACH NESTED LEVEL
-            query_paths = wrap([[c.es_column] for c in abs_columns if c.type == "nested"])
+            # LIST OF EVERY NESTED PATH
+            query_paths = [[c.es_column] for c in abs_columns if c.type == "nested"]
             for a, b in itertools.product(query_paths, query_paths):
-                aa = a.last()
-                bb = b.last()
+                aa = a[0]
+                bb = b[0]
                 if aa and bb.startswith(aa):
                     for i, b_prefix in enumerate(b):
-                        if len(b_prefix) < len(aa):
+                        if len(b_prefix) > len(aa):
                             continue
                         if aa == b_prefix:
                             break  # SPLIT ALREADY FOUND
-                        b.insert(0, aa)
+                        b.insert(i, aa)
                         break
-            query_paths.append([])
+            for q in query_paths:
+                q.append(".")
+            query_paths.append(["."])
 
             for c in abs_columns:
                 # ADD RELATIVE COLUMNS
-                full_path = listwrap(c.nested_path)
-                abs_depth = len(full_path)
-                abs_parent = coalesce(full_path.last(), "")
+                full_path = c.nested_path
+                abs_depth = len(full_path)-1
+                abs_parent = full_path[1] if abs_depth else ""
+
                 for query_path in query_paths:
-                    rel_depth = len(query_path)
+                    rel_depth = len(query_path)-1
 
                     # ABSOLUTE
                     add_column(copy(c), query_path)
                     cc = copy(c)
                     cc.relative = True
 
-                    if not query_path:
+                    if query_path[0] == ".":
                         add_column(cc, query_path)
                         continue
 
-                    rel_parent = query_path.last()
+                    rel_parent = query_path[0]
 
                     if c.es_column.startswith(rel_parent+"."):
                         cc.name = c.es_column[len(rel_parent)+1:]
@@ -332,9 +330,9 @@ class FromESMetadata(Schema):
                         "where": {"eq": {"es_index": c.es_index, "es_column": c.es_column}}
                     })
                 return
-            elif c.nested_path:
+            elif c.nested_path[0] != ".":
                 query.aggs[literal_field(c.name)] = {
-                    "nested": {"path": listwrap(c.nested_path)[0]},
+                    "nested": {"path": c.nested_path[0]},
                     "aggs": {"_nested": {"terms": {"field": c.es_column, "size": 0}}}
                 }
             else:
@@ -452,10 +450,10 @@ class FromESMetadata(Schema):
 
 
 def _counting_query(c):
-    if c.nested_path:
+    if c.nested_path[0] != ".":
         return {
             "nested": {
-                "path": listwrap(c.nested_path)[0]  # FIRST ONE IS LONGEST
+                "path": c.nested_path[0]  # FIRST ONE IS LONGEST
             },
             "aggs": {
                 "_nested": {"cardinality": {
@@ -479,7 +477,7 @@ def metadata_columns():
                 name=c,
                 es_column=c,
                 type="string",
-                nested_path=Null,
+                nested_path=["."]
             )
             for c in [
                 "name",
@@ -496,7 +494,7 @@ def metadata_columns():
                 name=c,
                 es_column=c,
                 type="object",
-                nested_path=Null,
+                nested_path=["."]
             )
             for c in [
                 "domain",
@@ -509,7 +507,7 @@ def metadata_columns():
                 name=c,
                 es_column=c,
                 type="long",
-                nested_path=Null,
+                nested_path=["."]
             )
             for c in [
                 "count",
@@ -522,7 +520,7 @@ def metadata_columns():
                 name="last_updated",
                 es_column="last_updated",
                 type="time",
-                nested_path=Null,
+                nested_path=["."]
             )
         ]
     )
@@ -536,7 +534,7 @@ def metadata_tables():
                 es_index=None,
                 es_column=c,
                 type="string",
-                nested_path=Null
+                nested_path=["."]
             )
             for c in [
                 "name",
@@ -550,7 +548,7 @@ def metadata_tables():
                 es_index=None,
                 es_column="timestamp",
                 type="integer",
-                nested_path=Null
+                nested_path=["."]
             )
         ]
     )

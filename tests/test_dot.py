@@ -275,6 +275,16 @@ class TestDot(FuzzyTestCase):
         expected = {"c": {"d.e": {"f": 2}}}
         self.assertEqual(a, expected)
 
+    def test_assign6(self):
+        a = {}
+        b = wrap(a)
+
+        b["c.d.e\.f"] = 1
+        b["c.d.e\.g"] = 2
+
+        expected = {"c":{"d":{"e.f":1, "e.g":2}}}
+        self.assertEqual(a, expected)
+
     def test_setitem_and_deep(self):
         a = {}
         b = wrap(a)
@@ -409,7 +419,6 @@ class TestDot(FuzzyTestCase):
         leaves = wrap(dict(a.leaves()))
         self.assertEqual(a.a.a['a'], leaves["a\.a\.a"], "expecting 1")
         self.assertEqual(a.a.b['b'], leaves["a\.b\.b"], "expecting 2")
-
 
 
 
