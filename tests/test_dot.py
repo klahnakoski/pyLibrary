@@ -282,7 +282,17 @@ class TestDot(FuzzyTestCase):
         b["c.d.e\.f"] = 1
         b["c.d.e\.g"] = 2
 
-        expected = {"c":{"d":{"e.f":1, "e.g":2}}}
+        expected = {"c": {"d": {"e.f": 1, "e.g": 2}}}
+        self.assertEqual(a, expected)
+
+    def test_assign7(self):
+        a = {}
+        b = wrap(a)
+
+        b["c.d.e\.f"] = 1
+        b["c.d.g\.h"] = 2
+
+        expected = {"c": {"d": {"e.f": 1, "g.h": 2}}}
         self.assertEqual(a, expected)
 
     def test_setitem_and_deep(self):
