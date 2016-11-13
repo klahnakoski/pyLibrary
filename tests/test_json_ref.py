@@ -14,6 +14,7 @@ from __future__ import absolute_import
 import os
 from pyLibrary import jsons
 from pyLibrary.dot import Dict
+from pyLibrary.env.files import File
 from pyLibrary.parsers import URL
 from pyLibrary.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
@@ -45,11 +46,17 @@ class TestRef(FuzzyTestCase):
             }
         })
 
-    def test_json_parameter(self):
+    def test_empty_object_as_json_parameter(self):
         url = "file://tests/resources/json_ref/test_ref_w_parameters.json?{{.|url}}"
         url = expand_template(url, {"metadata": Dict()})
         result = jsons.ref.get(url)
         self.assertEqual(result, {"test_result": {}}, "expecting proper parameter expansion")
+
+    def test_json_parameter(self):
+        url = "file://tests/resources/json_ref/test_ref_w_parameters.json?{{.|url}}"
+        url = expand_template(url, {"metadata": ["a", "b"]})
+        result = jsons.ref.get(url)
+        self.assertEqual(result, {"a": ["a", "b"]}, "expecting proper parameter expansion")
 
     def test_parameter_list(self):
         url = "file://tests/resources/json_ref/test_ref_w_parameters.json?test1=a&test1=b&test2=c&test1=d"
@@ -71,3 +78,52 @@ class TestRef(FuzzyTestCase):
                 "style": {"properties": {"color": {"description": "css color"}}}
             }
         }, "expecting proper expansion")
+
+    def test_read_home(self):
+        file = "~/___test_file.json"
+        source = "tests/resources/json_ref/simple.json"
+        File.copy(File(source), File(file))
+        content = jsons.ref.get("file://"+file)
+
+        try:
+            self.assertEqual(
+                content,
+                {"test_key": "test_value"}
+            )
+        finally:
+            File(file).delete()
+
+    def test_array_expansion(self):
+        # BETTER TEST OF RECURSION
+        doc = jsons.ref.get("file://tests/resources/json_ref/test_array.json")
+
+        self.assertEqual(doc, {
+            "a": "some_value",
+            "list": {"deep": [
+                {
+                    "a": "a",
+                    "test_key": "test_value"
+                },
+                {
+                    "a": "b",
+                    "test_key": "test_value"
+                },
+                {
+                    "a": "c",
+                    "test_key": "test_value"
+                },
+                {
+                    "a": "d",
+                    "test_key": "test_value"
+                },
+                {
+                    "a": "e",
+                    "test_key": "test_value"
+                }
+            ]}
+        })
+
+    def test_grandparent_reference(self):
+        doc = jsons.ref.get("file://tests/resources/json_ref/child/grandchild/simple.json")
+
+        self.assertEqual(doc, {"test_key": "test_value"})

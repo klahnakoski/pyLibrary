@@ -12,6 +12,7 @@ import datetime
 import unittest
 
 from pyLibrary import convert
+from pyLibrary.debugs.logs import Log
 
 
 class TestConvert(unittest.TestCase):
@@ -32,3 +33,4 @@ class TestConvert(unittest.TestCase):
         result = unicode(convert.datetime2milli(datetime.datetime(2014, 01, 07, 10, 21, 00)))
         expected = u"1389090060000"
         assert result == expected
+

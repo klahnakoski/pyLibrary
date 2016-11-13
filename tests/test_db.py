@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import re
 
 from pyLibrary import convert
-from pyLibrary.queries.qb_usingMySQL import esfilter2sqlwhere
+from pyLibrary.queries.jx_usingMySQL import esfilter2sqlwhere
 from pyLibrary.sql import mysql
 from pyLibrary.sql.mysql import MySQL
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase

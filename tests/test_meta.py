@@ -83,7 +83,7 @@ class TestMeta(FuzzyTestCase):
         self.assertEqual(call_count, 1)
 
         # SLEEP UNTIL CACHE EXPIRED
-        Thread.sleep(seconds=CACHE_DURATION.seconds+Decimal(0.1))
+        Thread.sleep(seconds=CACHE_DURATION.seconds+0.1)
 
         self.assertEqual(obj.method0(), 2)
         self.assertEqual(obj.method0(), 2)
@@ -109,7 +109,7 @@ class TestMeta(FuzzyTestCase):
         self.assertEqual(obj.method1(3), "big")
         self.assertEqual(call_count, 4)
 
-        Thread.sleep(seconds=CACHE_DURATION.seconds+Decimal(0.1))
+        Thread.sleep(seconds=CACHE_DURATION.seconds+0.1)
 
         self.assertEqual(obj.method1(0), "zero")
         self.assertEqual(obj.method1(1), "one")

@@ -6,6 +6,11 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
+
 from UserDict import UserDict
 from collections import Mapping
 
@@ -13,10 +18,21 @@ from pyLibrary.collections import MAX
 from pyLibrary.debugs.logs import Log
 from pyLibrary.dot import wrap, Dict, Null, set_default, unwrap
 from pyLibrary.dot.objects import dictwrap
+from pyLibrary.meta import DataClass
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestDot(FuzzyTestCase):
+
+    def test_set_union_w_null(self):
+        s = set('a')
+        s |= Null
+        self.assertAlmostEqual(s, set('a'))
+
+
+    def test_null_class(self):
+        self.assertFalse(isinstance(Null, Mapping))
+
 
     def test_userdict(self):
         def show_kwargs(**kwargs):
@@ -259,6 +275,54 @@ class TestDot(FuzzyTestCase):
         expected = {"c": {"d.e": {"f": 2}}}
         self.assertEqual(a, expected)
 
+    def test_assign6(self):
+        a = {}
+        b = wrap(a)
+
+        b["c.d.e\.f"] = 1
+        b["c.d.e\.g"] = 2
+
+        expected = {"c": {"d": {"e.f": 1, "e.g": 2}}}
+        self.assertEqual(a, expected)
+
+    def test_assign7(self):
+        a = {}
+        b = wrap(a)
+
+        b["c.d.e\.f"] = 1
+        b["c.d.g\.h"] = 2
+
+        expected = {"c": {"d": {"e.f": 1, "g.h": 2}}}
+        self.assertEqual(a, expected)
+
+    def test_setitem_and_deep(self):
+        a = {}
+        b = wrap(a)
+
+        b.c["d"].e.f = 3
+        expected = {"c": {"d": {"e": {"f": 3}}}}
+        self.assertEqual(a, expected)
+
+    def test_assign_and_use1(self):
+        a = wrap({})
+        agg = a.b
+        agg.c = []
+        agg.c.append("test value")
+
+        self.assertEqual(a, {"b": {"c": ["test value"]}})
+        self.assertEqual(a.b, {"c": ["test value"]})
+        self.assertEqual(a.b.c, ["test value"])
+
+    def test_assign_and_use2(self):
+        a = wrap({})
+        agg = a.b.c
+        agg += []
+        agg.append("test value")
+
+        self.assertEqual(a, {"b": {"c": ["test value"]}})
+        self.assertEqual(a.b, {"c": ["test value"]})
+        self.assertEqual(a.b.c, ["test value"])
+
 
     def test_increment(self):
         a = {}
@@ -350,6 +414,29 @@ class TestDot(FuzzyTestCase):
         self.assertEqual(d.x.z, 2, "expecting d to have attributes of b")
 
         self.assertEqual(wrap(a).x.z, None, "a should not have been altered")
+
+    def test_Dict_of_Dict(self):
+        value = {"a": 1}
+        wrapped = Dict(Dict(value))
+        self.assertTrue(value is unwrap(wrapped), "expecting identical object")
+
+
+    def test_leaves_of_mappings(self):
+        a = wrap({"a": _TestMapping()})
+        a.a.a = {"a": 1}
+        a.a.b = {"b": 2}
+
+        leaves = wrap(dict(a.leaves()))
+        self.assertEqual(a.a.a['a'], leaves["a\.a\.a"], "expecting 1")
+        self.assertEqual(a.a.b['b'], leaves["a\.b\.b"], "expecting 2")
+
+
+
+_TestMapping = DataClass("_TestMapping", ["a", "b"])
+
+
+
+
 
 
 

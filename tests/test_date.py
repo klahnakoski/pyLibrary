@@ -13,10 +13,12 @@ from __future__ import division
 from __future__ import absolute_import
 from datetime import datetime
 from pyLibrary import strings
+from pyLibrary.collections import MAX
 
 from pyLibrary.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.times.dates import Date
+from pyLibrary.times.durations import MONTH, YEAR, WEEK
 
 
 class TestDate(FuzzyTestCase):
@@ -26,5 +28,34 @@ class TestDate(FuzzyTestCase):
         date = Date("2015-10-04 13:53:11", '%Y-%m-%d %H:%M:%S.%f')
         expecting = Date(datetime(2015, 10, 04, 13, 53, 11))
         self.assertEqual(date, expecting)
+
+    def test_max(self):
+        date = Date("2015-10-04 13:53:11", '%Y-%m-%d %H:%M:%S.%f')
+        self.assertEqual(MAX([None, date]), date)
+
+    def test_floor_quarter(self):
+        date = Date("2015-10-04 13:53:11", '%Y-%m-%d %H:%M:%S.%f')
+        f = date.floor(3*MONTH)
+        expected = Date("2015-10-01")
+        self.assertEqual(f, expected)
+
+    def test_floor_year(self):
+        date = Date("2015-10-04 13:53:11", '%Y-%m-%d %H:%M:%S.%f')
+        f = date.floor(YEAR)
+        expected = Date("2015-01-01")
+        self.assertEqual(f, expected)
+
+    def test_floor_year2(self):
+        date = Date("2015-10-04 13:53:11", '%Y-%m-%d %H:%M:%S.%f')
+        f = date.floor(2*YEAR)
+        expected = Date("2014-01-01")
+        self.assertEqual(f, expected)
+
+    def test_floor_week(self):
+        date = Date('2016-09-30 15:51:50')
+        f = date.floor(WEEK)
+        expected = Date("2016-09-25")
+        self.assertEqual(f, expected)
+
 
 

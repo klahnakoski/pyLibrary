@@ -104,9 +104,18 @@ PyPy version uses ```bin```
 
     <name_of_dir>\bin\activate
 
+#### Using PIP in PyPy:
+
+PyPy does not share any libraries with CPython.  You must install the PyPy libraries using 
+
+	C:\pypy\bin\pip.exe
+
+The `pip` found in your `%PATH%` probably points to `C:\python27\Scripts\pip.exe`.
+
 #### Using PIP in PyPy virtualenv:
+
 Do **NOT** use the ```<name_of_dir>\Scripts``` directory: It installs to your
-main PyPy installation.  Pip install is done using the ``bin`` directory:
+main PyPy installation.  Pip install is done using the `bin` directory:
 
     <name_of_dir>\bin\pip.exe
 

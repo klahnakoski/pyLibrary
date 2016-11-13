@@ -9,29 +9,22 @@
 #
 
 
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
-from collections import Mapping
-from datetime import datetime
+from __future__ import division
+from __future__ import unicode_literals
+
 import os
 import platform
 import sys
+from collections import Mapping
+from datetime import datetime
 
-from pyLibrary.debugs import constants
+from pyLibrary.debugs import constants, exceptions
+from pyLibrary.debugs.exceptions import Except, suppress_exception
 from pyLibrary.debugs.text_logs import TextLog_usingMulti, TextLog_usingThread, TextLog_usingStream, TextLog_usingFile
-from pyLibrary.dot import coalesce, Dict, listwrap, wrap, unwrap, unwraplist, Null, set_default
-from pyLibrary.jsons.encoder import json_encoder
+from pyLibrary.dot import coalesce, listwrap, wrap, unwrap, unwraplist, set_default
+from pyLibrary.strings import indent
 from pyLibrary.thread.threads import Thread, Queue
-from pyLibrary.strings import indent, expand_template
-
-
-FATAL = "FATAL"
-ERROR = "ERROR"
-WARNING = "WARNING"
-ALARM = "ALARM"
-UNEXPECTED = "UNEXPECTED"
-NOTE = "NOTE"
 
 
 class Log(object):
@@ -129,12 +122,11 @@ class Log(object):
 
                 return TextLog_usingLogger(settings)
             else:
-                try:
+                with suppress_exception:
                     from .log_usingLogger import make_log_from_settings
 
                     return make_log_from_settings(settings)
-                except Exception, e:
-                    pass  # OH WELL :(
+                  # OH WELL :(
 
         if settings.log_type == "file" or settings.file:
             return TextLog_usingFile(settings.file)
@@ -152,6 +144,14 @@ class Log(object):
         if settings.log_type == "email":
             from .log_usingEmail import TextLog_usingEmail
             return TextLog_usingEmail(settings)
+        if settings.log_type == "ses":
+            from .log_usingSES import TextLog_usingSES
+            return TextLog_usingSES(settings)
+        if settings.log_type.lower() in ["nothing", "none", "null"]:
+            from .log_usingNothing import TextLog_usingNothing
+            return TextLog_usingNothing()
+
+        Log.error("Log type of {{log_type|quote}} is not recognized", log_type=settings.log_type)
 
     @classmethod
     def add_log(cls, log):
@@ -166,6 +166,14 @@ class Log(object):
         log_context=None,
         **more_params
     ):
+        """
+        :param template: *string* human readable string with placeholders for parameters
+        :param default_params: *dict* parameters to fill in template
+        :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
+        :param log_context: *dict* extra key:value pairs for your convenience
+        :param more_params: *any more parameters (which will overwrite default_params)
+        :return:
+        """
         if len(template) > 10000:
             template = template[:10000]
 
@@ -175,14 +183,14 @@ class Log(object):
             "template": template,
             "params": params,
             "timestamp": datetime.utcnow(),
-            "machine": machine_metadata.name
-        }, log_context, {"context": NOTE})
+            "machine": machine_metadata
+        }, log_context, {"context": exceptions.NOTE})
 
         if not template.startswith("\n") and template.find("\n") > -1:
             template = "\n" + template
 
         if cls.trace:
-            log_template = "{{machine}} - {{timestamp|datetime}} - {{thread.name}} - \"{{location.file}}:{{location.line}}\" ({{location.method}}) - " + template.replace("{{", "{{params.")
+            log_template = "{{machine.name}} - {{timestamp|datetime}} - {{thread.name}} - \"{{location.file}}:{{location.line}}\" ({{location.method}}) - " + template.replace("{{", "{{params.")
             f = sys._getframe(stack_depth + 1)
             log_params.location = {
                 "line": f.f_lineno,
@@ -206,6 +214,15 @@ class Log(object):
         log_context=None,
         **more_params
     ):
+        """
+        :param template: *string* human readable string with placeholders for parameters
+        :param default_params: *dict* parameters to fill in template
+        :param cause: *Exception* for chaining
+        :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
+        :param log_context: *dict* extra key:value pairs for your convenience
+        :param more_params: *any more parameters (which will overwrite default_params)
+        :return:
+        """
         if isinstance(default_params, BaseException):
             cause = default_params
             default_params = {}
@@ -213,14 +230,14 @@ class Log(object):
         params = dict(unwrap(default_params), **more_params)
 
         if cause and not isinstance(cause, Except):
-            cause = Except(UNEXPECTED, unicode(cause), trace=_extract_traceback(0))
+            cause = Except(exceptions.UNEXPECTED, unicode(cause), trace=exceptions._extract_traceback(0))
 
-        trace = extract_stack(1)
-        e = Except(UNEXPECTED, template, params, cause, trace)
+        trace = exceptions.extract_stack(1)
+        e = Except(exceptions.UNEXPECTED, template, params, cause, trace)
         Log.note(
             "{{error}}",
             error=e,
-            log_context=set_default({"context": WARNING}, log_context),
+            log_context=set_default({"context": exceptions.WARNING}, log_context),
             stack_depth=stack_depth + 1
         )
 
@@ -233,6 +250,14 @@ class Log(object):
         log_context=None,
         **more_params
     ):
+        """
+        :param template: *string* human readable string with placeholders for parameters
+        :param default_params: *dict* parameters to fill in template
+        :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
+        :param log_context: *dict* extra key:value pairs for your convenience
+        :param more_params: *any more parameters (which will overwrite default_params)
+        :return:
+        """
         # USE replace() AS POOR MAN'S CHILD TEMPLATE
 
         template = ("*" * 80) + "\n" + indent(template, prefix="** ").strip() + "\n" + ("*" * 80)
@@ -240,7 +265,7 @@ class Log(object):
             template,
             default_params=default_params,
             stack_depth=stack_depth + 1,
-            log_context=set_default({"context": ALARM}, log_context),
+            log_context=set_default({"context": exceptions.ALARM}, log_context),
             **more_params
         )
 
@@ -253,11 +278,19 @@ class Log(object):
         log_context=None,
         **more_params
     ):
+        """
+        :param template: *string* human readable string with placeholders for parameters
+        :param default_params: *dict* parameters to fill in template
+        :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
+        :param log_context: *dict* extra key:value pairs for your convenience
+        :param more_params: *any more parameters (which will overwrite default_params)
+        :return:
+        """
         return Log.alarm(
             template,
             default_params=default_params,
             stack_depth=stack_depth + 1,
-            log_context=set_default({"context": ALARM}, log_context),
+            log_context=set_default({"context": exceptions.ALARM}, log_context),
             **more_params
         )
 
@@ -271,19 +304,30 @@ class Log(object):
         log_context=None,
         **more_params
     ):
+        """
+        :param template: *string* human readable string with placeholders for parameters
+        :param default_params: *dict* parameters to fill in template
+        :param cause: *Exception* for chaining
+        :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
+        :param log_context: *dict* extra key:value pairs for your convenience
+        :param more_params: *any more parameters (which will overwrite default_params)
+        :return:
+        """
         if isinstance(default_params, BaseException):
             cause = default_params
             default_params = {}
 
+        if "values" in more_params.keys():
+            Log.error("Can not handle a logging parameter by name `values`")
         params = dict(unwrap(default_params), **more_params)
         cause = unwraplist([Except.wrap(c) for c in listwrap(cause)])
-        trace = extract_stack(stack_depth + 1)
+        trace = exceptions.extract_stack(stack_depth + 1)
 
-        e = Except(WARNING, template, params, cause, trace)
+        e = Except(exceptions.WARNING, template, params, cause, trace)
         Log.note(
             "{{error|unicode}}",
             error=e,
-            log_context=set_default({"context": WARNING}, log_context),
+            log_context=set_default({"context": exceptions.WARNING}, log_context),
             stack_depth=stack_depth + 1
         )
 
@@ -299,6 +343,14 @@ class Log(object):
     ):
         """
         raise an exception with a trace for the cause too
+
+        :param template: *string* human readable string with placeholders for parameters
+        :param default_params: *dict* parameters to fill in template
+        :param cause: *Exception* for chaining
+        :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
+        :param log_context: *dict* extra key:value pairs for your convenience
+        :param more_params: *any more parameters (which will overwrite default_params)
+        :return:
         """
         if default_params and isinstance(listwrap(default_params)[0], BaseException):
             cause = default_params
@@ -307,13 +359,13 @@ class Log(object):
         params = dict(unwrap(default_params), **more_params)
 
         add_to_trace = False
-        cause = unwraplist([Except.wrap(c, stack_depth=1) for c in listwrap(cause)])
-        trace = extract_stack(stack_depth + 1)
+        cause = wrap(unwraplist([Except.wrap(c, stack_depth=1) for c in listwrap(cause)]))
+        trace = exceptions.extract_stack(stack_depth + 1)
 
         if add_to_trace:
             cause[0].trace.extend(trace[1:])
 
-        e = Except(ERROR, template, params, cause, trace)
+        e = Except(exceptions.ERROR, template, params, cause, trace)
         raise e
 
     @classmethod
@@ -323,10 +375,19 @@ class Log(object):
         default_params={},  # parameters for template
         cause=None,  # pausible cause
         stack_depth=0,
+        log_context=None,
         **more_params
     ):
         """
         SEND TO STDERR
+
+        :param template: *string* human readable string with placeholders for parameters
+        :param default_params: *dict* parameters to fill in template
+        :param cause: *Exception* for chaining
+        :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
+        :param log_context: *dict* extra key:value pairs for your convenience
+        :param more_params: *any more parameters (which will overwrite default_params)
+        :return:
         """
         if default_params and isinstance(listwrap(default_params)[0], BaseException):
             cause = default_params
@@ -335,186 +396,28 @@ class Log(object):
         params = dict(unwrap(default_params), **more_params)
 
         cause = unwraplist([Except.wrap(c) for c in listwrap(cause)])
-        trace = extract_stack(stack_depth + 1)
+        trace = exceptions.extract_stack(stack_depth + 1)
 
-        e = Except(ERROR, template, params, cause, trace)
+        e = Except(exceptions.ERROR, template, params, cause, trace)
         str_e = unicode(e)
 
         error_mode = cls.error_mode
-        try:
+        with suppress_exception:
             if not error_mode:
                 cls.error_mode = True
                 Log.note(
-                    "{{error}}",
+                    "{{error|unicode}}",
                     error=e,
-                    log_context={"context": WARNING},
+                    log_context=set_default({"context": exceptions.FATAL}, log_context),
                     stack_depth=stack_depth + 1
                 )
-        except Exception:
-            pass
         cls.error_mode = error_mode
 
-        sys.stderr.write(str_e)
+        sys.stderr.write(str_e.encode('utf8'))
 
 
     def write(self):
         raise NotImplementedError
-
-
-def extract_stack(start=0):
-    """
-    SNAGGED FROM traceback.py
-    Extract the raw traceback from the current stack frame.
-
-    Each item in the returned list is a quadruple (filename,
-    line number, function name, text), and the entries are in order
-    from newest to oldest
-    """
-    try:
-        raise ZeroDivisionError
-    except ZeroDivisionError:
-        trace = sys.exc_info()[2]
-        f = trace.tb_frame.f_back
-
-    for i in range(start):
-        f = f.f_back
-
-    stack = []
-    n = 0
-    while f is not None:
-        stack.append({
-            "depth": n,
-            "line": f.f_lineno,
-            "file": f.f_code.co_filename,
-            "method": f.f_code.co_name
-        })
-        f = f.f_back
-        n += 1
-    return stack
-
-
-def _extract_traceback(start):
-    """
-    SNAGGED FROM traceback.py
-
-    RETURN list OF dicts DESCRIBING THE STACK TRACE
-    """
-    tb = sys.exc_info()[2]
-    for i in range(start):
-        tb = tb.tb_next
-
-    trace = []
-    n = 0
-    while tb is not None:
-        f = tb.tb_frame
-        trace.append({
-            "depth": n,
-            "file": f.f_code.co_filename,
-            "line": tb.tb_lineno,
-            "method": f.f_code.co_name
-        })
-        tb = tb.tb_next
-        n += 1
-    trace.reverse()
-    return trace
-
-
-def format_trace(tbs, start=0):
-    trace = []
-    for d in tbs[start::]:
-        item = expand_template('File "{{file}}", line {{line}}, in {{method}}\n', d)
-        trace.append(item)
-    return "".join(trace)
-
-
-class Except(Exception):
-
-    @staticmethod
-    def new_instance(desc):
-        return Except(
-            desc.type,
-            desc.template,
-            desc.params,
-            [Except.new_instance(c) for c in listwrap(desc.cause)],
-            desc.trace
-        )
-
-
-    def __init__(self, type=ERROR, template=None, params=None, cause=None, trace=None):
-        Exception.__init__(self)
-        self.type = type
-        self.template = template
-        self.params = params
-        self.cause = cause
-        self.trace = trace
-
-    @classmethod
-    def wrap(cls, e, stack_depth=0):
-        if e == None:
-            return None
-        elif isinstance(e, (list, Except)):
-            return e
-        else:
-            if hasattr(e, "message"):
-                cause = Except(ERROR, unicode(e.message), trace=_extract_traceback(0))
-            else:
-                cause = Except(ERROR, unicode(e), trace=_extract_traceback(0))
-
-            trace = extract_stack(stack_depth + 2)  # +2 = to remove the caller, and it's call to this' Except.wrap()
-            cause.trace.extend(trace)
-            return cause
-
-    @property
-    def message(self):
-        return expand_template(self.template, self.params)
-
-    def __contains__(self, value):
-        if isinstance(value, basestring):
-            if self.message.find(value) >= 0 or self.template.find(value) >= 0:
-                return True
-
-        if self.type == value:
-            return True
-        if self.cause:
-            for c in self.cause:
-                if value in c:
-                    return True
-        return False
-
-    def __unicode__(self):
-        output = self.type + ": " + self.template + "\n"
-        if self.params:
-            output = expand_template(output, self.params)
-
-        if self.trace:
-            output += indent(format_trace(self.trace))
-
-        if self.cause:
-            cause_strings = []
-            for c in listwrap(self.cause):
-                try:
-                    cause_strings.append(unicode(c))
-                except Exception:
-                    pass
-
-            output += "caused by\n\t" + "and caused by\n\t".join(cause_strings)
-
-        return output
-
-    def __str__(self):
-        return self.__unicode__().encode('latin1', 'replace')
-
-    def as_dict(self):
-        return Dict(
-            type=self.type,
-            template=self.template,
-            params=self.params,
-            cause=self.cause,
-            trace=self.trace
-        )
-
-    def __json__(self):
-        return json_encoder(self.as_dict())
 
 
 def write_profile(profile_settings, stats):
@@ -542,19 +445,10 @@ def write_profile(profile_settings, stats):
 
 
 # GET THE MACHINE METADATA
-ec2 = Null
-try:
-    from pyLibrary import aws
-
-    ec2 = aws.get_instance_metadata()
-except Exception:
-    pass
-
 machine_metadata = wrap({
     "python": platform.python_implementation(),
     "os": (platform.system() + platform.release()).strip(),
-    "instance_type": ec2.instance_type,
-    "name": coalesce(ec2.instance_id, platform.node())
+    "name": platform.node()
 })
 
 
