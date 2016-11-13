@@ -302,7 +302,6 @@ def DataClass(name, columns):
     """
     Each column has {"name", "required", "nulls", "default", "type"} properties
     """
-
     columns = wrap([{"name": c, "required": True, "nulls": False, "type": object} if isinstance(c, basestring) else c for c in columns])
     slots = columns.name
     required = wrap(filter(lambda c: c.required and not c.nulls and not c.default, columns)).name
@@ -342,12 +341,12 @@ class {{name}}(Mapping):
         return self
 
     def __setattr__(self, item, value):
-        if item == "nested_path" and len(value) < 1:
-            Log.error("not acceptable")
         if item not in {{slots}}:
             Log.error("{"+"{item|quote}} not valid attribute", item=item)
         #if not isinstance(value, types_[item]):
-        #    Log.error("{"+"{item|quote}} not of type "+"{"+"{type}}", item=item, type=types_[item])
+        #   Log.error("{"+"{item|quote}} not of type "+"{"+"{type}}", item=item, type=types_[item])
+        if item=="nested_path" and (not isinstance(value, list) or len(value)==0):
+            Log.error("expecting list for nested path")
         object.__setattr__(self, item, value)
 
     def __getattr__(self, item):
@@ -398,11 +397,9 @@ temp = {{name}}
 
     return _exec(code, name)
 
+
 def _exec(code, name):
     temp = None
-    exec(code)
-    globals()[name]=temp
+    exec (code)
+    globals()[name] = temp
     return temp
-
-
-

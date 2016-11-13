@@ -16,29 +16,27 @@ from copy import copy
 from itertools import product
 
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import coalesce, set_default, Null, literal_field, listwrap, split_field, join_field, unwraplist, \
-    unwrap
+from pyLibrary.dot import coalesce, set_default, Null, literal_field, split_field, join_field, ROOT_PATH
 from pyLibrary.dot import wrap
 from pyLibrary.dot.dicts import Dict
 from pyLibrary.meta import use_settings, DataClass
 from pyLibrary.queries import jx, Schema
-from pyLibrary.queries.containers import STRUCT
+from pyLibrary.queries.containers import STRUCT, Container
 from pyLibrary.queries.query import QueryOp
-from pyLibrary.thread.threads import Queue, Thread
+from pyLibrary.thread.threads import Queue, Thread, Lock
 from pyLibrary.times.dates import Date
 from pyLibrary.times.durations import HOUR, MINUTE
 from pyLibrary.times.timer import Timer
 
 _elasticsearch = None
 
+MAX_COLUMN_METADATA_AGE = 12 * HOUR
 ENABLE_META_SCAN = False
 DEBUG = True
 TOO_OLD = 2*HOUR
 OLD_METADATA = MINUTE
 singlton = None
 TEST_TABLE_PREFIX = "testing"  # USED TO TURN OFF COMPLAINING ABOUT TEST INDEXES
-
-
 
 class FromESMetadata(Schema):
     """
@@ -74,7 +72,7 @@ class FromESMetadata(Schema):
         table_columns = metadata_tables()
         column_columns = metadata_columns()
         self.meta.tables = ListContainer("meta.tables", [], wrap({c.name: c for c in table_columns}))
-        self.meta.columns = ListContainer("meta.columns", [], wrap({c.name: c for c in column_columns}))
+        self.meta.columns = ColumnList()
         self.meta.columns.insert(column_columns)
         self.meta.columns.insert(table_columns)
         # TODO: fix monitor so it does not bring down ES
@@ -98,18 +96,19 @@ class FromESMetadata(Schema):
 
     def _upsert_column(self, c):
         # ASSUMING THE  self.meta.columns.locker IS HAD
-        existing_columns = [r for r in self.meta.columns.data if r.table == c.table and r.name == c.name]
+        existing_columns = self.meta.columns.find(c.table, c.name)
         if not existing_columns:
             self.meta.columns.add(c)
-            Log.note("todo: {{table}}::{{column}}", table=c.table, column=c.es_column)
             self.todo.add(c)
 
-            # MARK meta.columns AS DIRTY TOO
-            cols = [r for r in self.meta.columns.data if r.table == "meta.columns"]
-            for cc in cols:
-                cc.partitions = cc.cardinality = None
-                cc.last_updated = Date.now()
-            self.todo.extend(cols)
+            if ENABLE_META_SCAN:
+                Log.note("todo: {{table}}::{{column}}", table=c.table, column=c.es_column)
+                # MARK meta.columns AS DIRTY TOO
+                cols = self.meta.columns.find("meta.columns", None)
+                for cc in cols:
+                    cc.partitions = cc.cardinality = None
+                    cc.last_updated = Date.now()
+                self.todo.extend(cols)
         else:
             canonical = existing_columns[0]
             if canonical.relative and not c.relative:
@@ -166,42 +165,38 @@ class FromESMetadata(Schema):
                         break
             for q in query_paths:
                 q.append(".")
-            query_paths.append(["."])
+            query_paths.append(ROOT_PATH)
 
-            for c in abs_columns:
-                # ADD RELATIVE COLUMNS
-                full_path = c.nested_path
+            # ADD RELATIVE COLUMNS
+            for abs_column in abs_columns:
+                full_path = abs_column.nested_path
                 abs_depth = len(full_path)-1
                 abs_parent = full_path[1] if abs_depth else ""
 
                 for query_path in query_paths:
                     rel_depth = len(query_path)-1
-
-                    # ABSOLUTE
-                    add_column(copy(c), query_path)
-                    cc = copy(c)
-                    cc.relative = True
-
-                    if query_path[0] == ".":
-                        add_column(cc, query_path)
-                        continue
-
                     rel_parent = query_path[0]
+                    rel_column = copy(abs_column)
+                    rel_column.relative = True
 
-                    if c.es_column.startswith(rel_parent+"."):
-                        cc.name = c.es_column[len(rel_parent)+1:]
-                        add_column(cc, query_path)
-                    elif c.es_column == rel_parent:
-                        cc.name = "."
-                        add_column(cc, query_path)
+                    add_column(copy(abs_column), query_path)
+
+                    if rel_parent == ".":
+                        add_column(rel_column, query_path)
+                    elif abs_column.es_column.startswith(rel_parent+"."):
+                        rel_column.name = abs_column.es_column[len(rel_parent)+1:]
+                        add_column(rel_column, query_path)
+                    elif abs_column.es_column == rel_parent:
+                        rel_column.name = "."
+                        add_column(rel_column, query_path)
                     elif not abs_parent:
                         # THIS RELATIVE NAME (..o) ALSO NEEDS A RELATIVE NAME (o)
                         # AND THEN REMOVE THE SHADOWED
-                        cc.name = "." + ("." * (rel_depth - abs_depth)) + c.es_column
-                        add_column(cc, query_path)
+                        rel_column.name = "." + ("." * (rel_depth - abs_depth)) + abs_column.es_column
+                        add_column(rel_column, query_path)
                     elif rel_parent.startswith(abs_parent+"."):
-                        cc.name = "." + ("." * (rel_depth - abs_depth)) + c.es_column
-                        add_column(cc, query_path)
+                        rel_column.name = "." + ("." * (rel_depth - abs_depth)) + abs_column.es_column
+                        add_column(rel_column, query_path)
                     elif rel_parent != abs_parent:
                         # SIBLING NESTED PATHS ARE INVISIBLE
                         pass
@@ -217,7 +212,7 @@ class FromESMetadata(Schema):
             _query.as_dict()
         )))
 
-    def get_columns(self, table_name, column_name=None):
+    def get_columns(self, table_name, column_name=None, force=False):
         """
         RETURN METADATA COLUMNS
         """
@@ -236,12 +231,12 @@ class FromESMetadata(Schema):
                 with self.meta.tables.locker:
                     self.meta.tables.add(table)
                 self._get_columns(table=short_name)
-            elif table.timestamp == None or table.timestamp < Date.now() - 5 * MINUTE:
+            elif force or table.timestamp == None or table.timestamp < Date.now() - MAX_COLUMN_METADATA_AGE:
                 table.timestamp = Date.now()
                 self._get_columns(table=short_name)
 
             with self.meta.columns.locker:
-                columns = [c for c in self.meta.columns.data if c.table == table_name and (column_name is None or c.name==column_name)]
+                columns = self.meta.columns.find(table_name, column_name)
             if columns:
                 columns = jx.sort(columns, "name")
                 # AT LEAST WAIT FOR THE COLUMNS TO UPDATE
@@ -256,7 +251,7 @@ class FromESMetadata(Schema):
             Log.error("no columns matching {{table}}.{{column}}", table=table_name, column=column_name)
         else:
             self._get_columns(table=table_name)
-            Log.error("no columns for {{table}}", table=table_name)
+            Log.error("no columns for {{table}}?!", table=table_name)
 
     def _update_cardinality(self, c):
         """
@@ -330,7 +325,7 @@ class FromESMetadata(Schema):
                         "where": {"eq": {"es_index": c.es_index, "es_column": c.es_column}}
                     })
                 return
-            elif c.nested_path[0] != ".":
+            elif len(c.nested_path) != 1:
                 query.aggs[literal_field(c.name)] = {
                     "nested": {"path": c.nested_path[0]},
                     "aggs": {"_nested": {"terms": {"field": c.es_column, "size": 0}}}
@@ -391,10 +386,11 @@ class FromESMetadata(Schema):
             try:
                 if not self.todo:
                     with self.meta.columns.locker:
-                        old_columns = filter(
-                            lambda c: (c.last_updated == None or c.last_updated < Date.now()-TOO_OLD) and c.type not in STRUCT,
-                            self.meta.columns
-                        )
+                        old_columns = [
+                            c
+                            for c in self.meta.columns
+                            if (c.last_updated == None or c.last_updated < Date.now()-TOO_OLD) and c.type not in STRUCT
+                        ]
                         if old_columns:
                             Log.note("Old columns wth dates {{dates|json}}", dates=wrap(old_columns).last_updated)
                             self.todo.extend(old_columns)
@@ -450,7 +446,7 @@ class FromESMetadata(Schema):
 
 
 def _counting_query(c):
-    if c.nested_path[0] != ".":
+    if len(c.nested_path) != 1:
         return {
             "nested": {
                 "path": c.nested_path[0]  # FIRST ONE IS LONGEST
@@ -477,7 +473,7 @@ def metadata_columns():
                 name=c,
                 es_column=c,
                 type="string",
-                nested_path=["."]
+                nested_path=ROOT_PATH
             )
             for c in [
                 "name",
@@ -494,7 +490,7 @@ def metadata_columns():
                 name=c,
                 es_column=c,
                 type="object",
-                nested_path=["."]
+                nested_path=ROOT_PATH
             )
             for c in [
                 "domain",
@@ -507,7 +503,7 @@ def metadata_columns():
                 name=c,
                 es_column=c,
                 type="long",
-                nested_path=["."]
+                nested_path=ROOT_PATH
             )
             for c in [
                 "count",
@@ -520,7 +516,7 @@ def metadata_columns():
                 name="last_updated",
                 es_column="last_updated",
                 type="time",
-                nested_path=["."]
+                nested_path=ROOT_PATH
             )
         ]
     )
@@ -534,7 +530,7 @@ def metadata_tables():
                 es_index=None,
                 es_column=c,
                 type="string",
-                nested_path=["."]
+                nested_path=ROOT_PATH
             )
             for c in [
                 "name",
@@ -548,7 +544,7 @@ def metadata_tables():
                 es_index=None,
                 es_column="timestamp",
                 type="integer",
-                nested_path=["."]
+                nested_path=ROOT_PATH
             )
         ]
     )
@@ -586,3 +582,72 @@ Column = DataClass(
     ]
 )
 
+
+
+class ColumnList(Container):
+    """
+    OPTIMIZED FOR THE PARTICULAR ACCESS PATTERNS USED
+    """
+
+    def __init__(self):
+        self.data = {}  # MAP FROM TABLE NAME TO COLUMNS
+        self.locker = Lock()
+        self.count=0
+
+    def find(self, table, column):
+        if not column:
+            return [c for cs in self.data.get(table, {}).values() for c in cs]
+        else:
+            return self.data.get(table, {}).get(column, [])
+
+    def insert(self, columns):
+        for column in columns:
+            self.add(column)
+
+    def add(self, column):
+        columns_for_table = self.data.setdefault(column.table, {})
+        _columns = columns_for_table.setdefault(column.name, [])
+        _columns.append(column)
+        self.count+=1
+
+    def __iter__(self):
+        for t, cs in self.data.items():
+            for c, css in cs.items():
+                for column in css:
+                    yield column
+
+    def __len__(self):
+        return self.count
+
+    def update(self, command):
+        try:
+            command = wrap(command)
+            eq = command.where.eq
+            if eq.table:
+                columns = self.find(eq.table, eq.name)
+                columns = [c for c in columns if all(c[k] == v for k, v in eq.items())]
+            else:
+                columns = list(self)
+                columns = jx.filter(columns, command.where)
+
+            for col in columns:
+                for k in command["clear"]:
+                    col[k] = None
+
+                for k, v in command.set.items():
+                    col[k] = v
+        except Exception, e:
+            Log.error("sould not happen", cause=e)
+
+    def query(self, query):
+        query.frum = self.__iter__()
+        output = jx.run(query)
+
+        return output
+
+    def groupby(self, keys):
+        return jx.groupby(self.__iter__(), keys)
+
+    @property
+    def schema(self):
+        return wrap({k: set(v) for k, v in self.data["meta.columns"].items()})

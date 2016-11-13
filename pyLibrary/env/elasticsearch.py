@@ -19,7 +19,8 @@ from datetime import datetime
 from pyLibrary import convert, strings
 from pyLibrary.debugs.exceptions import Except
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import coalesce, Null, Dict, set_default, join_field, split_field, unwraplist, listwrap, literal_field
+from pyLibrary.dot import coalesce, Null, Dict, set_default, join_field, split_field, unwraplist, listwrap, literal_field, \
+    ROOT_PATH
 from pyLibrary.dot import wrap
 from pyLibrary.dot.lists import DictList
 from pyLibrary.env import http
@@ -516,7 +517,7 @@ class Cluster(object):
 
         index = settings.index
         meta = self.get_metadata()
-        columns = parse_properties(index, [], meta.indices[index].mappings.values()[0].properties)
+        columns = parse_properties(index, ".", meta.indices[index].mappings.values()[0].properties)
         if len(columns)!=0:
             settings.tjson = tjson or any(c.name.endswith("$value") for c in columns)
 
@@ -530,7 +531,7 @@ class Cluster(object):
             for a in aliases
             if (a.alias == settings.index and settings.alias == None) or
             (re.match(re.escape(settings.index) + r'\d{8}_\d{6}', a.index) and settings.alias == None) or
-            (a.index == settings.index and (a.alias == None or a.alias == settings.alias))
+            (a.index == settings.index and (settings.alias == None or a.alias == None or a.alias == settings.alias))
         ], "index")
         return indexes.last()
 
@@ -668,7 +669,7 @@ class Cluster(object):
         try:
             response = http.delete(url)
             if response.status_code != 200:
-                Log.error("Expecting a 200")
+                Log.error("Expecting a 200, got {{code}}", code=response.status_code)
             details = convert.json2value(utf82unicode(response.content))
             if self.debug:
                 Log.note("delete response {{response}}", response=details)
@@ -696,7 +697,7 @@ class Cluster(object):
             Log.error("Metadata exploration has been disabled")
 
         if not self._metadata or force:
-            response = self.get("/_cluster/state", retry={"times": 5}, timeout=3)
+            response = self.get("/_cluster/state", retry={"times": 3}, timeout=30)
             with self.metadata_locker:
                 self._metadata = wrap(response.metadata)
                 # REPLICATE MAPPING OVER ALL ALIASES
@@ -1055,7 +1056,7 @@ class Alias(Features):
             )
 
 
-def parse_properties(parent_index_name, parent_query_path, esProperties):
+def parse_properties(parent_index_name, parent_name, esProperties):
     """
     RETURN THE COLUMN DEFINITIONS IN THE GIVEN esProperties OBJECT
     """
@@ -1063,38 +1064,36 @@ def parse_properties(parent_index_name, parent_query_path, esProperties):
 
     columns = DictList()
     for name, property in esProperties.items():
-        if parent_query_path:
-            index_name, query_path = parent_index_name, join_field(split_field(parent_query_path) + [name])
-        else:
-            index_name, query_path = parent_index_name, name
+        index_name = parent_index_name
+        column_name = join_field(split_field(parent_name) + [name])
 
         if property.type == "nested" and property.properties:
             # NESTED TYPE IS A NEW TYPE DEFINITION
             # MARKUP CHILD COLUMNS WITH THE EXTRA DEPTH
-            self_columns = parse_properties(index_name, query_path, property.properties)
+            self_columns = parse_properties(index_name, column_name, property.properties)
             for c in self_columns:
-                c.nested_path = [query_path] + c.nested_path
+                c.nested_path = [column_name] + c.nested_path
             columns.extend(self_columns)
             columns.append(Column(
                 table=index_name,
                 es_index=index_name,
-                name=query_path,
-                es_column=query_path,
+                name=column_name,
+                es_column=column_name,
                 type="nested",
-                nested_path=query_path
+                nested_path=ROOT_PATH
             ))
 
             continue
 
         if property.properties:
-            child_columns = parse_properties(index_name, query_path, property.properties)
+            child_columns = parse_properties(index_name, column_name, property.properties)
             columns.extend(child_columns)
             columns.append(Column(
                 table=index_name,
                 es_index=index_name,
-                name=query_path,
-                es_column=query_path,
-                nested_path=["."],
+                name=column_name,
+                es_column=column_name,
+                nested_path=ROOT_PATH,
                 type="source" if property.enabled == False else "object"
             ))
 
@@ -1110,18 +1109,18 @@ def parse_properties(parent_index_name, parent_query_path, esProperties):
                     columns.append(Column(
                         table=index_name,
                         es_index=index_name,
-                        name=query_path,
-                        es_column=query_path,
-                        nested_path=["."],
+                        name=column_name,
+                        es_column=column_name,
+                        nested_path=ROOT_PATH,
                         type=p.type
                     ))
                 else:
                     columns.append(Column(
                         table=index_name,
                         es_index=index_name,
-                        name=query_path + "\\." + n,
-                        es_column=query_path + "\\." + n,
-                        nested_path=["."],
+                        name=column_name + "\\." + n,
+                        es_column=column_name + "\\." + n,
+                        nested_path=ROOT_PATH,
                         type=p.type
                     ))
             continue
@@ -1130,27 +1129,27 @@ def parse_properties(parent_index_name, parent_query_path, esProperties):
             columns.append(Column(
                 table=index_name,
                 es_index=index_name,
-                name=query_path,
-                es_column=query_path,
-                nested_path=["."],
+                name=column_name,
+                es_column=column_name,
+                nested_path=ROOT_PATH,
                 type=property.type
             ))
             if property.index_name and name != property.index_name:
                 columns.append(Column(
                     table=index_name,
                     es_index=index_name,
-                    es_column=query_path,
-                    name=query_path,
-                    nested_path=["."],
+                    es_column=column_name,
+                    name=column_name,
+                    nested_path=ROOT_PATH,
                     type=property.type
                 ))
         elif property.enabled == None or property.enabled == False:
             columns.append(Column(
                 table=index_name,
                 es_index=index_name,
-                name=query_path,
-                es_column=query_path,
-                nested_path=["."],
+                name=column_name,
+                es_column=column_name,
+                nested_path=ROOT_PATH,
                 type="source" if property.enabled==False else "object"
             ))
         else:

@@ -288,6 +288,8 @@ class Dict(MutableMapping):
 def leaves(value, prefix=None):
     """
     LIKE items() BUT RECURSIVE, AND ONLY FOR THE LEAVES (non dict) VALUES
+    SEE wrap_leaves FOR THE INVERSE
+
     :param value: THE Mapping TO TRAVERSE
     :param prefix:  OPTIONAL PREFIX GIVEN TO EACH KEY
     :return: Dict, WHICH EACH KEY BEING A PATH INTO value TREE
@@ -506,11 +508,6 @@ class _DictUsingSelf(dict):
             return "Dict("+dict.__repr__(self)+")"
         except Exception, e:
             return "Dict()"
-
-
-
-# KEEP TRACK OF WHAT ATTRIBUTES ARE REQUESTED, MAYBE SOME (BUILTIN) ARE STILL USEFUL
-requested = set()
 
 
 def _str(value, depth):
