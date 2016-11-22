@@ -80,13 +80,6 @@ class TestThreads(FuzzyTestCase):
         self.assertGreater(now.unix+1, Date.now().unix, "Expecting quick stop")
         Log.note("done")
 
-    def test_timeout(self):
-        def test(please_stop):
-            Thread.sleep(seconds=10)
-
-        now = Date.now()
-        thread = Thread.run("sleeper", test)
+    def test_sleep(self):
         Thread.sleep(0.5)
-        thread.stop()
-        self.assertGreater(now.unix+1, Date.now().unix, "Expecting quick stop")
         Log.note("done")

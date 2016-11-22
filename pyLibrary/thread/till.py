@@ -53,17 +53,20 @@ class Till(Signal):
             while not please_stop:
                 now = Date.now().unix
                 if Till.dirty or next_ping < now:
+                    next_ping = now + INTERVAL
                     work = None
                     with Till.locker:
                         if Till.all_timers:
                             Till.all_timers.sort(key=lambda r: r[0])
                             for i, (t, s) in enumerate(Till.all_timers):
-                                if t > now:
+                                if now > t:
                                     work, Till.all_timers[:i] = Till.all_timers[:i], []
+                                    next_ping = min(next_ping, Till.all_timers[0][0])
                                     break
-                            next_ping = Till.all_timers[0][0]
-                        Till.dirty = False
+                            else:
+                                work, Till.all_timers = Till.all_timers, []
 
+                        Till.dirty = False
                     if work:
                         for t, s in work:
                             s.go()
