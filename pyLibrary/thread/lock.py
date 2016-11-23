@@ -24,7 +24,7 @@ from pyLibrary.thread.signal import Signal
 _Log = None
 _Except = None
 _Thread = None
-DEBUG = True
+DEBUG = False
 DEBUG_SIGNAL = False
 
 

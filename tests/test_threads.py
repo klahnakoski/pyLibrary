@@ -15,6 +15,7 @@ from __future__ import unicode_literals
 from pyLibrary.debugs.logs import Log
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.thread.threads import Lock, Thread
+from pyLibrary.thread.till import Till
 from pyLibrary.times.dates import Date
 from pyLibrary.times.durations import SECOND
 
@@ -83,3 +84,68 @@ class TestThreads(FuzzyTestCase):
     def test_sleep(self):
         Thread.sleep(0.5)
         Log.note("done")
+
+
+    def test_loop(self):
+        acc = []
+        def worker(please_stop):
+            while not please_stop:
+                acc.append(Date.now().unix)
+                Thread.sleep(0.1)
+
+        Thread.run("loop", worker)
+        Thread.sleep(1)
+
+        # We expect 10, but 9 is good enough
+        self.assertGreater(len(acc), 9, "Expecting some reasonable number of entries to prove there was looping")
+
+    def test_or_signal_timeout(self):
+        acc = []
+
+        def worker(this, please_stop):
+            (Till(seconds=0.3) | please_stop).wait_for_go()
+            this.assertTrue(not please_stop, "Expecting not to have stopped yet")
+            acc.append("worker")
+
+        w = Thread.run("worker", worker, self)
+        w.stopped.wait_for_go()
+        acc.append("done")
+
+        self.assertEqual(acc, ["worker", "done"])
+
+    def test_or_signal_stop(self):
+        acc = []
+
+        def worker(this, please_stop):
+            (Till(seconds=0.3) | please_stop).wait_for_go()
+            this.assertTrue(not not please_stop, "Expecting to have the stop signal")
+            acc.append("worker")
+
+        w = Thread.run("worker", worker, self)
+        Till(seconds=0.1).wait_for_go()
+        w.stop()
+        w.join()
+        w.stopped.wait_for_go()
+        acc.append("done")
+
+        self.assertEqual(acc, ["worker", "done"])
+
+
+    def test_and_signals(self):
+        acc = []
+        locker = Lock()
+
+        def worker(please_stop):
+            with locker:
+                acc.append("worker")
+        a = Thread.run("a", worker)
+        b = Thread.run("b", worker)
+        c = Thread.run("c", worker)
+
+        (a.stopped & b.stopped & c.stopped).wait_for_go()
+        acc.append("done")
+        self.assertEqual(acc, ["worker", "worker", "worker", "done"])
+
+
+
+

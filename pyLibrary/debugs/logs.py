@@ -25,6 +25,7 @@ from pyLibrary.debugs.text_logs import TextLog_usingMulti, TextLog_usingThread, 
 from pyLibrary.dot import coalesce, listwrap, wrap, unwrap, unwraplist, set_default
 from pyLibrary.strings import indent
 
+_Thread = None
 
 class Log(object):
     """
@@ -52,6 +53,7 @@ class Log(object):
                     USE THE LONG FORM TO SET FILENAME {"enabled": True, "filename": "profile.tab"}
         constants - UPDATE MODULE CONSTANTS AT STARTUP (PRIMARILY INTENDED TO CHANGE DEBUG STATE)
         """
+        global _Thread
         if not settings:
             return
         settings = wrap(settings)
@@ -59,7 +61,7 @@ class Log(object):
         cls.settings = settings
         cls.trace = cls.trace | coalesce(settings.trace, False)
         if cls.trace:
-            from pyLibrary.thread.threads import Thread
+            from pyLibrary.thread.threads import Thread as _Thread
 
         if settings.cprofile is False:
             settings.cprofile = {"enabled": False}
@@ -201,7 +203,7 @@ class Log(object):
                 "file": f.f_code.co_filename.split(os.sep)[-1],
                 "method": f.f_code.co_name
             }
-            thread = Thread.current()
+            thread = _Thread.current()
             log_params.thread = {"name": thread.name, "id": thread.id}
         else:
             log_template = "{{timestamp|datetime}} - " + template.replace("{{", "{{params.")

@@ -17,12 +17,15 @@ from __future__ import unicode_literals
 
 import thread
 from time import sleep as _sleep
+from time import time as _time
 
 from pyLibrary.thread.signal import Signal
 from pyLibrary.times.dates import Date
 from pyLibrary.times.durations import Duration
 
+DEBUG = True
 INTERVAL = 0.1
+next_ping = _time()
 
 
 class Till(Signal):
@@ -30,48 +33,49 @@ class Till(Signal):
     TIMEOUT AS A SIGNAL
     """
     all_timers = []
-    dirty = False
     locker = thread.allocate_lock()
 
     def __init__(self, till=None, timeout=None, seconds=None):
+        global next_ping
+
         Signal.__init__(self, "a timeout")
         if till != None:
             timeout = Date(till).unix
         elif timeout != None:
-            timeout = (Date.now()+Duration(timeout)).unix
+            timeout = (_time() + Duration(timeout).seconds).unix
         elif seconds != None:
-            timeout = Date.now().unix + seconds
+            timeout = _time() + seconds
 
         with Till.locker:
+            next_ping = min(next_ping, timeout)
             Till.all_timers.append((timeout, self))
-            Till.dirty = True
 
     @classmethod
     def daemon(cls, please_stop):
-        next_ping = Date.now().unix
+        global next_ping
         try:
             while not please_stop:
-                now = Date.now().unix
-                if Till.dirty or next_ping < now:
+                now = _time()
+                with Till.locker:
+                    if next_ping > now:
+                        _sleep(min(next_ping - now, INTERVAL))
+                        continue
+
                     next_ping = now + INTERVAL
                     work = None
-                    with Till.locker:
-                        if Till.all_timers:
-                            Till.all_timers.sort(key=lambda r: r[0])
-                            for i, (t, s) in enumerate(Till.all_timers):
-                                if now > t:
-                                    work, Till.all_timers[:i] = Till.all_timers[:i], []
-                                    next_ping = min(next_ping, Till.all_timers[0][0])
-                                    break
-                            else:
-                                work, Till.all_timers = Till.all_timers, []
+                    if Till.all_timers:
+                        Till.all_timers.sort(key=lambda r: r[0])
+                        for i, (t, s) in enumerate(Till.all_timers):
+                            if now < t:
+                                work, Till.all_timers[:i] = Till.all_timers[:i], []
+                                next_ping = min(next_ping, Till.all_timers[0][0])
+                                break
+                        else:
+                            work, Till.all_timers = Till.all_timers, []
 
-                        Till.dirty = False
-                    if work:
-                        for t, s in work:
-                            s.go()
-                else:
-                    _sleep(min(next_ping-now, INTERVAL))
+                if work:
+                    for t, s in work:
+                        s.go()
         except Exception, e:
             from pyLibrary.debugs.logs import Log
 
