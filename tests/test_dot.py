@@ -403,6 +403,12 @@ class TestDot(FuzzyTestCase):
         test = d.a.b
         self.assertEqual(test, [1, 2])
 
+    def test_deep_select_list(self):
+        d = wrap({"a": {"b": [{"c": 1}, {"c": 2}]}})
+
+        test = d["a.b.c"]
+        self.assertEqual(test, [1, 2])
+
     def test_set_default(self):
         a = {"x": {"y": 1}}
         b = {"x": {"z": 2}}

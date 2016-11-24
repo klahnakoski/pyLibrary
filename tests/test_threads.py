@@ -14,6 +14,7 @@ from __future__ import unicode_literals
 
 from pyLibrary.debugs.logs import Log
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
+from pyLibrary.thread.signal import Signal
 from pyLibrary.thread.threads import Lock, Thread
 from pyLibrary.thread.till import Till
 from pyLibrary.times.dates import Date
@@ -70,6 +71,26 @@ class TestThreads(FuzzyTestCase):
             self.assertTrue(i in phase2, "expecting "+unicode(i))
         Log.note("done")
 
+    def test_thread_wait_till(self):
+        phase1 = []
+        phase2 = []
+
+        def work(value, please_stop):
+            with Lock() as locker:
+                phase1.append(value)
+                locker.wait(Till(seconds=0.1))
+                phase2.append(value)
+
+        worker = Thread.run("worker", work, 0)
+        worker.stopped.wait_for_go()
+
+        self.assertEqual(phase1, [0], "expecting ordered list")
+        self.assertEqual(phase2, [0], "expecting ordered list")
+        Log.note("done")
+
+
+
+
     def test_timeout(self):
         def test(please_stop):
             Thread.sleep(seconds=10)
@@ -88,16 +109,24 @@ class TestThreads(FuzzyTestCase):
 
     def test_loop(self):
         acc = []
-        def worker(please_stop):
+        started = Signal()
+
+        def work(please_stop):
+            started.go()
             while not please_stop:
                 acc.append(Date.now().unix)
                 Thread.sleep(0.1)
 
-        Thread.run("loop", worker)
-        Thread.sleep(1)
+        worker = Thread.run("loop", work)
+        started.wait_for_go()
+        while len(acc)<10:
+            Thread.sleep(0.1)
+        worker.stop()
+        worker.join()
 
         # We expect 10, but 9 is good enough
-        self.assertGreater(len(acc), 9, "Expecting some reasonable number of entries to prove there was looping")
+        num = len(acc)
+        self.assertGreater(num, 9, "Expecting some reasonable number of entries to prove there was looping, not "+unicode(num))
 
     def test_or_signal_timeout(self):
         acc = []
@@ -146,6 +175,7 @@ class TestThreads(FuzzyTestCase):
         acc.append("done")
         self.assertEqual(acc, ["worker", "worker", "worker", "done"])
 
-
-
-
+    def test_disabled_till(self):
+        Till.enabled = False
+        t = Till(seconds=10000000) # ONCE THE Till DAEMON IS DOWN, ALL TIMING SIGNALS ARE A go()!
+        t.wait_for_go()

@@ -23,7 +23,7 @@ from copy import copy
 from datetime import datetime, timedelta
 
 from pyLibrary import strings
-from pyLibrary.debugs.exceptions import Except, suppress_exception
+from pyLibrary.debugs.exceptions import Except, suppress_exception, Explanation
 from pyLibrary.debugs.profiles import CProfiler
 from pyLibrary.dot import coalesce, Dict, unwraplist, Null
 from pyLibrary.thread.lock import Lock
@@ -32,8 +32,8 @@ from pyLibrary.thread.till import Till
 from pyLibrary.times.dates import Date
 from pyLibrary.times.durations import SECOND
 
-_Log = None
 _Except = None
+_Log = None
 DEBUG = True
 
 MAX_DATETIME = datetime(2286, 11, 20, 17, 46, 39)
@@ -43,15 +43,14 @@ datetime.strptime('2012-01-01', '%Y-%m-%d')  # http://bugs.python.org/issue7980
 
 
 def _late_import():
-    global _Log
     global _Except
+    global _Log
 
-    from pyLibrary.debugs.logs import Log as _Log
     from pyLibrary.debugs.exceptions import Except as _Except
+    from pyLibrary.debugs.logs import Log as _Log
 
-    _ = _Log
     _ = _Except
-
+    _ = _Log
 
 
 class Queue(object):
@@ -114,12 +113,15 @@ class Queue(object):
                 self.queue.appendleft(value)
         return self
 
-    def pop_message(self, wait=SECOND, till=None):
+    def pop_message(self, till=None):
         """
         RETURN TUPLE (message, payload) CALLER IS RESPONSIBLE FOR CALLING message.delete() WHEN DONE
         DUMMY IMPLEMENTATION FOR DEBUGGING
         """
-        return Null, self.pop(timeout=wait, till=till)
+
+        if till is not None and not isinstance(till, Signal):
+            _Log.error("Expecting a signal")
+        return Null, self.pop(till=till)
 
     def extend(self, values):
         if not self.keep_running and not self.allow_add_after_close:
@@ -181,47 +183,34 @@ class Queue(object):
         with self.lock:
             return any(r != Thread.STOP for r in self.queue)
 
-    def pop(self, till=None, timeout=None):
+    def pop(self, till=None):
         """
         WAIT FOR NEXT ITEM ON THE QUEUE
         RETURN Thread.STOP IF QUEUE IS CLOSED
-        IF till IS PROVIDED, THEN pop() CAN TIMEOUT AND RETURN None
-        """
+        RETURN None IF till IS REACHED AND QUEUE IS STILL EMPTY
 
-        if timeout:
-            till = Date.now() + timeout
+        :param till:  A `Signal` to stop waiting and return None
+        :return:  A value, or a Thread.STOP or None
+        """
+        if till is not None and not isinstance(till, Signal):
+            _Log.error("expecting a signal")
 
         with self.lock:
-            if till == None:
-                while self.keep_running:
-                    if self.queue:
-                        value = self.queue.popleft()
-                        if value is Thread.STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
-                            self.keep_running = False
-                        return value
+            while self.keep_running:
+                if self.queue:
+                    value = self.queue.popleft()
+                    if value is Thread.STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
+                        self.keep_running = False
+                    return value
 
-                    with suppress_exception:
-                        self.lock.wait()
-            else:
-                while self.keep_running:
-                    if self.queue:
-                        value = self.queue.popleft()
-                        if value is Thread.STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
-                            self.keep_running = False
-                        return value
-                    elif Date.now() > till:
-                        break
-
-                    with suppress_exception:
-                        self.lock.wait(till=till)
-
-                if self.keep_running:
-                    return None
+                if not self.lock.wait(till=till):
+                    break
+            if self.keep_running:
+                return None
 
         if DEBUG or not self.silent:
             _Log.note(self.name + " queue stopped")
         return Thread.STOP
-
 
     def pop_all(self):
         """
@@ -314,6 +303,7 @@ class MainThread(object):
         self.name = "Main Thread"
         self.id = thread.get_ident()
         self.children = []
+        self.timers = None
 
     def add_child(self, child):
         self.children.append(child)
@@ -351,14 +341,12 @@ class MainThread(object):
         if join_errors:
             _Log.error("Problem while stopping {{name|quote}}", name=self.name, cause=unwraplist(join_errors))
 
+        self.timers.stop()
+        self.timers.join()
+
         if DEBUG:
             _Log.note("Thread {{name|quote}} now stopped", name=self.name)
 
-MAIN_THREAD = MainThread()
-
-ALL_LOCK = Lock("threads ALL_LOCK")
-ALL = dict()
-ALL[thread.get_ident()] = MAIN_THREAD
 
 
 class Thread(object):
@@ -481,9 +469,9 @@ class Thread(object):
                         except Exception, e:
                             _Log.warning("Problem joining thread {{thread}}", thread=c.name, cause=e)
 
+                    self.stopped.go()
                     if DEBUG:
                         _Log.note("thread {{name|quote}} stopping", name=self.name)
-                    self.stopped.go()
                     del self.target, self.args, self.kwargs
                     with ALL_LOCK:
                         del ALL[self.id]
@@ -492,9 +480,9 @@ class Thread(object):
                     if DEBUG:
                         _Log.warning("problem with thread {{name|quote}}", cause=e, name=self.name)
                 finally:
+                    self.stopped.go()
                     if DEBUG:
                         _Log.note("thread {{name|quote}} is done", name=self.name)
-                    self.stopped.go()
 
     def is_alive(self):
         return not self.stopped
@@ -657,7 +645,7 @@ class ThreadedQueue(Queue):
                             next_time = now + period
                         continue
 
-                    item = self.pop(till=next_time)
+                    item = self.pop(till=Till(till=next_time))
                     now = Date.now()
 
                     if item is Thread.STOP:
@@ -801,4 +789,11 @@ def _interrupt_main_safely():
         pass
 
 
-Thread.run("timers", Till.daemon)
+MAIN_THREAD = MainThread()
+
+ALL_LOCK = Lock("threads ALL_LOCK")
+ALL = dict()
+ALL[thread.get_ident()] = MAIN_THREAD
+
+MAIN_THREAD.timers = Thread.run("timers", Till.daemon)
+MAIN_THREAD.children.remove(MAIN_THREAD.timers)
