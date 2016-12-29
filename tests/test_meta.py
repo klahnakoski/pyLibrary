@@ -10,6 +10,8 @@
 
 from __future__ import unicode_literals
 from decimal import Decimal
+from time import sleep
+
 from pyLibrary.meta import cache
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.thread.threads import Thread
@@ -62,7 +64,7 @@ class TestMeta(FuzzyTestCase):
         self.assertEqual(single_func(), 42)
         self.assertEqual(call_count, 1)
 
-        Till(seconds=CACHE_DURATION.seconds+1).wait()
+        sleep(CACHE_DURATION.seconds+1)
 
         self.assertEqual(single_func(), 42)
         self.assertEqual(single_func(), 42)
@@ -84,7 +86,7 @@ class TestMeta(FuzzyTestCase):
         self.assertEqual(call_count, 1)
 
         # SLEEP UNTIL CACHE EXPIRED
-        Till(seconds=CACHE_DURATION.seconds+0.1).wait()
+        sleep(CACHE_DURATION.seconds+0.1)
 
         self.assertEqual(obj.method0(), 2)
         self.assertEqual(obj.method0(), 2)
@@ -110,7 +112,7 @@ class TestMeta(FuzzyTestCase):
         self.assertEqual(obj.method1(3), "big")
         self.assertEqual(call_count, 4)
 
-        Till(seconds=CACHE_DURATION.seconds+0.1).wait()
+        sleep(CACHE_DURATION.seconds+0.1)
 
         self.assertEqual(obj.method1(0), "zero")
         self.assertEqual(obj.method1(1), "one")

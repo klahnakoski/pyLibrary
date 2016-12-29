@@ -51,7 +51,7 @@ class TestLocks(FuzzyTestCase):
                 locks[i].release()
 
     def test_queue_speed(self):
-        SCALE = 1000*100
+        SCALE = 1000*10
 
         done = Signal("done")
         slow = Queue()
@@ -75,7 +75,7 @@ class TestLocks(FuzzyTestCase):
             Log.note("Done insert")
             done.wait()
 
-        self.assertLess(timer.duration.seconds, 15, "Expecting queue to be fast")
+        self.assertLess(timer.duration.seconds, 1.5, "Expecting queue to be fast")
 
 
     def test_till_timers(self):
