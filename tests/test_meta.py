@@ -13,6 +13,7 @@ from decimal import Decimal
 from pyLibrary.meta import cache
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.thread.threads import Thread
+from pyLibrary.thread.till import Till
 from pyLibrary.times.durations import SECOND
 
 
@@ -32,7 +33,7 @@ class TestMeta(FuzzyTestCase):
         self.assertEqual(forever_func(), 42)
         self.assertEqual(call_count, 0)
 
-        Thread.sleep(seconds=CACHE_DURATION.seconds)
+        Till(seconds=CACHE_DURATION.seconds).wait()
 
         self.assertEqual(forever_func(), 42)
         self.assertEqual(forever_func(), 42)
@@ -61,7 +62,7 @@ class TestMeta(FuzzyTestCase):
         self.assertEqual(single_func(), 42)
         self.assertEqual(call_count, 1)
 
-        Thread.sleep(seconds=CACHE_DURATION.seconds+1)
+        Till(seconds=CACHE_DURATION.seconds+1).wait()
 
         self.assertEqual(single_func(), 42)
         self.assertEqual(single_func(), 42)
@@ -83,7 +84,7 @@ class TestMeta(FuzzyTestCase):
         self.assertEqual(call_count, 1)
 
         # SLEEP UNTIL CACHE EXPIRED
-        Thread.sleep(seconds=CACHE_DURATION.seconds+0.1)
+        Till(seconds=CACHE_DURATION.seconds+0.1).wait()
 
         self.assertEqual(obj.method0(), 2)
         self.assertEqual(obj.method0(), 2)
@@ -109,7 +110,7 @@ class TestMeta(FuzzyTestCase):
         self.assertEqual(obj.method1(3), "big")
         self.assertEqual(call_count, 4)
 
-        Thread.sleep(seconds=CACHE_DURATION.seconds+0.1)
+        Till(seconds=CACHE_DURATION.seconds+0.1).wait()
 
         self.assertEqual(obj.method1(0), "zero")
         self.assertEqual(obj.method1(1), "one")

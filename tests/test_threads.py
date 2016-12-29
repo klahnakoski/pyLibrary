@@ -12,8 +12,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import os
+from unittest import skipIf
+
 from pyLibrary.debugs.logs import Log
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
+from pyLibrary.thread.multiprocess import Process
 from pyLibrary.thread.signal import Signal
 from pyLibrary.thread.threads import Lock, Thread
 from pyLibrary.thread.till import Till
@@ -82,30 +86,36 @@ class TestThreads(FuzzyTestCase):
                 phase2.append(value)
 
         worker = Thread.run("worker", work, 0)
-        worker.stopped.wait_for_go()
+        worker.stopped.wait()
 
         self.assertEqual(phase1, [0], "expecting ordered list")
         self.assertEqual(phase2, [0], "expecting ordered list")
         Log.note("done")
 
-
-
-
     def test_timeout(self):
         def test(please_stop):
-            Thread.sleep(seconds=10)
+            Till(seconds=10).wait()
 
         now = Date.now()
         thread = Thread.run("sleeper", test)
-        Thread.sleep(0.5)
+        Till(seconds=0.5).wait()
         thread.stop()
         self.assertGreater(now.unix+1, Date.now().unix, "Expecting quick stop")
         Log.note("done")
 
     def test_sleep(self):
-        Thread.sleep(0.5)
+        Till(seconds=0.5).wait()
         Log.note("done")
 
+    @skipIf(os.name == "nt", "Can not SIGINT on Windows")
+    def test_interrupt(self):
+        """
+        CAN WE CATCH A SIGINT?
+        """
+        p = Process("not much" ["python", "tests/resources/utils/wait_for_signal.py"])
+        k = Process("killer", ["kill", "-SIGINT", p.pid])
+
+        p.join()
 
     def test_loop(self):
         acc = []
@@ -115,12 +125,12 @@ class TestThreads(FuzzyTestCase):
             started.go()
             while not please_stop:
                 acc.append(Date.now().unix)
-                Thread.sleep(0.1)
+                Till(seconds=0.1).wait()
 
         worker = Thread.run("loop", work)
-        started.wait_for_go()
+        started.wait()
         while len(acc)<10:
-            Thread.sleep(0.1)
+            Till(seconds=0.1).wait()
         worker.stop()
         worker.join()
 
@@ -132,12 +142,12 @@ class TestThreads(FuzzyTestCase):
         acc = []
 
         def worker(this, please_stop):
-            (Till(seconds=0.3) | please_stop).wait_for_go()
+            (Till(seconds=0.3) | please_stop).wait()
             this.assertTrue(not please_stop, "Expecting not to have stopped yet")
             acc.append("worker")
 
         w = Thread.run("worker", worker, self)
-        w.stopped.wait_for_go()
+        w.stopped.wait()
         acc.append("done")
 
         self.assertEqual(acc, ["worker", "done"])
@@ -146,15 +156,15 @@ class TestThreads(FuzzyTestCase):
         acc = []
 
         def worker(this, please_stop):
-            (Till(seconds=0.3) | please_stop).wait_for_go()
+            (Till(seconds=0.3) | please_stop).wait()
             this.assertTrue(not not please_stop, "Expecting to have the stop signal")
             acc.append("worker")
 
         w = Thread.run("worker", worker, self)
-        Till(seconds=0.1).wait_for_go()
+        Till(seconds=0.1).wait()
         w.stop()
         w.join()
-        w.stopped.wait_for_go()
+        w.stopped.wait()
         acc.append("done")
 
         self.assertEqual(acc, ["worker", "done"])
@@ -171,11 +181,11 @@ class TestThreads(FuzzyTestCase):
         b = Thread.run("b", worker)
         c = Thread.run("c", worker)
 
-        (a.stopped & b.stopped & c.stopped).wait_for_go()
+        (a.stopped & b.stopped & c.stopped).wait()
         acc.append("done")
         self.assertEqual(acc, ["worker", "worker", "worker", "done"])
 
     def test_disabled_till(self):
         Till.enabled = False
         t = Till(seconds=10000000) # ONCE THE Till DAEMON IS DOWN, ALL TIMING SIGNALS ARE A go()!
-        t.wait_for_go()
+        t.wait()

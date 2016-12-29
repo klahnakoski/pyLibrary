@@ -23,6 +23,7 @@ from pyLibrary.dot import listwrap, wrap
 from pyLibrary.dot.objects import DictObject
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.thread.threads import Thread
+from pyLibrary.thread.till import Till
 
 
 class TestExcept(FuzzyTestCase):
@@ -154,7 +155,7 @@ class TestExcept(FuzzyTestCase):
         BC = 'b'
 
         # DURING TESTING SOME OTHER THREADS MAY STILL BE WRITING TO THE LOG
-        Thread.sleep(1)
+        Till(seconds=1).wait()
         # HIGHJACK LOG FOR TESTING OUTPUT
         log_queue = TextLog_usingQueue()
         backup_log, Log.main_log = Log.main_log, log_queue
