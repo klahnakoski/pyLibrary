@@ -10,9 +10,9 @@ from __future__ import unicode_literals
 from unittest import skip
 
 from pyLibrary import convert
-from pyLibrary.dot import unwrap, wrap
+from pyDots import unwrap, wrap
 from pyLibrary.queries import jx
-from pyLibrary.dot.dicts import Dict
+from pyDots import Data
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
@@ -159,7 +159,7 @@ class TestQb(FuzzyTestCase):
         assert dict_value["é"] == "test", "not expecting problems"
 
     def test_simple_depth_filter(self):
-        data = [Dict(**{u'test_build': {u'name': u'Firefox'}})]
+        data = [Data(**{u'test_build': {u'name': u'Firefox'}})]
         result = jx.filter(data, {u'term': {u'test_build.name': u'Firefox'}})
         assert len(result) == 1
 

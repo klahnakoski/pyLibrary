@@ -5,10 +5,10 @@ from pyLibrary.debugs import profiles
 from pyLibrary.debugs.logs import Log
 from pyLibrary.debugs.profiles import Profiler
 from pyLibrary.maths.randoms import Random
-from pyLibrary.dot import Dict
-from pyLibrary.dot.lists import DictList
-from pyLibrary.dot.slow_wrap import slow_wrap
-from pyLibrary.dot.wraps import wrap
+from pyDots import Data
+from pyDots.lists import FlatList
+from pyDots.slow_wrap import slow_wrap
+from pyDots.wraps import wrap
 
 
 def baseline(v):
@@ -21,9 +21,9 @@ NUM_REPEAT = 10
 
 def test_wrap_1():
     switch = [
-        lambda: Dict(i=Random.int(2000)),
+        lambda: Data(i=Random.int(2000)),
         lambda: {"i": Random.int(2000)},
-        lambda: DictList([{"i": Random.int(2000)}]),
+        lambda: FlatList([{"i": Random.int(2000)}]),
         lambda: [{"i": Random.int(2000)}]
     ]
 
@@ -54,8 +54,8 @@ def test_wrap_1():
 def test_wrap_2():
     switch = [
         lambda: {"i": Random.int(2000)},
-        lambda: Dict(i=Random.int(2000)),
-        lambda: DictList([{"i": Random.int(2000)}]),
+        lambda: Data(i=Random.int(2000)),
+        lambda: FlatList([{"i": Random.int(2000)}]),
         lambda: [{"i": Random.int(2000)}]
     ]
 
@@ -87,8 +87,8 @@ def test_wrap_3():
     switch = [
         lambda: Random.string(20),
         lambda: {"i": Random.int(2000)},
-        lambda: Dict(i=Random.int(2000)),
-        lambda: DictList([{"i": Random.int(2000)}]),
+        lambda: Data(i=Random.int(2000)),
+        lambda: FlatList([{"i": Random.int(2000)}]),
         lambda: [{"i": Random.int(2000)}]
     ]
 
@@ -121,5 +121,5 @@ Log.start()
 test_wrap_1()
 test_wrap_2()
 test_wrap_3()
-profiles.write(Dict(filename="speedtest_wrap.tab"))
+profiles.write(Data(filename="speedtest_wrap.tab"))
 Log.stop()

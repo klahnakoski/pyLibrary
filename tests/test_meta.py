@@ -9,15 +9,13 @@
 #
 
 from __future__ import unicode_literals
-from decimal import Decimal
+
 from time import sleep
 
 from pyLibrary.meta import cache
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
-from pyLibrary.thread.threads import Thread
 from pyLibrary.thread.till import Till
 from pyLibrary.times.durations import SECOND
-
 
 CACHE_DURATION = 0.1 * SECOND
 

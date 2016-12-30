@@ -18,7 +18,7 @@ from collections import Mapping
 from pyLibrary import convert
 from pyLibrary.debugs.exceptions import Except, extract_stack, ERROR
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import Dict, coalesce
+from pyDots import Data, coalesce
 from pyLibrary.env.files import File
 from pyLibrary.sql import DB, SQL
 from pyLibrary.thread.threads import Queue, Signal, Thread
@@ -85,7 +85,7 @@ class Sqlite(DB):
         :return: list OF RESULTS
         """
         signal = Signal()
-        result = Dict()
+        result = Data()
         self.queue.add((command, result, signal, None))
         signal.wait()
         if result.exception:

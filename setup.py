@@ -44,7 +44,7 @@ def find_packages(where='.', lib_prefix='', exclude=()):
 
 setup(
     name='pyLibrary',
-    version="0.9.16319",
+    version="0.9.16366",
     description='Library of Wonderful Things',
     long_description=long_desc,
     author='Kyle Lahnakoski',

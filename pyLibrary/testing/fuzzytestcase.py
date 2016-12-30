@@ -11,10 +11,10 @@ from collections import Mapping
 import types
 import unittest
 
-from pyLibrary import dot
+import pyDots
 from pyLibrary.debugs.exceptions import suppress_exception, Except
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import coalesce, literal_field
+from pyDots import coalesce, literal_field
 from pyLibrary.maths import Math
 from pyLibrary.queries.unique_index import UniqueIndex
 from pyLibrary.strings import expand_template
@@ -111,7 +111,7 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
         elif isinstance(expected, Mapping):
             for k, v2 in expected.items():
                 if isinstance(k, basestring):
-                    v1 = dot.get_attr(test, literal_field(k))
+                    v1 = pyDots.get_attr(test, literal_field(k))
                 else:
                     v1 = test[k]
                 assertAlmostEqual(v1, v2, msg=msg, digits=digits, places=places, delta=delta)
