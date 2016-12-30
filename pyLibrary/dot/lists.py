@@ -7,16 +7,14 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
 
-from collections import Mapping
 from copy import deepcopy
 
-from pyLibrary.dot.nones import Null
 from pyLibrary.dot import wrap, unwrap, coalesce
-
+from pyLibrary.dot.nones import Null
 
 _get = object.__getattribute__
 _set = object.__setattr__
