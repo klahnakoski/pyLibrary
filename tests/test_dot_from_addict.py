@@ -1,7 +1,7 @@
 # encoding: utf-8
 #
-# DEC 2016 - Altered tests to conform with rest of
-
+# DEC 2016 - Altered tests to work with differing definitions
+#
 # SNAGGED FROM https://github.com/mewwts/addict/blob/62e8481a2a5c8520259809fc306698489975c9f8/test_addict.py WITH THE FOLLOWING LICENCE
 #
 # The MIT License (MIT)
