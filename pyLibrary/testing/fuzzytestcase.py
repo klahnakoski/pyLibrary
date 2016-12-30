@@ -57,16 +57,16 @@ class FuzzyTestCase(unittest.TestCase):
         try:
             function(*args, **kwargs)
         except Exception, e:
-            e = Except.wrap(e)
+            f = Except.wrap(e)
             if isinstance(problem, basestring):
-                if problem in e:
+                if problem in f:
                     return
                 Log.error(
                     "expecting an exception returning {{problem|quote}} got something else instead",
                     problem=problem,
-                    cause=e
+                    cause=f
                 )
-            elif not isinstance(e, problem):
+            elif not isinstance(f, problem) and not isinstance(e, problem):
                 Log.error("expecting an exception of type {{type}} to be raised", type=problem)
             else:
                 return
@@ -101,12 +101,18 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
         elif isinstance(test, UniqueIndex):
             if test ^ expected:
                 Log.error("Sets do not match")
+        elif isinstance(expected, Mapping) and isinstance(test, Mapping):
+            for k, v2 in expected.items():
+                if isinstance(k, basestring):
+                    v1 = test[literal_field(k)]
+                else:
+                    v1 = test[k]
+                assertAlmostEqual(v1, v2, msg=msg, digits=digits, places=places, delta=delta)
         elif isinstance(expected, Mapping):
             for k, v2 in expected.items():
                 if isinstance(k, basestring):
                     v1 = dot.get_attr(test, literal_field(k))
                 else:
-                    show_deta =False
                     v1 = test[k]
                 assertAlmostEqual(v1, v2, msg=msg, digits=digits, places=places, delta=delta)
         elif isinstance(test, (set, list)) and isinstance(expected, set):

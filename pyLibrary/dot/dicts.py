@@ -45,8 +45,10 @@ class Dict(MutableMapping):
                     _set(self, "_dict", args0)
                 elif isinstance(args0, Dict):
                     _set(self, "_dict", _get(args0, "_dict"))
+                elif isinstance(args0, list):
+                    _set(self, "_dict", dict(args0))
                 else:
-                    _set(self, "_dict", _get(args[0], "__dict__"))
+                    raise TypeError()
             elif kwargs:
                 _set(self, "_dict", unwrap(kwargs))
             else:
@@ -278,9 +280,9 @@ class Dict(MutableMapping):
 
     def __str__(self):
         try:
-            return "Dict("+dict.__str__(_get(self, "_dict"))+")"
-        except Exception, e:
-            return "Dict{}"
+            return dict.__str__(_get(self, "_dict"))
+        except Exception:
+            return "{}"
 
     def __repr__(self):
         try:

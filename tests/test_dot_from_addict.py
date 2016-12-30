@@ -1,3 +1,6 @@
+# encoding: utf-8
+#
+# DEC 2016 - Altered tests to conform with rest of
 
 # SNAGGED FROM https://github.com/mewwts/addict/blob/62e8481a2a5c8520259809fc306698489975c9f8/test_addict.py WITH THE FOLLOWING LICENCE
 #
@@ -23,72 +26,66 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from __future__ import unicode_literals
+
+from collections import Mapping
+from copy import copy, deepcopy
 import json
-import copy
-import unittest
 import pickle
-from addict import Dict
+from unittest import skipIf
+
+from pyLibrary import convert
+from pyLibrary.dot import Dict, set_default, unwrap
+from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 TEST_VAL = [1, 2, 3]
 TEST_DICT = {'a': {'b': {'c': TEST_VAL}}}
 
 
-class Tests(unittest.TestCase):
+class AddictTests(FuzzyTestCase):
 
     def test_set_one_level_item(self):
         some_dict = {'a': TEST_VAL}
         prop = Dict()
         prop['a'] = TEST_VAL
-        self.assertDictEqual(prop, some_dict)
+        self.assertEqual(prop, some_dict)
 
     def test_set_two_level_items(self):
         some_dict = {'a': {'b': TEST_VAL}}
         prop = Dict()
         prop['a']['b'] = TEST_VAL
-        self.assertDictEqual(prop, some_dict)
+        self.assertEqual(prop, some_dict)
 
     def test_set_three_level_items(self):
         prop = Dict()
         prop['a']['b']['c'] = TEST_VAL
-        self.assertDictEqual(prop, TEST_DICT)
+        self.assertEqual(prop, TEST_DICT)
 
     def test_set_one_level_property(self):
         prop = Dict()
         prop.a = TEST_VAL
-        self.assertDictEqual(prop, {'a': TEST_VAL})
+        self.assertEqual(prop, {'a': TEST_VAL})
 
     def test_set_two_level_properties(self):
         prop = Dict()
         prop.a.b = TEST_VAL
-        self.assertDictEqual(prop, {'a': {'b': TEST_VAL}})
+        self.assertEqual(prop, {'a': {'b': TEST_VAL}})
 
     def test_set_three_level_properties(self):
         prop = Dict()
         prop.a.b.c = TEST_VAL
-        self.assertDictEqual(prop, TEST_DICT)
+        self.assertEqual(prop, TEST_DICT)
 
     def test_init_with_dict(self):
-        self.assertDictEqual(TEST_DICT, Dict(TEST_DICT))
+        self.assertEqual(TEST_DICT, Dict(TEST_DICT))
 
     def test_init_with_kws(self):
         prop = Dict(a=2, b={'a': 2}, c=[{'a': 2}])
-        self.assertDictEqual(prop, {'a': 2, 'b': {'a': 2}, 'c': [{'a': 2}]})
-
-    def test_init_with_tuples(self):
-        prop = Dict((0, 1), (1, 2), (2, 3))
-        self.assertDictEqual(prop, {0: 1, 1: 2, 2: 3})
+        self.assertEqual(prop, {'a': 2, 'b': {'a': 2}, 'c': [{'a': 2}]})
 
     def test_init_with_list(self):
-        prop = Dict([(0, 1), (1, 2), (2, 3)])
-        self.assertDictEqual(prop, {0: 1, 1: 2, 2: 3})
-
-    def test_init_with_generator(self):
-        prop = Dict(((i, i + 1) for i in range(3)))
-        self.assertDictEqual(prop, {0: 1, 1: 2, 2: 3})
-
-    def test_init_with_tuples_and_empty_list(self):
-        prop = Dict((0, 1), [], (2, 3))
-        self.assertDictEqual(prop, {0: 1, 2: 3})
+        prop = Dict([('0', 1), ('1', 2), ('2', 3)])
+        self.assertEqual(prop, {'0': 1, '1': 2, '2': 3})
 
     def test_init_raises(self):
         def init():
@@ -96,14 +93,14 @@ class Tests(unittest.TestCase):
 
         def init2():
             Dict('a')
-        self.assertRaises(TypeError, init)
-        self.assertRaises(ValueError, init2)
+        self.assertRaises(Exception, init)
+        self.assertRaises(Exception, init2)
 
     def test_init_with_empty_stuff(self):
         a = Dict({})
         b = Dict([])
-        self.assertDictEqual(a, {})
-        self.assertDictEqual(b, {})
+        self.assertEqual(a, {})
+        self.assertEqual(b, {})
 
     def test_init_with_list_of_dicts(self):
         a = Dict({'a': [{'b': 2}]})
@@ -124,7 +121,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(prop.a.b.c, TEST_VAL)
 
     def test_isinstance(self):
-        self.assertTrue(isinstance(Dict(), dict))
+        self.assertTrue(isinstance(Dict(), Mapping))
 
     def test_str(self):
         prop = Dict(TEST_DICT)
@@ -132,55 +129,43 @@ class Tests(unittest.TestCase):
 
     def test_json(self):
         some_dict = TEST_DICT
-        some_json = json.dumps(some_dict)
+        some_json = convert.value2json(some_dict)
         prop = Dict()
         prop.a.b.c = TEST_VAL
-        prop_json = json.dumps(prop)
+        prop_json = convert.value2json(prop)
         self.assertEqual(some_json, prop_json)
 
     def test_delitem(self):
         prop = Dict({'a': 2})
         del prop['a']
-        self.assertDictEqual(prop, {})
+        self.assertEqual(prop, {})
 
     def test_delitem_nested(self):
-        prop = Dict(TEST_DICT)
+        prop = Dict(deepcopy(TEST_DICT))
         del prop['a']['b']['c']
-        self.assertDictEqual(prop, {'a': {'b': {}}})
+        self.assertEqual(prop, {'a': {'b': {}}})
 
     def test_delattr(self):
         prop = Dict({'a': 2})
         del prop.a
-        self.assertDictEqual(prop, {})
+        self.assertEqual(prop, {})
 
     def test_delattr_nested(self):
-        prop = Dict(TEST_DICT)
+        prop = Dict(deepcopy(TEST_DICT))
         del prop.a.b.c
-        self.assertDictEqual(prop, {'a': {'b': {}}})
+        self.assertEqual(prop, {'a': {'b': {}}})
 
     def test_delitem_delattr(self):
-        prop = Dict(TEST_DICT)
+        prop = Dict(deepcopy(TEST_DICT))
         del prop.a['b']
-        self.assertDictEqual(prop, {'a': {}})
-
-    def test_tuple_key(self):
-        prop = Dict()
-        prop[(1, 2)] = 2
-        self.assertDictEqual(prop, {(1, 2): 2})
-        self.assertEqual(prop[(1, 2)], 2)
+        self.assertEqual(prop, {'a': {}})
 
     def test_set_prop_invalid(self):
         prop = Dict()
+        prop.keys = 2
+        prop.items = 3
 
-        def set_keys():
-            prop.keys = 2
-
-        def set_items():
-            prop.items = 3
-
-        self.assertRaises(AttributeError, set_keys)
-        self.assertRaises(AttributeError, set_items)
-        self.assertDictEqual(prop, {})
+        self.assertEqual(prop, {'keys': 2, 'items': 3})
 
     def test_dir(self):
         key = 'a'
@@ -199,12 +184,12 @@ class Tests(unittest.TestCase):
         dir(prop)
         self.assertTrue('__members__' in prop.keys())
 
-    def test_to_dict(self):
+    def test_unwrap(self):
         nested = {'a': [{'a': 0}, 2], 'b': {}, 'c': 2}
         prop = Dict(nested)
-        regular = prop.to_dict()
-        self.assertDictEqual(regular, prop)
-        self.assertDictEqual(regular, nested)
+        regular = unwrap(prop)
+        self.assertEqual(regular, prop)
+        self.assertEqual(regular, nested)
         self.assertNotIsInstance(regular, Dict)
 
         def get_attr():
@@ -218,9 +203,9 @@ class Tests(unittest.TestCase):
     def test_to_dict_with_tuple(self):
         nested = {'a': ({'a': 0}, {2: 0})}
         prop = Dict(nested)
-        regular = prop.to_dict()
-        self.assertDictEqual(regular, prop)
-        self.assertDictEqual(regular, nested)
+        regular = unwrap(prop)
+        self.assertEqual(regular, prop)
+        self.assertEqual(regular, nested)
         self.assertIsInstance(regular['a'], tuple)
         self.assertNotIsInstance(regular['a'][0], Dict)
 
@@ -235,12 +220,12 @@ class Tests(unittest.TestCase):
         new.child.c = 'c'
         new.foo.bar = True
 
-        old.update(new)
+        old = set_default({}, new, old)
 
         reference = {'foo': {'bar': True},
                      'child': {'a': 'a', 'c': 'c', 'b': 'b2'}}
 
-        self.assertDictEqual(old, reference)
+        self.assertEqual(old, reference)
 
     def test_update_with_lists(self):
         org = Dict()
@@ -253,20 +238,20 @@ class Tests(unittest.TestCase):
                    'b': [{'b': 123}]}
 
         org.update(someother)
-        self.assertDictEqual(org, correct)
-        self.assertIsInstance(org.b[0], dict)
+        self.assertEqual(org, correct)
+        self.assertIsInstance(org.b[0], Mapping)
 
     def test_update_with_kws(self):
         org = Dict(one=1, two=2)
         someother = Dict(one=3)
         someother.update(one=1, two=2)
-        self.assertDictEqual(org, someother)
+        self.assertEqual(org, someother)
 
     def test_update_with_args_and_kwargs(self):
         expected = {'a': 1, 'b': 2}
         org = Dict()
         org.update({'a': 3, 'b': 2}, a=1)
-        self.assertDictEqual(org, expected)
+        self.assertEqual(org, expected)
 
     def test_update_with_multiple_args(self):
         org = Dict()
@@ -295,7 +280,7 @@ class Tests(unittest.TestCase):
 
         # immutable object should not change
         b.child.immutable = 21
-        self.assertEqual(a.child.immutable, 42)
+        self.assertEqual(a.child.immutable, 21)
 
         # mutable object should change
         b.child.mutable.attribute = False
@@ -317,7 +302,7 @@ class Tests(unittest.TestCase):
         a.child.immutable = 42
         a.child.mutable = foo
 
-        b = copy.deepcopy(a)
+        b = deepcopy(a)
 
         # immutable object should not change
         b.child.immutable = 21
@@ -331,10 +316,6 @@ class Tests(unittest.TestCase):
         b.child = "new stuff"
         self.assertTrue(isinstance(a.child, Dict))
 
-    def test_pickle(self):
-        a = Dict(TEST_DICT)
-        self.assertEqual(a, pickle.loads(pickle.dumps(a)))
-
     def test_add_on_empty_dict(self):
         d = Dict()
         d.x.y += 1
@@ -345,8 +326,10 @@ class Tests(unittest.TestCase):
         d = Dict()
         d.x.y = 'defined'
 
-        with self.assertRaises(TypeError):
+        def run():
             d.x += 1
+
+        self.assertRaises(TypeError, run)
 
     def test_add_on_non_empty_value(self):
         d = Dict()
@@ -359,8 +342,10 @@ class Tests(unittest.TestCase):
         d = Dict()
         d.x.y = 'str'
 
-        with self.assertRaises(TypeError):
+        def test():
             d.x.y += 1
+
+        self.assertRaises(TypeError, test)
 
     def test_init_from_zip(self):
         keys = ['a']
@@ -370,10 +355,3 @@ class Tests(unittest.TestCase):
         self.assertEqual(d.a, 42)
 
 
-"""
-Allow for these test cases to be run from the command line
-via `python test_addict.py`
-"""
-if __name__ == '__main__':
-    all_tests = unittest.TestLoader().loadTestsFromTestCase(Tests)
-unittest.TextTestRunner(verbosity=2).run(all_tests)
