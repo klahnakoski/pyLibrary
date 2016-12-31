@@ -14,7 +14,7 @@ import unittest
 import pyDots
 from pyLibrary.debugs.exceptions import suppress_exception, Except
 from pyLibrary.debugs.logs import Log
-from pyDots import coalesce, literal_field
+from pyDots import coalesce, literal_field, unwrap
 from pyLibrary.maths import Math
 from pyLibrary.queries.unique_index import UniqueIndex
 from pyLibrary.strings import expand_template
@@ -102,11 +102,10 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
             if test ^ expected:
                 Log.error("Sets do not match")
         elif isinstance(expected, Mapping) and isinstance(test, Mapping):
-            for k, v2 in expected.items():
-                if isinstance(k, basestring):
-                    v1 = test[literal_field(k)]
-                else:
-                    v1 = test[k]
+            test = unwrap(test)
+            expected = unwrap(expected)
+            for k, v2 in unwrap(expected).items():
+                v1 = test[k]
                 assertAlmostEqual(v1, v2, msg=msg, digits=digits, places=places, delta=delta)
         elif isinstance(expected, Mapping):
             for k, v2 in expected.items():

@@ -50,7 +50,7 @@ class TestRef(FuzzyTestCase):
         url = "file://tests/resources/json_ref/test_ref_w_parameters.json?{{.|url}}"
         url = expand_template(url, {"metadata": Data()})
         result = jsons.ref.get(url)
-        self.assertEqual(result, {"test_result": {}}, "expecting proper parameter expansion")
+        self.assertEqual(result, {}, "expecting proper parameter expansion")
 
     def test_json_parameter(self):
         url = "file://tests/resources/json_ref/test_ref_w_parameters.json?{{.|url}}"
