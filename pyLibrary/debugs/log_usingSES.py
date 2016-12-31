@@ -17,7 +17,7 @@ from boto.ses import connect_to_region
 
 from pyLibrary.debugs.exceptions import ALARM, NOTE
 from pyLibrary.debugs.logs import Log
-from pyLibrary.debugs.text_logs import TextLog
+from pyLibrary.debugs import TextLog
 from pyDots import listwrap, unwrap
 from pyLibrary.meta import use_settings
 from pyLibrary.strings import expand_template

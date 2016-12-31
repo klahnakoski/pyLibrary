@@ -17,7 +17,7 @@ import sys
 from time import time
 
 from pyLibrary.debugs.logs import Log
-from pyLibrary.debugs.text_logs import TextLog
+from pyLibrary.debugs import TextLog
 from pyLibrary.strings import expand_template
 from pyLibrary.thread.threads import Thread
 from pyLibrary.thread.till import Till

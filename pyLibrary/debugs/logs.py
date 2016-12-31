@@ -19,10 +19,9 @@ import sys
 from collections import Mapping
 from datetime import datetime
 
+from pyDots import coalesce, listwrap, wrap, unwrap, unwraplist, set_default
 from pyLibrary.debugs import constants, exceptions
 from pyLibrary.debugs.exceptions import Except, suppress_exception
-from pyLibrary.debugs.text_logs import TextLog_usingMulti, TextLog_usingThread, TextLog_usingStream, TextLog_usingFile
-from pyDots import coalesce, listwrap, wrap, unwrap, unwraplist, set_default
 from pyLibrary.strings import indent
 
 _Thread = None
@@ -62,7 +61,7 @@ class Log(object):
         cls.settings = settings
         cls.trace = cls.trace | coalesce(settings.trace, False)
         if cls.trace:
-            from pyLibrary.thread.threads import Thread as _Thread
+            pass
 
         if settings.cprofile is False:
             settings.cprofile = {"enabled": False}
@@ -459,6 +458,11 @@ machine_metadata = wrap({
     "name": platform.node()
 })
 
+
+from pyLibrary.debugs.log_usingFile import TextLog_usingFile
+from pyLibrary.debugs.log_usingMulti import TextLog_usingMulti
+from pyLibrary.debugs.log_usingStream import TextLog_usingStream
+from pyLibrary.debugs.log_usingThread import TextLog_usingThread
 
 if not Log.main_log:
     Log.main_log = TextLog_usingStream(sys.stdout)

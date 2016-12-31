@@ -14,7 +14,7 @@ from __future__ import division
 from __future__ import absolute_import
 
 from pyLibrary.debugs.exceptions import ALARM, NOTE
-from pyLibrary.debugs.text_logs import TextLog
+from pyLibrary.debugs import TextLog
 from pyLibrary.debugs.logs import Log
 from pyLibrary.env.emailer import Emailer
 from pyLibrary.meta import use_settings
