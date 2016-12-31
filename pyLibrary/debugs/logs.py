@@ -22,9 +22,10 @@ from datetime import datetime
 from pyLibrary.debugs import constants, exceptions
 from pyLibrary.debugs.exceptions import Except, suppress_exception
 from pyLibrary.debugs.text_logs import TextLog_usingMulti, TextLog_usingThread, TextLog_usingStream, TextLog_usingFile
-from pyLibrary.dot import coalesce, listwrap, wrap, unwrap, unwraplist, set_default
+from pyDots import coalesce, listwrap, wrap, unwrap, unwraplist, set_default
 from pyLibrary.strings import indent
-from pyLibrary.thread.threads import Thread, Queue
+
+_Thread = None
 
 
 class Log(object):
@@ -36,7 +37,7 @@ class Log(object):
     logging_multi = None
     profiler = None   # simple pypy-friendly profiler
     cprofiler = None  # screws up with pypy, but better than nothing
-    cprofiler_stats = Queue("cprofiler stats")  # ACCUMULATION OF STATS FROM ALL THREADS
+    cprofiler_stats = None
     error_mode = False  # prevent error loops
 
     @classmethod
@@ -53,6 +54,7 @@ class Log(object):
                     USE THE LONG FORM TO SET FILENAME {"enabled": True, "filename": "profile.tab"}
         constants - UPDATE MODULE CONSTANTS AT STARTUP (PRIMARILY INTENDED TO CHANGE DEBUG STATE)
         """
+        global _Thread
         if not settings:
             return
         settings = wrap(settings)
@@ -60,7 +62,7 @@ class Log(object):
         cls.settings = settings
         cls.trace = cls.trace | coalesce(settings.trace, False)
         if cls.trace:
-            from pyLibrary.thread.threads import Thread
+            from pyLibrary.thread.threads import Thread as _Thread
 
         if settings.cprofile is False:
             settings.cprofile = {"enabled": False}
@@ -103,6 +105,11 @@ class Log(object):
         from pyLibrary.debugs import profiles
 
         if cls.cprofiler and hasattr(cls, "settings"):
+            if cls.cprofiler == None:
+                from pyLibrary.thread.threads import Queue
+
+                cls.cprofiler_stats = Queue("cprofiler stats")  # ACCUMULATION OF STATS FROM ALL THREADS
+
             import pstats
             cls.cprofiler_stats.add(pstats.Stats(cls.cprofiler))
             write_profile(cls.settings.cprofile, cls.cprofiler_stats.pop_all())
@@ -190,14 +197,14 @@ class Log(object):
             template = "\n" + template
 
         if cls.trace:
-            log_template = "{{machine.name}} - {{timestamp|datetime}} - {{thread.name}} - \"{{location.file}}:{{location.line}}\" ({{location.method}}) - " + template.replace("{{", "{{params.")
+            log_template = "{{machine.name}} (pid{{machine.pid}}) - {{timestamp|datetime}} - {{thread.name}} - \"{{location.file}}:{{location.line}}\" ({{location.method}}) - " + template.replace("{{", "{{params.")
             f = sys._getframe(stack_depth + 1)
             log_params.location = {
                 "line": f.f_lineno,
                 "file": f.f_code.co_filename.split(os.sep)[-1],
                 "method": f.f_code.co_name
             }
-            thread = Thread.current()
+            thread = _Thread.current()
             log_params.thread = {"name": thread.name, "id": thread.id}
         else:
             log_template = "{{timestamp|datetime}} - " + template.replace("{{", "{{params.")
@@ -446,6 +453,7 @@ def write_profile(profile_settings, stats):
 
 # GET THE MACHINE METADATA
 machine_metadata = wrap({
+    "pid":  os.getpid(),
     "python": platform.python_implementation(),
     "os": (platform.system() + platform.release()).strip(),
     "name": platform.node()

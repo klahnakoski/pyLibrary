@@ -19,10 +19,12 @@ from boto.sqs.message import Message
 from pyLibrary import convert
 from pyLibrary.debugs.exceptions import Except, suppress_exception
 from pyLibrary.debugs.logs import Log, machine_metadata
-from pyLibrary.dot import wrap, unwrap, coalesce
+from pyDots import wrap, unwrap, coalesce
 from pyLibrary.maths import Math
 from pyLibrary.meta import use_settings
+from pyLibrary.thread.signal import Signal
 from pyLibrary.thread.threads import Thread
+from pyLibrary.thread.till import Till
 from pyLibrary.times.durations import SECOND, Duration
 
 
@@ -77,6 +79,9 @@ class Queue(object):
             self.add(m)
 
     def pop(self, wait=SECOND, till=None):
+        if till is not None and not isinstance(till, Signal):
+            Log.error("Expecting a signal")
+
         m = self.queue.read(wait_time_seconds=Math.floor(wait.seconds))
         if not m:
             return None
@@ -89,6 +94,9 @@ class Queue(object):
         """
         RETURN TUPLE (message, payload) CALLER IS RESPONSIBLE FOR CALLING message.delete() WHEN DONE
         """
+        if till is not None and not isinstance(till, Signal):
+            Log.error("Expecting a signal")
+
         message = self.queue.read(wait_time_seconds=Math.floor(wait.seconds))
         if not message:
             return None
@@ -137,13 +145,13 @@ def capture_termination_signal(please_stop):
                     return
             except Exception, e:
                 e = Except.wrap(e)
-                if "Failed to establish a new connection: [Errno 10060]" in e:
+                if "Failed to establish a new connection: [Errno 10060]" in e or "A socket operation was attempted to an unreachable network" in e:
                     Log.warning("AWS Spot Detection has shutdown, probably not a spot node, (http://169.254.169.254 is unreachable)")
                     return
                 else:
                     Log.warning("AWS shutdown detection has problems", cause=e)
-                Thread.sleep(seconds=61, please_stop=please_stop)
-            Thread.sleep(seconds=11, please_stop=please_stop)
+                (Till(seconds=61) | please_stop).wait()
+            (Till(seconds=11) | please_stop).wait()
 
     Thread.run("listen for termination", worker, please_stop=please_stop)
 
@@ -180,6 +188,5 @@ def _get_metadata_from_from_aws(please_stop):
             machine_metadata.name = ec2.instance_id
 
 Thread.run("get aws machine metadata", _get_metadata_from_from_aws)
-
 
 from . import s3

@@ -13,7 +13,7 @@ import unittest
 
 from pyLibrary import convert, jsons
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import Dict, wrap
+from pyDots import Data, wrap
 from pyLibrary.env.elasticsearch import scrub
 from pyLibrary.jsons.encoder import pypy_json_encode as pypy_json_encode, cPythonJSONEncoder, pretty_json
 from pyLibrary.times.dates import Date
@@ -95,7 +95,7 @@ class TestJSON(unittest.TestCase):
 
     def test_default_python(self):
 
-        test = {"add": Dict(start=b"".join([" ", u"â€"]))}
+        test = {"add": Data(start=b"".join([" ", u"â€"]))}
         output = pypy_json_encode(test)
 
         expecting = u'{"add": {"start": " â€"}}'

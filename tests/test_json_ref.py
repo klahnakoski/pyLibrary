@@ -13,7 +13,7 @@ from __future__ import division
 from __future__ import absolute_import
 import os
 from pyLibrary import jsons
-from pyLibrary.dot import Dict
+from pyDots import Data
 from pyLibrary.env.files import File
 from pyLibrary.parsers import URL
 from pyLibrary.strings import expand_template
@@ -48,7 +48,7 @@ class TestRef(FuzzyTestCase):
 
     def test_empty_object_as_json_parameter(self):
         url = "file://tests/resources/json_ref/test_ref_w_parameters.json?{{.|url}}"
-        url = expand_template(url, {"metadata": Dict()})
+        url = expand_template(url, {"metadata": Data()})
         result = jsons.ref.get(url)
         self.assertEqual(result, {"test_result": {}}, "expecting proper parameter expansion")
 

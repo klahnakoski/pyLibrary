@@ -16,7 +16,7 @@ from pyLibrary import regex
 from pyLibrary.vendor.dateutil.relativedelta import relativedelta
 from pyLibrary.collections import MIN
 from pyLibrary.maths import Math
-from pyLibrary.dot import wrap
+from pyDots import wrap
 
 
 _Date = None
@@ -211,7 +211,7 @@ class Duration(object):
 
     @property
     def seconds(self):
-        return self.milli / 1000
+        return self._milli / 1000
 
     @property
     def milli(self):

@@ -20,9 +20,9 @@ from pyLibrary.sql import SQL
 from pyLibrary.sql.mysql import int_list_packer
 from pyLibrary.debugs.logs import Log
 from pyLibrary.strings import indent, expand_template
-from pyLibrary.dot import coalesce
-from pyLibrary.dot.lists import DictList
-from pyLibrary.dot import wrap, listwrap, unwrap
+from pyDots import coalesce
+from pyDots.lists import FlatList
+from pyDots import wrap, listwrap, unwrap
 
 
 class MySQL(object):
@@ -109,8 +109,8 @@ class MySQL(object):
             if s.aggregate not in aggregates:
                 Log.error("Expecting all columns to have an aggregate: {{select}}", select=s)
 
-        selects = DictList()
-        groups = DictList()
+        selects = FlatList()
+        groups = FlatList()
         edges = query.edges
         for e in edges:
             if e.domain.type != "default":
@@ -156,7 +156,7 @@ class MySQL(object):
 
             # FILL THE DATA CUBE
             maps = [(unwrap(e.domain.map), result[i]) for i, e in enumerate(edges)]
-            cubes = DictList()
+            cubes = FlatList()
             for c, s in enumerate(select):
                 data = Matrix(*[len(e.domain.partitions) + (1 if e.allow_nulls else 0) for e in edges])
                 for rownum, value in enumerate(result[c + num_edges]):
@@ -181,7 +181,7 @@ class MySQL(object):
                 if s.aggregate not in aggregates:
                     Log.error("Expecting all columns to have an aggregate: {{select}}", select=s)
 
-            selects = DictList()
+            selects = FlatList()
             for s in query.select:
                 selects.append(aggregates[s.aggregate].replace("{{code}}", s.value) + " AS " + self.db.quote_column(s.name))
 
@@ -230,7 +230,7 @@ class MySQL(object):
         """
         if isinstance(query.select, list):
             # RETURN BORING RESULT SET
-            selects = DictList()
+            selects = FlatList()
             for s in listwrap(query.select):
                 if isinstance(s.value, Mapping):
                     for k, v in s.value.items:
@@ -388,7 +388,7 @@ def _esfilter2sqlwhere(db, esfilter):
                         return esfilter2sqlwhere(db, {"missing": col})
                     else:
                         return "false"
-            return db.quote_column(col) + " in (" + ",\n".join([db.quote_value(val) for val in v]) + ")"
+            return db.quote_column(col) + SQL(" in (" + ",\n".join([db.quote_value(val) for val in v]) + ")")
     elif esfilter.script:
         return "(" + esfilter.script + ")"
     elif esfilter.range:
@@ -404,7 +404,7 @@ def _esfilter2sqlwhere(db, esfilter):
             max = coalesce(r["lte"], r["<="])
             if min and max:
                 # SPECIAL CASE (BETWEEN)
-                return db.quote_column(col) + " BETWEEN " + db.quote_value(min) + " AND " + db.quote_value(max)
+                return db.quote_column(col) + SQL(" BETWEEN ") + db.quote_value(min) + SQL(" AND ") + db.quote_value(max)
             else:
                 return " AND ".join(
                     db.quote_column(col) + name2sign[sign] + db.quote_value(value)

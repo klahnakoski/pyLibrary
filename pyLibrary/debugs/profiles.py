@@ -17,8 +17,8 @@ from datetime import datetime
 from time import clock
 
 from pyLibrary.collections import MAX
-from pyLibrary.dot import wrap
-from pyLibrary.dot import Dict
+from pyDots import wrap
+from pyDots import Data
 
 ON = False
 profiles = {}
@@ -30,9 +30,10 @@ def _late_import():
     global _Log
 
     from pyLibrary.debugs.logs import Log as _Log
+    from pyLibrary.thread.threads import Queue
 
-    _ = _Log
-
+    if _Log.cprofiler_stats == None:
+        _Log.cprofiler_stats = Queue("cprofiler stats")  # ACCUMULATION OF STATS FROM ALL THREADS
 
 
 class Profiler(object):
@@ -109,15 +110,13 @@ def write(profile_settings):
         return
 
     r = range(max_samples)
-    profs.insert(0, Dict(description="index", samples=r))
+    profs.insert(0, Data(description="index", samples=r))
     stats = [
         {p.description: wrap(p.samples)[i] for p in profs if p.samples}
         for i in r
     ]
     if stats:
         stats_file2.write(convert.list2tab(stats))
-
-
 
 
 class CProfiler(object):

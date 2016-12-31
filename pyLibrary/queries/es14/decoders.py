@@ -15,8 +15,8 @@ from collections import Mapping
 
 from pyLibrary.collections import MAX
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import set_default, coalesce, literal_field, Dict
-from pyLibrary.dot import wrap
+from pyDots import set_default, coalesce, literal_field, Data
+from pyDots import wrap
 from pyLibrary.maths import Math
 from pyLibrary.queries import jx
 from pyLibrary.queries.dimensions import Dimension
@@ -28,11 +28,7 @@ from pyLibrary.queries.query import MAX_LIMIT, DEFAULT_LIMIT
 
 class AggsDecoder(object):
     def __new__(cls, e=None, query=None, *args, **kwargs):
-        if query.groupby:
-            # GROUPBY ASSUMES WE IGNORE THE DOMAIN RANGE
-            e.allowNulls = False
-        else:
-            e.allowNulls = coalesce(e.allowNulls, True)
+        e.allowNulls = coalesce(e.allowNulls, True)
 
         if e.value and e.domain.type == "default":
             if query.groupby:
@@ -47,7 +43,7 @@ class AggsDecoder(object):
                 if not all(isinstance(t, Variable) for t in e.value.terms):
                     Log.error("Can only handle variables in tuples")
 
-                e.domain = Dict(
+                e.domain = Data(
                     dimension={"fields":e.value.terms}
                 )
                 return object.__new__(DimFieldListDecoder, e)
@@ -449,7 +445,7 @@ class DefaultDecoder(SetDecoder):
 
         if not isinstance(self.edge.value, Variable):
             script_field = self.edge.value.to_ruby()
-            missing = self.edge.value.missing().to_esfilter()
+            missing = self.edge.value.missing()
 
             output = wrap({"aggs": {
                 "_match": set_default(
@@ -459,7 +455,7 @@ class DefaultDecoder(SetDecoder):
                     }},
                     es_query
                 ),
-                "_missing": set_default({"filter": missing}, es_query)
+                "_missing": set_default({"filter": missing.to_esfilter()}, es_query) if missing else None
             }})
             return output
 

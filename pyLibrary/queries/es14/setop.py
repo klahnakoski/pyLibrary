@@ -15,9 +15,9 @@ from pyLibrary import queries
 from pyLibrary.collections import AND
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import coalesce, split_field, set_default, Dict, unwraplist, literal_field, join_field, unwrap, wrap
-from pyLibrary.dot import listwrap
-from pyLibrary.dot.lists import DictList
+from pyDots import coalesce, split_field, set_default, Data, unwraplist, literal_field, join_field, unwrap, wrap
+from pyDots import listwrap
+from pyDots.lists import FlatList
 from pyLibrary.maths import Math
 from pyLibrary.queries import es14, es09
 from pyLibrary.queries.containers import STRUCT
@@ -57,32 +57,32 @@ def es_setop(es, query):
     set_default(filters[0], simplify_esfilter(query.where.to_esfilter()))
     es_query.size = coalesce(query.limit, queries.query.DEFAULT_LIMIT)
     es_query.sort = jx_sort_to_es_sort(query.sort)
-    es_query.fields = DictList()
+    es_query.fields = FlatList()
 
     return extract_rows(es, es_query, query)
 
 
 def extract_rows(es, es_query, query):
     is_list = isinstance(query.select, list)
-    select = wrap([s.copy() for s in listwrap(query.select)])
-    new_select = DictList()
+    selects = wrap([s.copy() for s in listwrap(query.select)])
+    new_select = FlatList()
     columns = query.frum.get_columns()
-    leaf_columns = set(c.name for c in columns if c.type not in STRUCT and (len(c.nested_path) == 1 or c.es_column == c.nested_path))
+    leaf_columns = set(c.name for c in columns if c.type not in STRUCT and (c.nested_path[0] == "." or c.es_column == c.nested_path))
     nested_columns = set(c.name for c in columns if len(c.nested_path) != 1)
 
     i = 0
     source = "fields"
-    for s in select:
+    for select in selects:
         # IF THERE IS A *, THEN INSERT THE EXTRA COLUMNS
-        if isinstance(s.value, LeavesOp):
-            term = s.value.term
+        if isinstance(select.value, LeavesOp):
+            term = select.value.term
             if isinstance(term, Variable):
 
                 if term.var == ".":
                     es_query.fields = None
                     source = "_source"
 
-                    net_columns = leaf_columns - set(select.name)
+                    net_columns = leaf_columns - set(selects.name)
                     for n in net_columns:
                         new_select.append({
                             "name": n,
@@ -99,53 +99,53 @@ def extract_rows(es, es_query, query):
                                 es_query.fields.append(c)
 
                             new_select.append({
-                                "name": s.name + "." + c[prefix:],
+                                "name": select.name + "." + c[prefix:],
                                 "value": Variable(c),
-                                "put": {"name": s.name + "." + c[prefix:], "index": i, "child": "."}
+                                "put": {"name": select.name + "." + c[prefix:], "index": i, "child": "."}
                             })
                             i += 1
 
-        elif isinstance(s.value, Variable):
-            if s.value.var == ".":
+        elif isinstance(select.value, Variable):
+            if select.value.var == ".":
                 es_query.fields = None
                 source = "_source"
 
                 new_select.append({
-                    "name": s.name,
-                    "value": s.value,
-                    "put": {"name": s.name, "index": i, "child": "."}
+                    "name": select.name,
+                    "value": select.value,
+                    "put": {"name": select.name, "index": i, "child": "."}
                 })
                 i += 1
-            elif s.value.var == "_id":
+            elif select.value.var == "_id":
                 new_select.append({
-                    "name": s.name,
-                    "value": s.value,
+                    "name": select.name,
+                    "value": select.value,
                     "pull": "_id",
-                    "put": {"name": s.name, "index": i, "child": "."}
+                    "put": {"name": select.name, "index": i, "child": "."}
                 })
                 i += 1
-            elif s.value.var in nested_columns:
+            elif select.value.var in nested_columns or [c for c in nested_columns if c.startswith(select.value.var+".")]:
                 es_query.fields = None
                 source = "_source"
 
                 new_select.append({
-                    "name": s.name,
-                    "value": s.value,
-                    "put": {"name": s.name, "index": i, "child": "."}
+                    "name": select.name,
+                    "value": select.value,
+                    "put": {"name": select.name, "index": i, "child": "."}
                 })
                 i += 1
             else:
-                parent = s.value.var + "."
+                parent = select.value.var + "."
                 prefix = len(parent)
                 net_columns = [c for c in leaf_columns if c.startswith(parent)]
                 if not net_columns:
                     # LEAF
                     if es_query.fields is not None:
-                        es_query.fields.append(s.value.var)
+                        es_query.fields.append(select.value.var)
                     new_select.append({
-                        "name": s.name,
-                        "value": s.value,
-                        "put": {"name": s.name, "index": i, "child": "."}
+                        "name": select.name,
+                        "value": select.value,
+                        "put": {"name": select.name, "index": i, "child": "."}
                     })
                 else:
                     # LEAVES OF OBJECT
@@ -153,17 +153,17 @@ def extract_rows(es, es_query, query):
                         if es_query.fields is not None:
                             es_query.fields.append(n)
                         new_select.append({
-                            "name": s.name,
+                            "name": select.name,
                             "value": Variable(n),
-                            "put": {"name": s.name, "index": i, "child": n[prefix:]}
+                            "put": {"name": select.name, "index": i, "child": n[prefix:]}
                         })
                 i += 1
         else:
-            es_query.script_fields[literal_field(s.name)] = {"script": s.value.to_ruby()}
+            es_query.script_fields[literal_field(select.name)] = {"script": select.value.to_ruby()}
             new_select.append({
-                "name": s.name,
-                "pull": "fields." + literal_field(s.name),
-                "put": {"name": s.name, "index": i, "child": "."}
+                "name": select.name,
+                "pull": "fields." + literal_field(select.name),
+                "put": {"name": select.name, "index": i, "child": "."}
             })
             i += 1
 
@@ -198,24 +198,24 @@ def format_list(T, select, query=None):
     data = []
     if isinstance(query.select, list):
         for row in T:
-            r = Dict()
+            r = Data()
             for s in select:
                 r[s.put.name][s.put.child] = unwraplist(row[s.pull])
             data.append(r if r else None)
     elif isinstance(query.select.value, LeavesOp):
         for row in T:
-            r = Dict()
+            r = Data()
             for s in select:
                 r[s.put.name][s.put.child] = unwraplist(row[s.pull])
             data.append(r if r else None)
     else:
         for row in T:
-            r = Dict()
+            r = Data()
             for s in select:
                 r[s.put.child] = unwraplist(row[s.pull])
             data.append(r if r else None)
 
-    return Dict(
+    return Data(
         meta={"format": "list"},
         data=data
     )
@@ -237,7 +237,7 @@ def format_table(T, select, query=None):
                 r[index] = value
             else:
                 if r[index] is None:
-                    r[index] = Dict()
+                    r[index] = Data()
                 r[index][child] = value
 
         data.append(r)
@@ -248,7 +248,7 @@ def format_table(T, select, query=None):
             continue
         header[s.put.index] = s.name
 
-    return Dict(
+    return Data(
         meta={"format": "table"},
         header=header,
         data=data

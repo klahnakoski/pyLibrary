@@ -11,7 +11,7 @@ from pyLibrary import convert, strings
 from pyLibrary.aws.s3 import strip_extension
 from pyLibrary.debugs.exceptions import suppress_exception
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import coalesce, wrap, Null
+from pyDots import coalesce, wrap, Null
 from pyLibrary.env import elasticsearch
 from pyLibrary.maths.randoms import Random
 from pyLibrary.meta import use_settings
@@ -20,6 +20,8 @@ from pyLibrary.queries import jx
 from pyLibrary.times.dates import Date, unicode2Date, unix2Date
 from pyLibrary.times.durations import Duration
 from pyLibrary.times.timer import Timer
+
+MAX_RECORD_LENGTH = 400000
 
 
 class RolloverIndex(object):
@@ -77,11 +79,11 @@ class RolloverIndex(object):
                 else:
                     try:
                         es = self.cluster.create_index(create_timestamp=rounded_timestamp, settings=self.settings)
+                        es.add_alias(self.settings.index)
                     except Exception, e:
                         if "IndexAlreadyExistsException" not in e:
                             Log.error("Problem creating index", cause=e)
                         return self._get_queue(row)  # TRY AGAIN
-                    es.add_alias(self.settings.index)
             else:
                 es = elasticsearch.Index(read_only=False, alias=best.alias, index=best.index, settings=self.settings)
 
@@ -171,6 +173,9 @@ class RolloverIndex(object):
                         if not line:
                             continue
 
+                        if rownum > 0 and rownum % 1000 == 0:
+                            Log.note("Ingested {{num}} records from {{key}} in bucket {{bucket}}", num=rownum, key=key, bucket=source.name)
+
                         row, please_stop = fix(rownum, line, source, sample_only_filter, sample_size)
                         num_keys += 1
 
@@ -190,6 +195,7 @@ class RolloverIndex(object):
             else:
                 queue.add(done_copy)
 
+        Log.note("{{num}} keys from {{keys|json}} added", num=num_keys, key=keys)
         return num_keys
 
 
@@ -205,15 +211,13 @@ def fix(rownum, line, source, sample_only_filter, sample_size):
             suite_json = '{' + found + "}"
             if suite_json:
                 suite = convert.json2value(suite_json)
-                suite = convert.value2json(suite.name)
+                suite = convert.value2json(coalesce(suite.fullname, suite.name))
                 line = line.replace(suite_json, suite)
 
     if rownum == 0:
         value = convert.json2value(line)
-        if len(line) > 100000:
-            value.result.subtests = [s for s in value.result.subtests if s.ok is False]
-            value.result.missing_subtests = True
-
+        if len(line) > MAX_RECORD_LENGTH:
+            _shorten(value, source)
         _id, value = _fix(value)
         row = {"id": _id, "value": value}
         if sample_only_filter and Random.int(int(1.0/coalesce(sample_size, 0.01))) != 0 and jx.filter([value], sample_only_filter):
@@ -221,13 +225,12 @@ def fix(rownum, line, source, sample_only_filter, sample_size):
             if value.etl.id != 0:
                 Log.error("Expecting etl.id==0")
             return row, True
-    elif len(line) > 100000:
+    elif len(line) > MAX_RECORD_LENGTH:
         value = convert.json2value(line)
-        value.result.subtests = [s for s in value.result.subtests if s.ok is False]
-        value.result.missing_subtests = True
+        _shorten(value, source)
         _id, value = _fix(value)
         row = {"id": _id, "value": value}
-    elif line.find("\"resource_usage\":") != -1:
+    elif line.find('"resource_usage":') != -1:
         value = convert.json2value(line)
         _id, value = _fix(value)
         row = {"id": _id, "value": value}
@@ -237,6 +240,17 @@ def fix(rownum, line, source, sample_only_filter, sample_size):
         row = {"id": _id, "json": line}
 
     return row, False
+
+
+def _shorten(value, source):
+    value.result.subtests = [s for s in value.result.subtests if s.ok is False]
+    value.result.missing_subtests = True
+    if source.name.startswith("active-data-test-result"):
+        value.repo.changeset.files=None
+
+    shorter_length = len(convert.value2json(value))
+    if shorter_length > MAX_RECORD_LENGTH:
+        Log.warning("Monstrous {{name}} record {{id}} of length {{length}}", id=value._id, name=source.name, length=shorter_length)
 
 
 def _fix(value):

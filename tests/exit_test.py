@@ -18,13 +18,13 @@ from __future__ import absolute_import
 
 from pyLibrary.debugs.logs import Log
 from pyLibrary.thread.threads import Thread, Signal
-
+from pyLibrary.thread.till import Till
 
 please_stop = Signal()
 
 
 def timeout(please_stop):
-    Thread.sleep(seconds=20, please_stop=please_stop)
+    (Till(seconds=20) | please_stop).wait()
     please_stop.go()
 
 

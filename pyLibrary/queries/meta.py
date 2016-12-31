@@ -16,14 +16,15 @@ from copy import copy
 from itertools import product
 
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import coalesce, set_default, Null, literal_field, split_field, join_field, ROOT_PATH
-from pyLibrary.dot import wrap
-from pyLibrary.dot.dicts import Dict
+from pyDots import coalesce, set_default, Null, literal_field, split_field, join_field, ROOT_PATH
+from pyDots import wrap
+from pyDots import Data
 from pyLibrary.meta import use_settings, DataClass
 from pyLibrary.queries import jx, Schema
 from pyLibrary.queries.containers import STRUCT, Container
 from pyLibrary.queries.query import QueryOp
 from pyLibrary.thread.threads import Queue, Thread, Lock
+from pyLibrary.thread.till import Till
 from pyLibrary.times.dates import Date
 from pyLibrary.times.durations import HOUR, MINUTE
 from pyLibrary.times.timer import Timer
@@ -68,7 +69,7 @@ class FromESMetadata(Schema):
         self.es_metadata = Null
         self.last_es_metadata = Date.now()-OLD_METADATA
 
-        self.meta=Dict()
+        self.meta=Data()
         table_columns = metadata_tables()
         column_columns = metadata_columns()
         self.meta.tables = ListContainer("meta.tables", [], wrap({c.name: c for c in table_columns}))
@@ -242,7 +243,7 @@ class FromESMetadata(Schema):
                 # AT LEAST WAIT FOR THE COLUMNS TO UPDATE
                 while len(self.todo) and not all(columns.get("last_updated")):
                     Log.note("waiting for columns to update {{columns|json}}", columns=[c.table+"."+c.es_column for c in columns if not c.last_updated])
-                    Thread.sleep(seconds=1)
+                    Till(seconds=1).wait()
                 return columns
         except Exception, e:
             Log.error("Not expected", cause=e)
@@ -298,7 +299,7 @@ class FromESMetadata(Schema):
             if cardinality == None:
                 Log.error("logic error")
 
-            query = Dict(size=0)
+            query = Data(size=0)
             if cardinality > 1000 or (count >= 30 and cardinality == count) or (count >= 1000 and cardinality / count > 0.99):
                 Log.note("{{table}}.{{field}} has {{num}} parts", table=c.table, field=c.es_column, num=cardinality)
                 with self.meta.columns.locker:
@@ -401,7 +402,7 @@ class FromESMetadata(Schema):
                         else:
                             Log.note("no more metatdata to update")
 
-                column = self.todo.pop(timeout=10*MINUTE)
+                column = self.todo.pop(Till(timeout=10*MINUTE))
                 if column:
                     Log.note("update {{table}}.{{column}}", table=column.table, column=column.es_column)
                     if column.type in STRUCT:
@@ -571,6 +572,7 @@ Column = DataClass(
         "table",
         "es_column",
         "es_index",
+        # "es_type",
         "type",
         {"name": "useSource", "default": False},
         {"name": "nested_path", "nulls": True},  # AN ARRAY OF PATHS (FROM DEEPEST TO SHALLOWEST) INDICATING THE JSON SUB-ARRAYS

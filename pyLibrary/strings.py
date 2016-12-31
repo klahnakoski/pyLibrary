@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import __builtin__
 from __builtin__ import unicode as _unicode
+from __builtin__ import round as _round
 
 
 import re
@@ -24,7 +25,7 @@ from collections import Mapping
 from datetime import timedelta, date
 from datetime import datetime as builtin_datetime
 
-from pyLibrary.dot import coalesce, wrap
+from pyDots import coalesce, wrap
 
 
 _json_encoder = None
@@ -36,22 +37,22 @@ _Duration = None
 
 def _late_import():
     global _json_encoder
-    global _convert
     global _Log
     global _Except
     global _Duration
+    global _convert
 
     from pyLibrary.jsons.encoder import json_encoder as _json_encoder
-    from pyLibrary import convert as _convert
     from pyLibrary.debugs.logs import Log as _Log
     from pyLibrary.debugs.exceptions import Except as _Except
     from pyLibrary.times.durations import Duration as _Duration
+    from pyLibrary import convert as _convert
 
     _ = _json_encoder
-    _ = _convert
     _ = _Log
     _ = _Except
     _ = _Duration
+    _ = _convert
 
 
 def datetime(value):
@@ -302,6 +303,18 @@ def right_align(value, length):
         return value[-length:]
 
 
+def left_align(value, length):
+    if length <= 0:
+        return u""
+
+    value = _unicode(value)
+
+    if len(value) < length:
+        return value + (" " * (length - len(value)))
+    else:
+        return value[:length]
+
+
 def left(value, len):
     if len <= 0:
         return u""
@@ -438,7 +451,10 @@ def _simple_expand(template, seq):
         try:
             val = seq[-depth]
             if var:
-                val = val[var]
+                if isinstance(val, (list, tuple)) and float(var) == _round(float(var), 0):
+                    val = val[int(var)]
+                else:
+                    val = val[var]
             for func_name in ops[1:]:
                 parts = func_name.split('(')
                 if len(parts) > 1:

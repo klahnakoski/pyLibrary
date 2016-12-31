@@ -15,7 +15,7 @@ import shutil
 from datetime import datetime
 
 from pyLibrary import convert
-from pyLibrary.dot import coalesce
+from pyDots import coalesce
 from pyLibrary.maths import crypto
 from pyLibrary.strings import utf82unicode
 
@@ -233,7 +233,7 @@ class File(object):
             except Exception, e:
                 from pyLibrary.debugs.logs import Log
 
-                Log.error("Can not read line from {{filename}}",  filename= self._filename, cause=e)
+                Log.error("Can not read line from {{filename}}", filename=self._filename, cause=e)
 
         return output()
 

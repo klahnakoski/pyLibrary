@@ -19,10 +19,10 @@ from datetime import datetime
 from pyLibrary import convert, strings
 from pyLibrary.debugs.exceptions import Except
 from pyLibrary.debugs.logs import Log
-from pyLibrary.dot import coalesce, Null, Dict, set_default, join_field, split_field, unwraplist, listwrap, literal_field, \
+from pyDots import coalesce, Null, Data, set_default, join_field, split_field, unwraplist, listwrap, literal_field, \
     ROOT_PATH
-from pyLibrary.dot import wrap
-from pyLibrary.dot.lists import DictList
+from pyDots import wrap
+from pyDots.lists import FlatList
 from pyLibrary.env import http
 from pyLibrary.jsons.typed_encoder import json2typed
 from pyLibrary.maths import Math
@@ -31,6 +31,7 @@ from pyLibrary.meta import use_settings
 from pyLibrary.queries import jx
 from pyLibrary.strings import utf82unicode
 from pyLibrary.thread.threads import ThreadedQueue, Thread, Lock
+from pyLibrary.thread.till import Till
 from pyLibrary.times.dates import Date
 from pyLibrary.times.timer import Timer
 
@@ -183,7 +184,7 @@ class Index(Features):
             if alias in response.metadata.indices[self.settings.index].aliases:
                 return
             Log.note("Waiting for alias {{alias}} to appear", alias=alias)
-            Thread.sleep(seconds=1)
+            Till(seconds=1).wait()
 
     def get_index(self, alias):
         """
@@ -251,7 +252,8 @@ class Index(Features):
         result = self.cluster.delete(
             self.path + "/_query",
             data=convert.value2json(query),
-            timeout=600
+            timeout=600,
+            params={"consistency": self.settings.consistency}
         )
 
         for name, status in result._indices.items():
@@ -644,7 +646,7 @@ class Cluster(object):
                 Log.note("Waiting for index {{index}} to appear", index=index)
             except Exception, e:
                 Log.warning("Problem while waiting for index {{index}} to appear", index=index, cause=e)
-            Thread.sleep(seconds=1)
+            Till(seconds=1).wait()
         Log.alert("Made new index {{index|quote}}", index=index)
 
         es = Index(settings=settings)
@@ -861,7 +863,7 @@ def _scrub(r):
         elif Math.is_number(r):
             return convert.value2number(r)
         elif isinstance(r, Mapping):
-            if isinstance(r, Dict):
+            if isinstance(r, Data):
                 r = object.__getattribute__(r, "_dict")
             output = {}
             for k, v in r.items():
@@ -872,7 +874,7 @@ def _scrub(r):
                 return None
             return output
         elif hasattr(r, '__iter__'):
-            if isinstance(r, DictList):
+            if isinstance(r, FlatList):
                 r = r.list
             output = []
             for v in r:
@@ -1019,7 +1021,7 @@ class Alias(Features):
                 if status._shards.failed > 0:
                     if status._shards.failures[0].reason.find("rejected execution (queue capacity ") >= 0:
                         keep_trying = True
-                        Thread.sleep(seconds=5)
+                        Till(seconds=5).wait()
                         break
 
             if not keep_trying:
@@ -1062,7 +1064,7 @@ def parse_properties(parent_index_name, parent_name, esProperties):
     """
     from pyLibrary.queries.meta import Column
 
-    columns = DictList()
+    columns = FlatList()
     for name, property in esProperties.items():
         index_name = parent_index_name
         column_name = join_field(split_field(parent_name) + [name])

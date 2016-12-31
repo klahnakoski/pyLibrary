@@ -19,10 +19,11 @@ import unittest
 from pyLibrary import convert
 from pyLibrary.debugs.log_usingQueue import TextLog_usingQueue
 from pyLibrary.debugs.logs import Log, Except
-from pyLibrary.dot import listwrap, wrap
-from pyLibrary.dot.objects import DictObject
+from pyDots import listwrap, wrap
+from pyDots.objects import DataObject
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.thread.threads import Thread
+from pyLibrary.thread.till import Till
 
 
 class TestExcept(FuzzyTestCase):
@@ -154,7 +155,7 @@ class TestExcept(FuzzyTestCase):
         BC = 'b'
 
         # DURING TESTING SOME OTHER THREADS MAY STILL BE WRITING TO THE LOG
-        Thread.sleep(1)
+        Till(seconds=1).wait()
         # HIGHJACK LOG FOR TESTING OUTPUT
         log_queue = TextLog_usingQueue()
         backup_log, Log.main_log = Log.main_log, log_queue
@@ -208,7 +209,7 @@ class TestExcept(FuzzyTestCase):
         except Exception, e:
             class _catcher(logging.Handler):
                 def handle(self, record):
-                    o = convert.value2json(DictObject(record))
+                    o = convert.value2json(DataObject(record))
                     if record:
                         pass
                     if "this is a problem" not in e:
