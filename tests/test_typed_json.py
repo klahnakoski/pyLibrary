@@ -11,7 +11,7 @@
 import datetime
 import unittest
 
-from pyLibrary.debugs.logs import Log
+from MoLogs import Log
 from pyDots import wrap
 from pyLibrary.jsons.encoder import pypy_json_encode
 from pyLibrary.jsons.typed_encoder import typed_encode, json2typed

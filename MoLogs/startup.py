@@ -18,7 +18,7 @@ import sys
 import tempfile
 
 from pyDots import listwrap, wrap, unwrap
-from pyLibrary.debugs.logs import Log
+from MoLogs import Log
 from pyLibrary.env.files import File
 from pyLibrary.jsons import ref
 

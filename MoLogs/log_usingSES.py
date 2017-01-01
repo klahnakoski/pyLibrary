@@ -15,9 +15,9 @@ from __future__ import unicode_literals
 
 from boto.ses import connect_to_region
 
-from pyLibrary.debugs.exceptions import ALARM, NOTE
-from pyLibrary.debugs.logs import Log
-from pyLibrary.debugs import TextLog
+from MoLogs.exceptions import ALARM, NOTE
+from MoLogs import Log
+from MoLogs.log_usingNothing import TextLog
 from pyDots import listwrap, unwrap
 from pyLibrary.meta import use_settings
 from pyLibrary.strings import expand_template

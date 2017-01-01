@@ -11,7 +11,7 @@ def _late_import():
     global _convert
     global _Log
     from pyLibrary import convert as _convert
-    from pyLibrary.debugs.logs import Log as _Log
+    from MoLogs import Log as _Log
     _ = _convert
     _ = _Log
 

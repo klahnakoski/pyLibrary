@@ -21,7 +21,7 @@ from pyLibrary.thread.signal import Signal
 from pyLibrary.thread.threads import Thread, ThreadedQueue, MAIN_THREAD
 
 from pyLibrary.collections.queue import Queue
-from pyLibrary.debugs.logs import Log
+from MoLogs import Log
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.thread.till import Till
 from pyLibrary.times.timer import Timer

@@ -13,9 +13,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from pyLibrary.debugs.exceptions import suppress_exception, Except
-from pyLibrary.debugs.logs import Log
-from pyLibrary.debugs import TextLog
+from MoLogs.exceptions import suppress_exception, Except
+from MoLogs import Log
+from MoLogs.log_usingNothing import TextLog
 from pyLibrary.thread.threads import Thread, Queue
 from pyLibrary.thread.till import Till
 

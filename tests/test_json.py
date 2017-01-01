@@ -12,7 +12,7 @@ import datetime
 import unittest
 
 from pyLibrary import convert, jsons
-from pyLibrary.debugs.logs import Log
+from MoLogs import Log
 from pyDots import Data, wrap
 from pyLibrary.env.elasticsearch import scrub
 from pyLibrary.jsons.encoder import pypy_json_encode as pypy_json_encode, cPythonJSONEncoder, pretty_json

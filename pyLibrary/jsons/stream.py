@@ -14,7 +14,7 @@ from __future__ import absolute_import
 import json
 from types import GeneratorType
 
-from pyLibrary.debugs.logs import Log
+from MoLogs import Log
 from pyDots import split_field
 from pyLibrary.env.files import File
 from pyLibrary.env.http import MIN_READ_SIZE

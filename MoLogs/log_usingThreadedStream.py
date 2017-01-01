@@ -16,8 +16,8 @@ from __future__ import unicode_literals
 import sys
 from time import time
 
-from pyLibrary.debugs.logs import Log
-from pyLibrary.debugs import TextLog
+from MoLogs import Log
+from MoLogs.log_usingNothing import TextLog
 from pyLibrary.strings import expand_template
 from pyLibrary.thread.threads import Thread
 from pyLibrary.thread.till import Till

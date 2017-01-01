@@ -1,6 +1,6 @@
 import codecs
 import io
-from pyLibrary.debugs.logs import Log
+from MoLogs import Log
 from pyLibrary.times.timer import Timer
 
 

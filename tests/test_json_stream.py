@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 from io import BytesIO
 from pyLibrary import convert
-from pyLibrary.debugs.logs import Log
+from MoLogs import Log
 from pyLibrary.env import http
 from pyLibrary.env.http import MIN_READ_SIZE
 

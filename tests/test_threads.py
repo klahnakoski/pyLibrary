@@ -15,7 +15,7 @@ from __future__ import unicode_literals
 import os
 from unittest import skipIf
 
-from pyLibrary.debugs.logs import Log
+from MoLogs import Log
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.thread.multiprocess import Process
 from pyLibrary.thread.signal import Signal

@@ -20,8 +20,8 @@ from collections import Mapping
 from datetime import datetime
 
 from pyDots import coalesce, listwrap, wrap, unwrap, unwraplist, set_default
-from pyLibrary.debugs import constants, exceptions
-from pyLibrary.debugs.exceptions import Except, suppress_exception
+from MoLogs import constants, exceptions
+from MoLogs.exceptions import Except, suppress_exception
 from pyLibrary.strings import indent
 
 _Thread = None
@@ -75,7 +75,7 @@ class Log(object):
             cls.cprofiler.enable()
 
         if settings.profile is True or (isinstance(settings.profile, Mapping) and settings.profile.enabled):
-            from pyLibrary.debugs import profiles
+            from MoLogs import profiles
 
             if isinstance(settings.profile, bool):
                 profiles.ON = True
@@ -101,7 +101,7 @@ class Log(object):
 
     @classmethod
     def stop(cls):
-        from pyLibrary.debugs import profiles
+        from MoLogs import profiles
 
         if cls.cprofiler and hasattr(cls, "settings"):
             if cls.cprofiler == None:
@@ -459,10 +459,10 @@ machine_metadata = wrap({
 })
 
 
-from pyLibrary.debugs.log_usingFile import TextLog_usingFile
-from pyLibrary.debugs.log_usingMulti import TextLog_usingMulti
-from pyLibrary.debugs.log_usingStream import TextLog_usingStream
-from pyLibrary.debugs.log_usingThread import TextLog_usingThread
+from MoLogs.log_usingFile import TextLog_usingFile
+from MoLogs.log_usingMulti import TextLog_usingMulti
+from MoLogs.log_usingStream import TextLog_usingStream
+from MoLogs.log_usingThread import TextLog_usingThread
 
 if not Log.main_log:
     Log.main_log = TextLog_usingStream(sys.stdout)

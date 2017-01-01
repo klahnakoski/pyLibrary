@@ -17,8 +17,8 @@ import logging
 import unittest
 
 from pyLibrary import convert
-from pyLibrary.debugs.log_usingQueue import TextLog_usingQueue
-from pyLibrary.debugs.logs import Log, Except
+from MoLogs.log_usingQueue import TextLog_usingQueue
+from MoLogs import Log, Except
 from pyDots import listwrap, wrap
 from pyDots.objects import DataObject
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase

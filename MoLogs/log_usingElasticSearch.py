@@ -14,9 +14,9 @@ from __future__ import unicode_literals
 from collections import Mapping
 
 from pyLibrary import convert, strings
-from pyLibrary.debugs.exceptions import suppress_exception
-from pyLibrary.debugs.logs import Log
-from pyLibrary.debugs import TextLog
+from MoLogs.exceptions import suppress_exception
+from MoLogs import Log
+from MoLogs.log_usingNothing import TextLog
 from pyDots import wrap, coalesce
 from pyLibrary.env.elasticsearch import Cluster
 from pyLibrary.meta import use_settings

@@ -13,8 +13,8 @@ import unittest
 
 from pyLibrary import convert
 from pyLibrary import strings
-from pyLibrary.debugs.exceptions import Except, ERROR
-from pyLibrary.debugs.logs import Log
+from MoLogs.exceptions import Except, ERROR
+from MoLogs import Log
 from pyLibrary.env.files import File
 from pyLibrary.queries.jx_usingES import FromES
 

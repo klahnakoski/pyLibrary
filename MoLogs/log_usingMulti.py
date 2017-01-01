@@ -13,11 +13,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from pyLibrary.debugs.logs import Log
+from MoLogs import Log
 
-from pyLibrary.debugs.exceptions import suppress_exception
+from MoLogs.exceptions import suppress_exception
 
-from pyLibrary.debugs import TextLog
+from MoLogs.log_usingNothing import TextLog
 
 
 class TextLog_usingMulti(TextLog):

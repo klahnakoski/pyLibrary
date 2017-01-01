@@ -227,7 +227,7 @@ class Explanation(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if isinstance(exc_val, Exception):
-            from pyLibrary.debugs.logs import Log
+            from MoLogs import Log
 
             Log.error(
                 template="Failure in " + self.template,
@@ -258,7 +258,7 @@ class WarnOnException(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if isinstance(exc_val, Exception):
-            from pyLibrary.debugs.logs import Log
+            from MoLogs import Log
 
             Log.warning(
                 template="Ignored failure while " + self.template,
@@ -283,7 +283,7 @@ class AssertNoException(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if isinstance(exc_val, Exception):
-            from pyLibrary.debugs.logs import Log
+            from MoLogs import Log
 
             Log.error(
                 template="Not expected to fail",
