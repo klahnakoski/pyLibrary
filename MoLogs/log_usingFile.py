@@ -13,14 +13,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import time
+from thread import allocate_lock
+
 from MoLogs import Log
-from MoLogs.log_usingNothing import TextLog
-from pyLibrary.strings import expand_template
-from pyLibrary.thread.lock import Lock
-from pyLibrary.thread.till import Till
+from MoLogs.log_usingNothing import StructuredLogger
+from MoLogs.strings import expand_template
 
 
-class TextLog_usingFile(TextLog):
+# from pyLibrary.thread.lock import Lock
+# from pyLibrary.thread.till import Till
+
+
+class StructuredLogger_usingFile(StructuredLogger):
     def __init__(self, file):
         assert file
         from pyLibrary.env.files import File
@@ -30,7 +35,7 @@ class TextLog_usingFile(TextLog):
             self.file.backup()
             self.file.delete()
 
-        self.file_lock = Lock("file lock for logging")
+        self.file_lock = allocate_lock()
 
     def write(self, template, params):
         try:
@@ -38,5 +43,5 @@ class TextLog_usingFile(TextLog):
                 self.file.append(expand_template(template, params))
         except Exception, e:
             Log.warning("Problem writing to file {{file}}, waiting...", file=file.name, cause=e)
-            Till(seconds=5).wait()
+            time.sleep(5)
 

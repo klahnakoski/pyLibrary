@@ -16,7 +16,7 @@ from pyLibrary import jsons
 from pyDots import Data
 from pyLibrary.env.files import File
 from pyLibrary.parsers import URL
-from pyLibrary.strings import expand_template
+from MoLogs.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 

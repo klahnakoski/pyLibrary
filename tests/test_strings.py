@@ -11,9 +11,9 @@
 from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
-from pyLibrary import strings
+from MoLogs import strings
 
-from pyLibrary.strings import expand_template
+from MoLogs.strings import expand_template
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 

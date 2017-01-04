@@ -8,18 +8,16 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
-from collections import Mapping
+from __future__ import division
+from __future__ import unicode_literals
 
 import os
+from collections import Mapping
 
 import pyDots
-
 from pyDots import set_default, wrap, unwrap
 from pyLibrary.parsers import URL
-
 
 DEBUG = False
 _convert = None

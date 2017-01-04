@@ -16,9 +16,9 @@ from __future__ import unicode_literals
 import sys
 from collections import Mapping
 
+from MoLogs.strings import indent, expand_template
 from pyDots import Data, listwrap, unwraplist, set_default, Null
 from pyLibrary.jsons.encoder import json_encoder
-from pyLibrary.strings import indent, expand_template
 
 FATAL = "FATAL"
 ERROR = "ERROR"
@@ -109,7 +109,7 @@ class Except(Exception):
     def __str__(self):
         return self.__unicode__().encode('latin1', 'replace')
 
-    def as_dict(self):
+    def __data__(self):
         return Data(
             type=self.type,
             template=self.template,
@@ -119,13 +119,15 @@ class Except(Exception):
         )
 
     def __json__(self):
-        return json_encoder(self.as_dict())
+        return json_encoder(self.__data__())
 
 
 
 def extract_stack(start=0):
     """
     SNAGGED FROM traceback.py
+    Altered to return Data
+
     Extract the raw traceback from the current stack frame.
 
     Each item in the returned list is a quadruple (filename,

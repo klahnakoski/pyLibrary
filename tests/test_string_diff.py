@@ -12,7 +12,7 @@ from __future__ import unicode_literals
 import unittest
 from pyLibrary.collections import reverse
 from MoLogs import Log
-from pyLibrary.strings import apply_diff
+from MoLogs.strings import apply_diff
 
 
 class TestStringDiff(unittest.TestCase):

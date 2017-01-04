@@ -23,7 +23,6 @@ from copy import copy
 from datetime import datetime, timedelta
 from time import sleep
 
-from pyLibrary import strings
 from MoLogs.exceptions import Except, suppress_exception
 from MoLogs.profiles import CProfiler
 from pyDots import coalesce, Data, unwraplist, Null
@@ -216,7 +215,8 @@ class Queue(object):
                 if self.queue:
                     value = self.queue.popleft()
                     return value
-                self.lock.wait(till=till)
+                if not self.lock.wait(till=till):
+                    return None
         if DEBUG or not self.silent:
             _Log.note(self.name + " queue stopped")
         return Thread.STOP
@@ -582,7 +582,6 @@ def _stop_main_thread():
     sys.exit(0)
 
 
-
 class ThreadedQueue(Queue):
     """
     DISPATCH TO ANOTHER (SLOWER) queue IN BATCHES OF GIVEN size
@@ -607,7 +606,6 @@ class ThreadedQueue(Queue):
         batch_size = coalesce(batch_size, int(max_size / 2) if max_size else None, 900)
         max_size = coalesce(max_size, batch_size * 2)  # REASONABLE DEFAULT
         period = coalesce(period, SECOND)
-        bit_more_time = 5 * SECOND
 
         Queue.__init__(self, name=name, max=max_size, silent=silent)
 
@@ -619,7 +617,9 @@ class ThreadedQueue(Queue):
 
             _buffer = []
             _post_push_functions = []
-            next_push = Date.now() + period  # THE TIME WE SHOULD DO A PUSH
+            now = Date.now()
+            next_push = now + period  # THE TIME WE SHOULD DO A PUSH
+            last_push = now - period
 
             def push_to_queue():
                 queue.extend(_buffer)
@@ -632,23 +632,22 @@ class ThreadedQueue(Queue):
                 try:
                     if not _buffer:
                         item = self.pop()
-                        items = [item] + self.pop_all()  # PLEASE REMOVE
                         now = Date.now()
-                        next_push = now + period
+                        if now > last_push + period:
+                            # _Log.note("delay next push")
+                            next_push = now + period
                     else:
                         item = self.pop(till=Till(till=next_push))
-                        items = [item]+self.pop_all()  # PLEASE REMOVE
                         now = Date.now()
 
-                    for item in items:  # PLEASE REMOVE
-                        if item is Thread.STOP:
-                            push_to_queue()
-                            please_stop.go()
-                            break
-                        elif isinstance(item, types.FunctionType):
-                            _post_push_functions.append(item)
-                        elif item is not None:
-                            _buffer.append(item)
+                    if item is Thread.STOP:
+                        push_to_queue()
+                        please_stop.go()
+                        break
+                    elif isinstance(item, types.FunctionType):
+                        _post_push_functions.append(item)
+                    elif item is not None:
+                        _buffer.append(item)
 
                 except Exception, e:
                     e = Except.wrap(e)
@@ -673,9 +672,7 @@ class ThreadedQueue(Queue):
                         next_push = now + period
                         if _buffer:
                             push_to_queue()
-                            # A LITTLE MORE TIME TO FILL THE NEXT BUFFER
-                            now = Date.now()
-                            next_push = max(next_push, now + bit_more_time)
+                            last_push = now = Date.now()
 
                 except Exception, e:
                     e = Except.wrap(e)
@@ -769,7 +766,7 @@ def _wait_for_exit(please_stop):
         else:
             cr_count = -1000000  # NOT /dev/null
 
-        if strings.strip(line) == "exit":
+        if line.strip() == "exit":
             _Log.alert("'exit' Detected!  Stopping...")
             return
 

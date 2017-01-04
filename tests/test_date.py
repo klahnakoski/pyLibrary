@@ -8,14 +8,13 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
-from datetime import datetime
-from pyLibrary import strings
-from pyLibrary.collections import MAX
+from __future__ import division
+from __future__ import unicode_literals
 
-from pyLibrary.strings import expand_template
+from datetime import datetime
+
+from pyLibrary.collections import MAX
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.times.dates import Date
 from pyLibrary.times.durations import MONTH, YEAR, WEEK

@@ -10,23 +10,27 @@
 
 from __future__ import unicode_literals
 
-import zlib
-from future.utils import raise_from
-
 import logging
 import unittest
+import zlib
 
-from pyLibrary import convert
-from MoLogs.log_usingQueue import TextLog_usingQueue
+from future.utils import raise_from
+
 from MoLogs import Log, Except
+from MoLogs.log_usingQueue import StructuredLogger_usingQueue
 from pyDots import listwrap, wrap
 from pyDots.objects import DataObject
+from pyLibrary import convert
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
-from pyLibrary.thread.threads import Thread
 from pyLibrary.thread.till import Till
 
 
 class TestExcept(FuzzyTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        Log.start({"trace": False})
+
     def test_trace_of_simple_raises(self):
         try:
             problem_a()
@@ -68,7 +72,6 @@ class TestExcept(FuzzyTestCase):
             else:
                 self.fail("expecting stack to show this method")
 
-
     def test_warning_keyword_parameters(self):
         a = {"c": "a", "b": "d"}
         b = {"c": "b"}
@@ -82,7 +85,7 @@ class TestExcept(FuzzyTestCase):
         AB = 'd'
         BC = 'b'
 
-        log_queue = TextLog_usingQueue("abba")
+        log_queue = StructuredLogger_usingQueue("abba")
         backup_log, Log.main_log = Log.main_log, log_queue
 
         try:
@@ -141,7 +144,6 @@ class TestExcept(FuzzyTestCase):
         finally:
             Log.main_log = backup_log
 
-
     def test_note_keyword_parameters(self):
         a = {"c": "a", "b": "d"}
         b = {"c": "b"}
@@ -157,7 +159,7 @@ class TestExcept(FuzzyTestCase):
         # DURING TESTING SOME OTHER THREADS MAY STILL BE WRITING TO THE LOG
         Till(seconds=1).wait()
         # HIGHJACK LOG FOR TESTING OUTPUT
-        log_queue = TextLog_usingQueue()
+        log_queue = StructuredLogger_usingQueue()
         backup_log, Log.main_log = Log.main_log, log_queue
 
         try:

@@ -17,6 +17,7 @@ from thread import allocate_lock as _allocate_lock
 
 import requests
 
+from pyLibrary.thread.lock import Lock
 from pyLibrary.thread.signal import Signal
 from pyLibrary.thread.threads import Thread, ThreadedQueue, MAIN_THREAD
 
@@ -30,7 +31,7 @@ from pyLibrary.times.timer import Timer
 class TestLocks(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
-        Log.start({"cprofile":True})
+        Log.start({"trace": True, "cprofile": False})
 
     @classmethod
     def tearDownClass(cls):
@@ -77,15 +78,37 @@ class TestLocks(FuzzyTestCase):
 
         self.assertLess(timer.duration.seconds, 1.5, "Expecting queue to be fast")
 
+    def test_lock_and_till(self):
+        locker = Lock("prime lock")
+        got_lock = Signal()
+        a_is_ready = Signal("a lock")
+        b_is_ready = Signal("b lock")
 
-    def test_till_timers(self):
+        def loop(is_ready, please_stop):
+            with locker:
+                while not got_lock:
+                    # Log.note("{{thread}} is waiting", thread=Thread.current().name)
+                    locker.wait(till=Till(seconds=0))
+                    is_ready.go()
+                locker.wait()
+                Log.note("thread is expected to get here")
+        thread_a = Thread.run("a", loop, a_is_ready)
+        thread_b = Thread.run("b", loop, b_is_ready)
 
-        Till(seconds=1)
+        a_is_ready.wait()
+        b_is_ready.wait()
+        with locker:
+            got_lock.go()
+            Till(seconds=0.1).wait()  # MUST WAIT FOR a AND b TO PERFORM locker.wait()
+            Log.note("leaving")
+            pass
+        with locker:
+            Log.note("leaving again")
+            pass
+        Till(seconds=1).wait()
 
-
-        MAIN_THREAD.stop()
-
-
+        self.assertTrue(bool(thread_a.stopped), "Thread should be done by now")
+        self.assertTrue(bool(thread_b.stopped), "Thread should be done by now")
 
 
 def query_activedata(suite, platforms=None):

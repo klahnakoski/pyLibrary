@@ -29,7 +29,7 @@ from pyDots import Null
 from pyLibrary.maths import Math
 from pyLibrary.times.durations import Duration, MILLI_VALUES
 from pyLibrary.vendor.dateutil.parser import parse as parse_date
-from pyLibrary.strings import deformat
+from MoLogs.strings import deformat
 
 ISO8601 = '%Y-%m-%dT%H:%M:%SZ'
 
@@ -191,6 +191,8 @@ class Date(object):
     def __add__(self, other):
         return self.add(other)
 
+    def __data__(self):
+        return self
 
     @classmethod
     def min(cls, *values):
