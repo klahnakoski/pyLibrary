@@ -16,14 +16,14 @@ import re
 import itertools
 
 from pyLibrary import convert
-from MoLogs import Log
+from mo_logs import Log
 from pyLibrary.maths import Math
 from pyLibrary.queries.unique_index import UniqueIndex
 from pyDots import coalesce, Data, set_default, Null, listwrap
 from pyDots.lists import FlatList
 from pyDots import wrap
-from pyLibrary.times.dates import Date
-from pyLibrary.times.durations import Duration
+from mo_times.dates import Date
+from mo_times.durations import Duration
 
 
 ALGEBRAIC = {"time", "duration", "numeric", "count", "datetime"}  # DOMAINS THAT HAVE ALGEBRAIC OPERATIONS DEFINED
@@ -80,9 +80,6 @@ class Domain(object):
             "where": self.where,
             "dimension": self.dimension
         })
-
-    def __json__(self):
-        return convert.value2json(self.__data__())
 
     @property
     def __all_slots__(self):

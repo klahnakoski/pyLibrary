@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-from MoLogs import Log
+from mo_logs import Log
 from pyDots import set_default, coalesce, literal_field, Data, unwraplist
 from pyDots import wrap
 from pyLibrary.collections import MAX, UNION

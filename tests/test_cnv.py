@@ -12,7 +12,6 @@ import datetime
 import unittest
 
 from pyLibrary import convert
-from MoLogs import Log
 
 
 class TestConvert(unittest.TestCase):

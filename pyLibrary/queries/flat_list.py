@@ -15,7 +15,7 @@ from collections import Mapping
 
 import functools
 from pyLibrary.collections import MIN
-from MoLogs import Log
+from mo_logs import Log
 from pyDots import split_field, coalesce, Data, FlatList, wrap
 
 

@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 import __builtin__
 import math
 
-# from MoLogs.strings import find_first
+# from mo_logs.strings import find_first
 from pyDots import Null, coalesce
 
 
@@ -33,14 +33,14 @@ class Math(object):
     def bayesian_add(*args):
         a = args[0]
         if a >= 1 or a <= 0:
-            from MoLogs import Log
+            from mo_logs import Log
             Log.error("Only allowed values *between* zero and one")
 
         for b in args[1:]:
             if b == None:
                 continue
             if b >= 1 or b <= 0:
-                from MoLogs import Log
+                from mo_logs import Log
                 Log.error("Only allowed values *between* zero and one")
             a = a * b / (a * b + (1 - a) * (1 - b))
 
@@ -80,7 +80,7 @@ class Math(object):
                 return math.log(v)
             return math.log(v, base)
         except Exception, e:
-            from MoLogs import Log
+            from mo_logs import Log
             Log.error("error in log")
 
 
@@ -170,7 +170,7 @@ class Math(object):
                     m = pow(10, math.ceil(math.log10(abs(value))))
                     return int(__builtin__.round(value / m, digits) * m)
                 except Exception, e:
-                    from MoLogs import Log
+                    from mo_logs import Log
 
                     Log.error("not expected", e)
             else:
@@ -180,7 +180,7 @@ class Math(object):
                     m = pow(10, math.ceil(math.log10(abs(value))))
                     return __builtin__.round(value / m, digits) * m
                 except Exception, e:
-                    from MoLogs import Log
+                    from mo_logs import Log
                     Log.error("not expected", e)
         elif decimal <= 0:
             return int(__builtin__.round(value, decimal))
@@ -335,6 +335,6 @@ def almost_equal(first, second, digits=None, places=None, delta=None):
 
         return False
     except Exception, e:
-        from MoLogs import Log
+        from mo_logs import Log
         Log.error("problem comparing", cause=e)
 

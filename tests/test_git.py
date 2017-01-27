@@ -9,7 +9,7 @@
 
 from pyLibrary.env.git import get_git_revision
 from pyLibrary.env.git import get_remote_revision
-from MoLogs.strings import is_hex
+from mo_logs.strings import is_hex
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 

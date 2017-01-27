@@ -18,13 +18,13 @@ import psycopg2
 from psycopg2.extensions import adapt
 
 from pyLibrary import convert
-from MoLogs.exceptions import suppress_exception
-from MoLogs import Log
+from mo_logs.exceptions import suppress_exception
+from mo_logs import Log
 from pyLibrary.meta import use_settings
 from pyLibrary.queries import jx
 from pyLibrary.sql import SQL
-from MoLogs.strings import expand_template
-from pyLibrary.thread.threads import Lock
+from mo_logs.strings import expand_template
+from mo_threads import Lock
 
 
 class Redshift(object):

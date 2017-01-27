@@ -13,7 +13,7 @@ from __future__ import division
 from __future__ import absolute_import
 
 from pyLibrary import convert
-from MoLogs import Log
+from mo_logs import Log
 from pyDots import Data
 from pyLibrary.maths.randoms import Random
 from pyLibrary.vendor.aespython import key_expander, aes_cipher, cbc_mode

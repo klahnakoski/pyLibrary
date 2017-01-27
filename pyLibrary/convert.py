@@ -27,15 +27,15 @@ from decimal import Decimal
 from io import BytesIO
 from tempfile import TemporaryFile
 
-from MoLogs import Log, strings
-from MoLogs.exceptions import Except, suppress_exception
-from MoLogs.strings import expand_template
+from mo_json import quote
+from mo_json.encoder import json_encoder, pypy_json_encode
+from mo_logs import Log, strings
+from mo_logs.exceptions import Except, suppress_exception
+from mo_logs.strings import expand_template
+from mo_times.dates import Date
 from pyDots import wrap, wrap_leaves, unwrap, unwraplist, concat_field
 from pyLibrary.collections.multiset import Multiset
 from pyLibrary.env.big_data import FileString, safe_size
-from pyLibrary.jsons import quote
-from pyLibrary.jsons.encoder import json_encoder, pypy_json_encode
-from pyLibrary.times.dates import Date
 
 """
 DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
@@ -169,7 +169,7 @@ def datetime2string(value, format="%Y-%m-%d %H:%M:%S"):
     try:
         return value.strftime(format)
     except Exception, e:
-        from MoLogs import Log
+        from mo_logs import Log
 
         Log.error("Can not format {{value}} with {{format}}", value=value, format=format, cause=e)
 

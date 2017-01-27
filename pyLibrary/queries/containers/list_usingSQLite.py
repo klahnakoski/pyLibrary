@@ -17,8 +17,8 @@ import re
 from collections import Mapping, OrderedDict
 from copy import copy
 
-from MoLogs import Log
-# from MoLogs.strings import expand_template
+from mo_logs import Log
+# from mo_logs.strings import expand_template
 from pyDots import listwrap, coalesce, Data, wrap, Null, unwraplist, split_field, join_field, startswith_field, literal_field, unwrap, \
     relative_field, concat_field
 from pyLibrary import convert
@@ -34,7 +34,7 @@ from pyLibrary.queries.expressions import jx_expression, Variable, sql_type_to_j
 from pyLibrary.queries.meta import Column
 from pyLibrary.queries.query import QueryOp
 from pyLibrary.sql.sqlite import Sqlite
-from pyLibrary.times.dates import Date
+from mo_times.dates import Date
 
 _containers = None
 

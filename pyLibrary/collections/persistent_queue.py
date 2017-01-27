@@ -13,12 +13,12 @@ from __future__ import division
 from __future__ import absolute_import
 
 from pyLibrary import convert
-from MoLogs.exceptions import suppress_exception
-from MoLogs import Log
+from mo_logs.exceptions import suppress_exception
+from mo_logs import Log
 from pyLibrary.env.files import File
 from pyLibrary.maths.randoms import Random
 from pyDots import Data, wrap
-from pyLibrary.thread.threads import Lock, Thread, Signal
+from mo_threads import Lock, Thread, Signal
 
 
 DEBUG = True

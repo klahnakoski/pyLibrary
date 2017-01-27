@@ -15,14 +15,14 @@ from __future__ import unicode_literals
 import os
 from unittest import skipIf
 
-from MoLogs import Log
+from mo_logs import Log
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
-from pyLibrary.thread.multiprocess import Process
-from pyLibrary.thread.signal import Signal
-from pyLibrary.thread.threads import Lock, Thread
-from pyLibrary.thread.till import Till
-from pyLibrary.times.dates import Date
-from pyLibrary.times.durations import SECOND
+from mo_threads import Process
+from mo_threads import Signal
+from mo_threads import Lock, Thread
+from mo_threads import Till
+from mo_times.dates import Date
+from mo_times.durations import SECOND
 
 
 class TestThreads(FuzzyTestCase):

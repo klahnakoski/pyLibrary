@@ -17,15 +17,14 @@ from thread import allocate_lock as _allocate_lock
 
 import requests
 
-from pyLibrary.thread.lock import Lock
-from pyLibrary.thread.signal import Signal
-from pyLibrary.thread.threads import Thread, ThreadedQueue, MAIN_THREAD
-
+from mo_logs import Log
+from mo_threads import Lock
+from mo_threads import Signal
+from mo_threads import Thread, ThreadedQueue
+from mo_threads import Till
+from mo_times.timer import Timer
 from pyLibrary.collections.queue import Queue
-from MoLogs import Log
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
-from pyLibrary.thread.till import Till
-from pyLibrary.times.timer import Timer
 
 
 class TestLocks(FuzzyTestCase):

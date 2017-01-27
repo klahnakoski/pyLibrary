@@ -16,7 +16,7 @@ from copy import copy
 
 from pyLibrary import convert
 from pyLibrary.collections import AND, UNION
-from MoLogs import Log
+from mo_logs import Log
 from pyDots import coalesce, Null, set_default, unwraplist, literal_field
 from pyDots import wrap, unwrap, listwrap
 from pyDots import Data
@@ -93,8 +93,6 @@ class QueryOp(Expression):
             "limit": self.limit.__data__()
         }
 
-    def __json__(self):
-        return convert.value2json(self.__data__())
 
     def vars(self, exclude_where=False, exclude_select=False):
         """

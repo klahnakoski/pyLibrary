@@ -16,8 +16,8 @@ from datetime import datetime
 
 from pyLibrary.collections import MAX
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
-from pyLibrary.times.dates import Date
-from pyLibrary.times.durations import MONTH, YEAR, WEEK
+from mo_times.dates import Date
+from mo_times.durations import MONTH, YEAR, WEEK
 
 
 class TestDate(FuzzyTestCase):

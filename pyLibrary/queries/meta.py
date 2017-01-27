@@ -15,19 +15,21 @@ import itertools
 from copy import copy
 from itertools import product
 
-from MoLogs import Log
+from mo_logs import Log
+from mo_threads import Lock
+from mo_threads import Queue
+from mo_threads import Thread
+from mo_threads import Till
+from mo_times.dates import Date
+from mo_times.durations import HOUR, MINUTE
+from mo_times.timer import Timer
+from pyDots import Data
 from pyDots import coalesce, set_default, Null, literal_field, split_field, join_field, ROOT_PATH
 from pyDots import wrap
-from pyDots import Data
 from pyLibrary.meta import use_settings, DataClass
 from pyLibrary.queries import jx, Schema
 from pyLibrary.queries.containers import STRUCT, Container
 from pyLibrary.queries.query import QueryOp
-from pyLibrary.thread.threads import Queue, Thread, Lock
-from pyLibrary.thread.till import Till
-from pyLibrary.times.dates import Date
-from pyLibrary.times.durations import HOUR, MINUTE
-from pyLibrary.times.timer import Timer
 
 _elasticsearch = None
 

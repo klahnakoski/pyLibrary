@@ -15,17 +15,17 @@ import itertools
 from collections import Mapping
 from decimal import Decimal
 
+from mo_logs import Log
+from mo_logs.exceptions import suppress_exception
+from pyDots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field, Data, join_field, unwraplist, \
+    ROOT_PATH, relative_field
 from pyLibrary import convert
 from pyLibrary.collections import OR, MAX
-from MoLogs.exceptions import suppress_exception
-from MoLogs import Log
-from pyDots import coalesce, wrap, set_default, literal_field, listwrap, Null, split_field, startswith_field, Data, join_field, unwraplist, unwrap, \
-    ROOT_PATH, relative_field
 from pyLibrary.maths import Math
 from pyLibrary.queries.containers import STRUCT, OBJECT
 from pyLibrary.queries.domains import is_keyword
 from pyLibrary.queries.expression_compiler import compile_expression
-from pyLibrary.times.dates import Date
+from mo_times.dates import Date
 
 ALLOW_SCRIPTING = False
 TRUE_FILTER = True
@@ -182,9 +182,6 @@ class Expression(object):
 
     def __data__(self):
         raise NotImplementedError
-
-    def __json__(self):
-        return convert.value2json(self.__data__())
 
     def vars(self):
         raise Log.error("{{type}} has no `vars` method", type=self.__class__.__name__)
@@ -637,8 +634,9 @@ class NullOp(Literal):
     def __str__(self):
         return b"null"
 
-    def __json__(self):
-        return "null"
+    def __data__(self):
+        return None
+
 
 class TrueOp(Literal):
     def __new__(cls, *args, **kwargs):
@@ -2641,7 +2639,7 @@ def simplify_esfilter(esfilter):
         output.isNormal = None
         return output
     except Exception, e:
-        from MoLogs import Log
+        from mo_logs import Log
 
         Log.unexpected("programmer error", cause=e)
 
@@ -2696,7 +2694,7 @@ def _normalize(esfilter):
             output = []
             for a in terms:
                 if isinstance(a, (list, set)):
-                    from MoLogs import Log
+                    from mo_logs import Log
 
                     Log.error("and clause is not allowed a list inside a list")
                 a_ = normalize_esfilter(a)
@@ -2929,3 +2927,5 @@ sql_type_to_json_type = {
     "j": "object",
     "b": "boolean"
 }
+
+

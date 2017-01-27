@@ -17,7 +17,7 @@ from collections import Mapping
 from types import GeneratorType
 
 import pyDots
-from MoLogs import Log
+from mo_logs import Log
 from pyDots import listwrap, wrap, unwrap, FlatList
 from pyDots import set_default, Null, Data, split_field, coalesce, join_field
 from pyDots.objects import DataObject

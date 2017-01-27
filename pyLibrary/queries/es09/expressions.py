@@ -17,11 +17,11 @@ import re
 
 from pyLibrary import convert
 from pyLibrary.collections import reverse
-from MoLogs import Log
+from mo_logs import Log
 from pyLibrary.maths import Math
 from pyDots import split_field, Data, Null, join_field, coalesce
 from pyDots import listwrap
-from pyLibrary.times.durations import Duration
+from mo_times.durations import Duration
 
 
 class _MVEL(object):
@@ -315,8 +315,8 @@ class Compiled(object):
     def __str__(self):
         return self.code
 
-    def __json__(self):
-        return convert.string2quote(self.code)
+    def __data__(self):
+        return self.code
 
 
 

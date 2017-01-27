@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from collections import Mapping
 
 import pyDots as dot
-from MoLogs import Log
+from mo_logs import Log
 from pyDots import Null, Data, FlatList, wrap, wrap_leaves, listwrap
 from pyLibrary import convert
 from pyLibrary.collections import MAX, OR
@@ -461,6 +461,3 @@ class Cube(Container):
             data={k: v.cube for k, v in self.data.items()},
             meta=self.meta
         )
-
-    def __json__(self):
-        return convert.value2json(self.__data__())

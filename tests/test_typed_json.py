@@ -11,10 +11,10 @@
 import datetime
 import unittest
 
-from MoLogs import Log
+from mo_logs import Log
 from pyDots import wrap
-from pyLibrary.jsons.encoder import pypy_json_encode
-from pyLibrary.jsons.typed_encoder import typed_encode, json2typed
+from mo_json.encoder import pypy_json_encode
+from mo_json.typed_encoder import typed_encode, json2typed
 
 
 class TestJSON(unittest.TestCase):

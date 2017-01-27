@@ -11,8 +11,8 @@ from __future__ import unicode_literals
 
 import unittest
 from pyLibrary.collections import reverse
-from MoLogs import Log
-from MoLogs.strings import apply_diff
+from mo_logs import Log
+from mo_logs.strings import apply_diff
 
 
 class TestStringDiff(unittest.TestCase):

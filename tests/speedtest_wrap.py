@@ -1,9 +1,9 @@
 from math import log, floor
 import gc
-from MoLogs import profiles
+from mo_logs import profiles
 
-from MoLogs import Log
-from MoLogs.profiles import Profiler
+from mo_logs import Log
+from mo_logs.profiles import Profiler
 from pyLibrary.maths.randoms import Random
 from pyDots import Data
 from pyDots.lists import FlatList

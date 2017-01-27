@@ -1,8 +1,8 @@
 import sys
 import unittest
 import pyLibrary
-from MoLogs import Log
-from pyLibrary.thread.multithread import Multithread
+from mo_logs import Log
+from mo_threads.multithread import Multithread
 
 
 def using_lock(num, lock):
@@ -18,7 +18,7 @@ class TestThread(unittest.TestCase):
         Log.stop()
 
     def test_many_threads_on_lock(self):
-        lock = pyLibrary.thread.threads.Lock()
+        lock = mo_threads.threads.Lock()
 
         with Multithread([using_lock for i in range(10)]) as multi:
             multi.execute([{"lock": lock, "num": i} for i in range(1000)])

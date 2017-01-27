@@ -13,9 +13,9 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-from MoLogs import Log
-from MoLogs.exceptions import suppress_exception
-from MoLogs.strings import indent, expand_template
+from mo_logs import Log
+from mo_logs.exceptions import suppress_exception
+from mo_logs.strings import indent, expand_template
 from pyDots import coalesce
 from pyDots import wrap, listwrap, unwrap
 from pyDots.lists import FlatList
@@ -53,9 +53,6 @@ class MySQL(object):
         settings = self.settings.copy()
         settings.settings = None
         return unwrap(settings)
-
-    def __json__(self):
-        return convert.value2json(self.__data__())
 
     def query(self, query, stacked=False):
         """

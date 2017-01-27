@@ -18,7 +18,7 @@ import math
 
 from pyLibrary import convert
 from pyLibrary.collections import OR
-from MoLogs import Log
+from mo_logs import Log
 from pyDots import coalesce, Data, Null
 from pyLibrary.maths import almost_equal, Math
 from pyLibrary.vendor import strangman

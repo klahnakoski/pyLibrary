@@ -12,9 +12,9 @@ from __future__ import unicode_literals
 import unittest
 from traceback import extract_tb
 
-from MoLogs import Log
-from MoLogs import strings
-from MoLogs.exceptions import Except, ERROR
+from mo_logs import Log
+from mo_logs import strings
+from mo_logs.exceptions import Except, ERROR
 from pyLibrary import convert
 from pyLibrary.env.files import File
 from pyLibrary.queries.jx_usingES import FromES

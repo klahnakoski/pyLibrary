@@ -1,7 +1,7 @@
 import codecs
 import io
-from MoLogs import Log
-from pyLibrary.times.timer import Timer
+from mo_logs import Log
+from mo_times.timer import Timer
 
 
 def test_simple(filename):

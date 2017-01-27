@@ -19,9 +19,9 @@ except Exception:
     pass
 
 from pyLibrary import convert
-from pyLibrary.jsons import scrub
-from pyLibrary.jsons.encoder import cPythonJSONEncoder, json_encoder
-from MoLogs import Log
+from mo_json import scrub
+from mo_json.encoder import cPythonJSONEncoder, json_encoder
+from mo_logs import Log
 from pyDots import wrap, unwrap, Data
 
 TARGET_RUNTIME = 10

@@ -16,9 +16,9 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
 
-from MoLogs import Log
-from pyLibrary.thread.threads import Thread, Signal
-from pyLibrary.thread.till import Till
+from mo_logs import Log
+from mo_threads import Thread, Signal
+from mo_threads.till import Till
 
 please_stop = Signal()
 

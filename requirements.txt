@@ -2,5 +2,5 @@ pymysql
 requests
 boto
 pyDots
-MoLogs
+mo-logs
 
