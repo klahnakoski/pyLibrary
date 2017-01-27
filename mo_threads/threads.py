@@ -21,9 +21,9 @@ from copy import copy
 from datetime import datetime, timedelta
 from time import sleep
 
-from mo_threads.signal import AndSignals, _Signal
-from mo_threads.till import _Till
-from mo_threads.lock import _Lock
+from mo_threads.signal import AndSignals, Signal
+from mo_threads.till import Till
+from mo_threads.lock import Lock
 from pyDots import Data, unwraplist, Null
 
 _convert = None
@@ -34,6 +34,8 @@ DEBUG = False
 
 MAX_DATETIME = datetime(2286, 11, 20, 17, 46, 39)
 DEFAULT_WAIT_TIME = timedelta(minutes=10)
+THREAD_STOP = "stop"
+THREAD_TIMEOUT = "TIMEOUT"
 
 datetime.strptime('2012-01-01', '%Y-%m-%d')  # http://bugs.python.org/issue7980
 
@@ -89,7 +91,7 @@ class AllThread(object):
         """
         target IS THE FUNCTION TO EXECUTE IN THE THREAD
         """
-        t = _Thread.run(target.__name__, target, *args, **kwargs)
+        t = Thread.run(target.__name__, target, *args, **kwargs)
         self.threads.append(t)
 
 
@@ -146,15 +148,13 @@ class MainThread(object):
 
 
 
-class _Thread(object):
+class Thread(object):
     """
     join() ENHANCED TO ALLOW CAPTURE OF CTRL-C, AND RETURN POSSIBLE THREAD EXCEPTIONS
     run() ENHANCED TO CAPTURE EXCEPTIONS
     """
 
     num_threads = 0
-    STOP = "stop"
-    TIMEOUT = "TIMEOUT"
 
     def __init__(self, name, target, *args, **kwargs):
         if not _Log:
@@ -163,16 +163,16 @@ class _Thread(object):
         self.name = name
         self.target = target
         self.end_of_thread = None
-        self.synch_lock = _Lock("response synch lock")
+        self.synch_lock = Lock("response synch lock")
         self.args = args
 
         # ENSURE THERE IS A SHARED please_stop SIGNAL
         self.kwargs = copy(kwargs)
-        self.kwargs["please_stop"] = self.kwargs.get("please_stop", _Signal("please_stop for "+self.name))
+        self.kwargs["please_stop"] = self.kwargs.get("please_stop", Signal("please_stop for " + self.name))
         self.please_stop = self.kwargs["please_stop"]
 
         self.thread = None
-        self.stopped = _Signal("stopped signal for "+self.name)
+        self.stopped = Signal("stopped signal for " + self.name)
         self.cprofiler = None
         self.children = []
 
@@ -180,7 +180,7 @@ class _Thread(object):
             del self.kwargs["parent_thread"]
             self.parent = kwargs["parent_thread"]
         else:
-            self.parent = _Thread.current()
+            self.parent = Thread.current()
             self.parent.add_child(self)
 
 
@@ -201,7 +201,7 @@ class _Thread(object):
             _late_import()
 
         try:
-            self.thread = thread.start_new_thread(_Thread._run, (self, ))
+            self.thread = thread.start_new_thread(Thread._run, (self,))
             return self
         except Exception, e:
             _Log.error("Can not start thread", e)
@@ -295,7 +295,7 @@ class _Thread(object):
         """
         RETURN THE RESULT {"response":r, "exception":e} OF THE THREAD EXECUTION (INCLUDING EXCEPTION, IF EXISTS)
         """
-        if self is _Thread:
+        if self is Thread:
             _Log.error("Thread.join() is not a valid call, use t.join()")
 
         children = copy(self.children)
@@ -303,7 +303,7 @@ class _Thread(object):
             c.join(till=till)
 
         if DEBUG:
-            _Log.note("{{parent|quote}} waiting on thread {{child|quote}}", parent=_Thread.current().name, child=self.name)
+            _Log.note("{{parent|quote}} waiting on thread {{child|quote}}", parent=Thread.current().name, child=self.name)
         (self.stopped | till).wait()
         if self.stopped:
             self.parent.remove_child(self)
@@ -314,7 +314,7 @@ class _Thread(object):
         else:
             from mo_logs.exceptions import Except
 
-            raise Except(type=_Thread.TIMEOUT)
+            raise Except(type=THREAD_TIMEOUT)
 
     @staticmethod
     def run(name, target, *args, **kwargs):
@@ -325,9 +325,9 @@ class _Thread(object):
         if "please_stop" not in target.__code__.co_varnames:
             _Log.error("function must have please_stop argument for signalling emergency shutdown")
 
-        _Thread.num_threads += 1
+        Thread.num_threads += 1
 
-        output = _Thread(name, target, *args, **kwargs)
+        output = Thread(name, target, *args, **kwargs)
         output.start()
         return output
 
@@ -348,12 +348,12 @@ class _Thread(object):
         :param wait_forever:: Assume all needed threads have been launched. When done
         :return:
         """
-        if not isinstance(please_stop, _Signal):
-            please_stop = _Signal()
+        if not isinstance(please_stop, Signal):
+            please_stop = Signal()
 
         please_stop.on_go(lambda: thread.start_new_thread(_stop_main_thread, ()))
 
-        self_thread = _Thread.current()
+        self_thread = Thread.current()
         if self_thread != MAIN_THREAD:
             if not _Log:
                 _late_import()
@@ -409,7 +409,7 @@ def _wait_for_exit(please_stop):
         # if DEBUG:
         #     Log.note("inside wait-for-shutdown loop")
         if cr_count > 30:
-            (_Till(seconds=3)|please_stop).wait()
+            (Till(seconds=3) | please_stop).wait()
         try:
             line = sys.stdin.readline()
         except Exception, e:
@@ -449,9 +449,9 @@ def _interrupt_main_safely():
 
 MAIN_THREAD = MainThread()
 
-ALL_LOCK = _Lock("threads ALL_LOCK")
+ALL_LOCK = Lock("threads ALL_LOCK")
 ALL = dict()
 ALL[thread.get_ident()] = MAIN_THREAD
 
-MAIN_THREAD.timers = _Thread.run("timers", _Till.daemon)
+MAIN_THREAD.timers = Thread.run("timers", Till.daemon)
 MAIN_THREAD.children.remove(MAIN_THREAD.timers)

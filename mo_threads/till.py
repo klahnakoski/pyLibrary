@@ -18,18 +18,18 @@ from __future__ import unicode_literals
 from thread import allocate_lock as _allocate_lock
 from time import sleep, time
 
-from mo_threads.signal import _Signal
+from mo_threads.signal import Signal
 
 DEBUG = False
 INTERVAL = 0.1
 
 _till_locker = _allocate_lock()
 next_ping = time()
-done = _Signal("Timers shutdown")
+done = Signal("Timers shutdown")
 done.go()
 
 
-class _Till(_Signal):
+class Till(Signal):
     """
     TIMEOUT AS A SIGNAL
     """
@@ -37,7 +37,7 @@ class _Till(_Signal):
     new_timers = []
 
     def __new__(cls, till=None, timeout=None, seconds=None):
-        if not _Till.enabled:
+        if not Till.enabled:
             return done
         elif till is None and timeout is None and seconds is None:
             return None
@@ -63,18 +63,18 @@ class _Till(_Signal):
 
             timeout = time() + timeout
 
-        _Signal.__init__(self, name=unicode(timeout))
+        Signal.__init__(self, name=unicode(timeout))
 
         with _till_locker:
             next_ping = min(next_ping, timeout)
-            _Till.new_timers.append((timeout, self))
+            Till.new_timers.append((timeout, self))
 
     @classmethod
     def daemon(cls, please_stop):
         global next_ping
         from mo_logs import Log
 
-        _Till.enabled = True
+        Till.enabled = True
         sorted_timers = []
 
         try:
@@ -100,7 +100,7 @@ class _Till(_Signal):
 
                 with _till_locker:
                     next_ping = now + INTERVAL
-                    new_timers, _Till.new_timers = _Till.new_timers, []
+                    new_timers, Till.new_timers = Till.new_timers, []
 
                 if DEBUG and new_timers:
                     Log.note("new timers: {{timers}}", timers=[t for t, s in new_timers])
@@ -133,10 +133,10 @@ class _Till(_Signal):
         finally:
             if DEBUG:
                 Log.alert("TIMER SHUTDOWN")
-            _Till.enabled = False
+            Till.enabled = False
             # TRIGGER ALL REMAINING TIMERS RIGHT NOW
             with _till_locker:
-                new_work, _Till.new_timers = _Till.new_timers, []
+                new_work, Till.new_timers = Till.new_timers, []
             for t, s in new_work + sorted_timers:
                 s.go()
 

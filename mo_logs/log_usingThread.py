@@ -37,7 +37,7 @@ class StructuredLogger_usingThread(StructuredLogger):
                     Till(seconds=1).wait()
                     logs = self.queue.pop_all()
                     for log in logs:
-                        if log is Thread.STOP:
+                        if log is THREAD_STOP:
                             please_stop.go()
                         else:
                             logger.write(**log)
@@ -58,7 +58,7 @@ class StructuredLogger_usingThread(StructuredLogger):
 
     def stop(self):
         with suppress_exception:
-            self.queue.add(Thread.STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
+            self.queue.add(THREAD_STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
             self.thread.join()
             self.logger.stop()
 

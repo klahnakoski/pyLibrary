@@ -13,10 +13,10 @@ from __future__ import absolute_import
 import os
 import subprocess
 
-from mo_threads.lock import _Lock
-from mo_threads.queues import _Queue
-from mo_threads.signal import _Signal
-from mo_threads.threads import _Thread
+from mo_threads.lock import Lock
+from mo_threads.queues import Queue
+from mo_threads.signal import Signal
+from mo_threads.threads import Thread, THREAD_STOP
 from pyDots import set_default, unwrap
 from pyLibrary import convert
 from mo_logs.exceptions import Except
@@ -25,13 +25,13 @@ from mo_logs import Log
 DEBUG = True
 
 
-class _Process(object):
+class Process(object):
     def __init__(self, name, params, cwd=None, env=None, debug=False, shell=False, bufsize=-1):
         self.name = name
-        self.service_stopped = _Signal("stopped signal for " + convert.string2quote(name))
-        self.stdin = _Queue("stdin for process " + convert.string2quote(name), silent=True)
-        self.stdout = _Queue("stdout for process " + convert.string2quote(name), silent=True)
-        self.stderr = _Queue("stderr for process " + convert.string2quote(name), silent=True)
+        self.service_stopped = Signal("stopped signal for " + convert.string2quote(name))
+        self.stdin = Queue("stdin for process " + convert.string2quote(name), silent=True)
+        self.stdout = Queue("stdout for process " + convert.string2quote(name), silent=True)
+        self.stderr = Queue("stderr for process " + convert.string2quote(name), silent=True)
 
         try:
             self.debug = debug or DEBUG
@@ -46,13 +46,13 @@ class _Process(object):
                 shell=shell
             )
 
-            self.stopper = _Signal()
+            self.stopper = Signal()
             self.stopper.on_go(self._kill)
-            self.thread_locker = _Lock()
+            self.thread_locker = Lock()
             self.children = [
-                _Thread.run(self.name + " waiter", self._monitor, parent_thread=self),
-                _Thread.run(self.name + " stdin", self._writer, service.stdin, self.stdin, please_stop=self.stopper, parent_thread=self),
-                _Thread.run(self.name + " stdout", self._reader, service.stdout, self.stdout, please_stop=self.stopper, parent_thread=self),
+                Thread.run(self.name + " waiter", self._monitor, parent_thread=self),
+                Thread.run(self.name + " stdin", self._writer, service.stdin, self.stdin, please_stop=self.stopper, parent_thread=self),
+                Thread.run(self.name + " stdout", self._reader, service.stdout, self.stdout, please_stop=self.stopper, parent_thread=self),
                 # Thread.run(self.name + " stderr", self._reader, service.stderr, self.stderr, please_stop=self.stopper, parent_thread=self),
             ]
         except Exception, e:
@@ -61,9 +61,9 @@ class _Process(object):
     def stop(self):
         self.stdin.add("exit")  # ONE MORE SEND
         self.stopper.go()
-        self.stdin.add(_Thread.STOP)
-        self.stdout.add(_Thread.STOP)
-        self.stderr.add(_Thread.STOP)
+        self.stdin.add(THREAD_STOP)
+        self.stdout.add(THREAD_STOP)
+        self.stderr.add(THREAD_STOP)
 
     def join(self):
         self.service_stopped.wait()
@@ -84,9 +84,9 @@ class _Process(object):
         self.service.wait()
         if self.debug:
             Log.alert("{{name}} stopped with returncode={{returncode}}", name=self.name, returncode=self.service.returncode)
-        self.stdin.add(_Thread.STOP)
-        self.stdout.add(_Thread.STOP)
-        self.stderr.add(_Thread.STOP)
+        self.stdin.add(THREAD_STOP)
+        self.stdout.add(THREAD_STOP)
+        self.stderr.add(THREAD_STOP)
         self.service_stopped.go()
 
     def _reader(self, pipe, recieve, please_stop):
@@ -115,7 +115,7 @@ class _Process(object):
     def _writer(self, pipe, send, please_stop):
         while not please_stop:
             line = send.pop()
-            if line == _Thread.STOP:
+            if line == THREAD_STOP:
                 please_stop.go()
                 break
 

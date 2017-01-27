@@ -17,7 +17,7 @@ from __future__ import unicode_literals
 
 from thread import allocate_lock as _allocate_lock
 
-from mo_threads.signal import _Signal
+from mo_threads.signal import Signal
 
 _Log = None
 _Except = None
@@ -39,7 +39,7 @@ def _late_import():
 
     from mo_logs.exceptions import Except as _Except
     from mo_logs.exceptions import extract_stack as _extract_stack
-    from mo_threads import _Thread as _Thread
+    from mo_threads.threads import Thread as _Thread
     from mo_logs import Log as _Log
 
     _ = _Log
@@ -48,7 +48,7 @@ def _late_import():
     _ = _extract_stack
 
 
-class _Lock(object):
+class Lock(object):
     """
     A NON-RE-ENTRANT LOCK WITH wait() AND
     """
@@ -78,7 +78,7 @@ class _Lock(object):
         :param till: WHEN TO GIVE UP WAITING FOR ANOTHER THREAD TO SIGNAL
         :return:
         """
-        waiter = _Signal()
+        waiter = Signal()
         if self.waiting:
             if DEBUG:
                 _Log.note("{{name}} waiting with others", name=self.name)

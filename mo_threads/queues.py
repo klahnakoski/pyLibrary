@@ -21,10 +21,10 @@ from collections import deque
 from datetime import datetime, timedelta
 from time import time
 
-from mo_threads.lock import _Lock
-from mo_threads.signal import _Signal
-from mo_threads.threads import _Thread
-from mo_threads.till import _Till
+from mo_threads.lock import Lock
+from mo_threads.signal import Signal
+from mo_threads.threads import Thread, THREAD_STOP
+from mo_threads.till import Till
 from mo_times.dates import Date
 from mo_times.durations import SECOND
 from pyDots import coalesce, Null
@@ -59,7 +59,7 @@ def _late_import():
 
 
 
-class _Queue(object):
+class Queue(object):
     """
      SIMPLE MESSAGE QUEUE, multiprocessing.Queue REQUIRES SERIALIZATION, WHICH
      IS DIFFICULT TO USE JUST BETWEEN THREADS (SERIALIZATION REQUIRED)
@@ -77,7 +77,7 @@ class _Queue(object):
         self.allow_add_after_close=allow_add_after_close
         self.unique = unique
         self.keep_running = True
-        self.lock = _Lock("lock for queue " + name)
+        self.lock = Lock("lock for queue " + name)
         self.queue = deque()
         self.next_warning = Date.now()  # FOR DEBUGGING
 
@@ -85,7 +85,7 @@ class _Queue(object):
         while self.keep_running:
             try:
                 value = self.pop()
-                if value is not None and value is not _Thread.STOP:
+                if value is not None and value is not THREAD_STOP:
                     yield value
             except Exception, e:
                 _Log.warning("Tell me about what happened here", e)
@@ -97,7 +97,7 @@ class _Queue(object):
             _Log.error("Do not add to closed queue")
 
         with self.lock:
-            if value is _Thread.STOP:
+            if value is THREAD_STOP:
                 # INSIDE THE lock SO THAT EXITING WILL RELEASE wait()
                 self.queue.append(value)
                 self.keep_running = False
@@ -131,7 +131,7 @@ class _Queue(object):
         DUMMY IMPLEMENTATION FOR DEBUGGING
         """
 
-        if till is not None and not isinstance(till, _Signal):
+        if till is not None and not isinstance(till, Signal):
             _Log.error("Expecting a signal")
         return Null, self.pop(till=till)
 
@@ -145,14 +145,14 @@ class _Queue(object):
             if self.keep_running:
                 if self.unique:
                     for v in values:
-                        if v is _Thread.STOP:
+                        if v is THREAD_STOP:
                             self.keep_running = False
                             continue
                         if v not in self.queue:
                             self.queue.append(v)
                 else:
                     for v in values:
-                        if v is _Thread.STOP:
+                        if v is THREAD_STOP:
                             self.keep_running = False
                             continue
                         self.queue.append(v)
@@ -177,12 +177,12 @@ class _Queue(object):
             if now > time_to_stop_waiting:
                 if not _Log:
                     _late_import()
-                _Log.error(_Thread.TIMEOUT)
+                _Log.error(Thread.TIMEOUT)
 
             if self.silent:
-                self.lock.wait(_Till(till=time_to_stop_waiting))
+                self.lock.wait(Till(till=time_to_stop_waiting))
             else:
-                self.lock.wait(_Till(timeout=wait_time))
+                self.lock.wait(Till(timeout=wait_time))
                 if len(self.queue) > self.max:
                     now = Date.now()
                     if self.next_warning < now:
@@ -200,18 +200,18 @@ class _Queue(object):
 
     def __nonzero__(self):
         with self.lock:
-            return any(r != _Thread.STOP for r in self.queue)
+            return any(r != THREAD_STOP for r in self.queue)
 
     def pop(self, till=None):
         """
         WAIT FOR NEXT ITEM ON THE QUEUE
-        RETURN Thread.STOP IF QUEUE IS CLOSED
+        RETURN THREAD_STOP IF QUEUE IS CLOSED
         RETURN None IF till IS REACHED AND QUEUE IS STILL EMPTY
 
         :param till:  A `Signal` to stop waiting and return None
-        :return:  A value, or a Thread.STOP or None
+        :return:  A value, or a THREAD_STOP or None
         """
-        if till is not None and not isinstance(till, _Signal):
+        if till is not None and not isinstance(till, Signal):
             _Log.error("expecting a signal")
 
         with self.lock:
@@ -223,7 +223,7 @@ class _Queue(object):
                     return None
         if DEBUG or not self.silent:
             _Log.note(self.name + " queue stopped")
-        return _Thread.STOP
+        return THREAD_STOP
 
     def pop_all(self):
         """
@@ -236,7 +236,7 @@ class _Queue(object):
         if self.keep_running:
             return output
         else:
-            return output + [_Thread.STOP]
+            return output + [THREAD_STOP]
 
     def pop_one(self):
         """
@@ -244,12 +244,12 @@ class _Queue(object):
         """
         with self.lock:
             if not self.keep_running:
-                return [_Thread.STOP]
+                return [THREAD_STOP]
             elif not self.queue:
                 return None
             else:
                 v =self.queue.pop()
-                if v is _Thread.STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
+                if v is THREAD_STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                     self.keep_running = False
                 return v
 
@@ -267,7 +267,7 @@ class _Queue(object):
         self.close()
 
 
-class _ThreadedQueue(_Queue):
+class ThreadedQueue(Queue):
     """
     DISPATCH TO ANOTHER (SLOWER) queue IN BATCHES OF GIVEN size
     TODO: Check that this queue is not dropping items at shutdown
@@ -292,18 +292,18 @@ class _ThreadedQueue(_Queue):
         max_size = coalesce(max_size, batch_size * 2)  # REASONABLE DEFAULT
         period = coalesce(period, SECOND).seconds
 
-        _Queue.__init__(self, name=name, max=max_size, silent=silent)
+        Queue.__init__(self, name=name, max=max_size, silent=silent)
 
         def worker_bee(please_stop):
             def stopper():
-                self.add(_Thread.STOP)
+                self.add(THREAD_STOP)
 
             please_stop.on_go(stopper)
 
             _buffer = []
             _post_push_functions = []
             now = time()
-            next_push = _Till(till=now + period)  # THE TIME WE SHOULD DO A PUSH
+            next_push = Till(till=now + period)  # THE TIME WE SHOULD DO A PUSH
             last_push = now - period
 
             def push_to_queue():
@@ -320,12 +320,12 @@ class _ThreadedQueue(_Queue):
                         now = time()
                         if now > last_push + period:
                             # _Log.note("delay next push")
-                            next_push = _Till(till=now + period)
+                            next_push = Till(till=now + period)
                     else:
                         item = self.pop(till=next_push)
                         now = time()
 
-                    if item is _Thread.STOP:
+                    if item is THREAD_STOP:
                         push_to_queue()
                         please_stop.go()
                         break
@@ -354,7 +354,7 @@ class _ThreadedQueue(_Queue):
 
                 try:
                     if len(_buffer) >= batch_size or next_push:
-                        next_push = _Till(till=now + period)
+                        next_push = Till(till=now + period)
                         if _buffer:
                             push_to_queue()
                             last_push = now = time()
@@ -382,7 +382,7 @@ class _ThreadedQueue(_Queue):
                 # ONE LAST PUSH, DO NOT HAVE TIME TO DEAL WITH ERRORS
                 push_to_queue()
 
-        self.thread = _Thread.run("threaded queue for " + name, worker_bee, parent_thread=self)
+        self.thread = Thread.run("threaded queue for " + name, worker_bee, parent_thread=self)
 
     def add(self, value, timeout=None):
         with self.lock:
@@ -413,11 +413,11 @@ class _ThreadedQueue(_Queue):
         return self
 
     def __exit__(self, a, b, c):
-        self.add(_Thread.STOP)
+        self.add(THREAD_STOP)
         if isinstance(b, BaseException):
             self.thread.please_stop.go()
         self.thread.join()
 
     def stop(self):
-        self.add(_Thread.STOP)
+        self.add(THREAD_STOP)
         self.thread.join()

@@ -30,7 +30,7 @@ def _late_import():
     _ = _Log
 
 
-class _Signal(object):
+class Signal(object):
     """
     SINGLE-USE THREAD SAFE SIGNAL
 
@@ -163,12 +163,12 @@ class _Signal(object):
     def __or__(self, other):
         if other == None:
             return self
-        if not isinstance(other, _Signal):
+        if not isinstance(other, Signal):
             if not _Log:
                 _late_import()
             _Log.error("Expecting OR with other signal")
 
-        output = _Signal(self.name + " | " + other.name)
+        output = Signal(self.name + " | " + other.name)
         self.on_go(output.go)
         other.on_go(output.go)
         return output
@@ -179,15 +179,15 @@ class _Signal(object):
     def __and__(self, other):
         if other == None:
             return self
-        if not isinstance(other, _Signal):
+        if not isinstance(other, Signal):
             if not _Log:
                 _late_import()
             _Log.error("Expecting OR with other signal")
 
         if DEBUG:
-            output = _Signal(self.name + " and " + other.name)
+            output = Signal(self.name + " and " + other.name)
         else:
-            output = _Signal(self.name + " and " + other.name)
+            output = Signal(self.name + " and " + other.name)
 
         gen = AndSignals(output, 2)
         self.on_go(gen.done)

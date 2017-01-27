@@ -54,6 +54,9 @@ class Log(object):
         constants - UPDATE MODULE CONSTANTS AT STARTUP (PRIMARILY INTENDED TO CHANGE DEBUG STATE)
         """
         global _Thread
+        from mo_threads import Thread as _Thread
+        _ = _Thread
+
         if not settings:
             return
         settings = wrap(settings)
@@ -63,8 +66,8 @@ class Log(object):
         cls.settings = settings
         cls.trace = coalesce(settings.trace, False)
         if cls.trace:
-            from mo_threads import Thread as _Thread
-            _ = _Thread
+            from mo_threads import Thread
+            _ = Thread
 
         if settings.cprofile is False:
             settings.cprofile = {"enabled": False}

@@ -18,7 +18,7 @@ from thread import allocate_lock as _allocate_lock
 import requests
 
 from mo_logs import Log
-from mo_threads import Lock
+from mo_threads import Lock, THREAD_STOP
 from mo_threads import Signal
 from mo_threads import Thread, ThreadedQueue
 from mo_threads import Till
@@ -60,7 +60,7 @@ class TestLocks(FuzzyTestCase):
         def empty(please_stop):
             while not please_stop:
                 item = q.pop()
-                if item is Thread.STOP:
+                if item is THREAD_STOP:
                     break
 
             done.go()
@@ -71,7 +71,7 @@ class TestLocks(FuzzyTestCase):
         with timer:
             for i in range(SCALE):
                 q.add(i)
-            q.add(Thread.STOP)
+            q.add(THREAD_STOP)
             Log.note("Done insert")
             done.wait()
 

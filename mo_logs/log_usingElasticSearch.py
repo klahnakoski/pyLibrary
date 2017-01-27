@@ -70,7 +70,7 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
                     scrubbed = []
                     try:
                         for i, message in enumerate(mm):
-                            if message is Thread.STOP:
+                            if message is THREAD_STOP:
                                 please_stop.go()
                                 return
                             scrubbed.append(_deep_json_to_string(message, depth=3))
@@ -94,7 +94,7 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
 
     def stop(self):
         with suppress_exception:
-            self.queue.add(Thread.STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
+            self.queue.add(THREAD_STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
 
         with suppress_exception:
             self.queue.close()

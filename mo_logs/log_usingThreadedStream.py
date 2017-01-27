@@ -67,7 +67,7 @@ class StructuredLogger_usingThreadedStream(StructuredLogger):
 
     def stop(self):
         try:
-            self.queue.add(Thread.STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
+            self.queue.add(THREAD_STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
             self.thread.join()
         except Exception, e:
             if DEBUG_LOGGING:
@@ -100,7 +100,7 @@ def time_delta_pusher(please_stop, appender, queue, interval):
         lines = []
         for log in logs:
             try:
-                if log is Thread.STOP:
+                if log is THREAD_STOP:
                     please_stop.go()
                     next_run = time()
                 else:

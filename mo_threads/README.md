@@ -100,7 +100,7 @@ You can attach methods to a `Signal`, which will be run, just once, upon `go()`
 
 You may also wait on a `Signal`, which will block the current thread until the `Signal` is a go
 
-	is_done = worker_thread.stopped
+	is_done = worker_THREAD_STOPped
 	is_done.wait_for_go()
 	is_done = print("worker thread is done")
 

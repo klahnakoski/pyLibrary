@@ -21,10 +21,6 @@ from mo_logs.log_usingNothing import StructuredLogger
 from mo_logs.strings import expand_template
 
 
-# from mo_threads import Lock
-# from mo_threads.till import Till
-
-
 class StructuredLogger_usingFile(StructuredLogger):
     def __init__(self, file):
         assert file

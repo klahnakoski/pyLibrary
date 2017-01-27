@@ -15,27 +15,38 @@ from __future__ import unicode_literals
 
 import logging
 
-from mo_logs.exceptions import suppress_exception
-from mo_logs.log_usingThreadedStream import StructuredLogger_usingThreadedStream, time_delta_pusher
 from mo_logs import Log
+from mo_logs.exceptions import suppress_exception
 from mo_logs.log_usingNothing import StructuredLogger
+from mo_logs.log_usingThreadedStream import StructuredLogger_usingThreadedStream, time_delta_pusher
 from pyDots import unwrap
-from mo_threads import threads
-from mo_threads import Thread
 
-Thread = None
+_Queue = None
+_Thread = None
 
+def _late_import():
+    global _Queue
+    global _Thread
+
+    from mo_threads import Thread as _Thread
+    from mo_threads import Queue as _Queue
+
+    _ = Queue
+    _ = Thread
 
 
 # WRAP PYTHON CLASSIC logger OBJECTS
 class StructuredLogger_usingLogger(StructuredLogger):
     def __init__(self, settings):
+        if not _Thread:
+            _late_import()
+
         self.logger = logging.Logger("unique name", level=logging.INFO)
         self.logger.addHandler(make_log_from_settings(settings))
 
         # TURNS OUT LOGGERS ARE REALLY SLOW TOO
-        self.queue = mo_threads.Queue("queue for classic logger", max=10000, silent=True)
-        self.thread = Thread(
+        self.queue = _Queue("queue for classic logger", max=10000, silent=True)
+        self.thread = _Thread(
             "pushing to classic logger",
             time_delta_pusher,
             appender=self.logger.info,
@@ -51,7 +62,7 @@ class StructuredLogger_usingLogger(StructuredLogger):
 
     def stop(self):
         with suppress_exception:
-            self.queue.add(Thread.STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
+            self.queue.add(THREAD_STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
             self.thread.join()
 
         with suppress_exception:
