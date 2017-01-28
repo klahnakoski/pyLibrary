@@ -32,7 +32,7 @@ from mo_logs.exceptions import Except
 from mo_logs import Log
 from pyDots import Data, coalesce, wrap, set_default, unwrap
 from pyLibrary.env.big_data import safe_size, ibytes2ilines, icompressed2ibytes
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.queries import jx
 from mo_threads import Thread, Lock
 from mo_threads import Till

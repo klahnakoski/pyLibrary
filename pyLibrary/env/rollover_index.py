@@ -14,7 +14,7 @@ from pyDots import coalesce, wrap, Null
 from pyLibrary import convert
 from pyLibrary.aws.s3 import strip_extension
 from pyLibrary.env import elasticsearch
-from pyLibrary.maths.randoms import Random
+from mo_math.randoms import Random
 from pyLibrary.meta import use_settings
 from pyLibrary.queries import jx
 from mo_times.dates import Date, unicode2Date, unix2Date

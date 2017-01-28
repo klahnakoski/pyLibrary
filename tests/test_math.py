@@ -13,8 +13,8 @@ import random
 import unittest
 from math import floor
 
-from pyLibrary.maths import Math
-from pyLibrary.maths.randoms import Random
+from mo_math import Math
+from mo_math.randoms import Random
 
 
 class TestMath(unittest.TestCase):

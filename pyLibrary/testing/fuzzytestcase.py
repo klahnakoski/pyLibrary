@@ -16,7 +16,7 @@ from mo_logs import Log
 from mo_logs.exceptions import suppress_exception, Except
 from mo_logs.strings import expand_template
 from pyDots import coalesce, literal_field, unwrap
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.queries.unique_index import UniqueIndex
 
 

@@ -17,7 +17,7 @@ from datetime import datetime
 from mo_logs.strings import utf82unicode
 from pyDots import coalesce
 from pyLibrary import convert
-from pyLibrary.maths import crypto
+from mo_math import crypto
 
 
 class File(object):

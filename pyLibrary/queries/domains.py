@@ -17,7 +17,7 @@ import itertools
 
 from pyLibrary import convert
 from mo_logs import Log
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.queries.unique_index import UniqueIndex
 from pyDots import coalesce, Data, set_default, Null, listwrap
 from pyDots.lists import FlatList

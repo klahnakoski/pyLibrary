@@ -19,7 +19,7 @@ from pyDots import coalesce, Null
 from pyDots import wrap, listwrap
 from pyDots import Data
 from pyDots import FlatList
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.dimensions import Dimension
 from pyLibrary.queries.domains import Domain

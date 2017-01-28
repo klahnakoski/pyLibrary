@@ -28,7 +28,7 @@ from mo_logs.strings import outdent
 from pyDots import coalesce, wrap, listwrap, unwrap
 from pyLibrary import convert
 from pyLibrary.env.files import File
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.meta import use_settings
 from pyLibrary.queries import jx
 from pyLibrary.sql import SQL

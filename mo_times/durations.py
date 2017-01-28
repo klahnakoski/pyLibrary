@@ -13,12 +13,13 @@ from __future__ import unicode_literals
 
 import datetime
 
+import re
+
 from mo_times.vendor.dateutil.relativedelta import relativedelta
 
 from pyDots import wrap
-from pyLibrary import regex
 from pyLibrary.collections import MIN
-from pyLibrary.maths import Math
+from mo_math import Math
 
 _Date = None
 _Log = None
@@ -321,7 +322,7 @@ def _string2Duration(text):
     if text == "" or text == "zero":
         return ZERO
 
-    amount, interval = regex.match(r"([\d\.]*)(.*)", text)
+    amount, interval = re.match(r"([\d\.]*)(.*)", text).groups()
     amount = int(amount) if amount else 1
 
     if MILLI_VALUES[interval] == None:

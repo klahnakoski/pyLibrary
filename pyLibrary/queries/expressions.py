@@ -21,7 +21,7 @@ from pyDots import coalesce, wrap, set_default, literal_field, Null, split_field
     ROOT_PATH, relative_field
 from pyLibrary import convert
 from pyLibrary.collections import OR, MAX
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.queries.containers import STRUCT, OBJECT
 from pyLibrary.queries.domains import is_keyword
 from pyLibrary.queries.expression_compiler import compile_expression

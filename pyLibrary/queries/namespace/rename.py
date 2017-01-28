@@ -16,7 +16,7 @@ from copy import copy
 
 from mo_logs import Log
 from pyDots import set_default, wrap, coalesce, Data, listwrap, unwraplist
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.queries.dimensions import Dimension
 from pyLibrary.queries.domains import is_keyword
 from pyLibrary.queries.namespace import Namespace, convert_list

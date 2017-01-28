@@ -15,7 +15,7 @@ from collections import Mapping
 
 from mo_logs import Log
 from pyDots import set_default, wrap, split_field, join_field, concat_field
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.queries.domains import is_keyword
 from pyLibrary.queries.expressions import Expression
 from pyLibrary.queries.namespace import convert_list, Namespace

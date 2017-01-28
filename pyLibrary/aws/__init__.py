@@ -20,7 +20,7 @@ from pyLibrary import convert
 from mo_logs.exceptions import Except, suppress_exception
 from mo_logs import Log, machine_metadata
 from pyDots import wrap, unwrap, coalesce
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.meta import use_settings
 from mo_threads.signal import Signal
 from mo_threads import Thread

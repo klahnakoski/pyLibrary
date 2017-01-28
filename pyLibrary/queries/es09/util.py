@@ -20,8 +20,8 @@ from pyDots import wrap
 from pyDots.lists import FlatList
 from pyLibrary import convert
 from pyLibrary.collections import COUNT
-from pyLibrary.maths import Math
-from pyLibrary.maths import stats
+from mo_math import Math
+from mo_math import stats
 from pyLibrary.queries import domains
 from pyLibrary.queries.es09.expressions import value2MVEL, isKeyword
 from pyLibrary.queries.expressions import simplify_esfilter

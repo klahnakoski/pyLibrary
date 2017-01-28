@@ -26,8 +26,8 @@ from pyDots.lists import FlatList
 from pyLibrary import convert
 from pyLibrary.env import http
 from mo_json.typed_encoder import json2typed
-from pyLibrary.maths import Math
-from pyLibrary.maths.randoms import Random
+from mo_math import Math
+from mo_math.randoms import Random
 from pyLibrary.meta import use_settings
 from pyLibrary.queries import jx
 from mo_threads import ThreadedQueue

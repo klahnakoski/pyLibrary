@@ -18,11 +18,11 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from time import time as _time
 
-from mo_times.vendor.dateutil.parser import parse as parse_date
-
 from mo_logs.strings import deformat
-from mo_times.durations import Duration, MILLI_VALUES
 from pyDots import Null
+
+from mo_times.durations import Duration, MILLI_VALUES
+from mo_times.vendor.dateutil.parser import parse as parse_date
 
 _utcnow = datetime.utcnow
 

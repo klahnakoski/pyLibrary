@@ -16,7 +16,7 @@ from pyLibrary import convert
 from mo_logs.exceptions import suppress_exception
 from mo_logs import Log
 from pyLibrary.env.files import File
-from pyLibrary.maths.randoms import Random
+from mo_math.randoms import Random
 from pyDots import Data, wrap
 from mo_threads import Lock, Thread, Signal, THREAD_STOP
 

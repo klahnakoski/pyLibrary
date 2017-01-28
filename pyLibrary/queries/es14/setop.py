@@ -18,7 +18,7 @@ from mo_logs import Log
 from pyDots import coalesce, split_field, set_default, Data, unwraplist, literal_field, join_field, unwrap, wrap
 from pyDots import listwrap
 from pyDots.lists import FlatList
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.queries import es14, es09
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.containers.cube import Cube

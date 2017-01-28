@@ -7,9 +7,9 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from pyLibrary.maths import stats
+from mo_math import stats
 
-from pyLibrary.maths.stats import ZeroMoment, ZeroMoment2Stats
+from mo_math.stats import ZeroMoment, ZeroMoment2Stats
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 

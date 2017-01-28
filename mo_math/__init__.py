@@ -14,7 +14,6 @@ from __future__ import unicode_literals
 import __builtin__
 import math
 
-# from mo_logs.strings import find_first
 from pyDots import Null, coalesce
 
 
@@ -58,10 +57,10 @@ class Math(object):
         return abs(v)
 
     @staticmethod
-    def pow(v, expo):
-        if v == None:
-            return Null
-        return math.pow(v, expo)
+    def pow(n, p):
+        if n == None or p == None:
+            return None
+        return math.pow(n, p)
 
     @staticmethod
     def exp(v):
@@ -133,7 +132,7 @@ class Math(object):
     @staticmethod
     def is_hex(value):
         try:
-            int('00480065006C006C006F00200077006F0072006C00640021', 16)
+            int(value, 16)
             return True
         except Exception:
             return False
@@ -256,7 +255,7 @@ class Math(object):
         return v - (v % mod)
 
     @staticmethod
-    def count(values):
+    def COUNT(values):
         count = 0
         for v in values:
             if v != None:
@@ -264,14 +263,7 @@ class Math(object):
         return count
 
     @staticmethod
-    def pow(n, p):
-        if n == None or p == None:
-            return None
-        return math.pow(n, p)
-
-
-    @staticmethod
-    def sum(values):
+    def SUM(values):
         sum = 0
         for v in values:
             if v != None:

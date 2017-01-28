@@ -8,21 +8,21 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
 
+import math
 import sys
 from math import sqrt
-import math
 
-from pyLibrary import convert
-from pyLibrary.collections import OR
 from mo_logs import Log
 from pyDots import coalesce, Data, Null
-from pyLibrary.maths import almost_equal, Math
-from pyLibrary.vendor import strangman
+from pyLibrary import convert
+from pyLibrary.collections import OR
 
+from mo_math import almost_equal
+from mo_math.vendor import strangman
 
 DEBUG = True
 DEBUG_STRANGMAN = True

@@ -17,7 +17,7 @@ from mo_logs import Log
 from pyDots import set_default, coalesce, literal_field, Data, unwraplist
 from pyDots import wrap
 from pyLibrary.collections import MAX, UNION
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.queries import jx
 from pyLibrary.queries.dimensions import Dimension
 from pyLibrary.queries.domains import SimpleSetDomain, DefaultDomain, PARTITION

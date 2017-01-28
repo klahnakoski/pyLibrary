@@ -164,9 +164,8 @@ PG_TYPES = {
 
 
 class Closer(object):
-
     def __init__(self, resource):
-        self.resource=resource
+        self.resource = resource
 
     def __enter__(self):
         return self

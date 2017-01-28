@@ -18,10 +18,12 @@ from datetime import date, timedelta, datetime
 from decimal import Decimal
 from types import NoneType
 
-from pyDots import FlatList, NullType, Data
-from pyDots.objects import DataObject
+from mo_logs import Except, strings, suppress_exception, Log
+from mo_logs.strings import expand_template
 from mo_times.dates import Date
 from mo_times.durations import Duration
+from pyDots import FlatList, NullType, Data, wrap_leaves, wrap
+from pyDots.objects import DataObject
 
 _get = object.__getattribute__
 
@@ -186,4 +188,122 @@ def _scrub(value, is_done):
         return _scrub(DataObject(value), is_done)
 
 
-from . import encoder as json_encoder
+def value2json(obj, pretty=False, sort_keys=False):
+    try:
+        json = json_encoder(obj, pretty=pretty)
+        if json == None:
+            Log.note(str(type(obj)) + " is not valid{{type}}JSON",  type= " (pretty) " if pretty else " ")
+            Log.error("Not valid JSON: " + str(obj) + " of type " + str(type(obj)))
+        return json
+    except Exception, e:
+        e = Except.wrap(e)
+        with suppress_exception:
+            json = pypy_json_encode(obj)
+            return json
+
+        Log.error("Can not encode into JSON: {{value}}", value=repr(obj), cause=e)
+
+
+def remove_line_comment(line):
+    mode = 0  # 0=code, 1=inside_string, 2=escaping
+    for i, c in enumerate(line):
+        if c == '"':
+            if mode == 0:
+                mode = 1
+            elif mode == 1:
+                mode = 0
+            else:
+                mode = 1
+        elif c == '\\':
+            if mode == 0:
+                mode = 0
+            elif mode == 1:
+                mode = 2
+            else:
+                mode = 1
+        elif mode == 2:
+            mode = 1
+        elif c == "#" and mode == 0:
+            return line[0:i]
+        elif c == "/" and mode == 0 and line[i + 1] == "/":
+            return line[0:i]
+    return line
+
+
+def json2value(json_string, params={}, flexible=False, leaves=False):
+    """
+    :param json_string: THE JSON
+    :param params: STANDARD JSON PARAMS
+    :param flexible: REMOVE COMMENTS
+    :param leaves: ASSUME JSON KEYS ARE DOT-DELIMITED
+    :return: Python value
+    """
+    if isinstance(json_string, str):
+        Log.error("only unicode json accepted")
+
+    try:
+        if flexible:
+            # REMOVE """COMMENTS""", # COMMENTS, //COMMENTS, AND \n \r
+            # DERIVED FROM https://github.com/jeads/datasource/blob/master/datasource/bases/BaseHub.py# L58
+            json_string = re.sub(r"\"\"\".*?\"\"\"", r"\n", json_string, flags=re.MULTILINE)
+            json_string = "\n".join(remove_line_comment(l) for l in json_string.split("\n"))
+            # ALLOW DICTIONARY'S NAME:VALUE LIST TO END WITH COMMA
+            json_string = re.sub(r",\s*\}", r"}", json_string)
+            # ALLOW LISTS TO END WITH COMMA
+            json_string = re.sub(r",\s*\]", r"]", json_string)
+
+        if params:
+            # LOOKUP REFERENCES
+            json_string = expand_template(json_string, params)
+
+        try:
+            value = wrap(json_decoder(unicode(json_string)))
+        except Exception, e:
+            Log.error("can not decode\n{{content}}", content=json_string, cause=e)
+
+        if leaves:
+            value = wrap_leaves(value)
+
+        return value
+
+    except Exception, e:
+        e = Except.wrap(e)
+
+        if not json_string.strip():
+            Log.error("JSON string is only whitespace")
+
+        c = e
+        while "Expecting '" in c.cause and "' delimiter: line" in c.cause:
+            c = c.cause
+
+        if "Expecting '" in c and "' delimiter: line" in c:
+            line_index = int(strings.between(c.message, " line ", " column ")) - 1
+            column = int(strings.between(c.message, " column ", " ")) - 1
+            line = json_string.split("\n")[line_index].replace("\t", " ")
+            if column > 20:
+                sample = "..." + line[column - 20:]
+                pointer = "   " + (" " * 20) + "^"
+            else:
+                sample = line
+                pointer = (" " * column) + "^"
+
+            if len(sample) > 43:
+                sample = sample[:43] + "..."
+
+            Log.error("Can not decode JSON at:\n\t" + sample + "\n\t" + pointer + "\n")
+
+        base_str = strings.limit(json_string, 1000).encode('utf8')
+        hexx_str = bytes2hex(base_str, " ")
+        try:
+            char_str = " " + "  ".join((c.decode("latin1") if ord(c) >= 32 else ".") for c in base_str)
+        except Exception, e:
+            char_str = " "
+        Log.error("Can not decode JSON:\n" + char_str + "\n" + hexx_str + "\n", e)
+
+
+def bytes2hex(value, separator=" "):
+    return separator.join("%02X" % ord(x) for x in value)
+
+
+from mo_json.decoder import json_decoder
+from mo_json.encoder import json_encoder, pypy_json_encode

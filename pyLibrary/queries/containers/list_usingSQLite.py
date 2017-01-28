@@ -24,8 +24,8 @@ from pyDots import listwrap, coalesce, Data, wrap, Null, unwraplist, split_field
 from pyLibrary import convert
 from pyLibrary.collections import UNION
 from pyLibrary.collections.matrix import Matrix, index_to_coordinate
-from pyLibrary.maths import Math
-from pyLibrary.maths.randoms import Random
+from mo_math import Math
+from mo_math.randoms import Random
 from pyLibrary.meta import use_settings
 from pyLibrary.queries import jx
 from pyLibrary.queries.containers import Container, STRUCT

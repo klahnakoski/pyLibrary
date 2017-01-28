@@ -10,9 +10,9 @@
 from __future__ import unicode_literals
 
 import unittest
-from pyLibrary.maths import crypto
+from mo_math import crypto
 from pyLibrary import convert
-from pyLibrary.maths.randoms import Random
+from mo_math.randoms import Random
 
 
 class TestCrypto(unittest.TestCase):

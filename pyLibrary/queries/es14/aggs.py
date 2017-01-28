@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from mo_logs import Log
 from pyDots import listwrap, Data, wrap, literal_field, set_default, coalesce, Null, split_field, FlatList, unwrap, \
     unwraplist
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.queries import es09
 from pyLibrary.queries.es14.decoders import DefaultDecoder, AggsDecoder
 from pyLibrary.queries.es14.decoders import DimFieldListDecoder

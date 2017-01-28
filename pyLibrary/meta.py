@@ -20,7 +20,7 @@ from mo_logs.exceptions import Except, suppress_exception
 from mo_logs.strings import expand_template
 from pyDots import set_default, wrap, _get_attr, Null, coalesce
 from pyLibrary import convert
-from pyLibrary.maths.randoms import Random
+from mo_math.randoms import Random
 from mo_threads import Lock
 from mo_times.dates import Date
 from mo_times.durations import DAY

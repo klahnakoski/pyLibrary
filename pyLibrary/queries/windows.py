@@ -14,13 +14,13 @@ from __future__ import absolute_import
 from copy import copy
 import functools
 
-from pyLibrary.maths import stats
+from mo_math import stats
 from pyLibrary.collections import MIN, MAX
 from mo_logs import Log
 from pyDots.lists import FlatList
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.collections.multiset import Multiset
-from pyLibrary.maths.stats import ZeroMoment, ZeroMoment2Stats
+from mo_math.stats import ZeroMoment, ZeroMoment2Stats
 
 
 

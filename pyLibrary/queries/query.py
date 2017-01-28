@@ -21,7 +21,7 @@ from pyDots import coalesce, Null, set_default, unwraplist, literal_field
 from pyDots import wrap, unwrap, listwrap
 from pyDots import Data
 from pyDots.lists import FlatList
-from pyLibrary.maths import Math
+from mo_math import Math
 from pyLibrary.meta import use_settings
 from pyLibrary.queries import Schema, wrap_from
 from pyLibrary.queries.containers import Container, STRUCT
