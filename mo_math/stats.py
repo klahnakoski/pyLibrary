@@ -19,7 +19,7 @@ from math import sqrt
 from mo_logs import Log
 from pyDots import coalesce, Data, Null
 from pyLibrary import convert
-from pyLibrary.collections import OR
+from mo_math import OR
 
 from mo_math import almost_equal
 from mo_math.vendor import strangman

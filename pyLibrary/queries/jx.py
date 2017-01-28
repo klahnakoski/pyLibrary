@@ -22,7 +22,7 @@ from pyDots import listwrap, wrap, unwrap, FlatList
 from pyDots import set_default, Null, Data, split_field, coalesce, join_field
 from pyDots.objects import DataObject
 from pyLibrary import convert
-from pyLibrary.collections import UNION, MIN
+from mo_math import UNION, MIN
 from mo_math import Math
 from pyLibrary.queries import flat_list, query, group_by
 from pyLibrary.queries.containers import Container

@@ -20,7 +20,7 @@ from mo_logs.exceptions import suppress_exception
 from pyDots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field, Data, join_field, unwraplist, \
     ROOT_PATH, relative_field
 from pyLibrary import convert
-from pyLibrary.collections import OR, MAX
+from mo_math import OR, MAX
 from mo_math import Math
 from pyLibrary.queries.containers import STRUCT, OBJECT
 from pyLibrary.queries.domains import is_keyword

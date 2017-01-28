@@ -19,11 +19,12 @@ from decimal import Decimal
 
 from mo_logs import Log
 from mo_logs.strings import utf82unicode
-from pyDots import Data, FlatList, NullType
-from mo_json import ESCAPE_DCT, float2json
-from mo_json.encoder import pretty_json, problem_serializing, _repr, UnicodeBuilder
 from mo_times.dates import Date
 from mo_times.durations import Duration
+from pyDots import Data, FlatList, NullType
+
+from mo_json import ESCAPE_DCT, float2json
+from mo_json.encoder import pretty_json, problem_serializing, _repr, UnicodeBuilder
 
 json_decoder = json.JSONDecoder().decode
 append = UnicodeBuilder.append

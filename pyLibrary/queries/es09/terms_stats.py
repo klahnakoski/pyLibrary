@@ -12,7 +12,7 @@ from __future__ import division
 from __future__ import absolute_import
 
 from pyLibrary.collections.matrix import Matrix
-from pyLibrary.collections import COUNT, PRODUCT
+from mo_math import COUNT, PRODUCT
 from pyLibrary.queries import domains
 from pyLibrary.queries.containers.cube import Cube
 from pyLibrary.queries.domains import is_keyword

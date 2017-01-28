@@ -255,52 +255,8 @@ class Math(object):
         return v - (v % mod)
 
     @staticmethod
-    def COUNT(values):
-        count = 0
-        for v in values:
-            if v != None:
-                count += 1
-        return count
-
-    @staticmethod
-    def SUM(values):
-        sum = 0
-        for v in values:
-            if v != None:
-                sum += v
-        return sum
-
-    @staticmethod
-    def max(*values):
-        return Math.MAX(values)
-
-    @staticmethod
-    def MAX(values):
-        output = Null
-        for v in values:
-            if v == None:
-                continue
-            elif output == None or v > output:
-                output = v
-            else:
-                pass
-        return output
-
-    @staticmethod
     def min(*values):
         return Math.MIN(values)
-
-    @staticmethod
-    def MIN(values):
-        output = None
-        for v in values:
-            if v == None:
-                continue
-            elif output == None or v < output:
-                output = v
-            else:
-                pass
-        return output
 
     @staticmethod
     def range(start, stop, interval):
@@ -309,6 +265,129 @@ class Math(object):
             yield i
             i+=interval
 
+    @staticmethod
+    def max(*values):
+        return Math.MAX(values)
+
+
+def COUNT(values):
+    count = 0
+    for v in values:
+        if v != None:
+            count += 1
+    return count
+
+
+def MIN(values):
+    output = None
+    for v in values:
+        if v == None:
+            continue
+        elif output == None or v < output:
+            output = v
+        else:
+            pass
+    return output
+
+
+def MAX(values):
+    output = Null
+    for v in values:
+        if v == None:
+            continue
+        elif output == None or v > output:
+            output = v
+        else:
+            pass
+    return output
+
+
+def SUM(values):
+    output = Null
+    for v in values:
+        if v == None:
+            continue
+        if isinstance(v, float) and math.isnan(v):
+            continue
+        if output == None:
+            output = v
+            continue
+        output += v
+    return output
+
+
+def PRODUCT(values, *others):
+    if len(others) > 0:
+        from mo_logs import Log
+        Log.error("no longer accepting args, use a single list")
+
+    output = Null
+    for v in values:
+        if v == None:
+            continue
+        if isinstance(v, float) and math.isnan(v):
+            continue
+        if output == None:
+            output = v
+            continue
+        output *= v
+    return output
+
+
+def AND(values, *others):
+    if len(others) > 0:
+        from mo_logs import Log
+        Log.error("no longer accepting args, use a single list")
+
+    for v in values:
+        if v == None:
+            continue
+        if not v:
+            return False
+    return True
+
+
+def OR(values, *others):
+    if len(others) > 0:
+        from mo_logs import Log
+        Log.error("no longer accepting args, use a single list")
+
+    for v in values:
+        if v == None:
+            continue
+        if v:
+            return True
+    return False
+
+
+def UNION(values, *others):
+    if len(others) > 0:
+        from mo_logs import Log
+        Log.error("no longer accepting args, use a single list")
+
+    output = set()
+    for v in values:
+        if values == None:
+            continue
+        if isinstance(v, (list, set)):
+            output.update(v)
+            continue
+        else:
+            output.add(v)
+    return output
+
+
+def INTERSECT(values, *others):
+    if len(others) > 0:
+        from mo_logs import Log
+        Log.error("no longer accepting args, use a single list")
+
+    output = set(values[0])
+    for v in values[1:]:
+        output -= set(v)
+        if not output:
+            return output  # EXIT EARLY
+    return output
 
 
 def almost_equal(first, second, digits=None, places=None, delta=None):

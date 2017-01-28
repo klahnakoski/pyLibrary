@@ -12,7 +12,7 @@ from __future__ import division
 from __future__ import absolute_import
 from collections import Mapping
 import pyDots as dot
-from pyLibrary.collections import SUM
+from mo_math import SUM
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.domains import Domain, ALGEBRAIC, KNOWN
 from pyDots import Null, coalesce, join_field, split_field, Data

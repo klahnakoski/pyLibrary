@@ -14,10 +14,10 @@ from __future__ import unicode_literals
 
 from datetime import datetime
 
-from pyLibrary.collections import MAX
-from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
+from mo_math import MAX
 from mo_times.dates import Date
 from mo_times.durations import MONTH, YEAR, WEEK
+from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestDate(FuzzyTestCase):

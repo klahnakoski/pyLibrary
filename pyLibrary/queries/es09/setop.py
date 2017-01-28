@@ -13,7 +13,7 @@ from __future__ import absolute_import
 from collections import Mapping
 
 from pyLibrary.collections.matrix import Matrix
-from pyLibrary.collections import AND, SUM, OR
+from mo_math import AND, SUM, OR
 from pyDots import coalesce, split_field, Data, wrap
 from pyDots.lists import FlatList
 from pyDots import listwrap, unwrap

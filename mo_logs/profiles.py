@@ -16,7 +16,7 @@ import pstats
 from datetime import datetime
 from time import clock
 
-from pyLibrary.collections import MAX
+from mo_math import MAX
 from pyDots import wrap
 from pyDots import Data
 

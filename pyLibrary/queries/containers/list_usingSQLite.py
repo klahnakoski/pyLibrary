@@ -22,7 +22,7 @@ from mo_logs import Log
 from pyDots import listwrap, coalesce, Data, wrap, Null, unwraplist, split_field, join_field, startswith_field, literal_field, unwrap, \
     relative_field, concat_field
 from pyLibrary import convert
-from pyLibrary.collections import UNION
+from mo_math import UNION
 from pyLibrary.collections.matrix import Matrix, index_to_coordinate
 from mo_math import Math
 from mo_math.randoms import Random

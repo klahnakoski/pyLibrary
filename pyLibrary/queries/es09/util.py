@@ -19,7 +19,7 @@ from pyDots import coalesce
 from pyDots import wrap
 from pyDots.lists import FlatList
 from pyLibrary import convert
-from pyLibrary.collections import COUNT
+from mo_math import COUNT
 from mo_math import Math
 from mo_math import stats
 from pyLibrary.queries import domains

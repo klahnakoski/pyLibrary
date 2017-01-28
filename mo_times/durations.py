@@ -18,7 +18,7 @@ import re
 from mo_times.vendor.dateutil.relativedelta import relativedelta
 
 from pyDots import wrap
-from pyLibrary.collections import MIN
+from mo_math import MIN
 from mo_math import Math
 
 _Date = None

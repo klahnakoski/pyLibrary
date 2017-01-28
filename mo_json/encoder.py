@@ -23,10 +23,11 @@ from repr import Repr
 
 from mo_logs import Except
 from mo_logs.strings import utf82unicode
-from pyDots import Data, FlatList, NullType, Null
-from mo_json import quote, ESCAPE_DCT, scrub, float2json
 from mo_times.dates import Date
 from mo_times.durations import Duration
+from pyDots import Data, FlatList, NullType, Null
+
+from mo_json import quote, ESCAPE_DCT, scrub, float2json
 
 json_decoder = json.JSONDecoder().decode
 _get = object.__getattribute__
@@ -285,7 +286,7 @@ def pretty_json(value):
                 return "{\n" + INDENT + (",\n" + INDENT).join(values) + "\n}"
             except Exception, e:
                 from mo_logs import Log
-                from pyLibrary.collections import OR
+                from mo_math import OR
 
                 if OR(not isinstance(k, basestring) for k in value.keys()):
                     Log.error(
