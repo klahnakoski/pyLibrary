@@ -8,7 +8,7 @@
 #
 from __future__ import unicode_literals
 
-from pyLibrary.queries.unique_index import UniqueIndex
+from pyLibrary.collections.unique_index import UniqueIndex
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 

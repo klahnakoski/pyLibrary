@@ -17,13 +17,15 @@ from collections import Mapping
 from types import GeneratorType
 
 import mo_dots
-from mo_logs import Log
 from mo_dots import listwrap, wrap, unwrap, FlatList
 from mo_dots import set_default, Null, Data, split_field, coalesce, join_field
 from mo_dots.objects import DataObject
-from pyLibrary import convert
-from mo_math import UNION, MIN
+from mo_logs import Log
 from mo_math import Math
+from mo_math import UNION, MIN
+from pyLibrary import convert
+from pyLibrary.collections.index import Index
+from pyLibrary.collections.unique_index import UniqueIndex
 from pyLibrary.queries import flat_list, query, group_by
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.containers.cube import Cube
@@ -31,9 +33,7 @@ from pyLibrary.queries.cubes.aggs import cube_aggs
 from pyLibrary.queries.expression_compiler import compile_expression
 from pyLibrary.queries.expressions import TRUE_FILTER, FALSE_FILTER, jx_expression_to_function
 from pyLibrary.queries.flat_list import PartFlatList
-from pyLibrary.queries.index import Index
 from pyLibrary.queries.query import QueryOp, _normalize_selects
-from pyLibrary.queries.unique_index import UniqueIndex
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)
 # JSON QUERY EXPRESSION DOCUMENTATION: https://github.com/klahnakoski/jx/tree/master/docs

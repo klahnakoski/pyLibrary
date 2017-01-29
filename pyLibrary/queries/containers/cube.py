@@ -14,9 +14,8 @@ from __future__ import unicode_literals
 from collections import Mapping
 
 import mo_dots as dot
-from mo_logs import Log
 from mo_dots import Null, Data, FlatList, wrap, wrap_leaves, listwrap
-from pyLibrary import convert
+from mo_logs import Log
 from mo_math import MAX, OR
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.queries.containers import Container

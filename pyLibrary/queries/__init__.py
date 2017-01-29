@@ -8,12 +8,13 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+
 from collections import Mapping
 
-from mo_logs import Log
-from mo_dots import wrap, set_default, split_field, join_field
 from mo_dots import Data
-from pyLibrary.queries.index import Index
+from mo_dots import wrap, set_default, split_field, join_field
+from mo_logs import Log
+from pyLibrary.collections.index import Index
 
 config = Data()   # config.default IS EXPECTED TO BE SET BEFORE CALLS ARE MADE
 _ListContainer = None
