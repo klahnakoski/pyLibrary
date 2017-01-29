@@ -15,14 +15,15 @@ from collections import Mapping
 from types import FunctionType
 
 import mo_dots
+import mo_json
+from mo_dots import set_default, wrap, _get_attr, Null, coalesce
 from mo_logs import Log
-from mo_logs.exceptions import Except, suppress_exception
+from mo_logs.exceptions import Except
 from mo_logs.strings import expand_template
 from mo_math.randoms import Random
 from mo_threads import Lock
 from mo_times.dates import Date
 from mo_times.durations import DAY
-from mo_dots import set_default, wrap, _get_attr, Null, coalesce
 from pyLibrary import convert
 
 
@@ -407,3 +408,11 @@ def _exec(code, name):
     exec (code)
     globals()[name] = temp
     return temp
+
+
+def value2quote(value):
+    # RETURN PRETTY PYTHON CODE FOR THE SAME
+    if isinstance(value, basestring):
+        return mo_json.quote(value)
+    else:
+        return repr(value)
