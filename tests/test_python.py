@@ -9,7 +9,7 @@
 #
 
 import unittest
-from pyDots.lists import FlatList
+from mo_dots.lists import FlatList
 
 
 class NaiveList(list):

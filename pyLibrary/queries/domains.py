@@ -19,9 +19,9 @@ from pyLibrary import convert
 from mo_logs import Log
 from mo_math import Math
 from pyLibrary.queries.unique_index import UniqueIndex
-from pyDots import coalesce, Data, set_default, Null, listwrap
-from pyDots.lists import FlatList
-from pyDots import wrap
+from mo_dots import coalesce, Data, set_default, Null, listwrap
+from mo_dots.lists import FlatList
+from mo_dots import wrap
 from mo_times.dates import Date
 from mo_times.durations import Duration
 

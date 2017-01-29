@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 
 from pyLibrary import queries, convert
 from mo_logs import Log
-from pyDots import split_field, FlatList, listwrap, literal_field, coalesce, Data, unwrap
+from mo_dots import split_field, FlatList, listwrap, literal_field, coalesce, Data, unwrap
 from pyLibrary.queries import es09, es14
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.es14.setop import format_dispatch

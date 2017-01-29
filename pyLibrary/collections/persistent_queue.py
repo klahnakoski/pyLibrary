@@ -8,17 +8,17 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
 
-from pyLibrary import convert
-from mo_logs.exceptions import suppress_exception
+from mo_files import File
 from mo_logs import Log
-from pyLibrary.env.files import File
+from mo_logs.exceptions import suppress_exception
 from mo_math.randoms import Random
-from pyDots import Data, wrap
-from mo_threads import Lock, Thread, Signal, THREAD_STOP
+from mo_threads import Lock, Signal, THREAD_STOP
+from mo_dots import Data, wrap
+from pyLibrary import convert
 
 DEBUG = True
 
@@ -46,7 +46,7 @@ class PersistentQueue(object):
         if self.file.exists:
             for line in self.file:
                 with suppress_exception:
-                    delta = convert.json2value(line)
+                    delta = mo_json.json2value(line)
                     apply_delta(self.db, delta)
             if self.db.status.start == None:  # HAPPENS WHEN ONLY ADDED TO QUEUE, THEN CRASH
                 self.db.status.start = 0

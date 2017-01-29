@@ -11,8 +11,8 @@ from __future__ import unicode_literals
 from collections import Mapping
 
 from mo_logs import Log
-from pyDots import wrap, set_default, split_field, join_field
-from pyDots import Data
+from mo_dots import wrap, set_default, split_field, join_field
+from mo_dots import Data
 from pyLibrary.queries.index import Index
 
 config = Data()   # config.default IS EXPECTED TO BE SET BEFORE CALLS ARE MADE

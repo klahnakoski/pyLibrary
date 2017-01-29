@@ -10,9 +10,9 @@ from __future__ import unicode_literals
 from unittest import skip
 
 from pyLibrary import convert
-from pyDots import unwrap, wrap
+from mo_dots import unwrap, wrap
 from pyLibrary.queries import jx
-from pyDots import Data
+from mo_dots import Data
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 

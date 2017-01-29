@@ -12,12 +12,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_logs import Log
-from pyDots import Data
-from pyLibrary import convert
+import base64
 
+from mo_json import json2value, value2json
+from mo_logs import Log
 from mo_math.randoms import Random
 from mo_math.vendor.aespython import key_expander, aes_cipher, cbc_mode
+from mo_dots import Data
 
 DEBUG = False
 
@@ -48,14 +49,14 @@ def encrypt(text, _key, salt=None):
 
     output = Data()
     output.type = "AES256"
-    output.salt = convert.bytes2base64(salt)
+    output.salt = bytes2base64(salt)
     output.length = len(data)
 
     encrypted = bytearray()
     for _, d in jx.groupby(data, size=16):
         encrypted.extend(aes_cbc_256.encrypt_block(d))
-    output.data = convert.bytes2base64(encrypted)
-    json = convert.value2json(output)
+    output.data = bytes2base64(encrypted)
+    json = value2json(output)
 
     if DEBUG:
         test = decrypt(json, _key)
@@ -75,16 +76,16 @@ def decrypt(data, _key):
     if _key is None:
         Log.error("Expecting a key")
 
-    _input = convert.json2value(data)
+    _input = json2value(data)
 
     # Initialize encryption using key and iv
     key_expander_256 = key_expander.KeyExpander(256)
     expanded_key = key_expander_256.expand(_key)
     aes_cipher_256 = aes_cipher.AESCipher(expanded_key)
     aes_cbc_256 = cbc_mode.CBCMode(aes_cipher_256, 16)
-    aes_cbc_256.set_iv(convert.base642bytearray(_input.salt))
+    aes_cbc_256.set_iv(base642bytearray(_input.salt))
 
-    raw = convert.base642bytearray(_input.data)
+    raw = base642bytearray(_input.data)
     out_data = bytearray()
     for _, e in jx.groupby(raw, size=16):
         out_data.extend(aes_cbc_256.decrypt_block(e))
@@ -92,5 +93,14 @@ def decrypt(data, _key):
     return str(out_data[:_input.length:]).decode("utf8")
 
 
+def bytes2base64(value):
+    if isinstance(value, bytearray):
+        value=str(value)
+    return base64.b64encode(value).decode("utf8")
 
 
+def base642bytearray(value):
+    if value == None:
+        return bytearray(b"")
+    else:
+        return bytearray(base64.b64decode(value))

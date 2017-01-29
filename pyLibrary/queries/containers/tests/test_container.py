@@ -12,7 +12,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from mo_logs import Log
-from pyDots import wrap
+from mo_dots import wrap
 from pyLibrary.queries.containers.list_usingSQLite import Table_usingSQLite
 from pyLibrary.queries.expressions import NullOp
 from pyLibrary.testing.fuzzytestcase import FuzzyTestCase

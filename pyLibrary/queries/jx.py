@@ -16,11 +16,11 @@ import __builtin__
 from collections import Mapping
 from types import GeneratorType
 
-import pyDots
+import mo_dots
 from mo_logs import Log
-from pyDots import listwrap, wrap, unwrap, FlatList
-from pyDots import set_default, Null, Data, split_field, coalesce, join_field
-from pyDots.objects import DataObject
+from mo_dots import listwrap, wrap, unwrap, FlatList
+from mo_dots import set_default, Null, Data, split_field, coalesce, join_field
+from mo_dots.objects import DataObject
 from pyLibrary import convert
 from mo_math import UNION, MIN
 from mo_math import Math
@@ -127,7 +127,7 @@ def index(data, keys=None):
         if data.edges[0].name==keys[0]:
             #QUICK PATH
             names = list(data.data.keys())
-            for d in (set_default(pyDots.zip(names, r), {keys[0]: p}) for r, p in zip(zip(*data.data.values()), data.edges[0].domain.partitions.value)):
+            for d in (set_default(mo_dots.zip(names, r), {keys[0]: p}) for r, p in zip(zip(*data.data.values()), data.edges[0].domain.partitions.value)):
                 o.add(d)
             return o
         else:

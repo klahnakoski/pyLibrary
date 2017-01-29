@@ -17,8 +17,8 @@ from sets import BaseSet
 
 from mo_logs.exceptions import suppress_exception
 from mo_logs import Log
-from pyDots import unwrap, tuplewrap, wrap
-from pyDots.objects import datawrap
+from mo_dots import unwrap, tuplewrap, wrap
+from mo_dots.objects import datawrap
 
 
 DEBUG = False

@@ -19,7 +19,7 @@ from copy import copy
 
 from mo_logs import Log
 # from mo_logs.strings import expand_template
-from pyDots import listwrap, coalesce, Data, wrap, Null, unwraplist, split_field, join_field, startswith_field, literal_field, unwrap, \
+from mo_dots import listwrap, coalesce, Data, wrap, Null, unwraplist, split_field, join_field, startswith_field, literal_field, unwrap, \
     relative_field, concat_field
 from pyLibrary import convert
 from mo_math import UNION

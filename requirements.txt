@@ -1,6 +1,6 @@
 pymysql
 requests
 boto
-pyDots
+mo-dots
 mo-logs
 

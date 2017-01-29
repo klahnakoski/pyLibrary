@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_math import PRODUCT, MAX, MIN, OR
-from pyDots import Null, Data, coalesce
+from mo_dots import Null, Data, coalesce
 from pyLibrary import convert
 from pyLibrary.meta import use_settings
 

@@ -20,7 +20,7 @@ from mo_math import MIN
 from mo_math import Math
 from mo_math import stats
 from mo_math.stats import ZeroMoment, ZeroMoment2Stats
-from pyDots.lists import FlatList
+from mo_dots.lists import FlatList
 from pyLibrary.collections.multiset import Multiset
 
 

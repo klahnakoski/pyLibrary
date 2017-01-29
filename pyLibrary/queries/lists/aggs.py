@@ -16,7 +16,7 @@ import itertools
 from mo_logs import Log
 from mo_math import UNION
 from mo_times.dates import Date
-from pyDots import listwrap, wrap, coalesce
+from mo_dots import listwrap, wrap, coalesce
 from pyLibrary.collections.matrix import Matrix
 from pyLibrary.queries import windows
 from pyLibrary.queries.domains import SimpleSetDomain, DefaultDomain

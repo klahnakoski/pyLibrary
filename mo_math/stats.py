@@ -17,12 +17,10 @@ import sys
 from math import sqrt
 
 from mo_logs import Log
-from pyDots import coalesce, Data, Null
-from pyLibrary import convert
 from mo_math import OR
-
 from mo_math import almost_equal
 from mo_math.vendor import strangman
+from mo_dots import coalesce, Data, Null
 
 DEBUG = True
 DEBUG_STRANGMAN = True
@@ -293,8 +291,6 @@ def sub(a, b):
 def ZeroMoment2dict(z):
     # RETURN HASH OF SUMS
     return {u"s" + unicode(i): m for i, m in enumerate(z.S)}
-
-setattr(convert, "ZeroMoment2dict", staticmethod(ZeroMoment2dict))
 
 
 def median(values, simple=True, mean_weight=0.0):

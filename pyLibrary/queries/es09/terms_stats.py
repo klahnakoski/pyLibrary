@@ -20,9 +20,9 @@ from pyLibrary.queries.es09.util import aggregates, build_es_query, compileEdges
 from mo_logs import Log
 from pyLibrary.queries.es09.expressions import UID
 from pyLibrary.queries import es09
-from pyDots import literal_field, coalesce
-from pyDots.lists import FlatList
-from pyDots import wrap, listwrap
+from mo_dots import literal_field, coalesce
+from mo_dots.lists import FlatList
+from mo_dots import wrap, listwrap
 from pyLibrary.queries.expressions import simplify_esfilter
 
 

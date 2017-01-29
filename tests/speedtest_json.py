@@ -22,7 +22,7 @@ from pyLibrary import convert
 from mo_json import scrub
 from mo_json.encoder import cPythonJSONEncoder, json_encoder
 from mo_logs import Log
-from pyDots import wrap, unwrap, Data
+from mo_dots import wrap, unwrap, Data
 
 TARGET_RUNTIME = 10
 

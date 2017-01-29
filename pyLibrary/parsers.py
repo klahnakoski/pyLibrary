@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 
 from urlparse import urlparse
 
-from pyDots import wrap
+from mo_dots import wrap
 
 _convert = None
 _Log = None

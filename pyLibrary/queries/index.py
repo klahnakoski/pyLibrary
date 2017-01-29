@@ -16,7 +16,7 @@ from collections import Mapping
 from copy import copy
 
 from mo_logs import Log
-from pyDots import wrap, unwrap, tuplewrap
+from mo_dots import wrap, unwrap, tuplewrap
 from pyLibrary.queries.unique_index import UniqueIndex
 
 

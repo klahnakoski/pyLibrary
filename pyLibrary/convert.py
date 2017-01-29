@@ -28,12 +28,13 @@ from io import BytesIO
 from tempfile import TemporaryFile
 
 import mo_json
+import mo_math
 from mo_json import quote
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_logs.strings import expand_template
 from mo_times.dates import Date
-from pyDots import wrap, unwrap, unwraplist, concat_field
+from mo_dots import wrap, unwrap, unwraplist, concat_field
 
 """
 DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
@@ -604,5 +605,8 @@ def table2csv(table_data):
     )
     text = "\n".join(expand_template(template, d) for d in text_data)
     return text
+
+ZeroMoment2dict = mo_math.stats.ZeroMoment2dict
+
 
 

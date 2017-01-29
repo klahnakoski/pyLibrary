@@ -52,7 +52,7 @@ setup(
     url='https://github.com/klahnakoski/pyLibrary',
     license='MPL 2.0',
     packages=find_packages(".", lib_prefix=""),
-    install_requires=['pymysql', 'requests', 'boto', 'pyDots', 'mo-logs'],
+    install_requires=['pymysql', 'requests', 'boto', 'mo-dots', 'mo-logs'],
     include_package_data=True,
     zip_safe=False,
     classifiers=[  #https://pypi.python.org/pypi?%3Aaction=list_classifiers
