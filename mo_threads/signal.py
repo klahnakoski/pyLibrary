@@ -16,6 +16,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from thread import allocate_lock as _allocate_lock
+from thread import get_ident as _get_ident
 
 _Log = None
 DEBUG = False
