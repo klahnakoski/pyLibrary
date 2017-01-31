@@ -8,17 +8,17 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
 
 import re
 
+from mo_testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary import convert
 from pyLibrary.queries.jx_usingMySQL import esfilter2sqlwhere
 from pyLibrary.sql import mysql
 from pyLibrary.sql.mysql import MySQL
-from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestDB(FuzzyTestCase):

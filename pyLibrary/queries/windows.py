@@ -21,7 +21,7 @@ from mo_math import Math
 from mo_math import stats
 from mo_math.stats import ZeroMoment, ZeroMoment2Stats
 from mo_dots.lists import FlatList
-from pyLibrary.collections.multiset import Multiset
+from mo_collections.multiset import Multiset
 
 
 # A VARIETY OF SLIDING WINDOW FUNCTIONS

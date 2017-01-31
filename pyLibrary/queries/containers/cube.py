@@ -17,7 +17,7 @@ import mo_dots as dot
 from mo_dots import Null, Data, FlatList, wrap, wrap_leaves, listwrap
 from mo_logs import Log
 from mo_math import MAX, OR
-from pyLibrary.collections.matrix import Matrix
+from mo_collections.matrix import Matrix
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.cubes.aggs import cube_aggs
 from pyLibrary.queries.lists.aggs import is_aggs

@@ -11,7 +11,7 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import absolute_import
 
-from pyLibrary.collections.matrix import Matrix
+from mo_collections.matrix import Matrix
 from mo_math import AND
 from pyLibrary.queries import jx
 from pyLibrary.queries.es09.util import aggregates, build_es_query, compileEdges2Term

@@ -24,8 +24,8 @@ from mo_logs import Log
 from mo_math import Math
 from mo_math import UNION, MIN
 from pyLibrary import convert
-from pyLibrary.collections.index import Index
-from pyLibrary.collections.unique_index import UniqueIndex
+from mo_collections.index import Index
+from mo_collections.unique_index import UniqueIndex
 from pyLibrary.queries import flat_list, query, group_by
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.containers.cube import Cube

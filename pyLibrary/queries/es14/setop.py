@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 
 from pyLibrary import queries
 from mo_math import AND
-from pyLibrary.collections.matrix import Matrix
+from mo_collections.matrix import Matrix
 from mo_logs import Log
 from mo_dots import coalesce, split_field, set_default, Data, unwraplist, literal_field, join_field, unwrap, wrap
 from mo_dots import listwrap

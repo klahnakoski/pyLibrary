@@ -12,7 +12,7 @@ from __future__ import division
 from __future__ import absolute_import
 from collections import Mapping
 
-from pyLibrary.collections.matrix import Matrix
+from mo_collections.matrix import Matrix
 from mo_math import AND, SUM, OR
 from mo_dots import coalesce, split_field, Data, wrap
 from mo_dots.lists import FlatList

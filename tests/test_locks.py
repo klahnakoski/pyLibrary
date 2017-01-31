@@ -17,20 +17,21 @@ from thread import allocate_lock as _allocate_lock
 
 import requests
 
+from mo_collections.queue import Queue
 from mo_logs import Log
+from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_threads import Lock, THREAD_STOP
 from mo_threads import Signal
 from mo_threads import Thread, ThreadedQueue
 from mo_threads import Till
+from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
-from pyLibrary.collections.queue import Queue
-from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestLocks(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
-        Log.start({"trace": True, "cprofile": False})
+        Log.start({"trace": True, "cprofile": True})
 
     @classmethod
     def tearDownClass(cls):
@@ -108,6 +109,37 @@ class TestLocks(FuzzyTestCase):
 
         self.assertTrue(bool(thread_a.stopped), "Thread should be done by now")
         self.assertTrue(bool(thread_b.stopped), "Thread should be done by now")
+
+    def test_till_in_loop(self):
+
+        def loop(please_stop):
+            counter = 0
+            while not please_stop:
+                (Till(seconds=0.001) | please_stop).wait()
+                counter += 1
+                Log.note("{{count}}", count=counter)
+
+        please_stop=Signal("please_stop")
+        Thread.run("loop", loop, please_stop=please_stop)
+        Till(seconds=1).wait()
+        with please_stop.lock:
+            self.assertLessEqual(len(please_stop.job_queue), 0, "Expecting only one pending job on go")
+        please_stop.go()
+
+    def test_consistency(self):
+        counter = [0]
+        lock = BusyLock()
+
+        def adder(please_stop):
+            for i in range(100):
+                with lock:
+                    counter[0] += 1
+
+        threads = [Thread.run(unicode(i), adder) for i in range(50)]
+        for t in threads:
+            t.join()
+
+        self.assertEqual(counter[0], 100*50, "Expecting lock to work")
 
 
 def query_activedata(suite, platforms=None):

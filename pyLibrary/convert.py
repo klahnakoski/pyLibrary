@@ -111,7 +111,7 @@ def milli2datetime(u):
 def dict2Multiset(dic):
     if dic == None:
         return None
-    from pyLibrary.collections.multiset import Multiset
+    from mo_collections.multiset import Multiset
     output = Multiset()
     output.dic = unwrap(dic).copy()
     return output

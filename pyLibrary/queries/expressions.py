@@ -15,17 +15,17 @@ import itertools
 from collections import Mapping
 from decimal import Decimal
 
-from mo_logs import Log
-from mo_logs.exceptions import suppress_exception
 from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field, Data, join_field, unwraplist, \
     ROOT_PATH, relative_field
-from pyLibrary import convert
-from mo_math import OR, MAX
+from mo_logs import Log
+from mo_logs.exceptions import suppress_exception
 from mo_math import Math
+from mo_math import OR, MAX
+from mo_times.dates import Date
+from pyLibrary import convert
 from pyLibrary.queries.containers import STRUCT, OBJECT
 from pyLibrary.queries.domains import is_keyword
 from pyLibrary.queries.expression_compiler import compile_expression
-from mo_times.dates import Date
 
 ALLOW_SCRIPTING = False
 TRUE_FILTER = True
@@ -510,7 +510,7 @@ class Literal(Expression):
 
         Log.warning("expensive")
 
-        from pyLibrary.testing.fuzzytestcase import assertAlmostEqual
+        from mo_testing.fuzzytestcase import assertAlmostEqual
 
         try:
             assertAlmostEqual(mo_json.json2value(self.json), other)

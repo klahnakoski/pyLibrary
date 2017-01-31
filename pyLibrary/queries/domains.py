@@ -23,7 +23,7 @@ from mo_logs import Log
 from mo_math import Math
 from mo_times.dates import Date
 from mo_times.durations import Duration
-from pyLibrary.collections.unique_index import UniqueIndex
+from mo_collections.unique_index import UniqueIndex
 
 ALGEBRAIC = {"time", "duration", "numeric", "count", "datetime"}  # DOMAINS THAT HAVE ALGEBRAIC OPERATIONS DEFINED
 KNOWN = {"set", "boolean", "duration", "time", "numeric"}  # DOMAINS THAT HAVE A KNOWN NUMBER FOR PARTS AT QUERY TIME

@@ -15,7 +15,7 @@ from __future__ import unicode_literals
 import math
 import sys
 
-from pyLibrary.collections.multiset import Multiset
+from mo_collections.multiset import Multiset
 from mo_logs.exceptions import Except
 from mo_logs import Log
 from mo_dots import listwrap, Null, Data

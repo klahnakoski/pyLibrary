@@ -7,13 +7,14 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+
 from unittest import skip
 
-from pyLibrary import convert
-from mo_dots import unwrap, wrap
-from pyLibrary.queries import jx
 from mo_dots import Data
-from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
+from mo_dots import unwrap, wrap
+from mo_testing.fuzzytestcase import FuzzyTestCase
+from pyLibrary import convert
+from pyLibrary.queries import jx
 
 
 class TestQb(FuzzyTestCase):

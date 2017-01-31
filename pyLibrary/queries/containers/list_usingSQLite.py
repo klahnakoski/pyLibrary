@@ -23,7 +23,7 @@ from mo_dots import listwrap, coalesce, Data, wrap, Null, unwraplist, split_fiel
     relative_field, concat_field
 from pyLibrary import convert
 from mo_math import UNION
-from pyLibrary.collections.matrix import Matrix, index_to_coordinate
+from mo_collections.matrix import Matrix, index_to_coordinate
 from mo_math import Math
 from mo_math.randoms import Random
 from pyLibrary.meta import use_settings

@@ -12,10 +12,10 @@ from __future__ import unicode_literals
 
 from time import sleep
 
-from pyLibrary.meta import cache
-from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
+from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_threads import Till
 from mo_times.durations import SECOND
+from pyLibrary.meta import cache
 
 CACHE_DURATION = 0.1 * SECOND
 

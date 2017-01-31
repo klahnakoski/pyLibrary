@@ -17,7 +17,7 @@ from mo_logs import Log
 from mo_logs.exceptions import suppress_exception, Except
 from mo_logs.strings import expand_template
 from mo_math import Math
-from pyLibrary.collections.unique_index import UniqueIndex
+from mo_collections.unique_index import UniqueIndex
 
 
 class FuzzyTestCase(unittest.TestCase):

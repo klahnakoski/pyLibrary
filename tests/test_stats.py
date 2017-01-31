@@ -10,7 +10,7 @@
 from mo_math import stats
 
 from mo_math.stats import ZeroMoment, ZeroMoment2Stats
-from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
+from mo_testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestStats(FuzzyTestCase):

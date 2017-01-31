@@ -7,10 +7,10 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from mo_logs.strings import is_hex
+from mo_testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.env.git import get_git_revision
 from pyLibrary.env.git import get_remote_revision
-from mo_logs.strings import is_hex
-from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestGit(FuzzyTestCase):

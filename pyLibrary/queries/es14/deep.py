@@ -16,7 +16,7 @@ from mo_logs import Log
 from mo_threads import Thread
 from mo_times.timer import Timer
 from pyLibrary import queries, convert
-from pyLibrary.collections.unique_index import UniqueIndex
+from mo_collections.unique_index import UniqueIndex
 from pyLibrary.queries import es09, es14
 from pyLibrary.queries.containers import STRUCT
 from pyLibrary.queries.es14.setop import format_dispatch

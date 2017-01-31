@@ -11,6 +11,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import mo_json
 from mo_files import File
 from mo_logs import Log
 from mo_dots import Data

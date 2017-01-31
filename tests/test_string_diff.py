@@ -10,7 +10,7 @@
 from __future__ import unicode_literals
 
 import unittest
-from pyLibrary.collections import reverse
+from mo_collections import reverse
 from mo_logs import Log
 from mo_logs.strings import apply_diff
 

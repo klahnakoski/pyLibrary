@@ -20,7 +20,7 @@ from mo_dots import coalesce
 from mo_dots import wrap, listwrap, unwrap
 from mo_dots.lists import FlatList
 from pyLibrary import convert
-from pyLibrary.collections.matrix import Matrix
+from mo_collections.matrix import Matrix
 from pyLibrary.meta import use_settings
 from pyLibrary.sql import SQL
 from pyLibrary.sql.mysql import int_list_packer

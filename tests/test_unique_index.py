@@ -8,8 +8,8 @@
 #
 from __future__ import unicode_literals
 
-from pyLibrary.collections.unique_index import UniqueIndex
-from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
+from mo_collections.unique_index import UniqueIndex
+from mo_testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestUniqueIndex(FuzzyTestCase):

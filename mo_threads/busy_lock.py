@@ -24,6 +24,9 @@ _set = dict.setdefault
 
 
 class BusyLock(object):
+    """
+    ONLY USE IF HOLDING THE LOCK FOR A SHORT TIME
+    """
 
     def __init__(self):
         self.lock = {}
