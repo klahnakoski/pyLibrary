@@ -31,7 +31,7 @@ from mo_times.timer import Timer
 class TestLocks(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
-        Log.start({"trace": True, "cprofile": True})
+        Log.start({"trace": True, "cprofile": False})
 
     @classmethod
     def tearDownClass(cls):

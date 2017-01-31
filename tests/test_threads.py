@@ -39,11 +39,12 @@ class TestThreads(FuzzyTestCase):
 
         def take_lock(please_stop):
             with locker:
-                locker.wait(1)
-                locker.wait(SECOND)
-                locker.wait(till=Date.now()+SECOND)
+                locker.wait(Till(seconds=1))
+                locker.wait(Till(seconds=1))
+                locker.wait(Till(till=(Date.now()+SECOND).unix))
 
-        Thread.run("take lock", take_lock)
+        t = Thread.run("take lock", take_lock)
+        t.join()
 
     def test_thread_wait(self):
         NUM = 100
