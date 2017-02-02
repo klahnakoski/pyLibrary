@@ -1108,9 +1108,8 @@ def parse_properties(parent_index_name, parent_name, esProperties):
             child_columns = parse_properties(index_name, column_name, property.properties)
             columns.extend(child_columns)
             columns.append(Column(
-                table=index_name,
+                names={index_name: column_name},
                 es_index=index_name,
-                name=column_name,
                 es_column=column_name,
                 nested_path=ROOT_PATH,
                 type="source" if property.enabled == False else "object"
@@ -1146,9 +1145,8 @@ def parse_properties(parent_index_name, parent_name, esProperties):
 
         if property.type in ["string", "boolean", "integer", "date", "long", "double"]:
             columns.append(Column(
-                table=index_name,
                 es_index=index_name,
-                name=column_name,
+                names={"index_name": column_name},
                 es_column=column_name,
                 nested_path=ROOT_PATH,
                 type=property.type
@@ -1166,7 +1164,7 @@ def parse_properties(parent_index_name, parent_name, esProperties):
             columns.append(Column(
                 table=index_name,
                 es_index=index_name,
-                name=column_name,
+                names={index_name: column_name},
                 es_column=column_name,
                 nested_path=ROOT_PATH,
                 type="source" if property.enabled==False else "object"
