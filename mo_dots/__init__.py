@@ -44,7 +44,7 @@ def coalesce(*args):
 
 def zip(keys, values):
     """
-    CONVERT LIST OF KEY/VALUE PAIRS TO A DICT
+    CONVERT LIST OF KEY/VALUE PAIRS TO Data
     PLEASE `import dot`, AND CALL `dot.zip()`
     """
     output = Data()

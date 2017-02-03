@@ -12,11 +12,11 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import mo_json
+from mo_dots import Null, Data, coalesce
+from mo_kwargs import override
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_math import PRODUCT, MAX, MIN, OR
-from mo_dots import Null, Data, coalesce
-from pyLibrary.meta import use_settings
 
 
 class Matrix(object):
@@ -25,7 +25,7 @@ class Matrix(object):
     """
     ZERO = None
 
-    @use_settings
+    @override
     def __init__(self, dims=[], list=None, value=None, zeros=None, settings=None):
         if list:
             self.num = 1
