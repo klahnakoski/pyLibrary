@@ -13,9 +13,8 @@ import os
 import shutil
 from datetime import datetime
 
-import mo_json
-from mo_math import crypto
-from mo_dots import coalesce
+from mo_dots import get_module, coalesce
+from mo_logs import Log
 
 
 class File(object):
@@ -161,19 +160,17 @@ class File(object):
         with open(self._filename, "rb") as f:
             content = f.read().decode(encoding)
             if self.key:
-                return crypto.decrypt(content, self.key)
+                return get_module("mo_math.crypto").decrypt(content, self.key)
             else:
                 return content
 
     def read_json(self, encoding="utf8"):
-        import mo_json_config
-
         content = self.read(encoding=encoding)
-        value = mo_json.json2value(content, flexible=True, leaves=True)
+        value = get_module("mo_json").json2value(content, flexible=True, leaves=True)
         abspath = self.abspath
         if os.sep == "\\":
             abspath = "/" + abspath.replace(os.sep, "/")
-        return mo_json_config.expand(value, "file://" + abspath)
+        return get_module("mo_json_config").expand(value, "file://" + abspath)
 
     def is_directory(self):
         return os.path.isdir(self._filename)
@@ -185,9 +182,7 @@ class File(object):
             with open(self._filename, "rb") as f:
                 return f.read()
         except Exception, e:
-            from mo_logs import Log
             Log.error("Problem reading file {{filename}}", filename=self.abspath, cause=e)
-
 
     def write_bytes(self, content):
         if not self.parent.exists:
@@ -200,8 +195,6 @@ class File(object):
             self.parent.create()
         with open(self._filename, "wb") as f:
             if isinstance(data, list) and self.key:
-                from mo_logs import Log
-
                 Log.error("list of data and keys are not supported, encrypt before sending to file")
 
             if isinstance(data, list):
@@ -213,11 +206,9 @@ class File(object):
 
             for d in data:
                 if not isinstance(d, unicode):
-                    from mo_logs import Log
-
                     Log.error("Expecting unicode data only")
                 if self.key:
-                    f.write(crypto.encrypt(d, self.key).encode("utf8"))
+                    f.write(get_module("crypto").encrypt(d, self.key).encode("utf8"))
                 else:
                     f.write(d.encode("utf8"))
 
@@ -236,8 +227,6 @@ class File(object):
                     for line in f:
                         yield line.decode('utf8').rstrip()
             except Exception, e:
-                from mo_logs import Log
-
                 Log.error("Can not read line from {{filename}}", filename=self._filename, cause=e)
 
         return output()
@@ -250,8 +239,6 @@ class File(object):
             self.parent.create()
         with open(self._filename, "ab") as output_file:
             if isinstance(content, str):
-                from mo_logs import Log
-
                 Log.error("expecting to write unicode only")
             output_file.write(content.encode("utf-8"))
             output_file.write(b"\n")
@@ -269,15 +256,11 @@ class File(object):
             with open(self._filename, "ab") as output_file:
                 for c in content:
                     if isinstance(c, str):
-                        from mo_logs import Log
-
                         Log.error("expecting to write unicode only")
 
                     output_file.write(c.encode("utf-8"))
                     output_file.write(b"\n")
         except Exception, e:
-            from mo_logs import Log
-
             Log.error("Could not write to file", e)
 
     def delete(self):
@@ -290,8 +273,6 @@ class File(object):
         except Exception, e:
             if e.strerror == "The system cannot find the path specified":
                 return
-            from mo_logs import Log
-
             Log.error("Could not remove file", e)
 
     def backup(self):
@@ -311,8 +292,6 @@ class File(object):
         try:
             os.makedirs(self._filename)
         except Exception, e:
-            from mo_logs import Log
-
             Log.error("Could not make directory {{dir_name}}",  dir_name= self._filename, cause=e)
 
     @property
@@ -371,6 +350,4 @@ def datetime2string(value, format="%Y-%m-%d %H:%M:%S"):
     try:
         return value.strftime(format)
     except Exception, e:
-        from mo_logs import Log
-
         Log.error("Can not format {{value}} with {{format}}", value=value, format=format, cause=e)
