@@ -17,7 +17,7 @@ from __future__ import unicode_literals
 
 from mo_logs import Log
 from mo_math import PRODUCT
-from mo_testing.fuzzytestcase import assertAlmostEqual
+# from mo_testing.fuzzytestcase import assertAlmostEqual
 
 
 def zeros(dim):
