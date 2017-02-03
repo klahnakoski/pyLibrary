@@ -11,7 +11,6 @@
 import datetime
 import unittest
 
-from mo_logs import Log
 from mo_dots import wrap
 from mo_json.encoder import pypy_json_encode
 from mo_json.typed_encoder import typed_encode, json2typed

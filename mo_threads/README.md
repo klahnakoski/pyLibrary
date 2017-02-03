@@ -69,7 +69,7 @@ These three aspects can be combined to give us 8 synchronization primitives:
 Locks are identical to [threading monitors](https://en.wikipedia.org/wiki/Monitor_(synchronization)), except for two differences: 
 
 1. The `wait()` method will **always acquire the lock before returning**. This is an important feature; ensuring every line in a code block has  lock acquisition is easier to reason about.
-2. Exiting a lock via `wait()` or `__exit__()` will **always** signal any waiting thread to resume immediately. This ensures no signals are missed, and every thread gets an opportunity to react to possible change.  
+2. Exiting a lock via `__exit__()` will **always** signal any waiting thread to resume immediately. This ensures no signals are missed, and every thread gets an opportunity to react to possible change.  
 
 		lock = Lock()
 		todo = []

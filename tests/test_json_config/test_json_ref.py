@@ -14,19 +14,27 @@ from __future__ import unicode_literals
 
 import os
 
-from MoLogs.strings import expand_template
-from pyDots import Data
-from pyLibrary import jsons
-from pyLibrary.env.files import File
-from pyLibrary.parsers import URL
-from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
+import mo_json_config
+from mo_files import File
+from mo_json_config import URL
+from mo_logs.exceptions import extract_stack
+from mo_logs.strings import expand_template
+from mo_dots import Data
+from mo_testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestRef(FuzzyTestCase):
+
+    def __init__(self, *args, **kwargs):
+        FuzzyTestCase.__init__(self, *args, **kwargs)
+        stack = extract_stack(0)
+        this_file = stack[0]["file"]
+        self.resources = "file:///"+File.new_instance(this_file, "../resources").abspath
+
     def test_doc1(self):
         os.environ["test_variable"] = "abc"
 
-        doc = jsons.ref.get("file://tests/resources/json_ref/test_ref1.json")
+        doc = mo_json_config.get(self.resources+"/test_ref1.json")
 
         self.assertEqual(doc.env_variable, "abc")
         self.assertEqual(doc.relative_file1, "*_ts")
@@ -38,7 +46,7 @@ class TestRef(FuzzyTestCase):
 
     def test_doc2(self):
         # BETTER TEST OF RECURSION
-        doc = jsons.ref.get("file://tests/resources/json_ref/test_ref2.json")
+        doc = mo_json_config.get(self.resources+"/test_ref2.json")
 
         self.assertEqual(doc, {
             "a": "some_value",
@@ -49,23 +57,23 @@ class TestRef(FuzzyTestCase):
         })
 
     def test_empty_object_as_json_parameter(self):
-        url = "file://tests/resources/json_ref/test_ref_w_parameters.json?{{.|url}}"
+        url = self.resources+"/test_ref_w_parameters.json?{{.|url}}"
         url = expand_template(url, {"metadata": Data()})
-        result = jsons.ref.get(url)
+        result = mo_json_config.get(url)
         self.assertEqual(result, {}, "expecting proper parameter expansion")
 
     def test_json_parameter(self):
-        url = "file://tests/resources/json_ref/test_ref_w_parameters.json?{{.|url}}"
+        url = self.resources+"/test_ref_w_parameters.json?{{.|url}}"
         url = expand_template(url, {"metadata": ["a", "b"]})
-        result = jsons.ref.get(url)
+        result = mo_json_config.get(url)
         self.assertEqual(result, {"a": ["a", "b"]}, "expecting proper parameter expansion")
 
     def test_parameter_list(self):
-        url = "file://tests/resources/json_ref/test_ref_w_parameters.json?test1=a&test1=b&test2=c&test1=d"
+        url = self.resources+"/test_ref_w_parameters.json?test1=a&test1=b&test2=c&test1=d"
         self.assertEqual(URL(url).query, {"test1": ["a", "b", "d"], "test2": "c"}, "expecting test1 to be an array")
 
     def test_inner_doc(self):
-        doc = jsons.ref.get("file://tests/resources/json_ref/inner.json")
+        doc = mo_json_config.get(self.resources+"/inner.json")
 
         self.assertEqual(doc, {
             "area": {
@@ -83,9 +91,9 @@ class TestRef(FuzzyTestCase):
 
     def test_read_home(self):
         file = "~/___test_file.json"
-        source = "tests/resources/json_ref/simple.json"
+        source = File.new_instance(extract_stack(0)[0]["file"], "../resources/simple.json")
         File.copy(File(source), File(file))
-        content = jsons.ref.get("file://"+file)
+        content = mo_json_config.get("file:///"+file)
 
         try:
             self.assertEqual(
@@ -97,7 +105,7 @@ class TestRef(FuzzyTestCase):
 
     def test_array_expansion(self):
         # BETTER TEST OF RECURSION
-        doc = jsons.ref.get("file://tests/resources/json_ref/test_array.json")
+        doc = mo_json_config.get(self.resources+"/test_array.json")
 
         self.assertEqual(doc, {
             "a": "some_value",
@@ -126,6 +134,6 @@ class TestRef(FuzzyTestCase):
         })
 
     def test_grandparent_reference(self):
-        doc = jsons.ref.get("file://tests/resources/json_ref/child/grandchild/simple.json")
+        doc = mo_json_config.get(self.resources+"/child/grandchild/simple.json")
 
         self.assertEqual(doc, {"test_key": "test_value"})

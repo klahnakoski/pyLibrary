@@ -13,6 +13,7 @@ import unittest
 from traceback import extract_tb
 
 from mo_files import File
+from mo_json import json2value
 from mo_logs import Log
 from mo_logs import strings
 from mo_logs.exceptions import Except, ERROR
@@ -68,7 +69,7 @@ class FromESTester(object):
             f = Except(ERROR, unicode(e), trace=extract_tb(1))
             try:
                 details = str(f)
-                query = mo_json.json2value(strings.between(details, ">>>>", "<<<<"))
+                query = json2value(strings.between(details, ">>>>", "<<<<"))
                 return query
             except Exception, g:
                 Log.error("problem", f)
@@ -85,7 +86,7 @@ class FakeES(object):
         Log.error("<<<<\n{{query}}\n>>>>", {"query": convert.value2json(query)})
 
     def get_schema(self):
-        return mo_json.json2value(File("tests/resources/bug_version.json").read()).mappings.bug_version
+        return json2value(File("tests/resources/bug_version.json").read()).mappings.bug_version
 
 
 

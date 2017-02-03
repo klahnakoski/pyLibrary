@@ -5,10 +5,8 @@ from mo_logs import profiles
 from mo_logs import Log
 from mo_logs.profiles import Profiler
 from mo_math.randoms import Random
-from mo_dots import Data
+from mo_dots import Data, wrap
 from mo_dots.lists import FlatList
-from mo_dots.slow_wrap import slow_wrap
-from mo_dots.wraps import wrap
 
 
 def baseline(v):

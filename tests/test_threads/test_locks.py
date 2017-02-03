@@ -28,6 +28,10 @@ from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
 
 
+
+ACTIVEDATA_URL = "https://activedata.allizom.org/query"
+
+
 class TestLocks(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
@@ -158,7 +162,7 @@ def query_activedata(suite, platforms=None):
     })
 
     response = requests.post(
-        ACTIVE_DATA_URL,
+        ACTIVEDATA_URL,
         data=query,
         stream=True
     )

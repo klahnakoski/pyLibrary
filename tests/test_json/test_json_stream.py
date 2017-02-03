@@ -8,17 +8,15 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
 
 from io import BytesIO
-from mo_logs import Log
-from pyLibrary.env import http
-from pyLibrary.env.http import MIN_READ_SIZE
 
 from mo_json import stream, json2value
-from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
+from mo_logs import Log
+from mo_testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestJsonStream(FuzzyTestCase):

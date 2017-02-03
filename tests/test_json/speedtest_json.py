@@ -9,10 +9,11 @@
 #
 
 
-from decimal import Decimal
+import json
 import platform
 import time
-import json
+from decimal import Decimal
+
 try:
     import ujson
 except Exception:
@@ -22,7 +23,7 @@ from pyLibrary import convert
 from mo_json import scrub
 from mo_json.encoder import cPythonJSONEncoder, json_encoder
 from mo_logs import Log
-from mo_dots import wrap, unwrap, Data
+from mo_dots import wrap, unwrap
 
 TARGET_RUNTIME = 10
 

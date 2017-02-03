@@ -20,6 +20,6 @@ class TestGit(FuzzyTestCase):
         self.assertEqual(len(rev), 40)
 
     def test_get_remote_revision(self):
-        rev = get_remote_revision('https://github.com/klahnakoski/pyLibrary.git', 'master');
+        rev = get_remote_revision('https://github.com/klahnakoski/pyLibrary.git', 'master')
         self.assertTrue(is_hex(rev))
         self.assertEqual(len(rev), 40)

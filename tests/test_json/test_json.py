@@ -13,7 +13,7 @@ import unittest
 
 from mo_logs import Log
 from mo_times.dates import Date
-from pyDots import Data, wrap
+from mo_dots import Data, wrap
 from pyLibrary import convert
 
 import mo_json
