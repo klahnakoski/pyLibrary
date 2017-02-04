@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-from mo_dots import zip as dict_zip, get_logger
+from mo_dots import zip as dict_zip, get_logger, wrap
 
 
 def override(func):
@@ -113,5 +113,5 @@ def params_pack(params, *args):
             settings[k] = v
     settings["kwargs"] = settings
 
-    output = {str(k): settings[k] for k in params if k in settings}
+    output = wrap({str(k): settings[k] for k in params if k in settings})
     return output
