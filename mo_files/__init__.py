@@ -33,7 +33,6 @@ class File(object):
         YOU MAY SET filename TO {"path":p, "key":k} FOR CRYPTO FILES
         """
         if filename == None:
-            from mo_logs import Log
             Log.error("File must be given a filename")
         elif isinstance(filename, File):
             return
