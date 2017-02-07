@@ -7,7 +7,7 @@ Motivation
 ----------
 
 This library is born from my version of the `utils` library everyone makes.
-Only, instead of being utils that are specific to the task, these utils
+Only, instead of being utilities that are specific to the task, these utilities
 are for programming in general: They assume logs should be structured,
 all data should be JSONizable, and OO is preferred, and more.
 
