@@ -15,8 +15,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from pyLibrary.debugs.logs import Log
-from pyLibrary.thread.threads import Thread
+from mo_logs import Log
+from mo_threads import Thread
 
 Log.note("started")
 Thread.wait_for_shutdown_signal()

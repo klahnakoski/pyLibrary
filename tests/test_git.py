@@ -7,10 +7,10 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+from mo_logs.strings import is_hex
+from mo_testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.env.git import get_git_revision
 from pyLibrary.env.git import get_remote_revision
-from pyLibrary.strings import is_hex
-from pyLibrary.testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestGit(FuzzyTestCase):
@@ -20,6 +20,6 @@ class TestGit(FuzzyTestCase):
         self.assertEqual(len(rev), 40)
 
     def test_get_remote_revision(self):
-        rev = get_remote_revision('https://github.com/klahnakoski/pyLibrary.git', 'master');
+        rev = get_remote_revision('https://github.com/klahnakoski/pyLibrary.git', 'master')
         self.assertTrue(is_hex(rev))
         self.assertEqual(len(rev), 40)

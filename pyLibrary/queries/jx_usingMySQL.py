@@ -7,22 +7,23 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import unicode_literals
-from __future__ import division
 from __future__ import absolute_import
+from __future__ import division
+from __future__ import unicode_literals
+
 from collections import Mapping
 
+from mo_logs import Log
+from mo_logs.exceptions import suppress_exception
+from mo_logs.strings import indent, expand_template
+from mo_dots import coalesce
+from mo_dots import wrap, listwrap, unwrap
+from mo_dots.lists import FlatList
 from pyLibrary import convert
-from pyLibrary.collections.matrix import Matrix
-from pyLibrary.debugs.exceptions import suppress_exception
-from pyLibrary.meta import use_settings
+from mo_collections.matrix import Matrix
+from mo_kwargs import override
 from pyLibrary.sql import SQL
 from pyLibrary.sql.mysql import int_list_packer
-from pyLibrary.debugs.logs import Log
-from pyLibrary.strings import indent, expand_template
-from pyDots import coalesce
-from pyDots.lists import FlatList
-from pyDots import wrap, listwrap, unwrap
 
 
 class MySQL(object):
@@ -30,7 +31,7 @@ class MySQL(object):
     jx to MySQL DATABASE QUERIES
     """
 
-    @use_settings
+    @override
     def __init__(
         self,
         host,
@@ -41,20 +42,17 @@ class MySQL(object):
         schema=None,
         preamble=None,
         readonly=False,
-        settings=None
+        kwargs=None
     ):
         from pyLibrary.sql.mysql import MySQL
 
-        self.settings = settings
-        self._db = MySQL(settings)
+        self.settings = kwargs
+        self._db = MySQL(kwargs)
 
-    def as_dict(self):
+    def __data__(self):
         settings = self.settings.copy()
         settings.settings = None
         return unwrap(settings)
-
-    def __json__(self):
-        return convert.value2json(self.as_dict())
 
     def query(self, query, stacked=False):
         """
@@ -437,7 +435,7 @@ def expand_json(rows):
         for k, json in list(r.items()):
             if isinstance(json, basestring) and json[0:1] in ("[", "{"):
                 with suppress_exception:
-                    value = convert.json2value(json)
+                    value = mo_json.json2value(json)
                     r[k] = value
 
 

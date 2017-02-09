@@ -14,15 +14,13 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from pyLibrary import convert
-from pyLibrary.collections import AND, UNION
-from pyLibrary.debugs.logs import Log
-from pyDots import coalesce, Null, set_default, unwraplist, literal_field
-from pyDots import wrap, unwrap, listwrap
-from pyDots import Data
-from pyDots.lists import FlatList
-from pyLibrary.maths import Math
-from pyLibrary.meta import use_settings
+from mo_logs import Log
+from mo_math import AND, UNION
+from mo_math import Math
+from mo_dots import Data
+from mo_dots import coalesce, Null, set_default, unwraplist, literal_field
+from mo_dots import wrap, unwrap, listwrap
+from mo_dots.lists import FlatList
 from pyLibrary.queries import Schema, wrap_from
 from pyLibrary.queries.containers import Container, STRUCT
 from pyLibrary.queries.dimensions import Dimension
@@ -75,26 +73,24 @@ class QueryOp(Expression):
     def to_sql(self, not_null=False, boolean=False):
         raise Log.error("{{type}} has no `to_sql` method", type=self.__class__.__name__)
 
-    def to_dict(self):
-        def select_to_dict():
+    def __data__(self):
+        def select___data__():
             if isinstance(self.select, list):
-                return [s.to_dict() for s in self.select]
+                return [s.__data__() for s in self.select]
             else:
-                return self.select.to_dict()
+                return self.select.__data__()
 
         return {
-            "from": self.frum.to_dict(),
-            "select": select_to_dict(),
-            "edges": [e.to_dict() for e in self.edges],
-            "groupby": [g.to_dict() for g in self.groupby],
-            "window": [w.to_dict() for w in self.window],
-            "where": self.where.to_dict(),
-            "sort": self.sort.to_dict(),
-            "limit": self.limit.to_dict()
+            "from": self.frum.__data__(),
+            "select": select___data__(),
+            "edges": [e.__data__() for e in self.edges],
+            "groupby": [g.__data__() for g in self.groupby],
+            "window": [w.__data__() for w in self.window],
+            "where": self.where.__data__(),
+            "sort": self.sort.__data__(),
+            "limit": self.limit.__data__()
         }
 
-    def __json__(self):
-        return convert.value2json(self.to_dict())
 
     def vars(self, exclude_where=False, exclude_select=False):
         """
@@ -206,6 +202,8 @@ class QueryOp(Expression):
         output.frum = wrap_from(query["from"], schema=schema)
         if not schema and isinstance(output.frum, Schema):
             schema = output.frum
+        if not schema and hasattr(output.frum, "schema"):
+            schema = output.frum.schema
 
         if query.select or isinstance(query.select, (Mapping, list)):
             output.select = _normalize_selects(query.select, query.frum, schema=schema)
@@ -264,7 +262,7 @@ class QueryOp(Expression):
             setattr(output, s, getattr(self, s))
         return output
 
-    def as_dict(self):
+    def __data__(self):
         output = wrap({s: getattr(self, s) for s in QueryOp.__slots__})
         return output
 
@@ -720,7 +718,7 @@ def _normalize_sort(sort=None):
             output.append({"value": OffsetOp("offset", s), "sort": 1})
         elif all(d in sort_direction for d in s.values()) and not s.sort and not s.value:
             for v, d in s.items():
-                output.append({"value": jx_expression(v), "sort": -1})
+                output.append({"value": jx_expression(v), "sort": sort_direction[d]})
         else:
             output.append({"value": jx_expression(coalesce(s.value, s.field)), "sort": coalesce(sort_direction[s.sort], 1)})
     return output

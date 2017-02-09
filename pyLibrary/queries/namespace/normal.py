@@ -14,12 +14,12 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import copy
 
-from pyLibrary.debugs.logs import Log
-from pyDots import coalesce, Null
-from pyDots import wrap, listwrap
-from pyDots import Data
-from pyDots.lists import FlatList
-from pyLibrary.maths import Math
+from mo_logs import Log
+from mo_dots import coalesce, Null
+from mo_dots import wrap, listwrap
+from mo_dots import Data
+from mo_dots import FlatList
+from mo_math import Math
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.dimensions import Dimension
 from pyLibrary.queries.domains import Domain
@@ -232,7 +232,7 @@ def normalize_sort(sort=None):
     """
 
     if not sort:
-        return FlatList.EMPTY
+        return Null
 
     output = FlatList()
     for s in listwrap(sort):

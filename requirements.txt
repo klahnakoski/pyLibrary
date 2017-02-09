@@ -1,6 +1,4 @@
 pymysql
 requests
 boto
-pyDots
-
 

@@ -10,9 +10,9 @@
 from __future__ import unicode_literals
 
 import unittest
-from pyLibrary.collections import reverse
-from pyLibrary.debugs.logs import Log
-from pyLibrary.strings import apply_diff
+from mo_collections import reverse
+from mo_logs import Log
+from mo_logs.strings import apply_diff
 
 
 class TestStringDiff(unittest.TestCase):

@@ -11,4 +11,5 @@ pyLibrary.egg-info
 *.tab
 
 /examples
-/pyDots
+
+/docs/~$Libraries.pptx

@@ -10,12 +10,14 @@
 from __future__ import unicode_literals
 
 import unittest
+from traceback import extract_tb
 
+from mo_files import File
+from mo_json import json2value
+from mo_logs import Log
+from mo_logs import strings
+from mo_logs.exceptions import Except, ERROR
 from pyLibrary import convert
-from pyLibrary import strings
-from pyLibrary.debugs.exceptions import Except, ERROR
-from pyLibrary.debugs.logs import Log
-from pyLibrary.env.files import File
 from pyLibrary.queries.jx_usingES import FromES
 
 
@@ -67,7 +69,7 @@ class FromESTester(object):
             f = Except(ERROR, unicode(e), trace=extract_tb(1))
             try:
                 details = str(f)
-                query = convert.json2value(strings.between(details, ">>>>", "<<<<"))
+                query = json2value(strings.between(details, ">>>>", "<<<<"))
                 return query
             except Exception, g:
                 Log.error("problem", f)
@@ -84,7 +86,7 @@ class FakeES(object):
         Log.error("<<<<\n{{query}}\n>>>>", {"query": convert.value2json(query)})
 
     def get_schema(self):
-        return convert.json2value(File("tests/resources/bug_version.json").read()).mappings.bug_version
+        return json2value(File("tests/resources/bug_version.json").read()).mappings.bug_version
 
 
 

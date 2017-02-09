@@ -13,14 +13,11 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-from pyLibrary import convert
-import pyDots as dot
-from pyLibrary.collections import MAX, OR
-from pyLibrary.collections.matrix import Matrix
-from pyLibrary.debugs.logs import Log
-from pyDots import Null, Data
-from pyDots import wrap, wrap_leaves, listwrap
-from pyDots.lists import FlatList
+import mo_dots as dot
+from mo_dots import Null, Data, FlatList, wrap, wrap_leaves, listwrap
+from mo_logs import Log
+from mo_math import MAX, OR
+from mo_collections.matrix import Matrix
 from pyLibrary.queries.containers import Container
 from pyLibrary.queries.cubes.aggs import cube_aggs
 from pyLibrary.queries.lists.aggs import is_aggs
@@ -456,13 +453,10 @@ class Cube(Container):
         else:
             return float(self.data)
 
-    def as_dict(self):
+    def __data__(self):
         return Data(
             select=self.select,
             edges=self.edges,
             data={k: v.cube for k, v in self.data.items()},
             meta=self.meta
         )
-
-    def __json__(self):
-        return convert.value2json(self.as_dict())
