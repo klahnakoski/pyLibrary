@@ -40,18 +40,16 @@ def find_packages(where='.', lib_prefix='', exclude=()):
     return out
 
 
-
-
 setup(
     name='pyLibrary',
-    version="1.0.17049",
+    version="1.1.17056",
     description='Library of Wonderful Things',
     long_description=long_desc,
     author='Kyle Lahnakoski',
     author_email='kyle@lahnakoski.com',
     url='https://github.com/klahnakoski/pyLibrary',
     license='MPL 2.0',
-    packages=find_packages(".", lib_prefix=""),
+    packages=find_packages("pyLibrary", lib_prefix="pyLibrary."),
     install_requires=['pymysql', 'requests', 'boto', 'mo-dots', 'mo-logs'],
     include_package_data=True,
     zip_safe=False,
