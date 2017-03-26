@@ -21,7 +21,7 @@ from mo_logs import Log
 from mo_dots import listwrap, Null, Data
 from mo_dots.lists import FlatList
 from pyLibrary.queries.containers import Container
-from pyLibrary.queries.expressions import jx_expression_to_function, jx_expression
+from pyLibrary.queries.expressions import jx_expression_to_function, jx_expression, Expression, TupleOp
 
 
 def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous=False):
@@ -54,8 +54,11 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
         if not data:
             return Null
 
+        if any(isinstance(k, Expression) for k in keys):
+            Log.error("can not handle expressions")
+        else:
+            accessor = jx_expression_to_function(jx_expression({"tuple": keys}))  # CAN RETURN Null, WHICH DOES NOT PLAY WELL WITH __cmp__
 
-        accessor = jx_expression_to_function(jx_expression({"tuple": keys}))  # CAN RETURN Null, WHICH DOES NOT PLAY WELL WITH __cmp__
         def _output():
             start = 0
             prev = accessor(data[0])
@@ -74,7 +77,7 @@ def groupby(data, keys=None, size=None, min_size=None, max_size=None, contiguous
             yield Data(group), data[start::]
 
         return _output()
-    except Exception, e:
+    except Exception as e:
         Log.error("Problem grouping", cause=e)
 
 
@@ -162,7 +165,7 @@ def groupby_min_max_size(data, min_size=0, max_size=None, ):
                         out = FlatList()
                 if out:
                     yield g, out
-            except Exception, e:
+            except Exception as e:
                 e = Except.wrap(e)
                 if out:
                     # AT LEAST TRY TO RETURN WHAT HAS BEEN PROCESSED SO FAR

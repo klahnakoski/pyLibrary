@@ -76,7 +76,7 @@ class FromESMetadata(Schema):
         self.meta=Data()
         table_columns = metadata_tables()
         column_columns = metadata_columns()
-        self.meta.tables = ListContainer("meta.tables", [], wrap({c.name: c for c in table_columns}))
+        self.meta.tables = ListContainer("meta.tables", [], wrap({c.names["meta.tables"]: c for c in table_columns}))
         self.meta.columns = ColumnList()
         self.meta.columns.insert(column_columns)
         self.meta.columns.insert(table_columns)
@@ -252,7 +252,7 @@ class FromESMetadata(Schema):
                         Log.note("waiting for columns to update {{columns|json}}", columns=[c.table+"."+c.es_column for c in columns if not c.last_updated])
                     Till(seconds=1).wait()
                 return columns
-        except Exception, e:
+        except Exception as e:
             Log.error("Not expected", cause=e)
 
         if column_name:
@@ -363,7 +363,7 @@ class FromESMetadata(Schema):
                     },
                     "where": {"eq": {"es_index": c.es_index, "es_column": c.es_column}}
                 })
-        except Exception, e:
+        except Exception as e:
             if "IndexMissingException" in e and c.table.startswith(TEST_TABLE_PREFIX):
                 with self.meta.columns.locker:
                     self.meta.columns.update({
@@ -387,7 +387,7 @@ class FromESMetadata(Schema):
                         "cardinality",
                         "partitions",
                     ],
-                    "where": {"eq": {"table": c.table, "es_column": c.es_column}}
+                    "where": {"eq": {"names.meta\.columns": c.table, "es_column": c.es_column}}
                 })
                 Log.warning("Could not get {{col.table}}.{{col.es_column}} info", col=c, cause=e)
 
@@ -428,9 +428,9 @@ class FromESMetadata(Schema):
                         self._update_cardinality(column)
                         if DEBUG and not column.table.startswith(TEST_TABLE_PREFIX):
                             Log.note("updated {{column.name}}", column=column)
-                    except Exception, e:
+                    except Exception as e:
                         Log.warning("problem getting cardinality for {{column.name}}", column=column, cause=e)
-            except Exception, e:
+            except Exception as e:
                 Log.warning("problem in cardinality monitor", cause=e)
 
     def not_monitor(self, please_stop):
@@ -483,9 +483,8 @@ def metadata_columns():
     return wrap(
         [
             Column(
-                table="meta.columns",
+                names={"meta.columns":c},
                 es_index=None,
-                name=c,
                 es_column=c,
                 type="string",
                 nested_path=ROOT_PATH
@@ -500,9 +499,8 @@ def metadata_columns():
             ]
         ] + [
             Column(
-                table="meta.columns",
                 es_index=None,
-                name=c,
+                names={"meta.columns":c},
                 es_column=c,
                 type="object",
                 nested_path=ROOT_PATH
@@ -513,9 +511,8 @@ def metadata_columns():
             ]
         ] + [
             Column(
-                table="meta.columns",
+                names={"meta.columns": c},
                 es_index=None,
-                name=c,
                 es_column=c,
                 type="long",
                 nested_path=ROOT_PATH
@@ -526,9 +523,8 @@ def metadata_columns():
             ]
         ] + [
             Column(
-                table="meta.columns",
+                names={"meta.columns": "last_updated"},
                 es_index=None,
-                name="last_updated",
                 es_column="last_updated",
                 type="time",
                 nested_path=ROOT_PATH
@@ -540,8 +536,7 @@ def metadata_tables():
     return wrap(
         [
             Column(
-                table="meta.tables",
-                name=c,
+                names={"meta.tables": c},
                 es_index=None,
                 es_column=c,
                 type="string",
@@ -615,10 +610,14 @@ class ColumnList(Container):
             self.add(column)
 
     def add(self, column):
-        columns_for_table = self.data.setdefault(column.table, {})
-        _columns = columns_for_table.setdefault(column.name, [])
+        if len(column.names)!=1:
+            Log.error("not expected")
+        table, cname = column.names.items()[0]
+
+        columns_for_table = self.data.setdefault(table, {})
+        _columns = columns_for_table.setdefault(cname, [])
         _columns.append(column)
-        self.count+=1
+        self.count += 1
 
     def __iter__(self):
         for t, cs in self.data.items():
@@ -646,7 +645,7 @@ class ColumnList(Container):
 
                 for k, v in command.set.items():
                     col[k] = v
-        except Exception, e:
+        except Exception as e:
             Log.error("sould not happen", cause=e)
 
     def query(self, query):
