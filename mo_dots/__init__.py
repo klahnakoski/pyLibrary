@@ -359,10 +359,12 @@ def _get_attr(obj, path):
         return None
 
 
-def _set_attr(obj, path, value):
-    obj = _get_attr(obj, path[:-1])
-    if obj is None:  # DELIBERATE, WE DO NOT WHAT TO CATCH Null HERE (THEY CAN BE SET)
-        get_logger().error(PATH_NOT_FOUND+" Tried to get attribute of None")
+def _set_attr(obj_, path, value):
+    obj = _get_attr(obj_, path[:-1])
+    if obj is None:  # DELIBERATE USE OF `is`: WE DO NOT WHAT TO CATCH Null HERE (THEY CAN BE SET)
+        obj = _get_attr(obj_, path[:-1])
+        if obj is None:
+            get_logger().error(PATH_NOT_FOUND+" Tried to get attribute of None")
 
     attr_name = path[-1]
 
@@ -474,7 +476,10 @@ def unwrap(v):
         return None
     elif _type is DataObject:
         d = _get(v, "_obj")
-        return d
+        if isinstance(d, Mapping):
+            return d
+        else:
+            return v
     elif _type is GeneratorType:
         return (unwrap(vv) for vv in v)
     else:
