@@ -17,7 +17,7 @@ import json
 import sys
 from collections import Mapping
 
-from mo_dots import Data, listwrap, unwraplist, set_default, Null
+from mo_dots import Data, listwrap, unwraplist, set_default, Null, DataObject, unwrap
 
 from mo_logs.strings import indent, expand_template
 
@@ -72,6 +72,16 @@ class Except(Exception):
             return Null
         elif isinstance(e, (list, Except)):
             return e
+        elif isinstance(e, DataObject):
+            e = unwrap(e)
+            if hasattr(e, "message") and e.message:
+                cause = Except(ERROR, unicode(e.message), trace=_extract_traceback(0))
+            else:
+                cause = Except(ERROR, unicode(e), trace=_extract_traceback(0))
+
+            trace = extract_stack(stack_depth + 2)  # +2 = to remove the caller, and it's call to this' Except.wrap()
+            cause.trace.extend(trace)
+            return cause
         elif isinstance(e, Mapping):
             e.cause = unwraplist([Except.wrap(c) for c in listwrap(e.cause)])
             return Except(**e)
