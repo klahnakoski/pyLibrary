@@ -57,20 +57,25 @@ class TestRef(FuzzyTestCase):
         })
 
     def test_empty_object_as_json_parameter(self):
-        url = self.resources+"/test_ref_w_parameters.json?{{.|url}}"
-        url = expand_template(url, {"metadata": Data()})
+        url = URL(self.resources+"/test_ref_w_parameters.json")
+        url.query = {"metadata": Data()}
         result = mo_json_config.get(url)
         self.assertEqual(result, {}, "expecting proper parameter expansion")
 
     def test_json_parameter(self):
-        url = self.resources+"/test_ref_w_parameters.json?{{.|url}}"
-        url = expand_template(url, {"metadata": ["a", "b"]})
+        url = URL(self.resources+"/test_ref_w_parameters.json")
+        url.query = {"metadata": ["a", "b"]}
         result = mo_json_config.get(url)
         self.assertEqual(result, {"a": ["a", "b"]}, "expecting proper parameter expansion")
 
-    def test_parameter_list(self):
+    def test_url_parameter_list(self):
         url = self.resources+"/test_ref_w_parameters.json?test1=a&test1=b&test2=c&test1=d"
         self.assertEqual(URL(url).query, {"test1": ["a", "b", "d"], "test2": "c"}, "expecting test1 to be an array")
+
+    def test_leaves(self):
+        url = self.resources + "/test_ref_w_deep_parameters.json?&value.one.two=42"
+        result = mo_json_config.get(url)
+        self.assertEqual(result, {"a": {"two": 42}, "b": 42}, "expecting proper parameter expansion")
 
     def test_inner_doc(self):
         doc = mo_json_config.get(self.resources+"/inner.json")
@@ -137,3 +142,21 @@ class TestRef(FuzzyTestCase):
         doc = mo_json_config.get(self.resources+"/child/grandchild/simple.json")
 
         self.assertEqual(doc, {"test_key": "test_value"})
+
+    def test_params_simple(self):
+        doc = {"a": {"$ref": "param://value"}}
+        doc_url = "http://example.com/"
+        result = mo_json_config.expand(doc, doc_url, {"value": "hello"})
+        self.assertEqual(result, {"a": "hello"})
+
+    def test_params_deep(self):
+        doc = {"a": {"$ref": "param://value.name"}}
+        doc_url = "http://example.com/"
+        result = mo_json_config.expand(doc, doc_url, {"value": {"name": "hello"}})
+        self.assertEqual(result, {"a": "hello"})
+
+    def test_params_object(self):
+        doc = {"a": {"$ref": "param://value"}}
+        doc_url = "http://example.com/"
+        result = mo_json_config.expand(doc, doc_url, {"value": {"name": "hello"}})
+        self.assertEqual(result, {"a": {"name": "hello"}})
