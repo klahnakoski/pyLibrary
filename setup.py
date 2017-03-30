@@ -49,7 +49,7 @@ setup(
     author_email='kyle@lahnakoski.com',
     url='https://github.com/klahnakoski/pyLibrary',
     license='MPL 2.0',
-    packages=find_packages("pyLibrary", lib_prefix="pyLibrary."),
+    packages=find_packages(),
     install_requires=["boto", "mo_collections", "mo_dots", "mo_files", "mo_json", "mo_json_config", "mo_kwargs", "mo_logs", "mo_math", "mo_testing", "mo_threads", "mo_times", "pymysql", "requests"],
     include_package_data=True,
     zip_safe=False,

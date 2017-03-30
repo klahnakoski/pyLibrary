@@ -77,6 +77,24 @@ class TestRef(FuzzyTestCase):
         result = mo_json_config.get(url)
         self.assertEqual(result, {"a": {"two": 42}, "b": 42}, "expecting proper parameter expansion")
 
+    def test_leaves_w_array(self):
+        url = URL(self.resources + "/test_ref_w_deep_parameters.json")
+        url.query = {"value": {"one": {"two": [{"test": 1}, {"test": 2}, "3"]}}}
+        result = mo_json_config.get(url)
+        expected = {
+            "a": {"two": [
+                {"test": 1},
+                {"test": 2},
+                "3"
+            ]},
+            "b": [
+                {"test": 1},
+                {"test": 2},
+                "3"
+            ]
+        }
+        self.assertEqual(result, expected, "expecting proper parameter expansion")
+
     def test_inner_doc(self):
         doc = mo_json_config.get(self.resources+"/inner.json")
 
