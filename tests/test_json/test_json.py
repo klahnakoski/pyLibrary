@@ -7,6 +7,7 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+from __future__ import unicode_literals
 
 import datetime
 import unittest
@@ -86,7 +87,7 @@ class TestJSON(unittest.TestCase):
         try:
             output = json2value(test)
             Log.error("Expecting error")
-        except Exception, e:
+        except Exception as e:
             if e.message != expected:
                 Log.error("Expecting good error message", cause=e)
 

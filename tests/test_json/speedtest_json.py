@@ -73,7 +73,7 @@ def test_json(results, description, method, n):
                 example = method(data)
                 if case == "HUGE":
                     example = "<too big to show>"
-            except Exception, e:
+            except Exception as e:
                 Log.warning("json encoding failure", cause=e)
                 example = "<CRASH>"
 
@@ -98,7 +98,7 @@ def test_json(results, description, method, n):
             }
             Log.note("{{interpreter}}: {{description}} {{type}} x {{num}} x {{count}} = {{time}} result={{result}}", **summary)
             results.append(summary)
-        except Exception, e:
+        except Exception as e:
             Log.warning("problem with encoding: {{message}}", {"message": e.message}, e)
 
 

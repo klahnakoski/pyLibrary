@@ -356,7 +356,7 @@ class TestDot(FuzzyTestCase):
             # COMPARE CURRENT VALUE TO MAX OF PAST 5, BUT NOT THE VERY LAST ONE
             try:
                 return record - MAX(records[index - 6:index - 1:])
-            except Exception, e:
+            except Exception as e:
                 return None
 
         data1_list = [1, 2, 3, 4, 5, 6, 7, 8, 9]

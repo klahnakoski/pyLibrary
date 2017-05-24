@@ -65,7 +65,7 @@ class FromESTester(object):
             with self.esq:
                 self.esq.query(query)
                 return None
-        except Exception, e:
+        except Exception as e:
             f = Except(ERROR, unicode(e), trace=extract_tb(1))
             try:
                 details = str(f)
