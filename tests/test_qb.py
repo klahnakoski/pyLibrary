@@ -8,6 +8,7 @@
 #
 from __future__ import unicode_literals
 
+from pyLibrary.queries.expressions import NullOp
 from unittest import skip
 
 from mo_dots import Data
@@ -168,6 +169,38 @@ class TestQb(FuzzyTestCase):
         data = [{u'testrun': {u'suite': u'tp5o'}, u'result': {u'test_name': u'digg.com'}}]
         result = jx.filter(data, {u'and': [{u'term': {u'testrun.suite': u'tp5o'}}, {u'term': {u'result.test_name': u'digg.com'}}]})
         assert len(result) == 1
+
+    def test_in_w_multi_value(self):
+        data = [
+            {"a": "e"},
+            {"a": "c"},
+            {"a": ["e"]},
+            {"a": ["c"]},
+            {"a": ["e", "c"]},
+            {}
+        ]
+
+        result = jx.run({
+            "from": data,
+            "select": [
+                "a",
+                {"name": "is_e", "value": {"when": {"in": [{"literal": "e"}, "a"]}, "then": 1, "else": 0}},
+                {"name": "not_e", "value": {"when": {"not": {"in": [{"literal": "e"}, "a"]}}, "then": 1, "else": 0}},
+                {"name": "is_c", "value": {"when": {"in": [{"literal": "c"}, "a"]}, "then": 1, "else": 0}}
+            ]
+        })
+        expected = {"data": [
+            {"a": "e", "is_e": 1, "not_e": 0, "is_c": 0},
+            {"a": "c", "is_e": 0, "not_e": 1, "is_c": 1},
+            {"a": "e", "is_e": 1, "not_e": 0, "is_c": 0},
+            {"a": "c", "is_e": 0, "not_e": 1, "is_c": 1},
+            {"a": ["e", "c"], "is_e": 1, "not_e": 0, "is_c": 1},
+            {"a": NullOp(), "is_e": 0, "not_e": 1, "is_c": 0}
+        ]}
+
+        self.assertAlmostEqual(result, expected)
+
+
 
 
     @skip("Not implemented")
