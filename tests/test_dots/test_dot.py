@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from UserDict import UserDict
 from collections import Mapping
 
-from mo_dots import wrap, Null, set_default, unwrap, Data
+from mo_dots import wrap, Null, set_default, unwrap, Data, literal_field
 from mo_dots.objects import datawrap
 from mo_logs import Log
 from mo_math import MAX
@@ -295,6 +295,26 @@ class TestDot(FuzzyTestCase):
         expected = {"c": {"d": {"e.f": 1, "g.h": 2}}}
         self.assertEqual(a, expected)
 
+    def test_assign8(self):
+        a = {}
+        b = wrap(a)
+
+        b["a"][literal_field(literal_field("b.html"))]["z"] = 3
+
+        expected = {"a": {
+            "b\\.html": {"z": 3}
+        }}
+        self.assertEqual(a, expected)
+
+    def test_assign9(self):
+        a = {}
+        b = wrap(a)
+
+        b["a"]["."] = 1
+
+        expected = {"a": 1}
+        self.assertEqual(a, expected)
+
     def test_setitem_and_deep(self):
         a = {}
         b = wrap(a)
@@ -500,6 +520,13 @@ class TestDot(FuzzyTestCase):
         self.assertEqual(None >= Null, None)
         self.assertEqual(None > Null, None)
 
+    def test_escape_dot(self):
+        self.assertAlmostEqual(literal_field("."), "\\.")
+        self.assertAlmostEqual(literal_field("\\."), "\\\\.")
+        self.assertAlmostEqual(literal_field("\\\\."), "\\\\\\.")
+        self.assertAlmostEqual(literal_field("a.b"), "a\.b")
+        self.assertAlmostEqual(literal_field("a\\.html"), "a\\\\.html")
+
 
 class _TestMapping(object):
     def __init__(self):
@@ -530,3 +557,4 @@ class SampleData(object):
 
     def __str__(self):
         return str(self.a)+str(self.b)
+
