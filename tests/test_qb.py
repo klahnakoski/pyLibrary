@@ -8,14 +8,14 @@
 #
 from __future__ import unicode_literals
 
-from pyLibrary.queries.expressions import NullOp
-from unittest import skip
-
+from jx_python import jx
 from mo_dots import Data
 from mo_dots import unwrap, wrap
-from mo_testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary import convert
-from pyLibrary.queries import jx
+from unittest import skip
+
+from jx_python.expressions import NullOp
+from mo_testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestQb(FuzzyTestCase):

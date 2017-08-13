@@ -13,18 +13,19 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-from mo_logs import Log
-from mo_dots import set_default, coalesce, literal_field, Data, unwraplist
-from mo_dots import wrap
-from mo_math import MAX, UNION
-from mo_math import Math
+from jx_base import STRUCT
 from jx_python import jx
-from jx_python.containers import STRUCT
-from jx_python.dimensions import Dimension
-from jx_python.domains import SimpleSetDomain, DefaultDomain, PARTITION
+from jx_base.dimensions import Dimension
+from jx_base.domains import SimpleSetDomain, DefaultDomain, PARTITION
+from jx_base.query import MAX_LIMIT, DEFAULT_LIMIT
+from mo_dots import set_default, coalesce, literal_field, Data
+from mo_dots import wrap
+from mo_logs import Log
+from mo_math import MAX
+from mo_math import Math
+
 from jx_elasticsearch.es14.expressions import simplify_esfilter, Variable, NotOp, InOp, Literal, OrOp, AndOp, \
     InequalityOp, TupleOp, LeavesOp
-from jx_python.query import MAX_LIMIT, DEFAULT_LIMIT
 
 
 class AggsDecoder(object):
@@ -325,7 +326,7 @@ class GeneralRangeDecoder(AggsDecoder):
                 InequalityOp("lte", [range.min, Literal("literal", self.to_float(p.min))]),
                 InequalityOp("gt", [range.max, Literal("literal", self.to_float(p.min))])
             ])
-            aggs["_join_" + unicode(i)] = set_default(
+            aggs["_join_" + text_type(i)] = set_default(
                 {"filter": filter_.to_esfilter()},
                 es_query
             )
@@ -595,8 +596,8 @@ class DimFieldListDecoder(SetDecoder):
         self.parts.append(value)
 
     def done_count(self):
-        columns = map(unicode, range(len(self.fields)))
-        parts = wrap([{unicode(i): p for i, p in enumerate(part)} for part in set(self.parts)])
+        columns = map(text_type, range(len(self.fields)))
+        parts = wrap([{text_type(i): p for i, p in enumerate(part)} for part in set(self.parts)])
         self.parts = None
         sorted_parts = jx.sort(parts, columns)
 

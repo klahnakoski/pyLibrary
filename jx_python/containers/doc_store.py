@@ -13,13 +13,14 @@ from __future__ import unicode_literals
 from copy import copy
 from datetime import datetime
 
+from future.utils import text_type
 from mo_dots import wrap, Data, FlatList, literal_field
 from mo_logs import Log
 from pyLibrary import convert
 from jx_python import jx
 from jx_python.containers import Container
 from jx_python.expressions import Variable, Literal
-from jx_python.query import QueryOp
+from jx_base.query import QueryOp
 
 INDEX = "__index__"
 PARENT = "__parent__"
@@ -239,7 +240,7 @@ filters={
 }
 
 _type_map = {
-    unicode: "text",
+    text_type: "text",
     int: "long",
     float: "real",
     datetime: "real",
