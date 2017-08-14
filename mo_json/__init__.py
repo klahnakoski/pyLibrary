@@ -18,6 +18,8 @@ from collections import Mapping
 
 from datetime import date, timedelta, datetime
 from decimal import Decimal
+
+from future.utils import text_type
 from types import NoneType
 
 from mo_dots import FlatList, NullType, Data, wrap_leaves, wrap, Null
@@ -25,6 +27,9 @@ from mo_dots.objects import DataObject
 from mo_logs import Except, strings, Log
 from mo_logs.strings import expand_template
 from mo_times import Date, Duration
+
+
+FIND_LOOPS = True
 
 _get = object.__getattribute__
 
@@ -75,7 +80,7 @@ def float2json(value):
             digits = ("0"*(-exp))+u"".join(mantissa.split("."))
             return sign+(digits[:1]+u"."+digits[1:].rstrip('0')).rstrip(".")
         else:
-            return sign+mantissa.rstrip("0")+u"e"+unicode(exp)
+            return sign+mantissa.rstrip("0")+u"e"+text_type(exp)
     except Exception as e:
         from mo_logs import Log
         Log.error("not expected", e)
@@ -85,15 +90,20 @@ def scrub(value):
     """
     REMOVE/REPLACE VALUES THAT CAN NOT BE JSON-IZED
     """
-    return _scrub(value, set())
+    return _scrub(value, set(), [])
 
 
-def _scrub(value, is_done):
+def _scrub(value, is_done, stack):
+    if FIND_LOOPS:
+        _id = id(value)
+        if _id in stack:
+            Log.error("loop in JSON")
+        stack = stack + [_id]
     type_ = value.__class__
 
     if type_ in (NoneType, NullType):
         return None
-    elif type_ is unicode:
+    elif type_ is text_type:
         value_ = value.strip()
         if value_:
             return value_
@@ -118,7 +128,7 @@ def _scrub(value, is_done):
     elif type_ is Decimal:
         return float(value)
     elif type_ is Data:
-        return _scrub(_get(value, '_dict'), is_done)
+        return _scrub(_get(value, '_dict'), is_done, stack)
     elif isinstance(value, Mapping):
         _id = id(value)
         if _id in is_done:
@@ -131,10 +141,10 @@ def _scrub(value, is_done):
             if isinstance(k, basestring):
                 pass
             elif hasattr(k, "__unicode__"):
-                k = unicode(k)
+                k = text_type(k)
             else:
                 Log.error("keys must be strings")
-            v = _scrub(v, is_done)
+            v = _scrub(v, is_done, stack)
             if v != None or isinstance(v, Mapping):
                 output[k] = v
 
@@ -143,7 +153,7 @@ def _scrub(value, is_done):
     elif type_ in (tuple, list, FlatList):
         output = []
         for v in value:
-            v = _scrub(v, is_done)
+            v = _scrub(v, is_done, stack)
             output.append(v)
         return output
     elif type_ is type:
@@ -154,10 +164,10 @@ def _scrub(value, is_done):
         else:
             return True
     elif not isinstance(value, Except) and isinstance(value, Exception):
-        return _scrub(Except.wrap(value), is_done)
+        return _scrub(Except.wrap(value), is_done, stack)
     elif hasattr(value, '__data__'):
         try:
-            return _scrub(value.__data__(), is_done)
+            return _scrub(value.__data__(), is_done, stack)
         except Exception as e:
             Log.error("problem with calling __json__()", e)
     elif hasattr(value, 'co_code') or hasattr(value, "f_locals"):
@@ -165,16 +175,18 @@ def _scrub(value, is_done):
     elif hasattr(value, '__iter__'):
         output = []
         for v in value:
-            v = _scrub(v, is_done)
+            v = _scrub(v, is_done, stack)
             output.append(v)
         return output
     elif hasattr(value, '__call__'):
         return repr(value)
     else:
-        return _scrub(DataObject(value), is_done)
+        return _scrub(DataObject(value), is_done, stack)
 
 
 def value2json(obj, pretty=False, sort_keys=False):
+    if FIND_LOOPS:
+        obj = scrub(obj)
     try:
         json = json_encoder(obj, pretty=pretty)
         if json == None:
@@ -244,7 +256,7 @@ def json2value(json_string, params=Null, flexible=False, leaves=False):
             json_string = expand_template(json_string, params)
 
         try:
-            value = wrap(json_decoder(unicode(json_string)))
+            value = wrap(json_decoder(text_type(json_string)))
         except Exception as e:
             Log.error("can not decode\n{{content}}", content=json_string, cause=e)
 

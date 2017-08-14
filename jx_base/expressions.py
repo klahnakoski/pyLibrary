@@ -11,39 +11,24 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import itertools
+import operator
 from collections import Mapping
 from decimal import Decimal
 
-import operator
-from mo_dots import coalesce, wrap, set_default, literal_field, Null, split_field, startswith_field
-from mo_dots import Data, join_field, unwraplist, ROOT_PATH, relative_field, unwrap
-from mo_json import json2value, quote
+from future.utils import text_type
+from mo_dots import coalesce, wrap, Null, split_field
+from mo_json import json2value
 from mo_logs import Log
-from mo_logs.exceptions import suppress_exception
-from mo_math import Math, OR, MAX
-from mo_times.dates import Date
-
+from mo_math import Math
 from pyLibrary import convert
-from jx_python.containers import STRUCT, OBJECT
+
 from jx_base.queries import is_variable_name, get_property_name
-from jx_python.expression_compiler import compile_expression
-from pyLibrary.sql.sqlite import quote_column, quote_value
+from mo_times.dates import Date
 
 ALLOW_SCRIPTING = False
 TRUE_FILTER = True
 FALSE_FILTER = False
 EMPTY_DICT = {}
-
-_Query = None
-
-
-def _late_import():
-    global _Query
-
-    from jx_python.query import QueryOp as _Query
-
-    _ = _Query
 
 
 def jx_expression(expr):
@@ -55,7 +40,7 @@ def jx_expression(expr):
 
     if expr in (True, False, None) or expr == None or isinstance(expr, (float, int, Decimal, Date)):
         return Literal(None, expr)
-    elif isinstance(expr, unicode):
+    elif isinstance(expr, text_type):
         if is_variable_name(expr):
             return Variable(expr)
         elif not expr.strip():
@@ -113,20 +98,6 @@ def jx_expression(expr):
             return class_(op, term, **clauses)
         else:
             return class_(op, jx_expression(term), **clauses)
-
-
-def jx_expression_to_function(expr):
-    """
-    RETURN FUNCTION THAT REQUIRES PARAMETERS (row, rownum=None, rows=None):
-    """
-    if isinstance(expr, Expression):
-        if isinstance(expr, ScriptOp) and not isinstance(expr.script, unicode):
-            return expr.script
-        else:
-            return compile_expression(expr.to_python())
-    if expr != None and not isinstance(expr, (Mapping, list)) and hasattr(expr, "__call__"):
-        return expr
-    return compile_expression(jx_expression(expr).to_python())
 
 
 class Expression(object):
@@ -282,7 +253,7 @@ class OffsetOp(Expression):
         return self.var == other
 
     def __unicode__(self):
-        return unicode(self.var)
+        return text_type(self.var)
 
     def __str__(self):
         return str(self.var)

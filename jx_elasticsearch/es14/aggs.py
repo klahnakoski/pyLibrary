@@ -22,7 +22,7 @@ from jx_elasticsearch.es14.decoders import DefaultDecoder, AggsDecoder, ObjectDe
 from jx_elasticsearch.es14.decoders import DimFieldListDecoder
 from jx_elasticsearch.es14.util import aggregates1_4, NON_STATISTICAL_AGGS
 from jx_elasticsearch.es14.expressions import simplify_esfilter, split_expression_by_depth, AndOp, Variable, NullOp, TupleOp
-from jx_python.query import MAX_LIMIT
+from jx_base.query import MAX_LIMIT
 from mo_times.timer import Timer
 
 
@@ -183,12 +183,13 @@ def es_aggsop(es, frum, query):
 
                 es_query.aggs[key].percentiles.field = field_name
                 es_query.aggs[key].percentiles.percents += [percent]
-                s.pull = key + ".values." + literal_field(unicode(percent))
+                s.pull = key + ".values." + literal_field(text_type(percent))
             elif s.aggregate == "cardinality":
                 # ES USES DIFFERENT METHOD FOR CARDINALITY
                 key = literal_field(canonical_name + " cardinality")
 
                 es_query.aggs[key].cardinality.field = field_name
+                es_query.aggs[key].cardinality.precision_threshold = 1000
                 s.pull = key + ".value"
             elif s.aggregate == "stats":
                 # REGULAR STATS
@@ -249,12 +250,13 @@ def es_aggsop(es, frum, query):
 
             es_query.aggs[key].percentiles.script = abs_value.to_ruby()
             es_query.aggs[key].percentiles.percents += [percent]
-            s.pull = key + ".values." + literal_field(unicode(percent))
+            s.pull = key + ".values." + literal_field(text_type(percent))
         elif s.aggregate == "cardinality":
             # ES USES DIFFERENT METHOD FOR CARDINALITY
             key = canonical_name + " cardinality"
 
             es_query.aggs[key].cardinality.script = abs_value.to_ruby()
+            es_query.aggs[key].cardinality.precision_threshold = 1000
             s.pull = key + ".value"
         elif s.aggregate == "stats":
             # REGULAR STATS

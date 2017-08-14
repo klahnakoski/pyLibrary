@@ -18,7 +18,7 @@ from mo_logs import Log
 from mo_logs import strings
 from mo_logs.exceptions import Except, ERROR
 from pyLibrary import convert
-from pyLibrary.queries.jx_usingES import FromES
+from jx_elasticsearch.jx_usingES import FromES
 
 
 class TestFromES(unittest.TestCase):

@@ -12,6 +12,8 @@ from __future__ import unicode_literals
 import unittest
 from mo_math import crypto
 from pyLibrary import convert
+
+from mo_json import json2value
 from mo_math.randoms import Random
 
 
@@ -28,10 +30,16 @@ class TestCrypto(unittest.TestCase):
     def test_aes_nothing(self):
         key = convert.base642bytearray(u'nm5/wK20R45AUtetHJwHTdOigvGTxP7NcH/41YE8AZo=')
         encrypted = crypto.encrypt("", key, salt=convert.base642bytearray("AehqWt1OdEgPJhCx6uylyg=="))
-        self.assertEqual(encrypted, u'{"type": "AES256", "length": 0, "salt": "AehqWt1OdEgPJhCx6uylyg=="}')
+        self.assertEqual(
+            json2value(encrypted),
+            json2value(u'{"type": "AES256", "length": 0, "salt": "AehqWt1OdEgPJhCx6uylyg=="}')
+        )
 
     def test_aes_on_char(self):
         key = convert.base642bytearray(u'nm5/wK20R45AUtetHJwHTdOigvGTxP7NcH/41YE8AZo=')
         encrypted = crypto.encrypt("kyle", key, salt=convert.base642bytearray("AehqWt1OdEgPJhCx6uylyg=="))
-        self.assertEqual(encrypted, u'{"type": "AES256", "length": 4, "salt": "AehqWt1OdEgPJhCx6uylyg==", "data": "FXUGxdb9E+4UCKwsIT9ugQ=="}')
+        self.assertEqual(
+            json2value(encrypted),
+            json2value(u'{"type": "AES256", "length": 4, "salt": "AehqWt1OdEgPJhCx6uylyg==", "data": "FXUGxdb9E+4UCKwsIT9ugQ=="}')
+        )
 

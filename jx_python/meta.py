@@ -14,7 +14,8 @@ from __future__ import unicode_literals
 from datetime import date
 from datetime import datetime
 
-from jx_python import jx, Schema
+from future.utils import text_type
+from jx_python import jx
 from mo_collections import UniqueIndex
 from mo_dots import Data, concat_field, get_attr, listwrap, unwraplist, NullType, FlatList
 from mo_dots import split_field, join_field, ROOT_PATH
@@ -23,7 +24,8 @@ from mo_logs import Log
 from mo_threads import Lock
 from types import NoneType
 
-from jx_python.containers import Container
+from jx_base.container import Container
+from jx_base.schema import Schema
 from mo_times.dates import Date
 from pyLibrary.meta import DataClass
 
@@ -325,7 +327,7 @@ _type_to_name = {
     NullType: "undefined",
     bool: "boolean",
     str: "string",
-    unicode: "string",
+    text_type: "string",
     int: "integer",
     long: "long",
     float: "double",
