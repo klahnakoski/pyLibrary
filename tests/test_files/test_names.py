@@ -30,7 +30,7 @@ class TestNames(FuzzyTestCase):
         self.assertEqual(f.parent.parent.filename, ".."+par)
         self.assertEqual(f.parent.parent.parent.filename, ".."+par+par)
 
-    def test_relative_self(self):
+    def test_relative_self2(self):
         f = File("")
         self.assertEqual(f.parent.filename, "..")
         self.assertEqual(f.parent.parent.filename, ".."+par)

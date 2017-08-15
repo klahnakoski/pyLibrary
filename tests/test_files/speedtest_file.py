@@ -10,7 +10,7 @@ def test_simple(filename):
             for line in f:
                 id = int(line.split("\t")[0])
                 if id % 10000 == 0:
-                    Log.note(str(id))
+                    Log.note("{{id}}", id=id)
 
 
 def test_buffered(filename):
@@ -19,7 +19,7 @@ def test_buffered(filename):
             for line in f:
                 id = int(line.split("\t")[0])
                 if id % 10000 == 0:
-                    Log.note(str(id))
+                    Log.note("{{id}}", id=id)
 
 
 def test_io(filename):
@@ -29,7 +29,7 @@ def test_io(filename):
                 line = line.decode("utf-8")
                 id = int(line.split("\t")[0])
                 if id % 10000 == 0:
-                    Log.note(str(id))
+                    Log.note("{{id}}", id=id)
 
 
 def test_binary(filename, buffering=2 ** 14):
@@ -47,7 +47,7 @@ def test_binary(filename, buffering=2 ** 14):
                     line = line.decode("utf-8")
                     id = int(line.split("\t")[0])
                     if id % 10000 == 0:
-                        Log.note(str(id))
+                        Log.note("{{id}}", id=id)
                 remainder = lines[-1]
 
 
@@ -58,12 +58,12 @@ def test_simple_binary(filename):
                 line = line.decode("utf-8")
                 id = int(line.split("\t")[0])
                 if id % 10000 == 0:
-                    Log.note(str(id))
+                    Log.note("{{id}}", id=id)
 
-filename = "C:/Users/klahnakoski/git/Datazilla2ElasticSearch/results/recent_old.tab"
-test_simple_binary(filename)
-test_binary(filename, 2 ** 14)
-test_binary(filename, 2 ** 25)
-test_io(filename)
-test_simple(filename)
-test_buffered(filename)
+test_file = "C:/Users/klahnakoski/git/Datazilla2ElasticSearch/results/recent_old.tab"
+test_simple_binary(test_file)
+test_binary(test_file, 2 ** 14)
+test_binary(test_file, 2 ** 25)
+test_io(test_file)
+test_simple(test_file)
+test_buffered(test_file)
