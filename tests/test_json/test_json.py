@@ -18,7 +18,7 @@ from mo_dots import Data, wrap
 from pyLibrary import convert
 
 import mo_json
-from mo_json import json2value
+from mo_json import json2value, value2json
 from mo_json.encoder import pypy_json_encode as pypy_json_encode, cPythonJSONEncoder, pretty_json
 
 cpython_json_encoder = cPythonJSONEncoder().encode
@@ -164,6 +164,11 @@ class TestJSON(unittest.TestCase):
         output = pypy_json_encode(test)
         expecting = cpython_json_encoder(mo_json.scrub(test))
         self.assertEqual(output, expecting, "expecting "+expecting)
+
+    def test_string_stripper(self):
+        test = {"hello": " world"}
+        mo_json.FIND_LOOPS = True
+        self.assertEqual(value2json(test), '{"hello": " world"}')
 
 
 if __name__ == '__main__':
