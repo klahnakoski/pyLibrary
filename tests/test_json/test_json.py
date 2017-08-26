@@ -172,6 +172,9 @@ class TestJSON(unittest.TestCase):
         mo_json.FIND_LOOPS = True
         self.assertEqual(value2json(test), '{"hello":" world"}')
 
+    def test_json_is_unicode(self):
+        self.assertIsInstance(value2json({}), unicode)
+
 
 if __name__ == '__main__':
     try:
