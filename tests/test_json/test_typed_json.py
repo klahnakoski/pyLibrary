@@ -21,7 +21,7 @@ class TestJSON(unittest.TestCase):
         value = {"test": datetime.date(2013, 11, 13)}
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "test": {"$value": 1384318800}}'
+        expected = u'{"$object":".","test":{"$value":1384318800}}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
@@ -30,7 +30,7 @@ class TestJSON(unittest.TestCase):
         value = {"comment": u"Open all links in the current tab, except the pages opened from external apps â€” open these ones in new windows"}
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "comment": {"$value": "Open all links in the current tab, except the pages opened from external apps â€” open these ones in new windows"}}'
+        expected = u'{"$object":".","comment":{"$value":"Open all links in the current tab, except the pages opened from external apps â€” open these ones in new windows"}}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
@@ -38,47 +38,47 @@ class TestJSON(unittest.TestCase):
         value = {"comment": b"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"}
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "comment": {"$value": "testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"}}'
+        expected = u'{"$object":".","comment":{"$value":"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"}}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
     def test_unicode3(self):
-        value = {"comment": u"testing accented char ŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"}
+        value = {"comment":u"testing accented char ŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"}
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "comment": {"$value": "testing accented char ŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"}}'
+        expected = u'{"$object":".","comment":{"$value":"testing accented char ŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"}}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
     def test_double(self):
-        value = {"value": 5.2025595183536973e-07}
+        value = {"value":5.2025595183536973e-07}
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "value": {"$value": 5.202559518353697e-7}}'
+        expected = u'{"$object":".","value":{"$value":5.202559518353697e-7}}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
     def test_empty_list(self):
-        value = {"value": []}
+        value = {"value":[]}
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "value": []}'
+        expected = u'{"$object":".","value":[]}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
     def test_nested(self):
-        value = {"a": {}, "b": {}}
+        value = {"a":{}, "b":{}}
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "a": {"$object": "."}, "b": {"$object": "."}}'
+        expected = u'{"$object":".","a":{"$object":"."},"b":{"$object":"."}}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
     def test_list_of_objects(self):
-        value = {"a": [{}, "b"]}
+        value = {"a":[{}, "b"]}
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "a": [{"$object": "."}, {"$value": "b"}]}'
+        expected = u'{"$object":".","a":[{"$object":"."},{"$value":"b"}]}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
@@ -94,15 +94,15 @@ class TestJSON(unittest.TestCase):
         value = [42]
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'[{"$value": 42}]'
+        expected = u'[{"$value":42}]'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
     def test_list(self):
-        value = {"value": [23, 42]}
+        value = {"value":[23, 42]}
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "value": [{"$value": 23}, {"$value": 42}]}'
+        expected = u'{"$object":".","value":[{"$value":23},{"$value":42}]}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
@@ -110,7 +110,7 @@ class TestJSON(unittest.TestCase):
         value = 42
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = '{"$value": 42}'
+        expected = '{"$value":42}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
@@ -118,7 +118,7 @@ class TestJSON(unittest.TestCase):
         value = u""
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = '{"$value": ""}'
+        expected = '{"$value":""}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
@@ -126,7 +126,7 @@ class TestJSON(unittest.TestCase):
         value = u"42"
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = '{"$value": "42"}'
+        expected = '{"$value":"42"}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
@@ -134,7 +134,7 @@ class TestJSON(unittest.TestCase):
         value = "\""
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = '{"$value": "\\""}'
+        expected = '{"$value":"\\""}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
@@ -146,7 +146,7 @@ class TestJSON(unittest.TestCase):
         value = False
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = '{"$value": false}'
+        expected = '{"$value":false}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
@@ -154,7 +154,7 @@ class TestJSON(unittest.TestCase):
         value = True
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = '{"$value": true}'
+        expected = '{"$value":true}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
@@ -162,40 +162,40 @@ class TestJSON(unittest.TestCase):
         value = None
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = '{"$value": null}'
+        expected = '{"$value":null}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
     def test_empty_dict(self):
-        value = wrap({"match_all": wrap({})})
+        value = wrap({"match_all":wrap({})})
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "match_all": {"$object": "."}}'
+        expected = u'{"$object":".","match_all":{"$object":"."}}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
     def test_complex_object(self):
-        value = wrap({"s": 0, "r": 5})
+        value = wrap({"s":0, "r":5})
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "s": {"$value": 0}, "r": {"$value": 5}}'
+        expected = u'{"$object":".","s":{"$value":0},"r":{"$value":5}}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
 
     def test_empty_list1(self):
-        value = wrap({"a": []})
+        value = wrap({"a":[]})
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "a": []}'
+        expected = u'{"$object":".","a":[]}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 
     def test_empty_list2(self):
-        value = wrap({"a": [], "b": 1})
+        value = wrap({"a":[], "b":1})
         test1 = typed_encode(value)
         test2 = json2typed(pypy_json_encode(value))
-        expected = u'{"$object": ".", "a": [], "b": {"$value": 1}}'
+        expected = u'{"$object":".","a":[],"b":{"$value":1}}'
         self.assertEqual(test1, expected)
         self.assertEqual(test2, expected)
 

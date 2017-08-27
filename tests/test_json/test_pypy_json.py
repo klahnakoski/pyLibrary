@@ -13,19 +13,25 @@ import datetime
 import unittest
 
 from mo_dots import Data, wrap
-from mo_json import json2value, value2json
+from mo_json import json2value
 from mo_logs import Log
 from pyLibrary import convert
 
 import mo_json
-from mo_json.encoder import pretty_json, cPythonJSONEncoder
+from mo_json.encoder import pypy_json_encode, cPythonJSONEncoder, pretty_json
 from mo_times.dates import Date
 
 
-class TestJSON(unittest.TestCase):
+def value2json(value):
+    return pypy_json_encode(value)
+
+
+class TestPyPyJSON(unittest.TestCase):
+
     def test_date(self):
         output = value2json({"test": datetime.date(2013, 11, 13)})
         Log.note("JSON = {{json}}", {"json": output})
+
 
     def test_unicode1(self):
         output = value2json({"comment": u"Open all links in the current tab, except the pages opened from external apps â€” open these ones in new windows"})
@@ -48,9 +54,9 @@ class TestJSON(unittest.TestCase):
             Log.error("expecting unicode json")
 
     def test_double1(self):
-        test = {"value": 5.2025595183536973e-07}
+        test = {"value":5.2025595183536973e-07}
         output = value2json(test)
-        if output != u'{"value":5.202559518353697e-07}':
+        if output != u'{"value":5.202559518353697e-7}':
             Log.error("expecting correct value")
 
     def test_double2(self):
