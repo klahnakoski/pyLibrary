@@ -65,6 +65,11 @@ class TestJSON(unittest.TestCase):
         if output != u'{"value":0.52}':
             Log.error("expecting correct value")
 
+    def test_long1(self):
+        test = json2value("272757895493505930073807329622695606794392")
+        expecting = 272757895493505930073807329622695606794392
+        self.assertEqual(test, expecting)
+
     def test_generator(self):
         test = {"value": (x for x in [])}
         output = value2json(test)
