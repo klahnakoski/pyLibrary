@@ -11,7 +11,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import __builtin__
+from future import builtins as __builtin__
 import math
 
 from mo_dots import Null, coalesce

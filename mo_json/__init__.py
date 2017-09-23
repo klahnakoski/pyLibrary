@@ -13,14 +13,11 @@ from __future__ import unicode_literals
 
 import math
 import re
-
 from collections import Mapping
-
 from datetime import date, timedelta, datetime
 from decimal import Decimal
 
 from future.utils import text_type
-from types import NoneType
 
 from mo_dots import FlatList, NullType, Data, wrap_leaves, wrap, Null
 from mo_dots.objects import DataObject
@@ -28,7 +25,7 @@ from mo_logs import Except, strings, Log
 from mo_logs.strings import expand_template
 from mo_times import Date, Duration
 
-
+NoneType = type(None)
 FIND_LOOPS = False
 CAN_NOT_DECODE_JSON = "Can not decode JSON"
 
@@ -47,7 +44,7 @@ ESCAPE_DCT = {
 for i in range(0x20):
     ESCAPE_DCT.setdefault(chr(i), u'\\u{0:04x}'.format(i))
 
-ESCAPE = re.compile(ur'[\x00-\x1f\\"\b\f\n\r\t]')
+ESCAPE = re.compile(r'[\x00-\x1f\\"\b\f\n\r\t]')
 
 
 def replace(match):
@@ -117,7 +114,9 @@ def _scrub(value, is_done, stack, keep_whitespace):
         if math.isnan(value) or math.isinf(value):
             return None
         return _scrub_float(value)
-    elif type_ in (int, long, bool):
+    elif type_ is int:
+        return value
+    elif type_ is bool:
         return value
     elif type_ in (date, datetime):
         return _scrub_float(datetime2unix(value))
@@ -141,8 +140,8 @@ def _scrub(value, is_done, stack, keep_whitespace):
         is_done.add(_id)
 
         output = {}
-        for k, v in value.iteritems():
-            if isinstance(k, basestring):
+        for k, v in value.items():
+            if isinstance(k, text_type):
                 pass
             elif hasattr(k, "__unicode__"):
                 k = text_type(k)
@@ -200,11 +199,11 @@ def _scrub_float(value):
 
 def value2json(obj, pretty=False, sort_keys=False, keep_whitespace=True):
     """
-    :param obj:  THE VALUE TO TURN INTO JSON 
+    :param obj:  THE VALUE TO TURN INTO JSON
     :param pretty: True TO MAKE A MULTI-LINE PRETTY VERSION
     :param sort_keys: True TO SORT KEYS
     :param keep_whitespace: False TO strip() THE WHITESPACE IN THE VALUES
-    :return: 
+    :return:
     """
     if FIND_LOOPS:
         obj = scrub(obj, keep_whitespace=keep_whitespace)

@@ -458,6 +458,18 @@ class TestDot(FuzzyTestCase):
 
         self.assertEqual(wrap(a).x.z, None, "a should not have been altered")
 
+    def test_set_default_empty_object(self):
+        a = {"x": {"y": 1}}
+        b = {"x": {"z": {}}}
+        c = {}
+        d = set_default(c, a, b)
+
+        self.assertTrue(unwrap(d) is c, "expecting first parameter to be returned")
+        self.assertEqual(d.x.y, 1, "expecting d to have attributes of a")
+        self.assertIsInstance(d.x.z, Mapping, "expecting z to exist, and be a mapping")
+
+        self.assertEqual(wrap(a).x.z, None, "a should not have been altered")
+
     def test_Dict_of_Dict(self):
         value = {"a": 1}
         wrapped = Data(Data(value))
@@ -528,13 +540,18 @@ class TestDot(FuzzyTestCase):
         self.assertAlmostEqual(literal_field("a.b"), "a\.b")
         self.assertAlmostEqual(literal_field("a\\.html"), "a\\\\.html")
 
+    def test_set_default_unicode_and_list(self):
+        a = {"a": "test"}
+        b = {"a": [1, 2]}
+        self.assertAlmostEqual(set_default(a, b), {"a": ["test", 1, 2]}, "expecting string, not list, nor some hybrid")
+
     def test_deepcopy(self):
         self.assertIs(deepcopy(Null), Null)
         self.assertEqual(deepcopy(Data()), {})
         self.assertEqual(deepcopy(Data(a=Null)), {})
 
     def test_null_type(self):
-        self.assertEqual(Null.__class__, NullType)
+        self.assertIs(Null.__class__, NullType)
         self.assertTrue(isinstance(Null, NullType))
 
     def test_null_assign(self):

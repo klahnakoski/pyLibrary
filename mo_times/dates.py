@@ -18,9 +18,10 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from time import time as _time
 
+from future.utils import text_type
+
 from mo_dots import Null
 from mo_logs.strings import deformat
-
 from mo_times.durations import Duration, MILLI_VALUES
 from mo_times.vendor.dateutil.parser import parse as parse_date
 
@@ -229,10 +230,10 @@ def parse(*args):
             else:
                 output = _unix2Date(datetime2unix(datetime(*args)))
         else:
-            if isinstance(args[0], basestring):
+            if isinstance(args[0], text_type):
                 output = unicode2Date(*args)
             else:
-                output = _unix2Date(datetime2unix(datetime(*args)))
+                output = _unix2Date(datetime2nix(datetime(*args)))
 
         return output
     except Exception as e:
@@ -436,7 +437,7 @@ def _unix2Date(unix):
     return output
 
 
-delchars = "".join(c.decode("latin1") for c in map(chr, range(256)) if not c.decode("latin1").isalnum())
+delchars = "".join(c for c in map(chr, range(256)) if not c.isalnum())
 
 
 def deformat(value):
@@ -445,7 +446,7 @@ def deformat(value):
 
     FOR SOME REASON translate CAN NOT BE CALLED:
         ERROR: translate() takes exactly one argument (2 given)
-	    File "C:\Python27\lib\string.py", line 493, in translate
+        File "C:\Python27\lib\string.py", line 493, in translate
     """
     output = []
     for c in value:

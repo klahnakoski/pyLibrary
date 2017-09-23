@@ -393,7 +393,7 @@ def index_to_coordinate(dims):
             "\treturn " + ", ".join(coords)
         )
 
-    exec code
+    exec(code)
     return output
 
 

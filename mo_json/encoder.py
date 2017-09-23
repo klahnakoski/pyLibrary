@@ -19,13 +19,12 @@ from collections import Mapping
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from math import floor
-from repr import Repr
 
 from future.utils import text_type, binary_type
+
 from mo_dots import Data, FlatList, NullType, Null
 from mo_json import quote, ESCAPE_DCT, scrub, float2json
 from mo_logs import Except
-
 from mo_logs.strings import utf82unicode
 from mo_times.dates import Date
 from mo_times.durations import Duration
@@ -125,7 +124,7 @@ class cPythonJSONEncoder(object):
             allow_nan=True,
             indent=None,
             separators=(COMMA, COLON),
-            encoding='utf8',
+            # encoding='utf8',
             default=None,
             sort_keys=sort_keys
         )
@@ -201,7 +200,7 @@ def _value2json(value, _buffer):
             d = _get(value, "_dict")  # MIGHT BE A VALUE NOT A DICT
             _value2json(d, _buffer)
             return
-        elif type in (int, long, Decimal):
+        elif type in (int, Decimal):
             append(_buffer, float2json(value))
         elif type is float:
             if math.isnan(value) or math.isinf(value):
@@ -313,7 +312,7 @@ def pretty_json(value):
                 from mo_logs import Log
                 from mo_math import OR
 
-                if OR(not isinstance(k, basestring) for k in value.keys()):
+                if OR(not isinstance(k, text_type) for k in value.keys()):
                     Log.error(
                         "JSON must have string keys: {{keys}}:",
                         keys=[k for k in value.keys()],
@@ -382,7 +381,7 @@ def pretty_json(value):
 
                 content = ",\n".join(
                     PRETTY_COMMA.join(j.rjust(max_len) for j in js[r:r + num_columns])
-                    for r in xrange(0, len(js), num_columns)
+                    for r in range(0, len(js), num_columns)
                 )
                 return "[\n" + indent(content) + "\n]"
 
@@ -505,7 +504,7 @@ def datetime2milli(d, type):
         else:
             diff = d - date(1970, 1, 1)
 
-        return long(diff.total_seconds()) * 1000L + long(diff.microseconds / 1000)
+        return int(diff.total_seconds()) * 1000 + int(diff.microseconds / 1000)
     except Exception as e:
         problem_serializing(d, e)
 
@@ -518,14 +517,6 @@ def unicode_key(key):
         from mo_logs import Log
         Log.error("{{key|quote}} is not a valid key", key=key)
     return quote(text_type(key))
-
-
-_repr_ = Repr()
-_repr_.maxlevel = 2
-
-
-def _repr(obj):
-    return _repr_.repr(obj)
 
 
 # OH HUM, cPython with uJSON, OR pypy WITH BUILTIN JSON?

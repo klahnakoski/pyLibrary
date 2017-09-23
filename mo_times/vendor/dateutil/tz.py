@@ -12,7 +12,9 @@ import time
 import sys
 import os
 
-string_types = basestring
+from future.utils import text_type
+
+string_types = text_type,
 PY3 = sys.version_info[0] == 3
 
 relativedelta = None

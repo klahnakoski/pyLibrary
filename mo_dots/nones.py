@@ -164,7 +164,7 @@ class NullType(object):
         return output
 
     def __getattr__(self, key):
-        key = key.decode('utf8')
+        # key = key.decode('utf8')
 
         d = _get(self, "__dict__")
         o = wrap(d["_obj"])
@@ -179,7 +179,7 @@ class NullType(object):
         return wrap(v.get(key))
 
     def __setattr__(self, key, value):
-        key = key.decode('utf8')
+        # key = key.decode('utf8')
 
         d = _get(self, "__dict__")
         o = wrap(d["_obj"])

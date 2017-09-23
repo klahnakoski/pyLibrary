@@ -117,7 +117,7 @@ class UniqueIndex(Set, Mapping):
         return self[key] != None
 
     def __iter__(self):
-        return (wrap(v) for v in self._data.itervalues())
+        return (wrap(v) for v in self._data.values())
 
     def __sub__(self, other):
         output = UniqueIndex(self._keys, fail_on_dup=self.fail_on_dup)

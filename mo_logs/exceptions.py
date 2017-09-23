@@ -18,8 +18,8 @@ import sys
 from collections import Mapping
 
 from future.utils import text_type
-from mo_dots import Data, listwrap, unwraplist, set_default, Null
 
+from mo_dots import Data, listwrap, unwraplist, set_default, Null
 from mo_logs.strings import indent, expand_template
 
 json_encoder = json.JSONEncoder(
@@ -29,7 +29,7 @@ json_encoder = json.JSONEncoder(
     allow_nan=True,
     indent=None,
     separators=None,
-    encoding='utf-8',
+    # encoding='utf-8',
     default=None,
     sort_keys=False
 ).encode

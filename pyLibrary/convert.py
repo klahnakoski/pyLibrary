@@ -12,8 +12,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import HTMLParser
-import StringIO
 import ast
 import base64
 import cgi
@@ -22,21 +20,24 @@ import gzip
 import hashlib
 import json
 import re
-from collections import Mapping
 from decimal import Decimal
 from io import BytesIO
 from tempfile import TemporaryFile
 
 from future.utils import text_type
+from future import standard_library
+standard_library.install_aliases()
+
+from html import parser as HTMLParser
 
 import mo_json
 import mo_math
+from mo_dots import wrap, unwrap, unwraplist, concat_field
 from mo_json import quote
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_logs.strings import expand_template
 from mo_times.dates import Date
-from mo_dots import wrap, unwrap, unwraplist, concat_field
 
 """
 DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
@@ -80,7 +81,7 @@ def datetime2unix(d):
             Log.error("Can not convert {{value}} of type {{type}}",  value= d,  type= d.__class__)
 
         diff = d - epoch
-        return Decimal(long(diff.total_seconds() * 1000000)) / 1000000
+        return Decimal(int(diff.total_seconds() * 1000000)) / 1000000
     except Exception as e:
         Log.error("Can not convert {{value}}",  value= d, cause=e)
 
@@ -213,7 +214,7 @@ def value2string(value):
 
 def value2quote(value):
     # RETURN PRETTY PYTHON CODE FOR THE SAME
-    if isinstance(value, basestring):
+    if isinstance(value, text_type):
         return string2quote(value)
     else:
         return repr(value)
@@ -289,7 +290,7 @@ def string2url(value):
 
 def html2unicode(value):
     # http://stackoverflow.com/questions/57708/convert-xml-html-entities-into-unicode-string-in-python
-    return HTMLParser.HTMLParser().unescape(value)
+    return HTMLParser().unescape(value)
 
 
 def unicode2html(value):
@@ -313,7 +314,7 @@ def value2code(value):
 
 
 def DataFrame2string(df, columns=None):
-    output = StringIO.StringIO()
+    output = BytesIO.BytesIO()
     try:
         df.to_csv(output, sep="\t", header=True, cols=columns, engine='python')
         return output.getvalue()
@@ -480,7 +481,7 @@ def ini2value(ini_content):
     """
     from ConfigParser import ConfigParser
 
-    buff = StringIO.StringIO(ini_content)
+    buff = BytesIO(ini_content)
     config = ConfigParser()
     config._read(buff, "dummy")
 
@@ -492,9 +493,9 @@ def ini2value(ini_content):
     return wrap(output)
 
 
-_map2url = {chr(i): latin12unicode(chr(i)) for i in range(32, 256)}
+_map2url = {chr(i).encode('latin1'): chr(i) for i in range(32, 256)}
 for c in " {}<>;/?:@&=+$,":
-    _map2url[c] = "%" + int2hex(ord(c), 2)
+    _map2url[c.encode('latin1')] = b"%" + int2hex(ord(c), 2).encode('latin1')
 
 
 def _unPipe(value):

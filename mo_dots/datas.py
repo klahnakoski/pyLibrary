@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from collections import MutableMapping, Mapping
 from copy import deepcopy
 
-from future.utils import text_type
+from future.utils import text_type, binary_type
 from mo_dots import _getdefault, hash_value, literal_field, coalesce, listwrap, get_logger
 
 _get = object.__getattribute__
@@ -47,6 +47,8 @@ class Data(MutableMapping):
                 elif isinstance(args0, Data):
                     _set(self, "_dict", _get(args0, "_dict"))
                 elif isinstance(args0, list):
+                    _set(self, "_dict", dict(args0))
+                elif hasattr(self, "__iter__"):
                     _set(self, "_dict", dict(args0))
                 else:
                     raise TypeError()
@@ -84,7 +86,7 @@ class Data(MutableMapping):
             else:
                 return output
 
-        if isinstance(key, str):
+        if isinstance(key, binary_type):
             key = key.decode("utf8")
         elif not isinstance(key, text_type):
             get_logger().error("only string keys are supported")
@@ -120,7 +122,7 @@ class Data(MutableMapping):
             v = unwrap(value)
             _set(self, "_dict", v)
             return v
-        if isinstance(key, str):
+        if isinstance(key, binary_type):
             key = key.decode("utf8")
 
         try:
@@ -147,7 +149,7 @@ class Data(MutableMapping):
             raise e
 
     def __getattr__(self, key):
-        if isinstance(key, str):
+        if isinstance(key, binary_type):
             ukey = key.decode("utf8")
         else:
             ukey = key
@@ -159,7 +161,7 @@ class Data(MutableMapping):
         return wrap(o)
 
     def __setattr__(self, key, value):
-        if isinstance(key, str):
+        if isinstance(key, binary_type):
             ukey = key.decode("utf8")
         else:
             ukey = key
@@ -248,7 +250,7 @@ class Data(MutableMapping):
         return wrap(deepcopy(d, memo))
 
     def __delitem__(self, key):
-        if isinstance(key, str):
+        if isinstance(key, binary_type):
             key = key.decode("utf8")
 
         if key.find(".") == -1:
@@ -263,7 +265,7 @@ class Data(MutableMapping):
         d.pop(seq[-1], None)
 
     def __delattr__(self, key):
-        if isinstance(key, str):
+        if isinstance(key, binary_type):
             key = key.decode("utf8")
 
         d = _get(self, "_dict")

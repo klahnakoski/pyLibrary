@@ -13,6 +13,8 @@ import types
 import unittest
 from collections import Mapping
 
+from future.utils import text_type
+
 import mo_dots
 from mo_collections.unique_index import UniqueIndex
 from mo_dots import coalesce, literal_field, unwrap
@@ -60,7 +62,7 @@ class FuzzyTestCase(unittest.TestCase):
             function(*args, **kwargs)
         except Exception as e:
             f = Except.wrap(e)
-            if isinstance(problem, basestring):
+            if isinstance(problem, text_type):
                 if problem in f:
                     return
                 Log.error(
@@ -132,7 +134,7 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
                     try:
                         assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
                         break
-                    except Exception, _:
+                    except Exception as _:
                         pass
                 else:
                     Log.error("Sets do not match. {{value|json}} not found in {{test|json}}", value=e, test=test)

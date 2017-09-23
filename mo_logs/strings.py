@@ -12,22 +12,23 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import __builtin__
 import cgi
+import json as _json
 import math
 import re
 import string
-import json as _json
-from __builtin__ import round as _round
 from collections import Mapping
 from datetime import datetime as builtin_datetime
 from datetime import timedelta, date
 
+import future.builtins as __builtin__
 from future.utils import text_type
+
 from mo_dots import coalesce, wrap, get_module
-from mo_logs.convert import datetime2unix, datetime2string, value2json,  milli2datetime, unix2datetime
+from mo_logs.convert import datetime2unix, datetime2string, value2json, milli2datetime, unix2datetime
 from mo_logs.url import value2url_param
 
+_round = round
 _json_encoder = None
 _Log = None
 _Except = None
@@ -61,7 +62,7 @@ def expand_template(template, value):
     :return: UNICODE STRING WITH VARIABLES EXPANDED
     """
     value = wrap(value)
-    if isinstance(template, basestring):
+    if isinstance(template, text_type):
         return _simple_expand(template, (value,))
 
     return _expand(template, (value,))
@@ -455,7 +456,7 @@ def _simple_expand(template, seq):
                     # WORK HARDER
                     val = toString(val)
                     return val
-            except Exception, f:
+            except Exception as f:
                 if not _Log:
                     _late_import()
 
@@ -469,7 +470,7 @@ def _simple_expand(template, seq):
     return pattern.sub(replacer, template)
 
 
-delchars = "".join(c.decode("latin1") for c in map(chr, range(256)) if not c.decode("latin1").isalnum())
+delchars = u"".join(c for c in map(chr, range(256)) if not c.isalnum())
 
 
 def deformat(value):
@@ -478,7 +479,7 @@ def deformat(value):
 
     FOR SOME REASON translate CAN NOT BE CALLED:
         ERROR: translate() takes exactly one argument (2 given)
-	    File "C:\Python27\lib\string.py", line 493, in translate
+        File "C:\Python27\lib\string.py", line 493, in translate
     """
     output = []
     for c in value:
@@ -635,7 +636,7 @@ def utf82unicode(value):
         for i, c in enumerate(value):
             try:
                 c.decode("utf8")
-            except Exception, f:
+            except Exception as f:
                 _Log.error("Can not convert charcode {{c}} in string  index {{i}}", i=i, c=ord(c), cause=[e, _Except.wrap(f)])
 
         try:

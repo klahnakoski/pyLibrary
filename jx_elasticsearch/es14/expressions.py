@@ -163,9 +163,9 @@ def to_ruby(self, not_null=False, boolean=False, many=False):
             return "true"
         if v is False:
             return "false"
-        if isinstance(v, basestring):
+        if isinstance(v, text_type):
             return quote(v)
-        if isinstance(v, (int, long, float)):
+        if isinstance(v, (int, float)):
             return text_type(v)
         if isinstance(v, dict):
             return "[" + ", ".join(quote(k) + ": " + _convert(vv) for k, vv in v.items()) + "]"
