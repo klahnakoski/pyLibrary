@@ -69,7 +69,7 @@ def literal_field(field):
     RETURN SAME WITH DOTS (`.`) ESCAPED
     """
     try:
-        return field.replace(".", "\.")
+        return field.replace(".", "\\.")
     except Exception as e:
         get_logger().error("bad literal", e)
 
@@ -86,7 +86,7 @@ def unliteral_field(field):
     """
     if len(split_field(field)) > 1:
         get_logger().error("Bad call! Dude!")
-    return field.replace("\.", ".")
+    return field.replace("\\.", ".")
 
 
 def split_field(field):
@@ -108,7 +108,7 @@ def join_field(field):
     potent = [f for f in field if f != "."]
     if not potent:
         return "."
-    return ".".join([f.replace(".", "\.") for f in potent])
+    return ".".join([f.replace(".", "\\.") for f in potent])
 
 
 def concat_field(prefix, suffix):
@@ -436,8 +436,6 @@ def _wrap_leaves(value):
 
             if key == "":
                 get_logger().error("key is empty string.  Probably a bad idea")
-            if isinstance(key, str):
-                key = key.decode("utf8")
 
             d = output
             if key.find(".") == -1:

@@ -64,7 +64,7 @@ def wrap_from(frum, schema=None):
 
     frum = wrap(frum)
 
-    if isinstance(frum, basestring):
+    if isinstance(frum, text_type):
         if not container.config.default.settings:
             Log.error("expecting jx_base.query.config.default.settings to contain default elasticsearch connection info")
 

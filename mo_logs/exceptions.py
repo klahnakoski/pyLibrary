@@ -91,7 +91,7 @@ class Except(Exception):
         return expand_template(self.template, self.params)
 
     def __contains__(self, value):
-        if isinstance(value, basestring):
+        if isinstance(value, text_type):
             if self.template.find(value) >= 0 or self.message.find(value) >= 0:
                 return True
 

@@ -637,7 +637,7 @@ class Cluster(object):
 
         if schema == None:
             Log.error("Expecting a schema")
-        elif isinstance(schema, basestring):
+        elif isinstance(schema, text_type):
             schema = mo_json.json2value(schema, leaves=True)
         else:
             schema = mo_json.json2value(value2json(schema), leaves=True)
@@ -877,7 +877,7 @@ def _scrub(r):
     try:
         if r == None:
             return None
-        elif isinstance(r, basestring):
+        elif isinstance(r, text_type):
             if r == "":
                 return None
             return r

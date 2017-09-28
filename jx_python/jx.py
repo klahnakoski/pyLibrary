@@ -12,24 +12,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import functools
 from collections import Mapping
-
-import __builtin__
-from jx_base import query
-from jx_python import expressions as _expressions
-from jx_python import flat_list, group_by
-from mo_dots import listwrap, wrap, unwrap, FlatList
-from mo_dots import set_default, Null, Data, split_field, coalesce, join_field
-from mo_logs import Log
-from mo_math import Math
-from mo_math import UNION, MIN
-from pyLibrary import convert
 from types import GeneratorType
 
+from future.utils import text_type
+
 import mo_dots
+from jx_base import query
 from jx_base.container import Container
 from jx_base.expressions import TRUE_FILTER, FALSE_FILTER
 from jx_base.query import QueryOp, _normalize_selects
+from jx_python import expressions as _expressions
+from jx_python import flat_list, group_by
 from jx_python.containers.cube import Cube
 from jx_python.cubes.aggs import cube_aggs
 from jx_python.expression_compiler import compile_expression
@@ -37,13 +32,21 @@ from jx_python.expressions import jx_expression_to_function
 from jx_python.flat_list import PartFlatList
 from mo_collections.index import Index
 from mo_collections.unique_index import UniqueIndex
+from mo_dots import listwrap, wrap, unwrap, FlatList
+from mo_dots import set_default, Null, Data, split_field, coalesce, join_field
 from mo_dots.objects import DataObject
+from mo_logs import Log
+from mo_math import Math
+from mo_math import UNION, MIN
+from pyLibrary import convert
 
 # A COLLECTION OF DATABASE OPERATORS (RELATIONAL ALGEBRA OPERATORS)
 # JSON QUERY EXPRESSION DOCUMENTATION: https://github.com/klahnakoski/jx/tree/master/docs
 # START HERE: https://github.com/klahnakoski/jx/blob/master/docs/jx_reference.md
 # TODO: USE http://docs.sqlalchemy.org/en/latest/core/tutorial.html AS DOCUMENTATION FRAMEWORK
 
+
+cmp = lambda x, y: (x > y) - (x < y)
 builtin_tuple = tuple
 _Column = None
 _merge_type = None
@@ -220,7 +223,7 @@ def tuple(data, field_name):
         field_name = field_name["value"]
 
     # SIMPLE PYTHON ITERABLE ASSUMED
-    if isinstance(field_name, basestring):
+    if isinstance(field_name, text_type):
         if len(split_field(field_name)) == 1:
             return [(d[field_name], ) for d in data]
         else:
@@ -303,7 +306,7 @@ def select(data, field_name):
             field_name = field_name.value
 
     # SIMPLE PYTHON ITERABLE ASSUMED
-    if isinstance(field_name, basestring):
+    if isinstance(field_name, text_type):
         path = split_field(field_name)
         if len(path) == 1:
             return FlatList([d[field_name] for d in data])
@@ -320,9 +323,9 @@ def select(data, field_name):
 
 
 def _select_a_field(field):
-    if isinstance(field, basestring):
+    if isinstance(field, text_type):
         return wrap({"name": field, "value": split_field(field)})
-    elif isinstance(wrap(field).value, basestring):
+    elif isinstance(wrap(field).value, text_type):
         field = wrap(field)
         return wrap({"name": field.name, "value": split_field(field.value)})
     else:
@@ -526,7 +529,7 @@ def sort(data, fieldnames=None, already_normalized=False):
             return Null
 
         if not fieldnames:
-            return wrap(sorted(data, value_compare))
+            return wrap(sorted(data, key=functools.cmp_to_key(value_compare)))
 
         if already_normalized:
             formal = fieldnames
@@ -646,7 +649,7 @@ def filter(data, where):
 
     try:
         return drill_filter(where, data)
-    except Exception, _:
+    except Exception as _:
         # WOW!  THIS IS INEFFICIENT!
         return wrap([unwrap(d) for d in drill_filter(where, [DataObject(d) for d in data])])
 
@@ -813,7 +816,7 @@ def drill_filter(esfilter, data):
             else:
                 return result
         elif filter.missing:
-            if isinstance(filter.missing, basestring):
+            if isinstance(filter.missing, text_type):
                 field = filter["missing"]
             else:
                 field = filter["missing"]["field"]
@@ -843,7 +846,7 @@ def drill_filter(esfilter, data):
                 return result
 
         elif filter.exists:
-            if isinstance(filter["exists"], basestring):
+            if isinstance(filter["exists"], text_type):
                 field = filter["exists"]
             else:
                 field = filter["exists"]["field"]
@@ -927,7 +930,7 @@ def wrap_function(func):
     """
     RETURN A THREE-PARAMETER WINDOW FUNCTION TO MATCH
     """
-    if isinstance(func, basestring):
+    if isinstance(func, text_type):
         return compile_expression(func)
 
     numarg = func.__code__.co_argcount

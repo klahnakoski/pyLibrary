@@ -17,8 +17,11 @@ import subprocess
 from collections import Mapping
 from datetime import datetime
 
-import mo_json
+from future.utils import PY3
 from future.utils import text_type
+from pymysql import connect, InterfaceError, cursors
+
+import mo_json
 from jx_python import jx
 from mo_dots import coalesce, wrap, listwrap, unwrap
 from mo_files import File
@@ -30,8 +33,6 @@ from mo_logs.strings import indent
 from mo_logs.strings import outdent
 from mo_math import Math
 from mo_times import Date
-from pymysql import connect, InterfaceError, cursors
-
 from pyLibrary.sql import SQL
 
 DEBUG = False
@@ -555,7 +556,7 @@ class MySQL(object):
                     return self.quote_sql(value.template)
                 param = {k: self.quote_sql(v) for k, v in value.param.items()}
                 return SQL(expand_template(value.template, param))
-            elif isinstance(value, basestring):
+            elif isinstance(value, text_type):
                 return SQL(self.db.literal(value))
             elif isinstance(value, Mapping):
                 return SQL(self.db.literal(json_encode(value)))
@@ -583,7 +584,7 @@ class MySQL(object):
                     return value
                 param = {k: self.quote_sql(v) for k, v in param.items()}
                 return expand_template(value, param)
-            elif isinstance(value, basestring):
+            elif isinstance(value, text_type):
                 return value
             elif isinstance(value, Mapping):
                 return self.db.literal(json_encode(value))
@@ -597,7 +598,7 @@ class MySQL(object):
     def quote_column(self, column_name, table=None):
         if column_name==None:
             Log.error("missing column_name")
-        elif isinstance(column_name, basestring):
+        elif isinstance(column_name, text_type):
             if table:
                 column_name = table + "." + column_name
             return SQL("`" + column_name.replace(".", "`.`") + "`")    # MY SQL QUOTE OF COLUMN NAMES
@@ -722,17 +723,29 @@ class Transaction(object):
             self.db.commit()
 
 
-json_encoder = json.JSONEncoder(
-    skipkeys=False,
-    ensure_ascii=False,  # DIFF FROM DEFAULTS
-    check_circular=True,
-    allow_nan=True,
-    indent=None,
-    separators=None,
-    encoding='utf-8',
-    default=None,
-    sort_keys=True   # <-- IMPORTANT!  sort_keys==True
-)
+if PY3:
+    json_encoder = json.JSONEncoder(
+        skipkeys=False,
+        ensure_ascii=False,  # DIFF FROM DEFAULTS
+        check_circular=True,
+        allow_nan=True,
+        indent=None,
+        separators=None,
+        default=None,
+        sort_keys=True   # <-- IMPORTANT!  sort_keys==True
+    )
+else:
+    json_encoder = json.JSONEncoder(
+        skipkeys=False,
+        ensure_ascii=False,  # DIFF FROM DEFAULTS
+        check_circular=True,
+        allow_nan=True,
+        indent=None,
+        separators=None,
+        encoding='utf-8',
+        default=None,
+        sort_keys=True   # <-- IMPORTANT!  sort_keys==True
+    )
 
 
 def json_encode(value):

@@ -12,9 +12,10 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from collections import Mapping
-from future import standard_library
 from urllib import parse as urlparse
-from future.utils import text_type
+
+from future.moves.urllib.parse import urlparse
+from future.utils import text_type, binary_type, PY3
 
 from mo_dots import wrap, Data
 
@@ -87,26 +88,32 @@ class URL(object):
         return False
 
     def __unicode__(self):
-        return self.__str__().decode('utf8')  # ASSUME chr<128 ARE VALID UNICODE
-
-    def __str__(self):
-        url = b""
+        url = ""
         if self.host:
             url = self.host
         if self.scheme:
-            url = self.scheme + b"://"+url
+            url = self.scheme + "://" + url
         if self.port:
-            url = url + b":" + str(self.port)
+            url = url + ":" + text_type(self.port)
         if self.path:
-            if self.path[0]=="/":
+            if self.path[0] == "/":
                 url += str(self.path)
             else:
-                url += b"/"+str(self.path)
+                url += "/" + self.path
         if self.query:
-            url = url + b'?' + value2url_param(self.query)
+            url = url + '?' + value2url_param(self.query).decode('latin1')
         if self.fragment:
-            url = url + b'#' + value2url_param(self.fragment)
+            url = url + '#' + value2url_param(self.fragment).decode('latin1')
         return url
+
+    def __bytes__(self):
+        return self.__unicode__().encode('latin1')  # ASSUME chr<128 ARE VALID UNICODE
+
+
+if PY3:
+    URL.__str__ = URL.__unicode__
+else:
+    URL.__str__ = URL.__bytes__
 
 
 def int2hex(value, size):
@@ -141,40 +148,40 @@ def url_param2value(param):
     """
     CONVERT URL QUERY PARAMETERS INTO DICT
     """
-    if isinstance(param, text_type):
-        param = param.encode("ascii")
+    if isinstance(param, binary_type):
+        param = param.decode("ascii")
 
     def _decode(v):
         output = []
         i = 0
         while i < len(v):
             c = v[i]
-            if c == "%":
-                d = (v[i + 1:i + 3]).decode("hex")
+            if c == "%":  # %
+                d = chr(int(v[i + 1:i + 3], 16))
                 output.append(d)
                 i += 3
             else:
                 output.append(c)
                 i += 1
 
-        output = (b"".join(output)).decode("latin1")
+        output = "".join(output)
         try:
             if not _Log:
                 _late_import()
             return _json2value(output)
-        except Exception:
+        except Exception as e:
             pass
         return output
 
     query = Data()
-    for p in param.split(b'&'):
+    for p in param.split('&'):
         if not p:
             continue
-        if p.find(b"=") == -1:
+        if p.find("=") == -1:
             k = p
             v = True
         else:
-            k, v = p.split(b"=")
+            k, v = p.split("=")
             v = _decode(v)
 
         u = query.get(k)
@@ -202,12 +209,10 @@ def value2url_param(value):
     if isinstance(value, Mapping):
         value_ = wrap(value)
         output = b"&".join([
-            value2url_param(k) + b"=" + (value2url_param(v) if isinstance(v, basestring) else value2url_param(_value2json(v)))
+            value2url_param(k) + b"=" + (value2url_param(v) if isinstance(v, text_type) else value2url_param(_value2json(v)))
             for k, v in value_.leaves()
             ])
     elif isinstance(value, text_type):
-        output = b"".join(_map2url[c] for c in value.encode('utf8'))
-    elif isinstance(value, str):
         output = b"".join(_map2url[c] for c in value)
     elif hasattr(value, "__iter__"):
         output = b",".join(value2url_param(v) for v in value)

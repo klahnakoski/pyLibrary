@@ -22,16 +22,14 @@ from mo_dots import split_field, join_field, ROOT_PATH
 from mo_dots import wrap
 from mo_logs import Log
 from mo_threads import Lock
-from types import NoneType
 
 from jx_base.container import Container
 from jx_base.schema import Schema
 from mo_times.dates import Date
 from pyLibrary.meta import DataClass
 
+NoneType = type(None)
 singlton = None
-
-
 
 
 def metadata_columns():

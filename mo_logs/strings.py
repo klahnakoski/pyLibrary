@@ -401,7 +401,7 @@ def _expand(template, seq):
     """
     seq IS TUPLE OF OBJECTS IN PATH ORDER INTO THE DATA TREE
     """
-    if isinstance(template, basestring):
+    if isinstance(template, text_type):
         return _simple_expand(template, seq)
     elif isinstance(template, Mapping):
         template = wrap(template)
@@ -629,7 +629,7 @@ def utf82unicode(value):
         if not _Log:
             _late_import()
 
-        if not isinstance(value, basestring):
+        if not isinstance(value, text_type):
             _Log.error("Can not convert {{type}} to unicode because it's not a string",  type= type(value).__name__)
 
         e = _Except.wrap(e)

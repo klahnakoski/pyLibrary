@@ -12,7 +12,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import StringIO
+from io import BytesIO
 
 from mo_dots import wrap
 
@@ -23,7 +23,7 @@ def ini2value(ini_content):
     """
     from ConfigParser import ConfigParser
 
-    buff = StringIO.StringIO(ini_content)
+    buff = BytesIO.StringIO(ini_content)
     config = ConfigParser()
     config._read(buff, "dummy")
 

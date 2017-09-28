@@ -17,16 +17,19 @@ from collections import deque
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 
-from future.utils import text_type
+from future.utils import text_type, PY3
 from mo_dots import Data, FlatList, NullType
 from mo_json import ESCAPE_DCT, float2json
 from mo_logs import Log
 
-from mo_json.encoder import pretty_json, problem_serializing, _repr, UnicodeBuilder, COMMA, QUOTE_COLON, COMMA_QUOTE
+from mo_json.encoder import pretty_json, problem_serializing, UnicodeBuilder, COMMA, QUOTE_COLON, COMMA_QUOTE
 from mo_logs.strings import utf82unicode
 from mo_times.dates import Date
 from mo_times.durations import Duration
 
+
+if PY3:
+    long = int
 json_decoder = json.JSONDecoder().decode
 append = UnicodeBuilder.append
 

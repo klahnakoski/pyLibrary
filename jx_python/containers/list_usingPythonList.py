@@ -226,7 +226,7 @@ class ListContainer(Container):
 def _exec(code):
     try:
         temp = None
-        exec "temp = " + code
+        exec ("temp = " + code)
         return temp
     except Exception as e:
         Log.error("Could not execute {{code|quote}}", code=code, cause=e)

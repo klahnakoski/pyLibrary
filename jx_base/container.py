@@ -68,7 +68,7 @@ class Container(object):
             return _run(frum)
         elif isinstance(frum, (list, set, GeneratorType)):
             return _ListContainer(frum)
-        elif isinstance(frum, basestring):
+        elif isinstance(frum, text_type):
             # USE DEFAULT STORAGE TO FIND Container
             if not config.default.settings:
                 Log.error("expecting jx_base.query.config.default.settings to contain default elasticsearch connection info")

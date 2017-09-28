@@ -1,4 +1,5 @@
 future
+configparser
 pymysql
 requests
 boto

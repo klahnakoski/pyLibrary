@@ -16,10 +16,16 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import sys
-import thread
 from copy import copy
 from datetime import datetime, timedelta
 from time import sleep
+
+from future.utils import PY3
+
+if PY3:
+    import _thread as thread
+else:
+    import thread
 
 from mo_dots import Data, unwraplist, Null
 from mo_logs import Log, Except

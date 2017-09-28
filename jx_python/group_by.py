@@ -145,7 +145,7 @@ def groupby_min_max_size(data, min_size=0, max_size=None, ):
     if max_size == None:
         max_size = sys.maxint
 
-    if isinstance(data, (bytearray, basestring, list)):
+    if isinstance(data, (bytearray, text_type, list)):
         def _iter():
             num = int(math.ceil(len(data)/max_size))
             for i in range(num):

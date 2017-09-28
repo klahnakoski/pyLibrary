@@ -11,15 +11,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from UserDict import UserDict
 from collections import Mapping
-
 from copy import deepcopy
+
 from mo_dots import wrap, Null, set_default, unwrap, Data, literal_field, NullType
 from mo_dots.objects import datawrap
 from mo_logs import Log
 from mo_math import MAX
 from mo_testing.fuzzytestcase import FuzzyTestCase
+
+
 # from pyLibrary.meta import DataClass
 
 
@@ -39,7 +40,7 @@ class TestDot(FuzzyTestCase):
         def show_kwargs(**kwargs):
             return kwargs
 
-        a = UserDict(a=1, b=2)
+        a = _UserDict(a=1, b=2)
         d = show_kwargs(**a)
         self.assertAlmostEqual(d, {"a":1, "b":2})
 
@@ -95,7 +96,7 @@ class TestDot(FuzzyTestCase):
 
     def test_null_access(self):
         a = Data()
-        c = a.b[b'test']
+        c = a.b['test']
         self.assertTrue(c == None, "Expecting Null to accept str() for item access")
 
     def test_null(self):
@@ -272,7 +273,7 @@ class TestDot(FuzzyTestCase):
         a = {}
         b = wrap(a)
 
-        b.c["d\.e"].f = 2
+        b.c["d\\.e"].f = 2
         expected = {"c": {"d.e": {"f": 2}}}
         self.assertEqual(a, expected)
 
@@ -280,8 +281,8 @@ class TestDot(FuzzyTestCase):
         a = {}
         b = wrap(a)
 
-        b["c.d.e\.f"] = 1
-        b["c.d.e\.g"] = 2
+        b["c.d.e\\.f"] = 1
+        b["c.d.e\\.g"] = 2
 
         expected = {"c": {"d": {"e.f": 1, "e.g": 2}}}
         self.assertEqual(a, expected)
@@ -290,8 +291,8 @@ class TestDot(FuzzyTestCase):
         a = {}
         b = wrap(a)
 
-        b["c.d.e\.f"] = 1
-        b["c.d.g\.h"] = 2
+        b["c.d.e\\.f"] = 1
+        b["c.d.g\\.h"] = 2
 
         expected = {"c": {"d": {"e.f": 1, "g.h": 2}}}
         self.assertEqual(a, expected)
@@ -481,8 +482,8 @@ class TestDot(FuzzyTestCase):
         a.a.b = {"b": 2}
 
         leaves = wrap(dict(a.leaves()))
-        self.assertEqual(a.a.a['a'], leaves["a\.a\.a"], "expecting 1")
-        self.assertEqual(a.a.b['b'], leaves["a\.b\.b"], "expecting 2")
+        self.assertEqual(a.a.a['a'], leaves["a\\.a\\.a"], "expecting 1")
+        self.assertEqual(a.a.b['b'], leaves["a\\.b\\.b"], "expecting 2")
 
     def test_null_set_index(self):
         temp = Null
@@ -537,7 +538,7 @@ class TestDot(FuzzyTestCase):
         self.assertAlmostEqual(literal_field("."), "\\.")
         self.assertAlmostEqual(literal_field("\\."), "\\\\.")
         self.assertAlmostEqual(literal_field("\\\\."), "\\\\\\.")
-        self.assertAlmostEqual(literal_field("a.b"), "a\.b")
+        self.assertAlmostEqual(literal_field("a.b"), "a\\.b")
         self.assertAlmostEqual(literal_field("a\\.html"), "a\\\\.html")
 
     def test_set_default_unicode_and_list(self):

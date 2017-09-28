@@ -15,6 +15,9 @@ from collections import Mapping
 from datetime import date, datetime
 from decimal import Decimal
 from types import GeneratorType
+
+from future.utils import text_type
+
 from mo_dots import wrap, unwrap, Data, FlatList, NullType, get_attr, set_attr
 
 
@@ -112,7 +115,7 @@ def datawrap(v):
         return FlatList(v)
     elif type_ is GeneratorType:
         return (wrap(vv) for vv in v)
-    elif isinstance(v, (basestring, int, float, Decimal, datetime, date, Data, FlatList, NullType, NoneType)):
+    elif isinstance(v, (text_type, int, float, Decimal, datetime, date, Data, FlatList, NullType, NoneType)):
         return v
     elif isinstance(v, Mapping):
         return DataObject(v)

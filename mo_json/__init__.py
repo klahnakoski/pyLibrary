@@ -17,7 +17,7 @@ from collections import Mapping
 from datetime import date, timedelta, datetime
 from decimal import Decimal
 
-from future.utils import text_type
+from future.utils import text_type, PY3
 
 from mo_dots import FlatList, NullType, Data, wrap_leaves, wrap, Null
 from mo_dots.objects import DataObject
@@ -257,7 +257,7 @@ def json2value(json_string, params=Null, flexible=False, leaves=False):
     :param leaves: ASSUME JSON KEYS ARE DOT-DELIMITED
     :return: Python value
     """
-    if isinstance(json_string, str):
+    if not isinstance(json_string, text_type):
         Log.error("only unicode json accepted")
 
     try:
@@ -311,17 +311,24 @@ def json2value(json_string, params=Null, flexible=False, leaves=False):
 
             Log.error(CAN_NOT_DECODE_JSON + " at:\n\t{{sample}}\n\t{{pointer}}\n", sample=sample, pointer=pointer)
 
-        base_str = strings.limit(json_string, 1000).encode('utf8')
-        hexx_str = bytes2hex(base_str, " ")
+        base_bytes = strings.limit(json_string, 1000).encode('utf8')
+        hexx_str = bytes2hex(base_bytes, " ")
         try:
-            char_str = " " + "  ".join((c.decode("latin1") if ord(c) >= 32 else ".") for c in base_str)
+            if PY3:
+                char_str = " " + "  ".join(bytearray((c if c >= 32 else b".") for c in base_bytes).decode('latin1'))
+            else:
+                char_str = " " + "  ".join(bytearray((c if ord(c) >= 32 else b".") for c in base_bytes).decode('latin1'))
         except Exception as e:
             char_str = " "
         Log.error(CAN_NOT_DECODE_JSON + ":\n{{char_str}}\n{{hexx_str}}\n", char_str=char_str, hexx_str=hexx_str, cause=e)
 
 
-def bytes2hex(value, separator=" "):
-    return separator.join("%02X" % ord(x) for x in value)
+if PY3:
+    def bytes2hex(value, separator=" "):
+        return separator.join("%02X" % x for x in value)
+else:
+    def bytes2hex(value, separator=" "):
+        return separator.join("%02X" % ord(x) for x in value)
 
 
 def utf82unicode(value):

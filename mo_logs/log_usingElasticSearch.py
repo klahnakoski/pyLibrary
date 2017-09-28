@@ -116,7 +116,7 @@ def _deep_json_to_string(value, depth):
         return strings.limit(value2json(value), LOG_STRING_LENGTH)
     elif isinstance(value, (float, int, long)):
         return value
-    elif isinstance(value, basestring):
+    elif isinstance(value, text_type):
         return strings.limit(value, LOG_STRING_LENGTH)
     else:
         return strings.limit(value2json(value), LOG_STRING_LENGTH)

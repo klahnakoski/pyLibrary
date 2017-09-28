@@ -152,8 +152,6 @@ class NullType(object):
     def __getitem__(self, key):
         if isinstance(key, slice):
             return Null
-        elif isinstance(key, str):
-            key = key.decode("utf8")
         elif isinstance(key, int):
             return NullType(self, key)
 
@@ -189,8 +187,6 @@ class NullType(object):
         _assign_to_null(o, seq, value)
 
     def __setitem__(self, key, value):
-        assert not isinstance(key, str)
-
         d = _get(self, "__dict__")
         o = d["_obj"]
         if o is None:
@@ -268,7 +264,11 @@ def _split_field(field):
     """
     SIMPLE SPLIT, NO CHECKS
     """
-    if field == ".":
-        return []
-    else:
-        return [k.replace("\a", ".") for k in field.replace("\.", "\a").split(".")]
+    try:
+        if field == ".":
+            return []
+        else:
+            return [k.replace("\a", ".") for k in field.replace("\\.", "\a").split(".")]
+    except Exception as e:
+        from mo_logs import Log
+        Log.error("programmer error", cause=e)

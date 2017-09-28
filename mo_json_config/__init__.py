@@ -15,6 +15,8 @@ from __future__ import unicode_literals
 import os
 from collections import Mapping
 
+from future.utils import text_type
+
 import mo_dots
 from mo_dots import set_default, wrap, unwrap
 from mo_files import File
@@ -30,7 +32,7 @@ def get(url):
     """
     USE json.net CONVENTIONS TO LINK TO INLINE OTHER JSON
     """
-    url = str(url)
+    url = text_type(url)
     if url.find("://") == -1:
         Log.error("{{url}} must have a prototcol (eg http://) declared", url=url)
 
@@ -239,7 +241,7 @@ def get_env(ref, url):
     ref = ref.host
     try:
         new_value = json2value(os.environ[ref])
-    except Exception as e:
+    except Exception:
         new_value = os.environ[ref]
     return new_value
 

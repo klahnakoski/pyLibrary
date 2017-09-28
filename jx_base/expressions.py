@@ -1808,7 +1808,7 @@ operators = {
 
 def extend(cls):
     def extender(func):
-        setattr(cls, func.func_name, func)
+        setattr(cls, func.__name__, func)
         return func
     return extender
 

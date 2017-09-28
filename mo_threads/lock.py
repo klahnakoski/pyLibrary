@@ -15,7 +15,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from thread import allocate_lock as _allocate_lock
+
+from future.utils import PY3
+if PY3:
+    from _thread import allocate_lock as _allocate_lock
+else:
+    from thread import allocate_lock as _allocate_lock
 
 from mo_threads.signal import Signal
 

@@ -173,11 +173,11 @@ def es_aggsop(es, frum, query):
 
                 es_query.aggs[key].percentiles.field = field_name
                 es_query.aggs[key].percentiles.percents += [50]
-                s.pull = key + ".values.50\.0"
+                s.pull = key + ".values.50\\.0"
             elif s.aggregate == "percentile":
                 # ES USES DIFFERENT METHOD FOR PERCENTILES
                 key = literal_field(canonical_name + " percentile")
-                if isinstance(s.percentile, basestring) or s.percetile < 0 or 1 < s.percentile:
+                if isinstance(s.percentile, text_type) or s.percetile < 0 or 1 < s.percentile:
                     Log.error("Expecting percentile to be a float from 0.0 to 1.0")
                 percent = Math.round(s.percentile * 100, decimal=6)
 
@@ -210,7 +210,7 @@ def es_aggsop(es, frum, query):
                     "sos": stats_name + ".sum_of_squares",
                     "std": stats_name + ".std_deviation",
                     "var": stats_name + ".variance",
-                    "median": median_name + ".values.50\.0"
+                    "median": median_name + ".values.50\\.0"
                 }
             elif s.aggregate == "union":
                 # USE TERMS AGGREGATE TO SIMULATE union
@@ -242,7 +242,7 @@ def es_aggsop(es, frum, query):
 
             es_query.aggs[key].percentiles.script = abs_value.to_ruby()
             es_query.aggs[key].percentiles.percents += [50]
-            s.pull = key + ".values.50\.0"
+            s.pull = key + ".values.50\\.0"
         elif s.aggregate == "percentile":
             # ES USES DIFFERENT METHOD FOR PERCENTILES THAN FOR STATS AND COUNT
             key = literal_field(canonical_name + " percentile")
@@ -277,7 +277,7 @@ def es_aggsop(es, frum, query):
                 "sos": stats_name + ".sum_of_squares",
                 "std": stats_name + ".std_deviation",
                 "var": stats_name + ".variance",
-                "median": median_name + ".values.50\.0"
+                "median": median_name + ".values.50\\.0"
             }
         elif s.aggregate=="union":
             # USE TERMS AGGREGATE TO SIMULATE union

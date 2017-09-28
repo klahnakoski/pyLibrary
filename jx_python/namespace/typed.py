@@ -57,7 +57,7 @@ class Typed(Namespace):
         elif is_variable_name(expr):
             #TODO: LOOKUP SCHEMA AND ADD ALL COLUMNS WITH THIS PREFIX
             return expr + ".$value"
-        elif isinstance(expr, basestring):
+        elif isinstance(expr, text_type):
             Log.error("{{name|quote}} is not a valid variable name", name=expr)
         elif isinstance(expr, Date):
             return expr

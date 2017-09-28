@@ -36,7 +36,7 @@ class AggsDecoder(object):
             # if query.groupby:
             #     return object.__new__(DefaultDecoder, e)
 
-            if isinstance(e.value, basestring):
+            if isinstance(e.value, text_type):
                 Log.error("Expecting Variable or Expression, not plain string")
 
             if isinstance(e.value, LeavesOp):
