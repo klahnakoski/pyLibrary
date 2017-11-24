@@ -12,9 +12,15 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from collections import Mapping
-from future.utils import text_type, binary_type
-from types import GeneratorType, NoneType, ModuleType
+
+import sys
+from mo_future import text_type, binary_type
+from types import GeneratorType
 from mo_dots.utils import get_logger, get_module
+
+NoneType = type(None)
+ModuleType = type(sys.modules[__name__])
+
 
 _builtin_zip = zip
 SELF_PATH = "."
@@ -90,7 +96,12 @@ def split_field(field):
     if field == "." or field==None:
         return []
     elif isinstance(field, text_type) and "." in field:
-        return [k.replace("\a", ".") for k in field.replace("\\.", "\a").split(".")]
+        if field.startswith(".."):
+            remainder = field.lstrip(".")
+            back = len(field) - len(remainder) - 1
+            return [-1]*back + [k.replace("\a", ".") for k in remainder.replace("\\.", "\a").split(".")]
+        else:
+            return [k.replace("\a", ".") for k in field.replace("\\.", "\a").split(".")]
     else:
         return [field]
 
@@ -106,7 +117,16 @@ def join_field(field):
 
 
 def concat_field(prefix, suffix):
-    return join_field(split_field(prefix) + split_field(suffix))
+    if suffix.startswith(".."):
+        remainder = suffix.lstrip(".")
+        back = len(suffix) - len(remainder) - 1
+        prefix_path=split_field(prefix)
+        if len(prefix_path)>=back:
+            return join_field(split_field(prefix)[:-back]+split_field(remainder))
+        else:
+            return "." * (back - len(prefix_path)) + "." + remainder
+    else:
+        return join_field(split_field(prefix) + split_field(suffix))
 
 
 def startswith_field(field, prefix):
@@ -254,7 +274,7 @@ def _getdefault(obj, key):
     # TODO: FIGURE OUT WHY THIS WAS EVER HERE (AND MAKE A TEST)
     # try:
     #     return eval("obj."+text_type(key))
-    # except Exception, f:
+    # except Exception as f:
     #     pass
     return NullType(obj, key)
 
@@ -313,7 +333,7 @@ def _get_attr(obj, path):
             try:
                 # THIS CASE IS WHEN THE __init__.py DOES NOT IMPORT THE SUBDIR FILE
                 # WE CAN STILL PUT THE PATH TO THE FILE IN THE from CLAUSE
-                if len(path)==1:
+                if len(path) == 1:
                     # GET MODULE OBJECT
                     output = __import__(obj.__name__ + b"." + attr_name.decode('utf8'), globals(), locals(), [attr_name.decode('utf8')], 0)
                     return output
@@ -358,7 +378,7 @@ def _set_attr(obj_, path, value):
     if obj is None:  # DELIBERATE USE OF `is`: WE DO NOT WHAT TO CATCH Null HERE (THEY CAN BE SET)
         obj = _get_attr(obj_, path[:-1])
         if obj is None:
-            get_logger().error(PATH_NOT_FOUND+" Tried to get attribute of None")
+            get_logger().error(PATH_NOT_FOUND+" tried to get attribute of None")
 
     attr_name = path[-1]
 
@@ -392,11 +412,11 @@ def lower_match(value, candidates):
 
 
 def wrap(v):
-    type_ = _get(v, b"__class__")
+    type_ = _get(v, "__class__")
 
     if type_ is dict:
         m = object.__new__(Data)
-        _set(m, b"_dict", v)
+        _set(m, "_dict", v)
         return m
     elif type_ is NoneType:
         return Null
@@ -462,16 +482,16 @@ def _wrap_leaves(value):
 
 
 def unwrap(v):
-    _type = _get(v, b"__class__")
+    _type = _get(v, "__class__")
     if _type is Data:
-        d = _get(v, b"_dict")
+        d = _get(v, "_dict")
         return d
     elif _type is FlatList:
         return v.list
     elif _type is NullType:
         return None
     elif _type is DataObject:
-        d = _get(v, b"_obj")
+        d = _get(v, "_obj")
         if isinstance(d, Mapping):
             return d
         else:

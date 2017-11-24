@@ -13,19 +13,43 @@ from __future__ import unicode_literals
 
 from uuid import uuid4
 
+from mo_dots import NullType, Data
+from mo_future import text_type, NoneType
 
-OBJECT = "object"
+IS_NULL = '0'
+BOOLEAN = 'boolean'
+INTEGER = 'integer'
+NUMBER = 'number'
+STRING = 'string'
+OBJECT = 'object'
 NESTED = "nested"
-STRUCT = [OBJECT, NESTED]
+EXISTS = "exists"
+
+JSON_TYPES = [BOOLEAN, INTEGER, NUMBER, STRING, OBJECT]
+PRIMITIVE = [EXISTS, BOOLEAN, INTEGER, NUMBER, STRING]
+STRUCT = [EXISTS, OBJECT, NESTED]
+
+
+python_type_to_json_type = {
+    int: INTEGER,
+    text_type: STRING,
+    float: NUMBER,
+    None: OBJECT,
+    bool: BOOLEAN,
+    NullType: OBJECT,
+    NoneType: OBJECT,
+    Data: OBJECT,
+    list: NESTED
+}
 
 
 def generateGuid():
     """Gets a random GUID.
-    Note: python's UUID generation library is used here. 
+    Note: python's UUID generation library is used here.
     Basically UUID is the same as GUID when represented as a string.
     :Returns:
         str, the generated random GUID.
-        
+
     a=GenerateGuid()
     import uuid
     print a

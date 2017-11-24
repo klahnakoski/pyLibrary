@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 from collections import Mapping
 from urlparse import urlparse
 
-from future.utils import text_type
+from mo_future import text_type
 from mo_dots import wrap, Data
 
 _value2json = None

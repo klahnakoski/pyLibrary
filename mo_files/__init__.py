@@ -16,7 +16,7 @@ from mimetypes import MimeTypes
 from tempfile import mkdtemp, NamedTemporaryFile
 
 import os
-from future.utils import text_type, binary_type
+from mo_future import text_type, binary_type
 from mo_dots import get_module, coalesce
 from mo_logs import Log, Except
 

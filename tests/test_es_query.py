@@ -12,13 +12,15 @@ from __future__ import unicode_literals
 import unittest
 from traceback import extract_tb
 
+from mo_future import text_type
+
+import jx_elasticsearch
 from mo_files import File
 from mo_json import json2value
 from mo_logs import Log
 from mo_logs import strings
 from mo_logs.exceptions import Except, ERROR
 from pyLibrary import convert
-from jx_elasticsearch.jx_usingES import FromES
 
 
 class TestFromES(unittest.TestCase):
@@ -58,7 +60,7 @@ class FromESTester(object):
             "host":"example.com",
             "index":"index"
         })
-        self.esq = FromES(self.es)
+        self.esq = jx_elasticsearch.new_instance(self.es)
 
     def query(self, query):
         try:
@@ -66,12 +68,12 @@ class FromESTester(object):
                 self.esq.query(query)
                 return None
         except Exception as e:
-            f = Except(ERROR, unicode(e), trace=extract_tb(1))
+            f = Except(ERROR, text_type(e), trace=extract_tb(1))
             try:
                 details = str(f)
                 query = json2value(strings.between(details, ">>>>", "<<<<"))
                 return query
-            except Exception, g:
+            except Exception as g:
                 Log.error("problem", f)
 
 

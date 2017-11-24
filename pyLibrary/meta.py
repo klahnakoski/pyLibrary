@@ -18,7 +18,7 @@ from mo_threads import Lock
 from pyLibrary import convert
 from types import FunctionType
 
-from jx_base.expressions import jx_expression
+from jx_python.expressions import jx_expression
 from mo_logs.exceptions import Except
 from mo_logs.strings import expand_template
 from mo_math.randoms import Random
@@ -182,17 +182,6 @@ def wrap_function(cache_store, func_):
             return value
 
     return output
-
-
-# _repr = Repr()
-# _repr.maxlevel = 3
-
-def repr(obj):
-    """
-    JUST LIKE __builtin__.repr(), BUT WITH SOME REASONABLE LIMITS
-    """
-    return repr(obj)
-    return _repr.repr(obj)
 
 
 class _FakeLock():

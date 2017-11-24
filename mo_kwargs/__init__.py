@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-from future.utils import text_type
+from mo_future import text_type
 from mo_dots import zip as dict_zip, get_logger, wrap
 
 from mo_logs import Except

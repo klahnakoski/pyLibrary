@@ -15,7 +15,7 @@ from __future__ import unicode_literals
 import json as _json
 from datetime import datetime, date
 
-from future.utils import text_type
+from mo_future import text_type
 
 
 def unix2datetime(u):

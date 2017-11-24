@@ -16,31 +16,32 @@ from copy import copy
 from itertools import product
 
 from jx_base import STRUCT
+from jx_base.query import QueryOp
+from jx_base.schema import Schema
 from jx_python import jx
 from jx_python import meta as jx_base_meta
-from mo_dots import Data, relative_field, concat_field
-from mo_dots import coalesce, set_default, Null, literal_field, split_field, join_field, ROOT_PATH
+from jx_python.containers.list_usingPythonList import ListContainer
+from jx_python.meta import ColumnList, metadata_columns, metadata_tables, Column, Table
+from mo_dots import Data, relative_field, concat_field, SELF_PATH
+from mo_dots import coalesce, set_default, Null, split_field, join_field
 from mo_dots import wrap
+from mo_json.typed_encoder import EXISTS_TYPE
 from mo_kwargs import override
 from mo_logs import Log
+from mo_logs.strings import quote
 from mo_threads import Queue
 from mo_threads import THREAD_STOP
 from mo_threads import Thread
 from mo_threads import Till
-
-from jx_base.query import QueryOp
-from jx_base.schema import Schema
-from jx_elasticsearch.es14.util import es_type_to_json_type
-from jx_python.meta import ColumnList, metadata_columns, metadata_tables, Column, Table
 from mo_times.dates import Date
 from mo_times.durations import HOUR, MINUTE
 from mo_times.timer import Timer
-
-_elasticsearch = None
+from pyLibrary.env import elasticsearch
+from pyLibrary.env.elasticsearch import es_type_to_json_type
 
 MAX_COLUMN_METADATA_AGE = 12 * HOUR
 ENABLE_META_SCAN = False
-DEBUG = False
+DEBUG = True
 TOO_OLD = 2*HOUR
 OLD_METADATA = MINUTE
 TEST_TABLE_PREFIX = "testing"  # USED TO TURN OFF COMPLAINING ABOUT TEST INDEXES
@@ -60,19 +61,18 @@ class FromESMetadata(Schema):
 
     @override
     def __init__(self, host, index, alias=None, name=None, port=9200, kwargs=None):
-        global _elasticsearch
         if hasattr(self, "settings"):
             return
 
-        from jx_python.containers.list_usingPythonList import ListContainer
-        from pyLibrary.env import elasticsearch as _elasticsearch
-
+        self.too_old = TOO_OLD
         self.settings = kwargs
         self.default_name = coalesce(name, alias, index)
-        self.default_es = _elasticsearch.Cluster(kwargs=kwargs)
+        self.default_es = elasticsearch.Cluster(kwargs=kwargs)
+        self.index_does_not_exist = set()
         self.todo = Queue("refresh metadata", max=100000, unique=True)
 
         self.es_metadata = Null
+        self.abs_columns = set()
         self.last_es_metadata = Date.now()-OLD_METADATA
 
         self.meta=Data()
@@ -104,7 +104,16 @@ class FromESMetadata(Schema):
     def _upsert_column(self, c):
         # ASSUMING THE  self.meta.columns.locker IS HAD
         existing_columns = self.meta.columns.find(c.es_index, c.names["."])
-        if not existing_columns:
+        for canonical in existing_columns:
+            if canonical.type == c.type and canonical is not c:
+                set_default(c.names, canonical.names)
+                for key in Column.__slots__:
+                    canonical[key] = c[key]
+                if DEBUG:
+                    Log.note("todo: {{table}}::{{column}}", table=canonical.es_index, column=canonical.es_column)
+                self.todo.add(canonical)
+                break
+        else:
             self.meta.columns.add(c)
             self.todo.add(c)
 
@@ -115,57 +124,41 @@ class FromESMetadata(Schema):
                 cols = self.meta.columns.find("meta.columns", None)
                 for cc in cols:
                     cc.partitions = cc.cardinality = None
-                    cc.last_updated = Date.now()
+                    cc.last_updated = Date.now() - TOO_OLD
                 self.todo.extend(cols)
-        else:
-            canonical = existing_columns[0]
-            if canonical is not c:
-                set_default(c.names, canonical.names)
-                for key in Column.__slots__:
-                    canonical[key] = c[key]
-            if DEBUG:
-                Log.note("todo: {{table}}::{{column}}", table=canonical.es_index, column=canonical.es_column)
-            self.todo.add(canonical)
 
     def _get_columns(self, table=None):
         # TODO: HANDLE MORE THEN ONE ES, MAP TABLE SHORT_NAME TO ES INSTANCE
         table_path = split_field(table)
         es_index = table_path[0]
-        query_path = join_field(table_path[1:])
         meta = self.es_metadata.indices[es_index]
         if not meta or self.last_es_metadata < Date.now() - OLD_METADATA:
             self.es_metadata = self.default_es.get_metadata(force=True)
             meta = self.es_metadata.indices[es_index]
 
-        for _, properties in meta.mappings.items():
+        for data_type, properties in meta.mappings.items():
+            if data_type == "_default_":
+                continue
             properties.properties["_id"] = {"type": "string", "index": "not_analyzed"}
             self._parse_properties(meta.index, properties, meta)
 
     def _parse_properties(self, abs_index, properties, meta):
         # IT IS IMPORTANT THAT NESTED PROPERTIES NAME ALL COLUMNS, AND
         # ALL COLUMNS ARE GIVEN NAMES FOR ALL NESTED PROPERTIES
-        abs_columns = _elasticsearch.parse_properties(abs_index, None, properties.properties)
-        abs_columns = abs_columns.filter(  # TODO: REMOVE WHEN jobs PROPERTY EXPLOSION IS CONTAINED
-            lambda r: not r.es_column.startswith("other.") and
-                      not r.es_column.startswith("previous_values.cf_") and
-                      not r.es_index.startswith("debug") and
-                      r.es_column.find("=") == -1 and
-                      r.es_column.find(" ") == -1
-        )
-
         def add_column(c, query_path):
-            c.last_updated = Date.now()
+            c.last_updated = Date.now() - TOO_OLD
             if query_path[0] != ".":
                 c.names[query_path[0]] = relative_field(c.names["."], query_path[0])
 
             with self.meta.columns.locker:
-                self._upsert_column(c)
                 for alias in meta.aliases:
-                    c = copy(c)
-                    c.es_index = alias
-                    c.type = es_type_to_json_type[c.type]
-                    self._upsert_column(c)
+                    c_ = copy(c)
+                    c_.es_index = alias
+                    self._upsert_column(c_)
+                self._upsert_column(c)
 
+        abs_columns = elasticsearch.parse_properties(abs_index, None, properties.properties)
+        self.abs_columns.update(abs_columns)
         with Timer("upserting {{num}} columns", {"num": len(abs_columns)}, debug=DEBUG):
             # LIST OF EVERY NESTED PATH
             query_paths = [[c.es_column] for c in abs_columns if c.type == "nested"]
@@ -182,12 +175,15 @@ class FromESMetadata(Schema):
                         break
             for q in query_paths:
                 q.append(".")
-            query_paths.append(ROOT_PATH)
+            query_paths.append(SELF_PATH)
 
             # ADD RELATIVE COLUMNS
             for abs_column in abs_columns:
+                abs_column = abs_column.__copy__()
+                abs_column.type = es_type_to_json_type[abs_column.type]
                 for query_path in query_paths:
                     add_column(abs_column, query_path)
+        pass
 
     def query(self, _query):
         return self.meta.columns.query(QueryOp(set_default(
@@ -243,122 +239,164 @@ class FromESMetadata(Schema):
             self._get_columns(table=table_name)  # TO TEST WHAT HAPPENED
             Log.error("no columns for {{table}}?!", table=table_name)
 
-    def _update_cardinality(self, c):
+    def _update_cardinality(self, column):
         """
         QUERY ES TO FIND CARDINALITY AND PARTITIONS FOR A SIMPLE COLUMN
         """
-        if c.type in STRUCT:
+        if column.es_index in self.index_does_not_exist:
+            return
+
+        if column.type in STRUCT:
             Log.error("not supported")
         try:
-            if c.es_index == "meta.columns":
+            if column.es_index == "meta.columns":
                 with self.meta.columns.locker:
-                    partitions = jx.sort([g[c.es_column] for g, _ in jx.groupby(self.meta.columns, c.es_column) if g[c.es_column] != None])
+                    partitions = jx.sort([g[column.es_column] for g, _ in jx.groupby(self.meta.columns, column.es_column) if g[column.es_column] != None])
                     self.meta.columns.update({
                         "set": {
                             "partitions": partitions,
                             "count": len(self.meta.columns),
                             "cardinality": len(partitions),
+                            "multi": 1,
                             "last_updated": Date.now()
                         },
-                        "where": {"eq": {"es_index": c.es_index, "es_column": c.es_column}}
+                        "where": {"eq": {"es_index": column.es_index, "es_column": column.es_column}}
                     })
                 return
-            if c.es_index == "meta.tables":
+            if column.es_index == "meta.tables":
                 with self.meta.columns.locker:
-                    partitions = jx.sort([g[c.es_column] for g, _ in jx.groupby(self.meta.tables, c.es_column) if g[c.es_column] != None])
+                    partitions = jx.sort([g[column.es_column] for g, _ in jx.groupby(self.meta.tables, column.es_column) if g[column.es_column] != None])
                     self.meta.columns.update({
                         "set": {
                             "partitions": partitions,
                             "count": len(self.meta.tables),
                             "cardinality": len(partitions),
+                            "multi": 1,
                             "last_updated": Date.now()
                         },
-                        "where": {"eq": {"es_index": c.es_index, "es_column": c.es_column}}
+                        "where": {"eq": {"es_index": column.es_index, "es_column": column.es_column}}
                     })
                 return
 
-            es_index = c.es_index.split(".")[0]
-            result = self.default_es.post("/" + es_index + "/_search", data={
-                "aggs": {c.names["."]: _counting_query(c)},
-                "size": 0
-            })
-            r = result.aggregations.values()[0]
-            count = result.hits.total
-            cardinality = coalesce(r.value, r._nested.value, 0 if r.doc_count==0 else None)
-            if cardinality == None:
-                Log.error("logic error")
+            es_index = column.es_index.split(".")[0]
+
+            is_text = [cc for cc in self.abs_columns if cc.es_column == column.es_column and cc.type == "text"]
+            if is_text:
+                # text IS A MULTIVALUE STRING THAT CAN ONLY BE FILTERED
+                result = self.default_es.post("/" + es_index + "/_search", data={
+                    "aggs": {
+                        "count": {"filter": {"match_all": {}}}
+                    },
+                    "size": 0
+                })
+                count = result.hits.total
+                cardinality = 1001
+                multi = 1001
+            else:
+                result = self.default_es.post("/" + es_index + "/_search", data={
+                    "aggs": {
+                        "count": _counting_query(column),
+                        "multi": {"max": {"script": "doc[" + quote(column.es_column) + "].values.size()"}}
+                    },
+                    "size": 0
+                })
+                r = result.aggregations.count
+                count = result.hits.total
+                cardinality = coalesce(r.value, r._nested.value, r.doc_count)
+                multi = coalesce(r.multi.value, 1)
+                if cardinality == None:
+                   Log.error("logic error")
 
             query = Data(size=0)
-            if cardinality > 1000 or (count >= 30 and cardinality == count) or (count >= 1000 and cardinality / count > 0.99):
+
+            if column.es_column == "_id":
+                with self.meta.columns.locker:
+                    self.meta.columns.update({
+                        "set": {
+                            "count": cardinality,
+                            "cardinality": cardinality,
+                            "multi": 1,
+                            "last_updated": Date.now()
+                        },
+                        "clear": ["partitions"],
+                        "where": {"eq": {"es_index": column.es_index, "es_column": column.es_column}}
+                    })
+                return
+            elif cardinality > 1000 or (count >= 30 and cardinality == count) or (count >= 1000 and cardinality / count > 0.99):
                 if DEBUG:
-                    Log.note("{{table}}.{{field}} has {{num}} parts", table=c.es_index, field=c.es_column, num=cardinality)
+                    Log.note("{{table}}.{{field}} has {{num}} parts", table=column.es_index, field=column.es_column, num=cardinality)
                 with self.meta.columns.locker:
                     self.meta.columns.update({
                         "set": {
                             "count": count,
                             "cardinality": cardinality,
+                            "multi": multi,
                             "last_updated": Date.now()
                         },
                         "clear": ["partitions"],
-                        "where": {"eq": {"es_index": c.es_index, "es_column": c.es_column}}
+                        "where": {"eq": {"es_index": column.es_index, "es_column": column.es_column}}
                     })
                 return
-            elif c.type in _elasticsearch.ES_NUMERIC_TYPES and cardinality > 30:
+            elif column.type in elasticsearch.ES_NUMERIC_TYPES and cardinality > 30:
                 if DEBUG:
-                    Log.note("{{field}} has {{num}} parts", field=c.name, num=cardinality)
+                    Log.note("{{field}} has {{num}} parts", field=column.es_index, num=cardinality)
                 with self.meta.columns.locker:
                     self.meta.columns.update({
                         "set": {
                             "count": count,
                             "cardinality": cardinality,
+                            "multi": multi,
                             "last_updated": Date.now()
                         },
                         "clear": ["partitions"],
-                        "where": {"eq": {"es_index": c.es_index, "es_column": c.es_column}}
+                        "where": {"eq": {"es_index": column.es_index, "es_column": column.es_column}}
                     })
                 return
-            elif len(c.nested_path) != 1:
-                query.aggs[literal_field(c.names["."])] = {
-                    "nested": {"path": c.nested_path[0]},
-                    "aggs": {"_nested": {"terms": {"field": c.es_column, "size": 0}}}
+            elif len(column.nested_path) != 1:
+                query.aggs["_"] = {
+                    "nested": {"path": column.nested_path[0]},
+                    "aggs": {"_nested": {"terms": {"field": column.es_column}}}
                 }
+            elif cardinality == 0:
+                query.aggs["_"] = {"terms": {"field": column.es_column}}
             else:
-                query.aggs[literal_field(c.names["."])] = {"terms": {"field": c.es_column, "size": 0}}
+                query.aggs["_"] = {"terms": {"field": column.es_column, "size": cardinality}}
 
             result = self.default_es.post("/" + es_index + "/_search", data=query)
 
-            aggs = result.aggregations.values()[0]
+            aggs = result.aggregations._
             if aggs._nested:
                 parts = jx.sort(aggs._nested.buckets.key)
             else:
                 parts = jx.sort(aggs.buckets.key)
 
             if DEBUG:
-                Log.note("{{field}} has {{parts}}", field=c.name, parts=parts)
+                Log.note("{{field}} has {{parts}}", field=column.names["."], parts=parts)
             with self.meta.columns.locker:
                 self.meta.columns.update({
                     "set": {
                         "count": count,
                         "cardinality": cardinality,
+                        "multi": multi,
                         "partitions": parts,
                         "last_updated": Date.now()
                     },
-                    "where": {"eq": {"es_index": c.es_index, "es_column": c.es_column}}
+                    "where": {"eq": {"es_index": column.es_index, "es_column": column.es_column}}
                 })
         except Exception as e:
-            if "IndexMissingException" in e and c.es_index.startswith(TEST_TABLE_PREFIX):
+            # CAN NOT IMPORT: THE TEST MODULES SETS UP LOGGING
+            # from tests.test_jx import TEST_TABLE
+            TEST_TABLE = "testdata"
+            is_missing_index = any(w in e for w in ["IndexMissingException", "index_not_found_exception"])
+            is_test_table = any(column.es_index.startswith(t) for t in [TEST_TABLE_PREFIX, TEST_TABLE])
+            if is_missing_index and is_test_table:
+                # WE EXPECT TEST TABLES TO DISAPPEAR
                 with self.meta.columns.locker:
                     self.meta.columns.update({
-                        "set": {
-                            "count": 0,
-                            "cardinality": 0,
-                            "last_updated": Date.now()
-                        },
-                        "clear":[
-                            "partitions"
-                        ],
-                        "where": {"eq": {"es_index": c.es_index, "es_column": c.es_column}}
+                        "clear": ".",
+                        "where": {"eq": {"es_index": column.es_index}}
                     })
+                self.index_does_not_exist.add(column.es_index)
             else:
                 self.meta.columns.update({
                     "set": {
@@ -367,11 +405,12 @@ class FromESMetadata(Schema):
                     "clear": [
                         "count",
                         "cardinality",
+                        "multi",
                         "partitions",
                     ],
-                    "where": {"eq": {"names.\\.": ".", "es_index": c.es_index, "es_column": c.es_column}}
+                    "where": {"eq": {"names.\\.": ".", "es_index": column.es_index, "es_column": column.es_column}}
                 })
-                Log.warning("Could not get {{col.es_index}}.{{col.es_column}} info", col=c, cause=e)
+                Log.warning("Could not get {{col.es_index}}.{{col.es_column}} info", col=column, cause=e)
 
     def monitor(self, please_stop):
         please_stop.on_go(lambda: self.todo.add(THREAD_STOP))
@@ -386,7 +425,11 @@ class FromESMetadata(Schema):
                         ]
                         if old_columns:
                             if DEBUG:
-                                Log.note("Old columns wth dates {{dates|json}}", dates=wrap(old_columns).last_updated)
+                                Log.note(
+                                    "Old columns {{names|json}} last updated {{dates|json}}",
+                                    names=wrap(old_columns).es_column,
+                                    dates=wrap(old_columns).last_updated
+                                )
                             self.todo.extend(old_columns)
                             # TEST CONSISTENCY
                             for c, d in product(list(self.todo.queue), list(self.todo.queue)):
@@ -396,11 +439,18 @@ class FromESMetadata(Schema):
                             if DEBUG:
                                 Log.note("no more metatdata to update")
 
+                if DEBUG:
+                    Log.note("update {{table}}.{{column}}", table=column.es_index, column=column.es_column)
                 column = self.todo.pop(Till(seconds=(10*MINUTE).seconds))
                 if column:
-                    if DEBUG:
-                        Log.note("update {{table}}.{{column}}", table=column.es_index, column=column.es_column)
-                    if column.type in STRUCT:
+                    if column.es_index in self.index_does_not_exist:
+                        with self.meta.columns.locker:
+                            self.meta.columns.update({
+                                "clear": ".",
+                                "where": {"eq": {"es_index": column.es_index}}
+                            })
+                        continue
+                    if column.type in STRUCT or column.es_column.endswith("." + EXISTS_TYPE):
                         with self.meta.columns.locker:
                             column.last_updated = Date.now()
                         continue
@@ -434,6 +484,7 @@ class FromESMetadata(Schema):
                     "clear":[
                         "count",
                         "cardinality",
+                        "multi",
                         "partitions",
                     ],
                     "where": {"eq": {"es_index": c.es_index, "es_column": c.es_column}}
@@ -441,8 +492,11 @@ class FromESMetadata(Schema):
             if DEBUG:
                 Log.note("Could not get {{col.es_index}}.{{col.es_column}} info", col=c)
 
+
 def _counting_query(c):
-    if len(c.nested_path) != 1:
+    if c.es_column == "_id":
+        return {"filter": {"match_all": {}}}
+    elif len(c.nested_path) != 1:
         return {
             "nested": {
                 "path": c.nested_path[0]  # FIRST ONE IS LONGEST
@@ -450,7 +504,7 @@ def _counting_query(c):
             "aggs": {
                 "_nested": {"cardinality": {
                     "field": c.es_column,
-                    "precision_threshold": 10 if c.type in _elasticsearch.ES_NUMERIC_TYPES else 100
+                    "precision_threshold": 10 if c.type in elasticsearch.ES_NUMERIC_TYPES else 100
                 }}
             }
         }

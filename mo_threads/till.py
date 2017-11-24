@@ -18,7 +18,7 @@ from __future__ import unicode_literals
 from thread import allocate_lock as _allocate_lock
 from time import sleep, time
 
-from future.utils import text_type
+from mo_future import text_type
 
 from mo_threads.signal import Signal
 
