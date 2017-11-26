@@ -984,10 +984,15 @@ class EqOp(Expression):
 
         if isinstance(lhs, Literal) and isinstance(rhs, Literal):
             return TRUE if builtin_ops["eq"](lhs.value, rhs.value) else FALSE
-        elif isinstance(lhs, Literal) and isinstance(rhs, Variable):
-            return EqOp("eq", [rhs, lhs])
         else:
-            return EqOp("eq", [lhs, rhs])
+            return WhenOp(
+                "when",
+                lhs.missing(),
+                **{
+                    "then": rhs.missing(),
+                    "else": BasicEqOp("eq", [lhs, rhs])
+                }
+            ).partial_eval()
 
 
 class NeOp(Expression):
@@ -1319,6 +1324,8 @@ class BooleanOp(Expression):
             return TRUE
         elif term in (FALSE, NULL):
             return FALSE
+        elif term.type == BOOLEAN:
+            return term
 
         is_missing = term.missing().partial_eval()
         if is_missing is TRUE:
@@ -1326,10 +1333,8 @@ class BooleanOp(Expression):
         elif is_missing is FALSE:
             if term.type in [INTEGER, NUMBER, STRING]:
                 return TRUE
-            elif term.type == BOOLEAN:
-                return term
-
-        return BooleanOp("boolean", term)
+        else:
+            return NotOp("not", is_missing).partial_eval()
 
 
 class IsBooleanOp(Expression):
@@ -2253,7 +2258,7 @@ class FindOp(Expression):
             OrOp("or", [
                 self.value.missing(),
                 self.find.missing(),
-                EqOp("eq", [index, Literal(None, -1)])
+                BasicEqOp("eq", [index, Literal(None, -1)])
             ]),
             **{"then": self.default, "else": index}
         ).partial_eval()
@@ -2533,8 +2538,8 @@ class CaseOp(Expression):
         if not isinstance(term, (list, tuple)):
             Log.error("case expression requires a list of `when` sub-clauses")
         Expression.__init__(self, op, term)
-        if len(term) == 0:
-            self.whens = [NULL]
+        if len(term) <= 1:
+            Log.error("Expecting at least two clauses")
         else:
             for w in term[:-1]:
                 if not isinstance(w, WhenOp) or w.els_:
@@ -2572,16 +2577,18 @@ class CaseOp(Expression):
             when = w.when.partial_eval()
             if when is TRUE:
                 whens.append(w.then.partial_eval())
-                return CaseOp("case", whens)
+                break
             elif when is FALSE:
                 pass
             else:
                 whens.append(WhenOp("when", when, **{"then": w.then.partial_eval()}))
-
-        if not whens:
-            return self.whens[-1].partial_eval()
         else:
-            return CaseOp("case", whens+[self.whens[-1].partial_eval()])
+            whens.append(self.whens[-1].partial_eval())
+
+        if len(whens) == 1:
+            return whens[0]
+        else:
+            return CaseOp("case", whens)
 
 
 

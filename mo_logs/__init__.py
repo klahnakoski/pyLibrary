@@ -17,10 +17,9 @@ import sys
 from collections import Mapping
 from datetime import datetime
 
-from mo_future import text_type
 from mo_dots import coalesce, listwrap, wrap, unwrap, unwraplist, set_default
-
 from mo_logs import constants
+from mo_future import text_type
 from mo_logs.exceptions import Except, suppress_exception
 from mo_logs.strings import indent
 
@@ -55,7 +54,6 @@ class Log(object):
         constants - UPDATE MODULE CONSTANTS AT STARTUP (PRIMARILY INTENDED TO CHANGE DEBUG STATE)
         """
         global _Thread
-        from mo_threads import Thread as _Thread
         _ = _Thread
 
         if not settings:
