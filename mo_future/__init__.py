@@ -24,6 +24,7 @@ if PY3:
     binary_type = bytes
     long = int
     xrange = range
+    round = round
 
 else:
     import __builtin__
@@ -32,4 +33,5 @@ else:
     binary_type = str
     long = __builtin__.long
     xrange = __builtin__.xrange
+    round = __builtin__.round
 

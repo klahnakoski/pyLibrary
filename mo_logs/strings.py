@@ -23,11 +23,9 @@ from datetime import timedelta, date
 from json.encoder import encode_basestring
 
 from mo_dots import coalesce, wrap, get_module
-from mo_future import text_type, xrange, binary_type
+from mo_future import text_type, xrange, binary_type, round as _round
 from mo_logs.convert import datetime2unix, datetime2string, value2json, milli2datetime, unix2datetime
 from mo_logs.url import value2url_param
-
-_round = __builtin__.round
 
 _json_encoder = None
 _Log = None
