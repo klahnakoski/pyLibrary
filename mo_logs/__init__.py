@@ -22,8 +22,9 @@ from mo_future import text_type
 from mo_logs.exceptions import Except, suppress_exception
 from mo_logs.strings import indent
 from mo_logs import constants
-from mo_threads import Thread
 
+
+_Thread = None
 
 class Log(object):
     """
@@ -51,6 +52,8 @@ class Log(object):
                     USE THE LONG FORM TO SET FILENAME {"enabled": True, "filename": "profile.tab"}
         constants - UPDATE MODULE CONSTANTS AT STARTUP (PRIMARILY INTENDED TO CHANGE DEBUG STATE)
         """
+        global _Thread
+
         if not settings:
             return
         settings = wrap(settings)
@@ -60,8 +63,8 @@ class Log(object):
         cls.settings = settings
         cls.trace = coalesce(settings.trace, False)
         if cls.trace:
-            from mo_threads import Thread
-            _ = Thread
+            from mo_threads import Thread as _Thread
+            _ = _Thread
 
         if settings.cprofile is False:
             settings.cprofile = {"enabled": False}
@@ -205,7 +208,7 @@ class Log(object):
                 "file": text_type(f.f_code.co_filename.split(os.sep)[-1]),
                 "method": text_type(f.f_code.co_name)
             }
-            thread = Thread.current()
+            thread = _Thread.current()
             log_params.thread = {"name": thread.name, "id": thread.id}
         else:
             log_template = "{{timestamp|datetime}} - " + template.replace("{{", "{{params.")
