@@ -12,8 +12,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import HTMLParser
-import StringIO
 import ast
 import base64
 import cgi
@@ -22,20 +20,18 @@ import gzip
 import hashlib
 import json
 import re
-from collections import Mapping
 from decimal import Decimal
 from io import BytesIO
 from tempfile import TemporaryFile
 
-from mo_future import text_type
-
 import mo_json
 import mo_math
+from mo_dots import wrap, unwrap, unwraplist, concat_field
+from mo_future import text_type, HTMLParser, StringIO
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_logs.strings import expand_template, quote
 from mo_times.dates import Date
-from mo_dots import wrap, unwrap, unwraplist, concat_field
 
 """
 DUE TO MY POOR MEMORY, THIS IS A LIST OF ALL CONVERSION ROUTINES
@@ -416,7 +412,7 @@ def latin12unicode(value):
     if isinstance(value, text_type):
         Log.error("can not convert unicode from latin1")
     try:
-        return text_type(value.decode('iso-8859-1'))
+        return text_type(value.decode('latin1'))
     except Exception as e:
         Log.error("Can not convert {{value|quote}} to unicode", value=value)
 

@@ -646,7 +646,7 @@ def filter(data, where):
 
     try:
         return drill_filter(where, data)
-    except Exception, _:
+    except Exception as _:
         # WOW!  THIS IS INEFFICIENT!
         return wrap([unwrap(d) for d in drill_filter(where, [DataObject(d) for d in data])])
 

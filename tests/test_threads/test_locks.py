@@ -13,17 +13,17 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import json
-from thread import allocate_lock as _allocate_lock
 from time import time
 
 import requests
+
 from mo_collections.queue import Queue
+from mo_future import allocate_lock as _allocate_lock
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from mo_times.timer import Timer
-
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
+from mo_times.timer import Timer
 
 ACTIVEDATA_URL = "https://activedata.allizom.org/query"
 

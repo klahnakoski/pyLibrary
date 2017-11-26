@@ -17,22 +17,34 @@ import json
 import sys
 from collections import Mapping
 
-from mo_future import text_type
+from mo_future import text_type, PY2
 from mo_dots import Data, listwrap, unwraplist, set_default, Null
 
 from mo_logs.strings import indent, expand_template
 
-json_encoder = json.JSONEncoder(
-    skipkeys=False,
-    ensure_ascii=False,  # DIFF FROM DEFAULTS
-    check_circular=True,
-    allow_nan=True,
-    indent=None,
-    separators=None,
-    encoding='utf-8',
-    default=None,
-    sort_keys=False
-).encode
+if PY2:
+    json_encoder = json.JSONEncoder(
+        skipkeys=False,
+        ensure_ascii=False,  # DIFF FROM DEFAULTS
+        check_circular=True,
+        allow_nan=True,
+        indent=None,
+        separators=None,
+        encoding='utf-8',  # DIFF FROM DEFAULTS
+        default=None,
+        sort_keys=False
+    ).encode
+else:
+    json_encoder = json.JSONEncoder(
+        skipkeys=False,
+        ensure_ascii=False,  # DIFF FROM DEFAULTS
+        check_circular=True,
+        allow_nan=True,
+        indent=None,
+        separators=None,
+        default=None,
+        sort_keys=False
+    ).encode
 
 
 FATAL = "FATAL"
