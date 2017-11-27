@@ -18,7 +18,7 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from time import time as _time
 
-from mo_future import text_type
+from mo_future import text_type, PY3
 
 from mo_dots import Null
 from mo_logs.strings import deformat
@@ -438,7 +438,10 @@ def _unix2Date(unix):
     return output
 
 
-delchars = "".join(c.decode("latin1") for c in map(chr, range(256)) if not c.decode("latin1").isalnum())
+if PY3:
+    delchars = "".join(c for c in map(chr, range(256)) if not c.isalnum())
+else:
+    delchars = "".join(c.decode("latin1") for c in map(chr, range(256)) if not c.decode("latin1").isalnum())
 
 
 def deformat(value):

@@ -27,7 +27,7 @@ from tempfile import TemporaryFile
 import mo_json
 import mo_math
 from mo_dots import wrap, unwrap, unwraplist, concat_field
-from mo_future import text_type, HTMLParser, StringIO
+from mo_future import text_type, HTMLParser, StringIO, PY3, long
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception
 from mo_logs.strings import expand_template, quote
@@ -77,7 +77,7 @@ def datetime2unix(d):
         diff = d - epoch
         return Decimal(long(diff.total_seconds() * 1000000)) / 1000000
     except Exception as e:
-        Log.error("Can not convert {{value}}",  value= d, cause=e)
+        Log.error("Can not convert {{value}}", value=d, cause=e)
 
 
 def datetime2milli(d):
@@ -487,9 +487,15 @@ def ini2value(ini_content):
     return wrap(output)
 
 
-_map2url = {chr(i): latin12unicode(chr(i)) for i in range(32, 256)}
-for c in " {}<>;/?:@&=+$,":
-    _map2url[c] = "%" + int2hex(ord(c), 2)
+if PY3:
+    _map2url = {chr(i).encode('latin1'): chr(i) for i in range(32, 256)}
+    for c in " {}<>;/?:@&=+$,":
+        _map2url[c] = "%" + int2hex(ord(c), 2)
+else:
+    _map2url = {chr(i): chr(i).decode('latin1') for i in range(32, 256)}
+    for c in " {}<>;/?:@&=+$,":
+        _map2url[c] = "%" + int2hex(ord(c), 2)
+
 
 
 def _unPipe(value):

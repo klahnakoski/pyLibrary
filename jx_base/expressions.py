@@ -17,7 +17,7 @@ import operator
 from collections import Mapping
 from decimal import Decimal
 
-from mo_future import text_type
+from mo_future import text_type, utf8_json_encoder, get_function_name
 
 import mo_json
 from jx_base import OBJECT, python_type_to_json_type, BOOLEAN, NUMBER, INTEGER, STRING
@@ -40,7 +40,7 @@ def extend(cls):
     :return:
     """
     def extender(func):
-        setattr(cls, func.func_name, func)
+        setattr(cls, get_function_name(func), func)
         return func
     return extender
 
@@ -436,17 +436,7 @@ class ScriptOp(Expression):
         return str(self.script)
 
 
-_json_encoder = json.JSONEncoder(
-    skipkeys=False,
-    ensure_ascii=False,  # DIFF FROM DEFAULTS
-    check_circular=True,
-    allow_nan=True,
-    indent=None,
-    separators=(COMMA, COLON),
-    encoding='utf8',
-    default=None,
-    sort_keys=True
-).encode
+_json_encoder = utf8_json_encoder
 
 
 def value2json(value):
@@ -474,7 +464,7 @@ class Literal(Expression):
         if isinstance(term, Mapping) and term.date:
             # SPECIAL CASE
             return DateOp(None, term.date)
-        return object.__new__(cls, op, term)
+        return object.__new__(cls)
 
     def __init__(self, op, term):
         Expression.__init__(self, "", None)

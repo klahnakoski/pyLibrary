@@ -67,24 +67,13 @@ def int2hex(value, size):
     return (("0" * size) + hex(value)[2:])[-size:]
 
 
-def latin12unicode(value):
-    if isinstance(value, text_type):
-        from mo_logs import Log
-        Log.error("can not convert unicode from latin1")
-    try:
-        return text_type(value.decode('latin1'))
-    except Exception as e:
-        from mo_logs import Log
-        Log.error("Can not convert {{value|quote}} to unicode", value=value, cause=e)
-
-
 if PY3:
     _map2url = {chr(i).encode('latin1'): chr(i) for i in range(32, 256)}
     for c in [b" ", b"{", b"}", b"<", b">", b";", b"/", b"?", b":", b"@", b"&", b"=", b"+", b"$", b",", b"%"]:
         _map2url[c] = "%" + int2hex(ord(c.decode('latin1')), 2)
 else:
     _map2url = {chr(i): chr(i).decode('latin1') for i in range(32, 256)}
-    for c in [b" ", b"{", b"}", b"<", b">", b";", b"/", b"?", b":", b"@", b"&", b"=", b"+", b"$", b",", b"%"]:
+    for c in b" {}<>;/?:@&=+$,%":
         _map2url[c] = "%" + int2hex(ord(c), 2)
 
 

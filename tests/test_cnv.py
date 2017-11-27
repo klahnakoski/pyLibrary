@@ -11,6 +11,7 @@
 import datetime
 import unittest
 
+from mo_future import text_type
 from pyLibrary import convert
 
 
@@ -29,7 +30,7 @@ class TestConvert(unittest.TestCase):
         expected = 1389090060000
         assert result == expected
 
-        result = unicode(convert.datetime2milli(datetime.datetime(2014, 1, 7, 10, 21, 0)))
+        result = text_type(convert.datetime2milli(datetime.datetime(2014, 1, 7, 10, 21, 0)))
         expected = u"1389090060000"
         assert result == expected
 

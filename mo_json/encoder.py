@@ -23,7 +23,7 @@ from math import floor
 from past.builtins import xrange
 
 from mo_dots import Data, FlatList, NullType, Null
-from mo_future import text_type, binary_type, long
+from mo_future import text_type, binary_type, long, utf8_json_encoder
 from mo_json import ESCAPE_DCT, scrub, float2json
 from mo_logs import Except
 from mo_logs.strings import utf82unicode, quote
@@ -118,17 +118,7 @@ class cPythonJSONEncoder(object):
     def __init__(self, sort_keys=True):
         object.__init__(self)
 
-        self.encoder = json.JSONEncoder(
-            skipkeys=False,
-            ensure_ascii=False,  # DIFF FROM DEFAULTS
-            check_circular=True,
-            allow_nan=True,
-            indent=None,
-            separators=(COMMA, COLON),
-            encoding='utf8',
-            default=None,
-            sort_keys=sort_keys
-        )
+        self.encoder = utf8_json_encoder
 
     def encode(self, value, pretty=False):
         if pretty:
@@ -136,7 +126,7 @@ class cPythonJSONEncoder(object):
 
         try:
             scrubbed = scrub(value)
-            return text_type(self.encoder.encode(scrubbed))
+            return text_type(self.encoder(scrubbed))
         except Exception as e:
             from mo_logs.exceptions import Except
             from mo_logs import Log

@@ -43,14 +43,12 @@ class Data(MutableMapping):
         else:
             if args:
                 args0 = args[0]
-                if isinstance(args0, dict):
-                    _set(self, "_dict", args0)
-                elif isinstance(args0, Data):
+                if isinstance(args0, Data):
                     _set(self, "_dict", _get(args0, "_dict"))
-                elif isinstance(args0, list):
-                    _set(self, "_dict", dict(args0))
+                elif isinstance(args0, dict):
+                    _set(self, "_dict", args0)
                 else:
-                    raise TypeError()
+                    _set(self, "_dict", dict(args0))
             elif kwargs:
                 _set(self, "_dict", unwrap(kwargs))
             else:
@@ -237,9 +235,6 @@ class Data(MutableMapping):
         return wrap(deepcopy(d, memo))
 
     def __delitem__(self, key):
-        if isinstance(key, str):
-            key = key.decode("utf8")
-
         if key.find(".") == -1:
             d = _get(self, "_dict")
             d.pop(key, None)
