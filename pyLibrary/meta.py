@@ -330,7 +330,7 @@ temp = {{class_name}}
 def _exec(code, name):
     temp = None
     try:
-        exec (code)
+        exec(code)
         globals()[name] = temp
         return temp
     except Exception as e:

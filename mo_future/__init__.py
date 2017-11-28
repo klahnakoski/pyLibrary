@@ -31,7 +31,8 @@ if PY3:
     long = int
 
     xrange = range
-    generator_type = collections.Iterable
+    filter_type = type(filter(lambda x: True, []))
+    generator_types = (collections.Iterable, filter_type)
 
     round = round
     from html.parser import HTMLParser
@@ -71,13 +72,13 @@ else:
     long = __builtin__.long
 
     xrange = __builtin__.xrange
-    generator_type = GeneratorType
+    generator_types = (GeneratorType,)
 
     round = __builtin__.round
     import HTMLParser
     from urlparse import urlparse
     from StringIO import StringIO
-    from thread import allocate_lock, get_ident, start_new_thread
+    from thread import allocate_lock, get_ident, start_new_thread, interrupt_main
 
     def get_function_name(func):
         return func.func_name
