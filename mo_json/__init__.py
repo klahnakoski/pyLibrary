@@ -150,7 +150,7 @@ def _scrub(value, is_done, stack, scrub_text, scrub_number):
 
         output = {}
         for k, v in value.iteritems():
-            if isinstance(k, basestring):
+            if isinstance(k, text_type):
                 pass
             elif hasattr(k, "__unicode__"):
                 k = text_type(k)
@@ -191,7 +191,7 @@ def _scrub(value, is_done, stack, scrub_text, scrub_number):
             output.append(v)
         return output
     elif hasattr(value, '__call__'):
-        return repr(value)
+        return text_type(repr(value))
     else:
         return _scrub(DataObject(value), is_done, stack, scrub_text, scrub_number)
 
@@ -219,7 +219,7 @@ def value2json(obj, pretty=False, sort_keys=False, keep_whitespace=True):
             return json
         except Exception:
             pass
-        Log.error("Can not encode into JSON: {{value}}", value=repr(obj), cause=e)
+        Log.error("Can not encode into JSON: {{value}}", value=text_type(repr(obj)), cause=e)
 
 
 def remove_line_comment(line):

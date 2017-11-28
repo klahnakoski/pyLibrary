@@ -11,6 +11,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import mo_json
+from mo_future import text_type
+
 from mo_dots import set_default, wrap, _get_attr, Null, coalesce
 from mo_json import value2json
 from mo_logs import Log
@@ -217,7 +220,7 @@ def DataClass(name, columns, constraint=True):
     :return: The class that has been created
     """
 
-    columns = wrap([{"name": c, "required": True, "nulls": False, "type": object} if isinstance(c, basestring) else c for c in columns])
+    columns = wrap([{"name": c, "required": True, "nulls": False, "type": object} if isinstance(c, text_type) else c for c in columns])
     slots = columns.name
     required = wrap(filter(lambda c: c.required and not c.nulls and not c.default, columns)).name
     nulls = wrap(filter(lambda c: c.nulls, columns)).name
@@ -336,10 +339,10 @@ def _exec(code, name):
 
 def value2quote(value):
     # RETURN PRETTY PYTHON CODE FOR THE SAME
-    if isinstance(value, basestring):
+    if isinstance(value, text_type):
         return mo_json.quote(value)
     else:
-        return repr(value)
+        return text_type(repr(value))
 
 
 class extenstion_method(object):

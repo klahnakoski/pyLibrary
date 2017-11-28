@@ -12,8 +12,15 @@ import datetime
 import unittest
 
 from mo_dots import wrap
-from mo_json.typed_encoder import typed_encode, EXISTS_TYPE, NUMBER_TYPE, STRING_TYPE, BOOLEAN_TYPE, NESTED_TYPE
+from mo_json.typed_encoder import EXISTS_TYPE, NUMBER_TYPE, STRING_TYPE, BOOLEAN_TYPE, NESTED_TYPE
 from mo_logs.strings import quote
+from pyLibrary.env.typed_inserter import TypedInserter
+
+
+_encoder = TypedInserter().typed_encode
+
+def typed_encode(value):
+    return _encoder({"value": value})['json']
 
 
 class TestJSON(unittest.TestCase):
@@ -30,7 +37,7 @@ class TestJSON(unittest.TestCase):
         self.assertEqual(test1, expected)
 
     def test_unicode2(self):
-        value = {"comment": b"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"}
+        value = {"comment": "testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"}
         test1 = typed_encode(value)
         expected = u'{' + quote(EXISTS_TYPE) + u':1,"comment":{' + quote(STRING_TYPE) + u':"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"}}'
         self.assertEqual(test1, expected)
@@ -138,13 +145,13 @@ class TestJSON(unittest.TestCase):
     def test_complex_object(self):
         value = wrap({"s": 0, "r": 5})
         test1 = typed_encode(value)
-        expected = u'{' + quote(EXISTS_TYPE) + u':1,"s":{' + quote(NUMBER_TYPE) + u':0},"r":{' + quote(NUMBER_TYPE) + u':5}}'
+        expected = u'{"r":{' + quote(NUMBER_TYPE) + u':5},"s":{' + quote(NUMBER_TYPE) + u':0}, ' + quote(EXISTS_TYPE) + u':1}'
         self.assertEqual(test1, expected)
 
     def test_empty_list1(self):
         value = wrap({"a": []})
         test1 = typed_encode(value)
-        expected = u'{' + quote(EXISTS_TYPE) + u':1,"a":[]}'
+        expected = u'{"a":{' + quote(NESTED_TYPE) + u':[]}, ' + quote(EXISTS_TYPE) + u':1}'
         self.assertEqual(test1, expected)
 
     def test_empty_list2(self):

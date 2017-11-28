@@ -16,6 +16,7 @@ from collections import Mapping
 from types import GeneratorType
 
 from mo_dots import split_field, startswith_field, relative_field, Data, join_field, Null, wrap
+from mo_future import generator_type
 from mo_logs import Log
 
 DEBUG = False
