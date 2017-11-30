@@ -36,7 +36,7 @@ class TestJSON(unittest.TestCase):
             Log.error("expecting unicode json")
 
     def test_unicode2(self):
-        output = value2json({"comment": b"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"})
+        output = value2json({"comment": "testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"})
 
         assert output == u'{"comment":"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"}'
         if not isinstance(output, text_type):
@@ -102,7 +102,7 @@ class TestJSON(unittest.TestCase):
 
     def test_default_python(self):
 
-        test = {"add": Data(start=b"".join([" ", u"â€"]))}
+        test = {"add": Data(start="".join([" ", u"â€"]))}
         output = value2json(test)
 
         expecting = u'{"add":{"start":" â€"}}'

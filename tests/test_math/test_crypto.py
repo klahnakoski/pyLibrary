@@ -24,7 +24,7 @@ class TestCrypto(unittest.TestCase):
         crypto.encrypt("this is a test", Random.bytes(32))
         crypto.encrypt("this is a longer test with more than 16bytes", Random.bytes(32))
         crypto.encrypt("", Random.bytes(32))
-        crypto.encrypt(convert.latin12unicode(b"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"), Random.bytes(32))
+        crypto.encrypt("testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ", Random.bytes(32))
         crypto.encrypt("testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ", Random.bytes(32))
 
     def test_aes_nothing(self):

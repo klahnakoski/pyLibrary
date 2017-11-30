@@ -68,7 +68,7 @@ class TestQb(FuzzyTestCase):
                 {"attach_id": 789, "name": "test2"}
             ]
         }, {
-            "bug_id": 012,
+            "bug_id": 12,
             "attachments": [
                 {"attach_id": 345, "name": "test3"}
             ]
@@ -81,7 +81,7 @@ class TestQb(FuzzyTestCase):
         expected = [
             {"bug_id": 123, "attachments": {"name": "test1"}},
             {"bug_id": 123, "attachments": {"name": "test2"}},
-            {"bug_id": 012, "attachments": {"name": "test3"}}
+            {"bug_id":  12, "attachments": {"name": "test3"}}
         ]
         assert convert.value2json(result) == convert.value2json(expected), "expecting complex result"
 
@@ -135,7 +135,7 @@ class TestQb(FuzzyTestCase):
                 {"attach_id": 789, "name": "test2"}
             ]
         }, {
-            "bug_id": 012,
+            "bug_id": 12,
             "attachments": [
                 {"attach_id": 345, "name": "test3"}
             ]
@@ -199,9 +199,6 @@ class TestQb(FuzzyTestCase):
         ]}
 
         self.assertAlmostEqual(result, expected)
-
-
-
 
     @skip("Not implemented")
     def test_deep_value_selector(self):

@@ -13,6 +13,7 @@ import datetime
 import unittest
 
 from mo_dots import Data, wrap
+from mo_future import text_type
 from mo_json import json2value
 from mo_logs import Log
 from pyLibrary import convert
@@ -37,20 +38,20 @@ class TestPyPyJSON(unittest.TestCase):
         output = value2json({"comment": u"Open all links in the current tab, except the pages opened from external apps â€” open these ones in new windows"})
         assert output == u'{"comment":"Open all links in the current tab, except the pages opened from external apps â€” open these ones in new windows"}'
 
-        if not isinstance(output, unicode):
+        if not isinstance(output, text_type):
             Log.error("expecting unicode json")
 
     def test_unicode2(self):
-        output = value2json({"comment": b"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"})
+        output = value2json({"comment": "testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"})
 
         assert output == u'{"comment":"testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"}'
-        if not isinstance(output, unicode):
-            Log.error("expecting unicode json")
+        if not isinstance(output, text_type):
+            Log.error("expecting text_type json")
 
     def test_unicode3(self):
         output = value2json({"comment": u"testing accented char ŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"})
         assert output == u'{"comment":"testing accented char ŕáâăäĺćçčéęëěíîďđńňóôőö÷řůúűüýţ˙"}'
-        if not isinstance(output, unicode):
+        if not isinstance(output, text_type):
             Log.error("expecting unicode json")
 
     def test_double1(self):
@@ -102,7 +103,7 @@ class TestPyPyJSON(unittest.TestCase):
 
     def test_default_python(self):
 
-        test = {"add": Data(start=b"".join([" ", u"â€"]))}
+        test = {"add": Data(start="".join([" ", "â€"]))}
         output = value2json(test)
 
         expecting = u'{"add":{"start":" â€"}}'
@@ -175,7 +176,7 @@ class TestPyPyJSON(unittest.TestCase):
         self.assertEqual(value2json(test), '{"hello":" world"}')
 
     def test_json_is_unicode(self):
-        self.assertIsInstance(value2json({}), unicode)
+        self.assertIsInstance(value2json({}), text_type)
 
     def test_json_encode_slash(self):
         self.assertEqual(value2json("/"), '"/"')
