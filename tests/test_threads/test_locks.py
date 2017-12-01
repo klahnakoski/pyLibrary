@@ -18,7 +18,7 @@ from time import time
 import requests
 
 from mo_collections.queue import Queue
-from mo_future import allocate_lock as _allocate_lock
+from mo_future import allocate_lock as _allocate_lock, text_type
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
@@ -122,7 +122,7 @@ class TestLocks(FuzzyTestCase):
         thread = Thread.run("test", loop, please_stop=ps)
         thread.stopped.wait()
 
-        self.assertGreater(len(tills), 60000, "Till objects must be created faster: " + unicode(len(tills)) + " per second is too slow")
+        self.assertGreater(len(tills), 60000, "Till objects must be created faster: " + text_type(len(tills)) + " per second is too slow")
         Log.note("{{num}} new Tills in one second", num=len(tills))
 
     def test_till_in_loop(self):
@@ -150,7 +150,7 @@ class TestLocks(FuzzyTestCase):
                 with lock:
                     counter[0] += 1
 
-        threads = [Thread.run(unicode(i), adder) for i in range(50)]
+        threads = [Thread.run(text_type(i), adder) for i in range(50)]
         for t in threads:
             t.join()
 

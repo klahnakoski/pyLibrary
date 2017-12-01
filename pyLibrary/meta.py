@@ -308,7 +308,6 @@ class {{class_name}}(Mapping):
     def __str__(self):
         return str({{dict}})
 
-temp = {{class_name}}
 """,
         {
             "class_name": name,
@@ -329,10 +328,10 @@ temp = {{class_name}}
 
 
 def _exec(code, name):
-    temp = None
     try:
-        exec(code)
-        globals()[name] = temp
+        fake_locals = {}
+        exec(code, globals(), fake_locals)
+        temp = fake_locals[name]
         return temp
     except Exception as e:
         Log.error("Can not make class\n{{code}}", code=code, cause=e)
