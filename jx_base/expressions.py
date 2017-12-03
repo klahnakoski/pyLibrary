@@ -133,7 +133,7 @@ class Expression(object):
         if term == None:
             return class_(op, [], **clauses)
         elif isinstance(term, list):
-            terms = map(jx_expression, term)
+            terms = list(map(jx_expression, term))
             return class_(op, terms, **clauses)
         elif isinstance(term, Mapping):
             items = term.items()

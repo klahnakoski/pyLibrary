@@ -75,7 +75,7 @@ class TestQb(FuzzyTestCase):
         }]
 
         result = jx.select(data, "attachments.attach_id")
-        self.assertItemsEqual(result, [456, 789, 345], "can not pull children")
+        self.assertEqual(result, [456, 789, 345], "can not pull children")
 
         result = jx.select(data, ["bug_id", "attachments.name"])
         expected = [
@@ -146,7 +146,7 @@ class TestQb(FuzzyTestCase):
         assert convert.value2json(result) == convert.value2json(expected), "can not rename fields"
 
         result = jx.select(data, {"name": "id", "value": "attachments.attach_id"})
-        self.assertItemsEqual(result, [456, 789, 345], "can not pull simple fields")
+        self.assertEqual(result, [456, 789, 345], "can not pull simple fields")
 
         result = jx.select(data, [{"name": "attach.id", "value": "attachments.attach_id"}])
         expected = [{"attach": {"id": 456}}, {"attach": {"id": 789}}, {"attach": {"id": 345}}]
