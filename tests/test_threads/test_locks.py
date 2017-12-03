@@ -21,7 +21,7 @@ from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text_type
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
+from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till, till, lock
 from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
 
@@ -84,12 +84,14 @@ class TestLocks(FuzzyTestCase):
         a_is_ready = Signal("a lock")
         b_is_ready = Signal("b lock")
 
+        Log.note("begin")
         def loop(is_ready, please_stop):
             with locker:
                 while not got_lock:
-                    # Log.note("{{thread}} is waiting", thread=Thread.current().name)
                     locker.wait(till=Till(seconds=0))
                     is_ready.go()
+                    Log.note("is ready", thread=Thread.current().name)
+                Log.note("outside loop")
                 locker.wait()
                 Log.note("thread is expected to get here")
         thread_a = Thread.run("a", loop, a_is_ready)
@@ -99,13 +101,15 @@ class TestLocks(FuzzyTestCase):
         b_is_ready.wait()
         with locker:
             got_lock.go()
-            Till(seconds=0.1).wait()  # MUST WAIT FOR a AND b TO PERFORM locker.wait()
+            locker.wait(till=Till(seconds=0.1))
             Log.note("leaving")
             pass
         with locker:
-            Log.note("leaving again")
+            Log.note("leaving again")  # a AND b SHOULD BE TRIGGERED OUT OF locker.wait()
             pass
+        Log.note("wait a second")
         Till(seconds=1).wait()
+        Log.note("verification...")
 
         self.assertTrue(bool(thread_a.stopped), "Thread should be done by now")
         self.assertTrue(bool(thread_b.stopped), "Thread should be done by now")
