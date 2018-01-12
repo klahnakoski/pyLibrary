@@ -57,8 +57,8 @@ class TestFromES(unittest.TestCase):
 class FromESTester(object):
     def __init__(self, index):
         self.es = FakeES({
-            "host":"example.com",
-            "index":"index"
+            "host": "example.com",
+            "index": "index"
         })
         self.esq = jx_elasticsearch.new_instance(self.es)
 
