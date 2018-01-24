@@ -80,3 +80,18 @@ class TestNames(FuzzyTestCase):
         self.assertEqual(test4, '/test')
         self.assertEqual(test5, '/this')
         self.assertEqual(test6, '/this')
+
+    def test_abs_and_rel_pathson_file_objects(self):
+        test1 = join_path(File('/'), 'this/is/a/test/')
+        test2 = join_path(File('.'), 'this/is/a/test/')
+        test3 = join_path(File(''), 'this/is/a/test/')
+        test4 = join_path(File('/test'), '.')
+        test5 = join_path(File('/test'), '..', 'this')
+        test6 = join_path(File('/test'), '../this')
+
+        self.assertEqual(test1, '/this/is/a/test')
+        self.assertEqual(test2, 'this/is/a/test')
+        self.assertEqual(test3, 'this/is/a/test')
+        self.assertEqual(test4, '/test')
+        self.assertEqual(test5, '/this')
+        self.assertEqual(test6, '/this')
