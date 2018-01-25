@@ -11,15 +11,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from UserDict import UserDict
 from collections import Mapping
+from copy import deepcopy
 
-from mo_dots import wrap, Null, set_default, unwrap, Data, literal_field
-from mo_dots.objects import datawrap
 from mo_logs import Log
 from mo_math import MAX
 from mo_testing.fuzzytestcase import FuzzyTestCase
-# from pyLibrary.meta import DataClass
+
+from mo_dots import wrap, Null, set_default, unwrap, Data, literal_field, NullType
+from mo_dots.objects import datawrap
 
 
 class TestDot(FuzzyTestCase):
@@ -527,11 +527,56 @@ class TestDot(FuzzyTestCase):
         self.assertAlmostEqual(literal_field("a.b"), "a\.b")
         self.assertAlmostEqual(literal_field("a\\.html"), "a\\\\.html")
 
+    def test_set_default_unicode_and_list(self):
+        a = {"a": "test"}
+        b = {"a": [1, 2]}
+        self.assertAlmostEqual(set_default(a, b), {"a": ["test", 1, 2]}, "expecting string, not list, nor some hybrid")
+
+    def test_deepcopy(self):
+        self.assertIs(deepcopy(Null), Null)
+        self.assertEqual(deepcopy(Data()), {})
+        self.assertEqual(deepcopy(Data(a=Null)), {})
+
+    def test_null_type(self):
+        self.assertIs(Null.__class__, NullType)
+        self.assertTrue(isinstance(Null, NullType))
+
+    def test_null_assign(self):
+        output = Null
+        output.changeset.files = None
+
+    def test_string_assign(self):
+        def test():
+            a = wrap({"a": "world"})
+            a["a.html"] = "value"
+        self.assertRaises(Exception, test, "expecting error")
+
+    def test_string_assign_null(self):
+        a = wrap({"a": "world"})
+        a["a.html"] = None
+
+    def test_empty_object_is_not_null(self):
+        self.assertFalse(wrap({}) == None, "expect empty objects to not compare well with None")
+
+    def test_add_null_to_list(self):
+        expected = wrap(["test", "list"])
+        test = expected + None
+        self.assertEqual(test, expected, "expecting adding None to list does not change list")
+
+    def test_pop(self):
+        l = wrap([1, 2, 3, 4])
+
+        self.assertEquals(l.pop(3), 4)
+        self.assertEquals(l.pop(0), 1)
+        self.assertEquals(l.pop(1), 3)
+        self.assertEquals(l.pop(), 2)
+
 
 class _TestMapping(object):
     def __init__(self):
         self.a = None
         self.b = None
+
 
 class _UserDict:
     """

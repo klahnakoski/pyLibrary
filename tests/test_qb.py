@@ -8,14 +8,14 @@
 #
 from __future__ import unicode_literals
 
-from jx_python import jx
-from mo_dots import Data
-from mo_dots import unwrap, wrap
-from pyLibrary import convert
 from unittest import skip
 
+from jx_python import jx
 from jx_python.expressions import NullOp
+from mo_dots import Data
+from mo_dots import unwrap, wrap
 from mo_testing.fuzzytestcase import FuzzyTestCase
+from pyLibrary import convert
 
 
 class TestQb(FuzzyTestCase):
@@ -68,20 +68,20 @@ class TestQb(FuzzyTestCase):
                 {"attach_id": 789, "name": "test2"}
             ]
         }, {
-            "bug_id": 012,
+            "bug_id": 12,
             "attachments": [
                 {"attach_id": 345, "name": "test3"}
             ]
         }]
 
         result = jx.select(data, "attachments.attach_id")
-        self.assertItemsEqual(result, [456, 789, 345], "can not pull children")
+        self.assertEqual(result, [456, 789, 345], "can not pull children")
 
         result = jx.select(data, ["bug_id", "attachments.name"])
         expected = [
             {"bug_id": 123, "attachments": {"name": "test1"}},
             {"bug_id": 123, "attachments": {"name": "test2"}},
-            {"bug_id": 012, "attachments": {"name": "test3"}}
+            {"bug_id":  12, "attachments": {"name": "test3"}}
         ]
         assert convert.value2json(result) == convert.value2json(expected), "expecting complex result"
 
@@ -135,7 +135,7 @@ class TestQb(FuzzyTestCase):
                 {"attach_id": 789, "name": "test2"}
             ]
         }, {
-            "bug_id": 012,
+            "bug_id": 12,
             "attachments": [
                 {"attach_id": 345, "name": "test3"}
             ]
@@ -146,7 +146,7 @@ class TestQb(FuzzyTestCase):
         assert convert.value2json(result) == convert.value2json(expected), "can not rename fields"
 
         result = jx.select(data, {"name": "id", "value": "attachments.attach_id"})
-        self.assertItemsEqual(result, [456, 789, 345], "can not pull simple fields")
+        self.assertEqual(result, [456, 789, 345], "can not pull simple fields")
 
         result = jx.select(data, [{"name": "attach.id", "value": "attachments.attach_id"}])
         expected = [{"attach": {"id": 456}}, {"attach": {"id": 789}}, {"attach": {"id": 345}}]
@@ -199,9 +199,6 @@ class TestQb(FuzzyTestCase):
         ]}
 
         self.assertAlmostEqual(result, expected)
-
-
-
 
     @skip("Not implemented")
     def test_deep_value_selector(self):

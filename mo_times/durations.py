@@ -14,9 +14,10 @@ from __future__ import unicode_literals
 import datetime
 import re
 
+from mo_future import text_type
+
 from mo_dots import get_module, wrap
 from mo_math import MIN, Math
-
 from mo_times.vendor.dateutil.relativedelta import relativedelta
 
 _Date = None
@@ -51,7 +52,7 @@ class Duration(object):
             output._milli = float(value) * 1000
             output.month = 0
             return output
-        elif isinstance(value, basestring):
+        elif isinstance(value, text_type):
             return parse(value)
         elif isinstance(value, Duration):
             output.milli = value.milli
@@ -324,7 +325,11 @@ def _string2Duration(text):
 
     if MILLI_VALUES[interval] == None:
         from mo_logs import Log
-        Log.error(interval + " is not a recognized duration type (did you use the pural form by mistake?")
+        Log.error(
+            "{{interval|quote}} in {{text|quote}} is not a recognized duration type (did you use the pural form by mistake?",
+            interval=interval,
+            text=text
+        )
 
     output = Duration(0)
     if MONTH_VALUES[interval] == 0:

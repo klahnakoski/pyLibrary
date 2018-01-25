@@ -11,22 +11,22 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from jx_python import expressions as _expressions
+import mo_json
+from mo_future import text_type, get_function_arguments
+
 from mo_dots import set_default, wrap, _get_attr, Null, coalesce
+from mo_json import value2json
 from mo_logs import Log
 from mo_threads import Lock
 from pyLibrary import convert
 from types import FunctionType
 
-import mo_json
-from jx_base.expressions import jx_expression
-from jx_python.expressions import jx_expression_to_function
+from jx_python.expressions import jx_expression
 from mo_logs.exceptions import Except
 from mo_logs.strings import expand_template
 from mo_math.randoms import Random
 from mo_times.dates import Date
 from mo_times.durations import DAY
-
 
 
 def get_class(path):
@@ -132,7 +132,8 @@ class _SimpleCache(object):
 def wrap_function(cache_store, func_):
     attr_name = "_cache_for_" + func_.__name__
 
-    if func_.func_code.co_argcount > 0 and func_.func_code.co_varnames[0] == "self":
+    func_args = get_function_arguments(func_)
+    if len(func_args) > 0 and func_args[0] == "self":
         using_self = True
         func = lambda self, *args: func_(self, *args)
     else:
@@ -150,7 +151,7 @@ def wrap_function(cache_store, func_):
             now = Date.now()
             try:
                 _cache = getattr(self, attr_name)
-            except Exception, _:
+            except Exception:
                 _cache = {}
                 setattr(self, attr_name, _cache)
 
@@ -187,17 +188,6 @@ def wrap_function(cache_store, func_):
     return output
 
 
-# _repr = Repr()
-# _repr.maxlevel = 3
-
-def repr(obj):
-    """
-    JUST LIKE __builtin__.repr(), BUT WITH SOME REASONABLE LIMITS
-    """
-    return repr(obj)
-    return _repr.repr(obj)
-
-
 class _FakeLock():
 
 
@@ -231,7 +221,7 @@ def DataClass(name, columns, constraint=True):
     :return: The class that has been created
     """
 
-    columns = wrap([{"name": c, "required": True, "nulls": False, "type": object} if isinstance(c, basestring) else c for c in columns])
+    columns = wrap([{"name": c, "required": True, "nulls": False, "type": object} if isinstance(c, text_type) else c for c in columns])
     slots = columns.name
     required = wrap(filter(lambda c: c.required and not c.nulls and not c.default, columns)).name
     nulls = wrap(filter(lambda c: c.nulls, columns)).name
@@ -318,7 +308,6 @@ class {{class_name}}(Mapping):
     def __str__(self):
         return str({{dict}})
 
-temp = {{class_name}}
 """,
         {
             "class_name": name,
@@ -331,7 +320,7 @@ temp = {{class_name}}
             "assign": "; ".join("_set(output, "+convert.value2quote(s)+", self."+s+")" for s in slots),
             "types": "{" + (",".join(convert.string2quote(k) + ": " + v.__name__ for k, v in types.items())) + "}",
             "constraint_expr": jx_expression(constraint).to_python(),
-            "constraint": convert.value2json(constraint)
+            "constraint": value2json(constraint)
         }
     )
 
@@ -339,10 +328,11 @@ temp = {{class_name}}
 
 
 def _exec(code, name):
-    temp = None
     try:
-        exec (code)
-        globals()[name] = temp
+        globs = globals()
+        fake_locals = {}
+        exec(code, globs, fake_locals)
+        temp = globs[name] = fake_locals[name]
         return temp
     except Exception as e:
         Log.error("Can not make class\n{{code}}", code=code, cause=e)
@@ -350,10 +340,10 @@ def _exec(code, name):
 
 def value2quote(value):
     # RETURN PRETTY PYTHON CODE FOR THE SAME
-    if isinstance(value, basestring):
+    if isinstance(value, text_type):
         return mo_json.quote(value)
     else:
-        return repr(value)
+        return text_type(repr(value))
 
 
 class extenstion_method(object):

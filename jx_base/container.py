@@ -13,10 +13,10 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 from copy import copy
-from types import GeneratorType
 
 from mo_dots import Data
 from mo_dots import set_default, split_field, wrap, join_field
+from mo_future import generator_types, text_type
 from mo_logs import Log
 
 type2container = Data()
@@ -25,7 +25,6 @@ _ListContainer = None
 _Cube = None
 _run = None
 _Query = None
-_Normal = None
 
 
 def _delayed_imports():
@@ -34,16 +33,16 @@ def _delayed_imports():
     global _Cube
     global _run
     global _Query
-    global _Normal
 
     from jx_python.containers.list_usingPythonList import ListContainer as _ListContainer
     from jx_python.containers.cube import Cube as _Cube
     from jx_python.jx import run as _run
     from jx_base.query import QueryOp as _Query
 
+    _ = _ListContainer
+    _ = _Cube
     _ = _run
     _ = _Query
-    _ = _Normal
 
 
 class Container(object):
@@ -67,12 +66,12 @@ class Container(object):
             return frum
         elif isinstance(frum, _Query):
             return _run(frum)
-        elif isinstance(frum, (list, set, GeneratorType)):
+        elif isinstance(frum, (list, set) + generator_types):
             return _ListContainer(frum)
-        elif isinstance(frum, basestring):
+        elif isinstance(frum, text_type):
             # USE DEFAULT STORAGE TO FIND Container
             if not config.default.settings:
-                Log.error("expecting jx_base.query.config.default.settings to contain default elasticsearch connection info")
+                Log.error("expecting jx_base.container.config.default.settings to contain default elasticsearch connection info")
 
             settings = set_default(
                 {

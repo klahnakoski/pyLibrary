@@ -12,6 +12,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from mo_dots import _setdefault, wrap, split_field
+from mo_future import text_type, binary_type
 
 _get = object.__getattribute__
 _set = object.__setattr__
@@ -152,7 +153,7 @@ class NullType(object):
     def __getitem__(self, key):
         if isinstance(key, slice):
             return Null
-        elif isinstance(key, str):
+        elif isinstance(key, binary_type):
             key = key.decode("utf8")
         elif isinstance(key, int):
             return NullType(self, key)
@@ -163,10 +164,8 @@ class NullType(object):
             output = NullType(output, p)
         return output
 
-    def __getattribute__(self, key):
-        if key == b"__class__":
-            return NullType
-        key = key.decode('utf8')
+    def __getattr__(self, key):
+        key = text_type(key)
 
         d = _get(self, "__dict__")
         o = wrap(d["_obj"])
@@ -181,7 +180,7 @@ class NullType(object):
         return wrap(v.get(key))
 
     def __setattr__(self, key, value):
-        key = key.decode('utf8')
+        key = text_type(key)
 
         d = _get(self, "__dict__")
         o = wrap(d["_obj"])
@@ -191,8 +190,6 @@ class NullType(object):
         _assign_to_null(o, seq, value)
 
     def __setitem__(self, key, value):
-        assert not isinstance(key, str)
-
         d = _get(self, "__dict__")
         o = d["_obj"]
         if o is None:
@@ -236,6 +233,8 @@ def _assign_to_null(obj, path, value, force=True):
     force=False IF YOU PREFER TO use setDefault()
     """
     try:
+        if obj is Null:
+            return
         if isinstance(obj, NullType):
             d = _get(obj, "__dict__")
             o = d["_obj"]

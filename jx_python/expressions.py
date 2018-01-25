@@ -13,18 +13,19 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-from future.utils import text_type
+from mo_future import text_type
 from mo_dots import split_field
 from mo_dots import unwrap
-from mo_json import json2value, quote
+from mo_json import json2value
 from mo_logs import Log
+from mo_logs.strings import quote
 from pyLibrary import convert
 
 from jx_base.expressions import Variable, DateOp, TupleOp, LeavesOp, BinaryOp, OrOp, ScriptOp, \
     InequalityOp, extend, RowsOp, OffsetOp, GetOp, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     EqOp, NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, NotLeftOp, RightOp, NotRightOp, FindOp, BetweenOp, RangeOp, CaseOp, AndOp, \
-    ConcatOp, InOp, jx_expression, Expression, WhenOp
+    ConcatOp, InOp, jx_expression, Expression, WhenOp, MaxOp, SplitOp, NULL, SelectOp, SuffixOp
 from jx_python.expression_compiler import compile_expression
 from mo_times.dates import Date
 
@@ -96,7 +97,18 @@ def to_python(self, not_null=False, boolean=False, many=False):
 def to_python(self, not_null=False, boolean=False, many=False):
     obj = self.var.to_python()
     code = self.offset.to_python()
-    return obj + "[" + code + "]"
+    return "listwrap("+obj+")[" + code + "]"
+
+
+@extend(SelectOp)
+def to_python(self, not_null=False, boolean=False, many=False):
+    return (
+        "wrap_leaves({" +
+        ",\n".join(
+            quote(t['name']) + ":" + t['value'].to_python() for t in self.terms
+        ) +
+        "})"
+    )
 
 
 @extend(ScriptOp)
@@ -106,7 +118,7 @@ def to_python(self, not_null=False, boolean=False, many=False):
 
 @extend(Literal)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return repr(unwrap(json2value(self.json)))
+    return text_type(repr(unwrap(json2value(self.json))))
 
 
 @extend(NullOp)
@@ -225,10 +237,19 @@ def to_python(self, not_null=False, boolean=False, many=False):
     return "+".join("(0 if (" + t.missing().to_python(boolean=True) + ") else 1)" for t in self.terms)
 
 
+@extend(MaxOp)
+def to_python(self, not_null=False, boolean=False, many=False):
+    return "max(["+(",".join(t.to_python() for t in self.terms))+"])"
+
+
 @extend(MultiOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return MultiOp.operators[self.op][0].join("(" + t.to_python() + ")" for t in self.terms)
-
+    if len(self.terms) == 0:
+        return self.default.to_python()
+    elif self.default is NULL:
+        return MultiOp.operators[self.op][0].join("(" + t.to_python() + ")" for t in self.terms)
+    else:
+        return "coalesce(" + MultiOp.operators[self.op][0].join("(" + t.to_python() + ")" for t in self.terms) + ", " + self.default.to_python() + ")"
 
 @extend(RegExpOp)
 def to_python(self, not_null=False, boolean=False, many=False):
@@ -253,6 +274,11 @@ def to_python(self, not_null=False, boolean=False, many=False):
 @extend(PrefixOp)
 def to_python(self, not_null=False, boolean=False, many=False):
     return "(" + self.field.to_python() + ").startswith(" + self.prefix.to_python() + ")"
+
+
+@extend(SuffixOp)
+def to_python(self, not_null=False, boolean=False, many=False):
+    return "(" + self.field.to_python() + ").endswith(" + self.suffix.to_python() + ")"
 
 
 @extend(ConcatOp)
@@ -283,6 +309,10 @@ def to_python(self, not_null=False, boolean=False, many=False):
     return "None if " + v + " == None or " + l + " == None else " + v + "[0:max(0, len(" + v + ")-(" + l + "))]"
 
 
+@extend(SplitOp)
+def to_python(self, not_null=False, boolean=False, many=False):
+    return "(" + self.value.to_python() + ").split(" + self.find.to_python() + ")"
+
 @extend(FindOp)
 def to_python(self, not_null=False, boolean=False, many=False):
     return "((" + quote(self.substring) + " in " + self.var.to_python() + ") if " + self.var.to_python() + "!=None else False)"
@@ -303,9 +333,9 @@ def to_python(self, not_null=False, boolean=False, many=False):
 def to_python(self, not_null=False, boolean=False, many=False):
     acc = self.whens[-1].to_python()
     for w in reversed(self.whens[0:-1]):
-        acc = "(" + w.when.to_python(boolean=True) + ") ? (" + w.then.to_python() + ") : (" + acc + ")"
+        acc = "(" + w.then.to_python() + ") if (" + w.when.to_python(boolean=True) + ") else (" + acc + ")"
     return acc
 
 @extend(WhenOp)
 def to_python(self, not_null=False, boolean=False, many=False):
-    return "(" + self.when.to_python(boolean=True) + ") ? (" + self.then.to_python() + ") : (" + self.els_.to_python() + ")"
+    return "(" + self.then.to_python() + ") if (" + self.when.to_python(boolean=True) + ") else (" + self.els_.to_python() + ")"

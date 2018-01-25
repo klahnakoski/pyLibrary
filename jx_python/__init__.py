@@ -12,9 +12,9 @@ from __future__ import unicode_literals
 from collections import Mapping
 
 from jx_base import container
-from jx_python import containers
 from mo_dots import Data
 from mo_dots import wrap, set_default, split_field
+from mo_future import text_type
 from mo_logs import Log
 
 config = Data()   # config.default IS EXPECTED TO BE SET BEFORE CALLS ARE MADE
@@ -39,14 +39,11 @@ def _delayed_imports():
         MySQL = None
 
     try:
-        from jx_elasticsearch.jx_usingES import FromES
         from jx_elasticsearch.meta import FromESMetadata
     except Exception:
-        FromES = None
         FromESMetadata = None
 
     set_default(container.type2container, {
-        "elasticsearch": FromES,
         "mysql": MySQL,
         "memory": None,
         "meta": FromESMetadata
@@ -64,9 +61,9 @@ def wrap_from(frum, schema=None):
 
     frum = wrap(frum)
 
-    if isinstance(frum, basestring):
+    if isinstance(frum, text_type):
         if not container.config.default.settings:
-            Log.error("expecting jx_base.query.config.default.settings to contain default elasticsearch connection info")
+            Log.error("expecting jx_base.container.config.default.settings to contain default elasticsearch connection info")
 
         type_ = None
         index = frum

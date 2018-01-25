@@ -15,8 +15,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from thread import allocate_lock as _allocate_lock
-
+from mo_future import allocate_lock as _allocate_lock, text_type
 from mo_logs import Log
 
 DEBUG = False
@@ -35,7 +34,7 @@ class Signal(object):
     __slots__ = ["_name", "lock", "_go", "job_queue", "waiting_threads"]
 
     def __init__(self, name=None):
-        if DEBUG:
+        if DEBUG and name:
             Log.note("New signal {{name|quote}}", name=name)
         self._name = name
         self.lock = _allocate_lock()
@@ -69,10 +68,10 @@ class Signal(object):
             else:
                 self.waiting_threads.append(stopper)
 
-        if DEBUG:
+        if DEBUG and self._name:
             Log.note("wait for go {{name|quote}}", name=self.name)
         stopper.acquire()
-        if DEBUG:
+        if DEBUG and self._name:
             Log.note("GOing! {{name|quote}}", name=self.name)
         return True
 
@@ -80,7 +79,7 @@ class Signal(object):
         """
         ACTIVATE SIGNAL (DOES NOTHING IF SIGNAL IS ALREADY ACTIVATED)
         """
-        if DEBUG:
+        if DEBUG and self._name:
             Log.note("GO! {{name|quote}}", name=self.name)
 
         if self._go:
@@ -91,13 +90,13 @@ class Signal(object):
                 return
             self._go = True
 
-        if DEBUG:
+        if DEBUG and self._name:
             Log.note("internal GO! {{name|quote}}", name=self.name)
         jobs, self.job_queue = self.job_queue, None
         threads, self.waiting_threads = self.waiting_threads, None
 
         if threads:
-            if DEBUG:
+            if DEBUG and self._name:
                 Log.note("Release {{num}} threads", num=len(threads))
             for t in threads:
                 t.release()
@@ -118,7 +117,7 @@ class Signal(object):
 
         with self.lock:
             if not self._go:
-                if DEBUG:
+                if DEBUG and self._name:
                     Log.note("Adding target to signal {{name|quote}}", name=self.name)
                 if not self.job_queue:
                     self.job_queue = [target]
@@ -149,7 +148,7 @@ class Signal(object):
         return self.name.decode(text_type)
 
     def __repr__(self):
-        return repr(self._go)
+        return text_type(repr(self._go))
 
     def __or__(self, other):
         if other == None:
@@ -177,7 +176,7 @@ class Signal(object):
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")
 
-        if DEBUG:
+        if DEBUG and self._name:
             output = Signal(self.name + " and " + other.name)
         else:
             output = Signal(self.name + " and " + other.name)

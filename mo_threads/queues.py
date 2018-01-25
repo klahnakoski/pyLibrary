@@ -391,7 +391,7 @@ class ThreadedQueue(Queue):
                 # ONE LAST PUSH, DO NOT HAVE TIME TO DEAL WITH ERRORS
                 push_to_queue()
 
-        self.thread = Thread.run("threaded queue for " + name, worker_bee, parent_thread=self)
+        self.thread = Thread.run("threaded queue for " + name, worker_bee) # parent_thread=self)
 
     def add(self, value, timeout=None):
         with self.lock:
@@ -399,7 +399,7 @@ class ThreadedQueue(Queue):
             if not self.please_stop:
                 self.queue.append(value)
             # if Random.range(0, 50) == 0:
-            #     sizes = wrap([{"id":i["id"], "size":len(convert.value2json(i))} for i in self.queue if isinstance(i, Mapping)])
+            #     sizes = wrap([{"id":i["id"], "size":len(value2json(i))} for i in self.queue if isinstance(i, Mapping)])
             #     size=sum(sizes.size)
             #     if size>50000000:
             #         from jx_python import jx

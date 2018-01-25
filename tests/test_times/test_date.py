@@ -25,7 +25,7 @@ class TestDate(FuzzyTestCase):
 
     def test_mising_milli(self):
         date = Date("2015-10-04 13:53:11", '%Y-%m-%d %H:%M:%S.%f')
-        expecting = Date(datetime(2015, 10, 04, 13, 53, 11))
+        expecting = Date(datetime(2015, 10, 4, 13, 53, 11))
         self.assertEqual(date, expecting)
 
     def test_max(self):

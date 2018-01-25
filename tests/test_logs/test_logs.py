@@ -14,8 +14,6 @@ import logging
 import unittest
 import zlib
 
-from future.utils import raise_from
-
 from mo_json import value2json
 from mo_logs import Log, Except
 from mo_logs.log_usingQueue import StructuredLogger_usingQueue
@@ -207,7 +205,7 @@ class TestExcept(FuzzyTestCase):
             try:
                 problem_y()
             except Exception as e:
-                raise_from(Exception("this is a problem"), e)
+                raise Exception("this is a problem")
 
         try:
             problem_x()
@@ -217,9 +215,9 @@ class TestExcept(FuzzyTestCase):
                     o = value2json(DataObject(record))
                     if record:
                         pass
-                    if "this is a problem" not in e:
+                    if "this is a problem" not in e.args:
                         Log.error("We expect Python to, at least, report the first order problem")
-                    if "this is the root cause" in e:
+                    if "this is the root cause" in e.args:
                         Log.error("We do not expect Python to report exception chains")
 
             log = logging.getLogger()

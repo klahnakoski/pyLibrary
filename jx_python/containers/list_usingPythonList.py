@@ -16,11 +16,12 @@ from collections import Mapping
 
 from mo_collections import UniqueIndex
 from mo_dots import Data, wrap, listwrap, unwraplist, unwrap, Null
+from mo_future import sort_using_key
 from mo_logs import Log
 from mo_threads import Lock
 from pyLibrary import convert
 
-from jx_base.expressions import TRUE_FILTER, jx_expression, Expression, TrueOp, Variable
+from jx_base.expressions import jx_expression, Expression, TrueOp, Variable, TRUE
 from jx_python.expressions import jx_expression_to_function
 from jx_base.container import Container
 from jx_python.expression_compiler import compile_expression
@@ -62,29 +63,42 @@ class ListContainer(Container):
 
     def query(self, q):
         q = wrap(q)
-        frum = self
+        output = self
         if is_aggs(q):
-            frum = list_aggs(frum.data, q)
+            output = list_aggs(output.data, q)
         else:  # SETOP
             try:
                 if q.filter != None or q.esfilter != None:
                     Log.error("use 'where' clause")
-            except AttributeError, e:
+            except AttributeError:
                 pass
 
-            if q.where is not TRUE_FILTER and not isinstance(q.where, TrueOp):
-                frum = frum.filter(q.where)
+            if q.where is not TRUE and not q.where is TRUE:
+                output = output.filter(q.where)
 
             if q.sort:
-                frum = frum.sort(q.sort)
+                output = output.sort(q.sort)
 
             if q.select:
-                frum = frum.select(q.select)
+                output = output.select(q.select)
         #TODO: ADD EXTRA COLUMN DESCRIPTIONS TO RESULTING SCHEMA
         for param in q.window:
-            frum.window(param)
+            output.window(param)
 
-        return frum
+        if q.format:
+            if q.format == "list":
+                return Data(data=output.data)
+            elif q.format == "table":
+                head = list(set(k for r in output.data for k in r.keys()))
+                data = [
+                    (r[h] for h in head)
+                    for r in output.data
+                ]
+                return Data(header=head, data=data)
+            else:
+                Log.error("unknown format {{format}}", format=q.format)
+        else:
+            return output
 
     def update(self, command):
         """
@@ -110,7 +124,7 @@ class ListContainer(Container):
     def where(self, where):
         temp = None
         if isinstance(where, Mapping):
-            exec("def temp(row):\n    return "+jx_expression(where).to_python())
+            exec ("def temp(row):\n    return " + jx_expression(where).to_python())
         elif isinstance(where, Expression):
             temp = compile_expression(where.to_python())
         else:
@@ -180,7 +194,7 @@ class ListContainer(Container):
             keys = listwrap(keys)
             get_key = jx_expression_to_function(keys)
             if not contiguous:
-                data = sorted(self.data, key=get_key)
+                data = sort_using_key(self.data, key=get_key)
 
             def _output():
                 for g, v in itertools.groupby(data, get_key):
@@ -226,7 +240,7 @@ class ListContainer(Container):
 def _exec(code):
     try:
         temp = None
-        exec "temp = " + code
+        exec("temp = " + code)
         return temp
     except Exception as e:
         Log.error("Could not execute {{code|quote}}", code=code, cause=e)

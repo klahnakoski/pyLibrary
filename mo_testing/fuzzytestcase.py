@@ -15,7 +15,9 @@ from collections import Mapping
 
 import mo_dots
 from mo_collections.unique_index import UniqueIndex
-from mo_dots import coalesce, literal_field, unwrap
+from mo_dots import coalesce, literal_field, unwrap, wrap
+from mo_future import text_type
+from mo_future import zip_longest
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception, Except
 from mo_logs.strings import expand_template
@@ -60,7 +62,7 @@ class FuzzyTestCase(unittest.TestCase):
             function(*args, **kwargs)
         except Exception as e:
             f = Except.wrap(e)
-            if isinstance(problem, basestring):
+            if isinstance(problem, text_type):
                 if problem in f:
                     return
                 Log.error(
@@ -75,32 +77,14 @@ class FuzzyTestCase(unittest.TestCase):
 
         Log.error("Expecting an exception to be raised")
 
-def zipall(*args):
-    """
-    LOOP THROUGH LONGEST OF THE LISTS, None-FILL THE REMAINDER
-    """
-    iters = [iter(a) for a in args]
-
-    def _next(_iter):
-        try:
-            return False, _iter.next()
-        except:
-            return True, None
-
-    while True:
-        is_done, value = zip(*(_next(a) for a in iters))
-        if all(is_done):
-            return
-        else:
-            yield value
-
-
 def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=None):
     show_detail = True
     test = unwrap(test)
     expected = unwrap(expected)
     try:
         if test is None and expected is None:
+            return
+        elif test is expected:
             return
         elif isinstance(test, UniqueIndex):
             if test ^ expected:
@@ -111,13 +95,13 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
                 assertAlmostEqual(v1, v2, msg=msg, digits=digits, places=places, delta=delta)
         elif isinstance(expected, Mapping):
             for k, v2 in expected.items():
-                if isinstance(k, basestring):
+                if isinstance(k, text_type):
                     v1 = mo_dots.get_attr(test, literal_field(k))
                 else:
                     v1 = test[k]
                 assertAlmostEqual(v1, v2, msg=msg, digits=digits, places=places, delta=delta)
         elif isinstance(test, (set, list)) and isinstance(expected, set):
-            test = set(test)
+            test = set(wrap(t) for t in test)
             if len(test) != len(expected):
                 Log.error(
                     "Sets do not match, element count different:\n{{test|json|indent}}\nexpecting{{expectedtest|json|indent}}",
@@ -130,7 +114,7 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
                     try:
                         assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
                         break
-                    except Exception, _:
+                    except Exception as _:
                         pass
                 else:
                     Log.error("Sets do not match. {{value|json}} not found in {{test|json}}", value=e, test=test)
@@ -142,7 +126,7 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
                 return
             if expected == None:
                 expected = []  # REPRESENT NOTHING
-            for a, b in zipall(test, expected):
+            for a, b in zip_longest(test, expected):
                 assertAlmostEqual(a, b, msg=msg, digits=digits, places=places, delta=delta)
         else:
             assertAlmostEqualValue(test, expected, msg=msg, digits=digits, places=places, delta=delta)

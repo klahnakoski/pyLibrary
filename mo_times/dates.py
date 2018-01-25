@@ -18,7 +18,10 @@ from datetime import datetime, date, timedelta
 from decimal import Decimal
 from time import time as _time
 
+from mo_future import text_type, PY3, long
+
 from mo_dots import Null
+from mo_logs import Except
 from mo_logs.strings import deformat
 
 from mo_times.durations import Duration, MILLI_VALUES
@@ -41,7 +44,7 @@ class Date(object):
     MAX = None
 
     def __new__(cls, *args, **kwargs):
-        if len(args) == 1 and args[0] == None:
+        if not args or (len(args) == 1 and args[0] == None):
             return Null
         return parse(*args)
 
@@ -218,18 +221,18 @@ def parse(*args):
                     output = _unix2Date(a0 / 1000)
                 else:
                     output = _unix2Date(a0)
-            elif isinstance(a0, basestring) and len(a0) in [9, 10, 12, 13] and is_integer(a0):
+            elif isinstance(a0, text_type) and len(a0) in [9, 10, 12, 13] and is_integer(a0):
                 a0 = float(a0)
                 if a0 > 9999999999:    # WAY TOO BIG IF IT WAS A UNIX TIMESTAMP
                     output = _unix2Date(a0 / 1000)
                 else:
                     output = _unix2Date(a0)
-            elif isinstance(a0, basestring):
+            elif isinstance(a0, text_type):
                 output = unicode2Date(a0)
             else:
                 output = _unix2Date(datetime2unix(datetime(*args)))
         else:
-            if isinstance(args[0], basestring):
+            if isinstance(args[0], text_type):
                 output = unicode2Date(*args)
             else:
                 output = _unix2Date(datetime2unix(datetime(*args)))
@@ -352,7 +355,8 @@ def unicode2Date(value, format=None):
     try:  # 2.7 DOES NOT SUPPORT %z
         local_value = parse_date(value)  #eg 2014-07-16 10:57 +0200
         return _unix2Date(datetime2unix((local_value - local_value.utcoffset()).replace(tzinfo=None)))
-    except Exception:
+    except Exception as e:
+        e = Except.wrap(e)  # FOR DEBUGGING
         pass
 
     formats = [
@@ -436,7 +440,10 @@ def _unix2Date(unix):
     return output
 
 
-delchars = "".join(c.decode("latin1") for c in map(chr, range(256)) if not c.decode("latin1").isalnum())
+if PY3:
+    delchars = "".join(c for c in map(chr, range(256)) if not c.isalnum())
+else:
+    delchars = "".join(c.decode("latin1") for c in map(chr, range(256)) if not c.decode("latin1").isalnum())
 
 
 def deformat(value):
@@ -445,7 +452,7 @@ def deformat(value):
 
     FOR SOME REASON translate CAN NOT BE CALLED:
         ERROR: translate() takes exactly one argument (2 given)
-	    File "C:\Python27\lib\string.py", line 493, in translate
+        File "C:\\Python27\\lib\\string.py", line 493, in translate
     """
     output = []
     for c in value:
