@@ -14,7 +14,6 @@ from __future__ import unicode_literals
 from collections import Mapping
 from copy import deepcopy
 
-from future.moves.collections import UserDict
 from mo_logs import Log
 from mo_math import MAX
 from mo_testing.fuzzytestcase import FuzzyTestCase
