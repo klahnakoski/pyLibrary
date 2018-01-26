@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import unicode_literals
+from __future__ import division
 
 import datetime
 import unittest
@@ -70,6 +71,20 @@ class TestPyPyJSON(unittest.TestCase):
         test = {"value": .52}
         output = value2json(test)
         if output != u'{"value":0.52}':
+            Log.error("expecting correct value")
+
+    def test_double4(self):
+        v = 1.99999999999
+        test = {"value": v}
+        output = value2json(test)
+        if output != u'{"value":2}':
+            Log.error("expecting correct value")
+
+    def test_double5(self):
+        v = 1.00000000001
+        test = {"value": v}
+        output = value2json(test)
+        if output != u'{"value":1}':
             Log.error("expecting correct value")
 
     def test_generator(self):
