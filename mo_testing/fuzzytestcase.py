@@ -77,6 +77,7 @@ class FuzzyTestCase(unittest.TestCase):
 
         Log.error("Expecting an exception to be raised")
 
+
 def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=None):
     show_detail = True
     test = unwrap(test)
