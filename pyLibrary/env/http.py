@@ -26,6 +26,7 @@ from numbers import Number
 from tempfile import TemporaryFile
 
 from mo_future import text_type
+
 from jx_python import jx
 from mo_dots import Data, coalesce, wrap, set_default, unwrap
 from mo_json import value2json
@@ -182,8 +183,15 @@ def get_json(url, **kwargs):
     ASSUME RESPONSE IN IN JSON
     """
     response = get(url, **kwargs)
-    c = response.all_content
-    return mo_json.json2value(convert.utf82unicode(c))
+    try:
+        c = response.all_content
+        return mo_json.json2value(convert.utf82unicode(c))
+    except Exception as e:
+        if Math.round(response.status_code, decimal=-2) in [400, 500]:
+            Log.error("Bad GET response: {{code}}", code=response.status_code)
+        else:
+            Log.error("Good GET requests, but bad JSON", cause=e)
+
 
 def options(url, **kwargs):
     kwargs.setdefault(b'allow_redirects', True)
