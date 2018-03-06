@@ -51,8 +51,11 @@ class TestJSON(unittest.TestCase):
     def test_double1(self):
         test = {"value": 5.2025595183536973e-07}
         output = value2json(test)
-        if output != u'{"value":5.202559518353697e-07}':
-            Log.error("expecting correct value")
+        self.assertIn(
+            output,
+            [u'{"value":5.202559518353697e-7}', u'{"value":5.202559518353697e-07}'],
+            "expecting correct value"
+        )
 
     def test_double2(self):
         test = {"value": 52}
@@ -65,6 +68,11 @@ class TestJSON(unittest.TestCase):
         output = value2json(test)
         if output != u'{"value":0.52}':
             Log.error("expecting correct value")
+
+    def test_double4(self):
+        test = {"value": 0.000999927520752}
+        output = value2json(test)
+        self.assertEqual(output, u'{"value":1.0e-4}')
 
     def test_long1(self):
         test = json2value("272757895493505930073807329622695606794392")

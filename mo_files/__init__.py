@@ -451,7 +451,7 @@ def datetime2string(value, format="%Y-%m-%d %H:%M:%S"):
 def join_path(*path):
     def scrub(i, p):
         p = p.replace(os.sep, "/")
-        if p == "":
+        if p in ('', '/'):
             return "."
         if p[-1] == '/':
             p = p[:-1]

@@ -127,13 +127,13 @@ class ES52(Container):
 
     def query(self, _query):
         try:
-            query = QueryOp.wrap(_query, table=self)
+            query = QueryOp.wrap(_query, table=self, schema=self.schema)
 
             for n in self.namespaces:
                 query = n.convert(query)
 
             for s in listwrap(query.select):
-                if not aggregates.get(s.aggregate):
+                if s.aggregate != None and not aggregates.get(s.aggregate):
                     Log.error(
                         "ES can not aggregate {{name}} because {{aggregate|quote}} is not a recognized aggregate",
                         name=s.name,

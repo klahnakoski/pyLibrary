@@ -136,10 +136,11 @@ def json(value, pretty=True):
 def tab(value):
     if isinstance(value, Mapping):
         h, d = zip(*wrap(value).leaves())
-        return \
-            "\t".join(map(value2json, h)) + \
-            "\n" + \
+        return (
+            "\t".join(map(value2json, h)) +
+            "\n" +
             "\t".join(map(value2json, d))
+        )
     else:
         text_type(value)
 
@@ -630,6 +631,10 @@ def apply_diff(text, diff, reverse=False):
         text = text[:remove[0] - 1] + [d[1:] for d in diff[1:1 + remove[1]]] + text[remove[0] - 1:]
 
     return text
+
+
+def unicode2utf8(value):
+    return value.encode('utf8')
 
 
 def utf82unicode(value):
