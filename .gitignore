@@ -12,3 +12,4 @@ pyLibrary.egg-info
 /examples
 
 /docs/~$Libraries.pptx
+/pyLibrary/vendor/sqlite
