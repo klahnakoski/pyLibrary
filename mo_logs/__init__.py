@@ -24,6 +24,9 @@ from mo_logs import constants
 from mo_logs.exceptions import Except, suppress_exception
 from mo_logs.strings import indent
 
+
+MIN_LOOPS_TO_BE_RECURSIVE = 5
+
 _Thread = None
 
 class Log(object):
@@ -375,8 +378,8 @@ class Log(object):
             default_params = {}
 
         params = dict(unwrap(default_params), **more_params)
+        trace = exceptions.extract_stack(stack_depth + 1)
 
-        add_to_trace = False
         if cause == None:
             causes = None
         elif isinstance(cause, list):
@@ -386,14 +389,30 @@ class Log(object):
             causes = FlatList(causes)
         elif isinstance(cause, BaseException):
             causes = Except.wrap(cause, stack_depth=1)
+
+            top_frame = trace[0]
+            start_loop = None
+            for first_match, cause_frame in enumerate(causes.trace):
+                loop_count = 0
+                if _same_frame(cause_frame, top_frame):
+                    start_loop = first_match
+                    # CHANCE OF RECURSIVE LOOP
+                    for other_frame, self_frame in zip(causes.trace[first_match:], trace):
+                        if _same_frame(other_frame, self_frame):  # CONTINUE LOOPING WHILE THESE TRACES MATCH
+                            if _same_frame(top_frame, self_frame):  # INCREMENT COUNT WHEN SEEING SELF
+                                loop_count += 1
+                                if loop_count >= MIN_LOOPS_TO_BE_RECURSIVE:
+                                    break
+                        else:
+                            loop_count = 0
+                            break
+                    else:
+                        continue
+                if loop_count:
+                    raise_from_none(cause)  # RAISE THE RECURSIVE EXCEPTION, NOT THIS
         else:
             causes = None
             Log.error("can only accept Exception, or list of exceptions")
-
-        trace = exceptions.extract_stack(stack_depth + 1)
-
-        if add_to_trace:
-            cause[0].trace.extend(trace[1:])
 
         e = Except(exceptions.ERROR, template, params, causes, trace)
         raise_from_none(e)
@@ -473,6 +492,10 @@ def write_profile(profile_settings, stats):
     ]
     stats_file = File(profile_settings.filename, suffix=convert.datetime2string(datetime.now(), "_%Y%m%d_%H%M%S"))
     stats_file.write(convert.list2tab(stats))
+
+
+def _same_frame(frameA, frameB):
+    return (frameA.line, frameA.file) == (frameB.line, frameB.file)
 
 
 # GET THE MACHINE METADATA
