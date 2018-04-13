@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 
 from jx_base import EXISTS
 from jx_base.domains import SetDomain
-from jx_base.expressions import TupleOp, NULL
+from jx_base.expressions import TupleOp, NULL, value2json
 from jx_base.query import DEFAULT_LIMIT
 from jx_elasticsearch import post as es_post
 from jx_elasticsearch.es52.decoders import DefaultDecoder, AggsDecoder, ObjectDecoder, DimFieldListDecoder
@@ -148,10 +148,8 @@ def sort_edges(query, prop):
     ordered_edges = []
     remaining_edges = getattr(query, prop)
     for s in query.sort:
-        if not isinstance(s.value, Variable):
-            Log.error("can only sort by terms")
         for e in remaining_edges:
-            if e.value.var == s.value.var:
+            if e.value == s.value:
                 if isinstance(e.domain, SetDomain):
                     pass  # ALREADY SORTED?
                 else:
@@ -159,6 +157,9 @@ def sort_edges(query, prop):
                 ordered_edges.append(e)
                 remaining_edges.remove(e)
                 break
+        else:
+            Log.error("Can not sort by {{expr}}, can only sort by an existing edge expression", expr=s.value)
+
     ordered_edges.extend(remaining_edges)
     return ordered_edges
 

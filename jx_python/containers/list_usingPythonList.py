@@ -35,7 +35,7 @@ class ListContainer(Container):
     def __init__(self, name, data, schema=None):
         # TODO: STORE THIS LIKE A CUBE FOR FASTER ACCESS AND TRANSFORMATION
         data = list(unwrap(data))
-        Container.__init__(self, data, schema)
+        Container.__init__(self)
         if schema == None:
             self._schema = get_schema_from_list(name, data)
         else:
@@ -91,7 +91,7 @@ class ListContainer(Container):
             elif q.format == "table":
                 head = [c.names['.'] for c in output.schema.columns]
                 data = [
-                    [r[h] for h in head]
+                    [r if h == '.' else r[h] for h in head]
                     for r in output.data
                 ]
                 return Data(header=head, data=data, meta={"format": "table"})

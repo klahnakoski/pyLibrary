@@ -20,7 +20,7 @@ from jx_base.expressions import Variable, TupleOp, LeavesOp, BinaryOp, OrOp, Scr
     WhenOp, InequalityOp, extend, Literal, NullOp, TrueOp, FalseOp, DivOp, FloorOp, \
     EqOp, NeOp, NotOp, LengthOp, NumberOp, StringOp, CountOp, MultiOp, RegExpOp, CoalesceOp, MissingOp, ExistsOp, \
     PrefixOp, NotLeftOp, InOp, CaseOp, AndOp, \
-    ConcatOp, IsNumberOp, Expression, BasicIndexOfOp, MaxOp, MinOp, BasicEqOp, BooleanOp, IntegerOp, BasicSubstringOp, ZERO, NULL, FirstOp, FALSE, TRUE, SuffixOp, simplified
+    ConcatOp, IsNumberOp, Expression, BasicIndexOfOp, MaxOp, MinOp, BasicEqOp, BooleanOp, IntegerOp, BasicSubstringOp, ZERO, NULL, FirstOp, FALSE, TRUE, SuffixOp, simplified, ONE
 from mo_dots import coalesce, wrap, Null, unwraplist, set_default, literal_field
 from mo_logs import Log, suppress_exception
 from mo_logs.strings import expand_template, quote
@@ -398,7 +398,10 @@ def to_esfilter(self, schema):
             Log.error("operator {{op|quote}} does not work on objects", op=self.op)
         return {"range": {lhs: {self.op: self.rhs.value}}}
     else:
-        return {"script": {"script": {"lang": "painless", "inline": self.to_painless(schema).script(schema)}}}
+        script = self.to_painless(schema)
+        if script.miss is not FALSE:
+            Log.error("inequality must be decisive")
+        return {"script": {"script": {"lang": "painless", "inline": script.expr}}}
 
 
 @extend(DivOp)
@@ -426,17 +429,26 @@ def to_esfilter(self, schema):
 
 @extend(FloorOp)
 def to_painless(self, schema):
-    lhs = self.lhs.to_painless(schema)
-    rhs = self.rhs.to_painless(schema)
-    script = "(int)Math.floor(((double)(" + lhs + ") / (double)(" + rhs + ")).doubleValue())*(" + rhs + ")"
+    lhs = self.lhs.partial_eval().to_painless(schema)
+    rhs = self.rhs.partial_eval().to_painless(schema)
+
+    if rhs.frum is ONE:
+        script = "(int)Math.floor(" + lhs.expr + ")"
+    else:
+        script = "Math.floor((" + lhs.expr + ") / (" + rhs.expr + "))*(" + rhs.expr + ")"
 
     output = WhenOp(
         "when",
-        OrOp("or", [self.lhs.missing(), self.rhs.missing(), EqOp("eq", [self.rhs, ZERO])]),
+        OrOp("or", [lhs.miss, rhs.miss, EqOp("eq", [self.rhs, ZERO])]),
         **{
             "then": self.default,
             "else":
-                ScriptOp("script", script)
+                Painless(
+                    type=NUMBER,
+                    expr=script,
+                    frum=self,
+                    miss=FALSE
+                )
         }
     ).to_painless(schema)
     return output
@@ -694,7 +706,16 @@ def to_painless(self, schema):
 
 @extend(OrOp)
 def to_esfilter(self, schema):
-    return {"bool": {"should": [t.to_esfilter(schema) for t in self.terms]}}
+    # OR(x) == NOT(AND(NOT(xi) for xi in x))
+    output = {"bool": {"must_not": {"bool": {"must": [
+        NotOp("not", t).partial_eval().to_esfilter(schema)
+        for t in self.terms
+    ]}}}}
+    return output
+
+    # WE REQUIRE EXIT-EARLY SEMANTICS, OTHERWISE EVERY EXPRESSION IS A SCRIPT EXPRESSION
+    # {"bool":{"should"  :[a, b, c]}} RUNS IN PARALLEL
+    # {"bool":{"must_not":[a, b, c]}} ALSO RUNS IN PARALLEL
 
 
 @extend(LengthOp)
@@ -1065,7 +1086,7 @@ def to_esfilter(self, schema):
 
 @extend(ScriptOp)
 def to_painless(self, schema):
-    return Painless(type=OBJECT, expr=self.script)
+    return Painless(type=self.data_type, expr=self.script, frum=self)
 
 
 @extend(ScriptOp)
@@ -1371,7 +1392,7 @@ def split_expression_by_depth(where, schema, output=None, var_to_depth=None):
         if not vars_:
             return Null
         # MAP VARIABLE NAMES TO HOW DEEP THEY ARE
-        var_to_depth = {v: max(len(c.nested_path) - 1, 0) for v in vars_ for c in schema[v]}
+        var_to_depth = {v.var: max(len(c.nested_path) - 1, 0) for v in vars_ for c in schema[v.var]}
         all_depths = set(var_to_depth.values())
         # if -1 in all_depths:
         #     Log.error(
@@ -1382,7 +1403,7 @@ def split_expression_by_depth(where, schema, output=None, var_to_depth=None):
             all_depths = {0}
         output = wrap([[] for _ in range(MAX(all_depths) + 1)])
     else:
-        all_depths = set(var_to_depth[v] for v in vars_)
+        all_depths = set(var_to_depth[v.var] for v in vars_)
 
     if len(all_depths) == 1:
         output[list(all_depths)[0]] += [where]
