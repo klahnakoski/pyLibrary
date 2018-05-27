@@ -19,13 +19,10 @@ from datetime import datetime
 import sys
 
 from mo_dots import coalesce, listwrap, wrap, unwrap, unwraplist, set_default, FlatList
-from mo_future import text_type, PY3
+from mo_future import text_type, PY3, iteritems
 from mo_logs import constants
 from mo_logs.exceptions import Except, suppress_exception
 from mo_logs.strings import indent
-
-
-MIN_LOOPS_TO_BE_RECURSIVE = 5
 
 _Thread = None
 
@@ -106,7 +103,13 @@ class Log(object):
 
     @classmethod
     def stop(cls):
-        from mo_logs import profiles
+        """
+        DECONSTRUCTS ANY LOGGING, AND RETURNS TO DIRECT-TO-stdout LOGGING
+        EXECUTING MULUTIPLE TIMES IN A ROW IS SAFE, IT HAS NO NET EFFECT, IT STILL LOGS TO stdout
+        :return: NOTHING
+        """
+
+        from mo_threads import profiles
 
         if cls.cprofiler and hasattr(cls, "settings"):
             if cls.cprofiler == None:
@@ -378,8 +381,8 @@ class Log(object):
             default_params = {}
 
         params = dict(unwrap(default_params), **more_params)
-        trace = exceptions.extract_stack(stack_depth + 1)
 
+        add_to_trace = False
         if cause == None:
             causes = None
         elif isinstance(cause, list):
@@ -389,30 +392,14 @@ class Log(object):
             causes = FlatList(causes)
         elif isinstance(cause, BaseException):
             causes = Except.wrap(cause, stack_depth=1)
-
-            top_frame = trace[0]
-            start_loop = None
-            for first_match, cause_frame in enumerate(causes.trace):
-                loop_count = 0
-                if _same_frame(cause_frame, top_frame):
-                    start_loop = first_match
-                    # CHANCE OF RECURSIVE LOOP
-                    for other_frame, self_frame in zip(causes.trace[first_match:], trace):
-                        if _same_frame(other_frame, self_frame):  # CONTINUE LOOPING WHILE THESE TRACES MATCH
-                            if _same_frame(top_frame, self_frame):  # INCREMENT COUNT WHEN SEEING SELF
-                                loop_count += 1
-                                if loop_count >= MIN_LOOPS_TO_BE_RECURSIVE:
-                                    break
-                        else:
-                            loop_count = 0
-                            break
-                    else:
-                        continue
-                if loop_count:
-                    raise_from_none(cause)  # RAISE THE RECURSIVE EXCEPTION, NOT THIS
         else:
             causes = None
             Log.error("can only accept Exception, or list of exceptions")
+
+        trace = exceptions.extract_stack(stack_depth + 1)
+
+        if add_to_trace:
+            cause[0].trace.extend(trace[1:])
 
         e = Except(exceptions.ERROR, template, params, causes, trace)
         raise_from_none(e)
@@ -448,7 +435,6 @@ class Log(object):
         trace = exceptions.extract_stack(stack_depth + 1)
 
         e = Except(exceptions.ERROR, template, params, cause, trace)
-        str_e = text_type(e)
 
         error_mode = cls.error_mode
         with suppress_exception:
@@ -462,7 +448,7 @@ class Log(object):
                 )
         cls.error_mode = error_mode
 
-        sys.stderr.write(str_e.encode('utf8'))
+        sys.stderr.write(str(e))
 
 
     def write(self):
@@ -488,7 +474,7 @@ def write_profile(profile_settings, stats):
         "line": f[1],
         "method": f[2].lstrip("<").rstrip(">")
     }
-        for f, d, in acc.stats.iteritems()
+        for f, d, in iteritems(acc.stats)
     ]
     stats_file = File(profile_settings.filename, suffix=convert.datetime2string(datetime.now(), "_%Y%m%d_%H%M%S"))
     stats_file.write(convert.list2tab(stats))

@@ -1,0 +1,11 @@
+diff a/mo_logs/__init__.py b/mo_logs/__init__.py	(rejected hunks)
+@@ -378,8 +378,8 @@
+             default_params = {}
+ 
+         params = dict(unwrap(default_params), **more_params)
++        trace = exceptions.extract_stack(stack_depth + 1)
+ 
+-        add_to_trace = False
+         if cause == None:
+             causes = None
+         elif isinstance(cause, list):
