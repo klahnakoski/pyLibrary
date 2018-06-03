@@ -31,7 +31,7 @@ class TestCrypto(unittest.TestCase):
         key = convert.base642bytearray(u'nm5/wK20R45AUtetHJwHTdOigvGTxP7NcH/41YE8AZo=')
         encrypted = crypto.encrypt("", key, salt=convert.base642bytearray("AehqWt1OdEgPJhCx6uylyg=="))
         self.assertEqual(
-            json2value(encrypted),
+            json2value(encrypted.decode('utf8')),
             json2value(u'{"type": "AES256", "length": 0, "salt": "AehqWt1OdEgPJhCx6uylyg=="}')
         )
 

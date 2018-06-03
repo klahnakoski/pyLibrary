@@ -14,9 +14,9 @@ from __future__ import unicode_literals
 
 import re
 
+from jx_mysql import esfilter2sqlwhere
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary import convert
-from pyLibrary.queries.jx_usingMySQL import esfilter2sqlwhere
 from pyLibrary.sql import mysql
 from pyLibrary.sql.mysql import MySQL
 
