@@ -580,6 +580,12 @@ class TestDot(FuzzyTestCase):
         expected = {1, 2}
         self.assertAlmostEqual(result, expected)
 
+    def test_wrap_wrap(self):
+        a = wrap({"a": 1, "b": 2})
+        b = wrap(a)
+
+        self.assertIs(a, b, "expecting same object")
+
 
 class _TestMapping(object):
     def __init__(self):

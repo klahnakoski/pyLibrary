@@ -328,7 +328,7 @@ def ibytes2icompressed(source):
         b'\002\377'  # maximum compression, no OS specified
     )
 
-    crc = zlib.crc32("")
+    crc = zlib.crc32(b"")
     length = 0
     compressor = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS, zlib.DEF_MEM_LEVEL, 0)
     for d in source:
@@ -388,8 +388,7 @@ def icompressed2ibytes(source):
         bytes_count += len(data)
         if Math.floor(last_bytes_count, 1000000) != Math.floor(bytes_count, 1000000):
             last_bytes_count = bytes_count
-            if DEBUG:
-                Log.note("bytes={{bytes}}", bytes=bytes_count)
+            DEBUG and Log.note("bytes={{bytes}}", bytes=bytes_count)
         yield data
 
 

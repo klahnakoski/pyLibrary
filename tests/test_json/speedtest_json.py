@@ -14,22 +14,23 @@ import platform
 import time
 from decimal import Decimal
 
+
 try:
     import ujson
 except Exception:
     pass
 
 from pyLibrary import convert
-from mo_json import scrub
+from mo_json import scrub, typed_encoder
 from mo_json.encoder import cPythonJSONEncoder, json_encoder
 from mo_logs import Log
 from mo_dots import wrap, unwrap
 
 TARGET_RUNTIME = 10
 
-EMPTY = (wrap({}), 200000)
-UNICODE = (wrap(json._default_decoder.decode('{"key1": "\u0105\u0107\u017c", "key2": "\u0105\u0107\u017c"}')), 10000)
-SIMPLE = (wrap({
+EMPTY = ({}, 200000)
+UNICODE = (json._default_decoder.decode('{"key1": "\u0105\u0107\u017c", "key2": "\u0105\u0107\u017c"}'), 10000)
+SIMPLE = ({
     'key1': 0,
     'key2': True,
     'key3': 'value',
@@ -37,8 +38,8 @@ SIMPLE = (wrap({
     'key5': 'string',
     "key6": Decimal("0.33"),
     "key7": [[], []]
-}), 100000)
-NESTED = (wrap({
+}, 100000)
+NESTED = ({
     'key1': 0,
     'key2': SIMPLE[0].copy(),
     'key3': 'value',
@@ -47,7 +48,7 @@ NESTED = (wrap({
     'key6': ["test", u"test2", 99],
     'key7': {1, 2.5, 3, 4},
     u'key': u'\u0105\u0107\u017c'
-}), 100000)
+}, 100000)
 HUGE = ([NESTED[0]] * 1000, 100)
 
 cases = [
@@ -66,15 +67,16 @@ def test_json(results, description, method, n):
         try:
             data, count = globals()[case]
             if "scrub" in description:
-                #SCRUB BEFORE SENDING TO C ROUTINE (NOT FAIR, BUT WE GET TO SEE HOW FAST ENCODING GOES)
+                # SCRUB BEFORE SENDING TO C ROUTINE (NOT FAIR, BUT WE GET TO SEE HOW FAST ENCODING GOES)
                 data = unwrap(scrub(data))
+
 
             try:
                 example = method(data)
                 if case == "HUGE":
                     example = "<too big to show>"
             except Exception as e:
-                Log.warning("json encoding failure", cause=e)
+                Log.warning(u"json encoding failure", cause=e)
                 example = "<CRASH>"
 
             t0 = time.time()
@@ -96,10 +98,10 @@ def test_json(results, description, method, n):
                 "length": len(output),
                 "result": example
             }
-            Log.note("{{interpreter}}: {{description}} {{type}} x {{num}} x {{count}} = {{time}} result={{result}}", **summary)
+            Log.note(u"using {{interpreter}}: {{description}} {{type}} x {{num}} x {{count}} = {{time}} result={{result}}", **summary)
             results.append(summary)
         except Exception as e:
-            Log.warning("problem with encoding: {{message}}", {"message": e.message}, e)
+            Log.warning(u"problem with encoding: {{message}}", {"message": e.message}, e)
 
 
 class EnhancedJSONEncoder(json.JSONEncoder):
@@ -126,16 +128,16 @@ def main(num):
     try:
         Log.start()
         results = []
-        test_json(results, "jsons.encoder", json_encoder, num)
-        test_json(results, "jsons.encoder (again)", json_encoder, num)
+        test_json(results, "mo-json encoder", json_encoder, num)
+        test_json(results, "mo-json encoder (again)", json_encoder, num)
         test_json(results, "scrub before json.dumps", cPythonJSONEncoder().encode, num)
         test_json(results, "override JSONEncoder.default()", EnhancedJSONEncoder().encode, num)
         test_json(results, "default json.dumps", json.dumps, num)  # WILL CRASH, CAN NOT HANDLE DIVERSITY OF TYPES
-        try:
-            test_json(results, "scrubbed ujson", ujson.dumps, num)
-        except Exception:
-            pass
-        Log.note("\n{{summary}}", summary=convert.list2tab(results))
+        test_json(results, "typed json", typed_encoder.encode, num)
+
+        # test_json(results, "scrubbed ujson", ujson.dumps, num)  # THIS PLAIN CRASHES
+
+        Log.note(u"\n{{summary}}", summary=convert.list2tab(results))
     finally:
         Log.stop()
 

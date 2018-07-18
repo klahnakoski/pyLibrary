@@ -12,9 +12,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from itertools import groupby
+from operator import itemgetter
+
 from mo_future import text_type, PY3
 from mo_logs import Log
 from mo_logs.strings import expand_template
+
+import pyLibrary.sql
 
 
 class SQL(text_type):
@@ -23,6 +28,8 @@ class SQL(text_type):
     """
     def __init__(self, template='', param=None):
         text_type.__init__(self)
+        if isinstance(template, SQL):
+            Log.error("Expecting text, not SQL")
         self.template = template
         self.param = param
 
@@ -65,6 +72,7 @@ SQL_STAR = SQL(" * ")
 
 SQL_AND = SQL(" AND ")
 SQL_OR = SQL(" OR ")
+SQL_NOT = SQL(" NOT ")
 SQL_ON = SQL(" ON ")
 
 SQL_CASE = SQL(" CASE ")
@@ -83,6 +91,7 @@ SQL_TRUE = SQL(" 1 ")
 SQL_FALSE = SQL(" 0 ")
 SQL_ONE = SQL(" 1 ")
 SQL_ZERO = SQL(" 0 ")
+SQL_NEG_ONE = SQL(" -1 ")
 SQL_NULL = SQL(" NULL ")
 SQL_IS_NULL = SQL(" IS NULL ")
 SQL_IS_NOT_NULL = SQL(" IS NOT NULL ")
@@ -123,9 +132,14 @@ def sql_concat(list_):
     return SQL(" || ").join(sql_iso(l) for l in list_)
 
 
+def quote_set(list_):
+    return sql_iso(sql_list(map(pyLibrary.sql.sqlite.quote_value, list_)))
+
+
 def sql_alias(value, alias):
     return SQL(value.template + " AS " + alias.template)
 
 
 def sql_coalesce(list_):
     return "COALESCE(" + SQL_COMMA.join(list_) + ")"
+

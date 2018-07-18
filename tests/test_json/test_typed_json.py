@@ -8,17 +8,14 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-import datetime
 import unittest
 
+import datetime
 from mo_dots import wrap
-from mo_json.typed_encoder import EXISTS_TYPE, NUMBER_TYPE, STRING_TYPE, BOOLEAN_TYPE, NESTED_TYPE
 from mo_logs.strings import quote
-from pyLibrary.env.typed_inserter import TypedInserter
 
-
-def typed_encode(value):
-    return TypedInserter().typed_encode({"value": value})['json']
+from mo_json.typed_encoder import EXISTS_TYPE, NUMBER_TYPE, STRING_TYPE, BOOLEAN_TYPE, NESTED_TYPE
+from mo_json.typed_encoder import encode as typed_encode
 
 
 class TestJSON(unittest.TestCase):
@@ -93,6 +90,7 @@ class TestJSON(unittest.TestCase):
         test1 = typed_encode(value)
         expected = '{' + quote(NUMBER_TYPE) + u':42}'
         self.assertEqual(test1, expected)
+        self.assertEqual(expected, test1)
 
     def test_empty_string_value(self):
         value = u""

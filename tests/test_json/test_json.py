@@ -14,14 +14,14 @@ import unittest
 
 from mo_dots import Data, wrap
 from mo_future import text_type
-from mo_json import json2value, value2json
 from mo_logs import Log
 from mo_logs.strings import utf82unicode
+from mo_times.dates import Date
 from pyLibrary import convert
 
 import mo_json
-from mo_json.encoder import pretty_json, cPythonJSONEncoder
-from mo_times.dates import Date
+from mo_json import json2value, value2json
+from mo_json.encoder import pretty_json, cPythonJSONEncoder, pypy_json_encode
 
 
 class TestJSON(unittest.TestCase):
@@ -70,10 +70,45 @@ class TestJSON(unittest.TestCase):
         if output != u'{"value":0.52}':
             Log.error("expecting correct value")
 
-    def test_double4(self):
-        test = {"value": 0.000999927520752}
-        output = value2json(test)
+    def test_double_clean1a(self):
+        test = {"value": 0.0000999927520752}
+        output = pypy_json_encode(test)
         self.assertEqual(output, u'{"value":1.0e-4}')
+
+    def test_double_clean1b(self):
+        test = {"value": 0.000999927520752}
+        output = pypy_json_encode(test)
+        self.assertEqual(output, u'{"value":0.001}')
+
+    def test_double_clean1c(self):
+        test = {"value": 0.00999927520752}
+        output = pypy_json_encode(test)
+        self.assertEqual(output, u'{"value":0.01}')
+
+    def test_double_clean1d(self):
+        test = {"value": 0.0999927520752}
+        output = pypy_json_encode(test)
+        self.assertEqual(output, u'{"value":0.1}')
+
+    def test_double_clean1E(self):
+        test = {"value": 0.999927520752}
+        output = pypy_json_encode(test)
+        self.assertEqual(output, u'{"value":1}')
+
+    def test_double_clean2(self):
+        test = {"value": 9999.0}
+        output = pypy_json_encode(test)
+        self.assertEqual(output, u'{"value":10000}')
+
+    def test_double_clean3(self):
+        test = {"value": 8999.0}
+        output = pypy_json_encode(test)
+        self.assertEqual(output, u'{"value":9000}')
+
+    def test_long2(self):
+        test = {"value": 9999}
+        output = pypy_json_encode(test)
+        self.assertEqual(output, u'{"value":9999}')
 
     def test_long1(self):
         test = json2value("272757895493505930073807329622695606794392")

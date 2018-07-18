@@ -19,7 +19,7 @@ from datetime import datetime
 import sys
 
 from mo_dots import coalesce, listwrap, wrap, unwrap, unwraplist, set_default, FlatList
-from mo_future import text_type, PY3
+from mo_future import text_type, PY3, iteritems
 from mo_logs import constants
 from mo_logs.exceptions import Except, suppress_exception
 from mo_logs.strings import indent
@@ -92,18 +92,24 @@ class Log(object):
 
         if settings.log:
             cls.logging_multi = StructuredLogger_usingMulti()
-            from mo_logs.log_usingThread import StructuredLogger_usingThread
-            cls.main_log = StructuredLogger_usingThread(cls.logging_multi)
-
             for log in listwrap(settings.log):
                 Log.add_log(Log.new_instance(log))
 
-        if settings.cprofile.enabled==True:
+            from mo_logs.log_usingThread import StructuredLogger_usingThread
+            cls.main_log = StructuredLogger_usingThread(cls.logging_multi)
+
+        if settings.cprofile.enabled == True:
             Log.alert("cprofiling is enabled, writing to {{filename}}", filename=os.path.abspath(settings.cprofile.filename))
 
     @classmethod
     def stop(cls):
-        from mo_logs import profiles
+        """
+        DECONSTRUCTS ANY LOGGING, AND RETURNS TO DIRECT-TO-stdout LOGGING
+        EXECUTING MULUTIPLE TIMES IN A ROW IS SAFE, IT HAS NO NET EFFECT, IT STILL LOGS TO stdout
+        :return: NOTHING
+        """
+
+        from mo_threads import profiles
 
         if cls.cprofiler and hasattr(cls, "settings"):
             if cls.cprofiler == None:
@@ -117,8 +123,9 @@ class Log(object):
 
         if profiles.ON and hasattr(cls, "settings"):
             profiles.write(cls.settings.profile)
-        cls.main_log.stop()
-        cls.main_log = StructuredLogger_usingStream(sys.stdout)
+
+        main_log, cls.main_log = cls.main_log, StructuredLogger_usingStream(sys.stdout)
+        main_log.stop()
 
     @classmethod
     def new_instance(cls, settings):
@@ -143,6 +150,9 @@ class Log(object):
         if settings.log_type == "console":
             from mo_logs.log_usingThreadedStream import StructuredLogger_usingThreadedStream
             return StructuredLogger_usingThreadedStream(sys.stdout)
+        if settings.log_type == "mozlog":
+            from mo_logs.log_usingMozLog import StructuredLogger_usingMozLog
+            return StructuredLogger_usingMozLog(sys.stdout, coalesce(settings.app_name, settings.appname))
         if settings.log_type == "stream" or settings.stream:
             from mo_logs.log_usingThreadedStream import StructuredLogger_usingThreadedStream
             return StructuredLogger_usingThreadedStream(settings.stream)
@@ -244,7 +254,7 @@ class Log(object):
             cause = Except(exceptions.UNEXPECTED, text_type(cause), trace=exceptions._extract_traceback(0))
 
         trace = exceptions.extract_stack(1)
-        e = Except(exceptions.UNEXPECTED, template, params, cause, trace)
+        e = Except(type=exceptions.UNEXPECTED, template=template, params=params, cause=cause, trace=trace)
         Log.note(
             "{{error}}",
             error=e,
@@ -337,7 +347,7 @@ class Log(object):
         cause = unwraplist([Except.wrap(c) for c in listwrap(cause)])
         trace = exceptions.extract_stack(stack_depth + 1)
 
-        e = Except(exceptions.WARNING, template, params, cause, trace)
+        e = Except(type=exceptions.WARNING, template=template, params=params, cause=cause, trace=trace)
         Log.note(
             "{{error|unicode}}",
             error=e,
@@ -395,7 +405,7 @@ class Log(object):
         if add_to_trace:
             cause[0].trace.extend(trace[1:])
 
-        e = Except(exceptions.ERROR, template, params, causes, trace)
+        e = Except(type=exceptions.ERROR, template=template, params=params, cause=cause, trace=trace)
         raise_from_none(e)
 
     @classmethod
@@ -428,8 +438,7 @@ class Log(object):
         cause = unwraplist([Except.wrap(c) for c in listwrap(cause)])
         trace = exceptions.extract_stack(stack_depth + 1)
 
-        e = Except(exceptions.ERROR, template, params, cause, trace)
-        str_e = text_type(e)
+        e = Except(type=exceptions.ERROR, template=template, params=params, cause=cause, trace=trace)
 
         error_mode = cls.error_mode
         with suppress_exception:
@@ -443,7 +452,7 @@ class Log(object):
                 )
         cls.error_mode = error_mode
 
-        sys.stderr.write(str_e.encode('utf8'))
+        sys.stderr.write(str(e))
 
 
     def write(self):
@@ -454,6 +463,7 @@ def write_profile(profile_settings, stats):
     from pyLibrary import convert
     from mo_files import File
 
+    Log.note("aggregating {{num}} profile stats", num=len(stats))
     acc = stats[0]
     for s in stats[1:]:
         acc.add(s)
@@ -468,10 +478,14 @@ def write_profile(profile_settings, stats):
         "line": f[1],
         "method": f[2].lstrip("<").rstrip(">")
     }
-        for f, d, in acc.stats.iteritems()
+        for f, d, in iteritems(acc.stats)
     ]
     stats_file = File(profile_settings.filename, suffix=convert.datetime2string(datetime.now(), "_%Y%m%d_%H%M%S"))
     stats_file.write(convert.list2tab(stats))
+
+
+def _same_frame(frameA, frameB):
+    return (frameA.line, frameA.file) == (frameB.line, frameB.file)
 
 
 # GET THE MACHINE METADATA
