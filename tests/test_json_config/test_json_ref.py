@@ -14,13 +14,13 @@ from __future__ import unicode_literals
 
 import os
 
-import mo_json_config
-from mo_files import File
-from mo_json_config import URL
-from mo_logs.exceptions import extract_stack
-from mo_logs.strings import expand_template
 from mo_dots import Data
+from mo_files import File
+from mo_logs.exceptions import extract_stack
 from mo_testing.fuzzytestcase import FuzzyTestCase
+
+import mo_json_config
+from mo_json_config import URL
 
 
 class TestRef(FuzzyTestCase):
@@ -178,3 +178,10 @@ class TestRef(FuzzyTestCase):
         doc_url = "http://example.com/"
         result = mo_json_config.expand(doc, doc_url, {"value": {"name": "hello"}})
         self.assertEqual(result, {"a": {"name": "hello"}})
+
+    def test_missing_env(self):
+        doc = {"a": {"$ref": "env://DOES_NOT_EXIST"}}
+        doc_url = "http://example.com/"
+        result = mo_json_config.expand(doc, doc_url, {"value": {"name": "hello"}})
+        self.assertEqual(result, {"a": None})
+
