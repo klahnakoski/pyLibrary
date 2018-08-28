@@ -28,10 +28,14 @@ class TestExcept(FuzzyTestCase):
         try:
             try:
                 exec(
-                    "try:\n"
-                    "    a = 1/0\n"
-                    "except Exception as e:\n"
-                    "    raise Exception('test') from e\n"
+                    (
+                        "try:\n"
+                        "    print(1/0)\n"
+                        "except Exception as e:\n"
+                        "    raise Exception(\"test\") from e"
+                    ),
+                    globals(),
+                    locals()
                 )
             except Exception as f:
                 Log.error("expected", cause=f)

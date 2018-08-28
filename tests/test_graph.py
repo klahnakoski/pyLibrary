@@ -15,7 +15,7 @@ from __future__ import unicode_literals
 
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.graphs import Graph, Edge
-from pyLibrary.graphs.algorithms import dominator_tree
+from pyLibrary.graphs.algorithms import dominator_tree, LOOPS, ROOTS
 
 
 class TestGraph(FuzzyTestCase):
@@ -38,7 +38,7 @@ class TestGraph(FuzzyTestCase):
 
         dom = dominator_tree(g)
 
-        expected = {(None, 1), (1, 2), (1, 3), (1, 4), (1, 10), (4, 5)}
+        expected = {(ROOTS, 1), (1, 2), (1, 3), (1, 4), (1, 10), (4, 5)}
 
         self.assertEqual(dom.edges, expected)
 
@@ -61,7 +61,7 @@ class TestGraph(FuzzyTestCase):
 
         dom = dominator_tree(g)
 
-        expected = {(None, 1), (1, 2), (1, 3), (1, 4), (1, 10), (4, 5)}
+        expected = {(LOOPS, 1), (1, 2), (1, 3), (1, 4), (1, 10), (4, 5)}
 
         self.assertEqual(dom.edges, expected)
 
