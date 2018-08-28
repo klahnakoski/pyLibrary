@@ -37,7 +37,7 @@ class Table(object):
         self.index = Null
         self.num_rows = num_rows
         self.schema = schema
-        self.max_definition_level = max_definition_level or schema.max_definition_level()
+        self.max_definition_level = max_definition_level or schema.max_definition_level('.')
 
     def __getattr__(self, item):
         return getattr(self.values, item)

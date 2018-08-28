@@ -13,16 +13,16 @@ from __future__ import unicode_literals
 from collections import Mapping
 
 import numpy
+from mo_math import MAX
 
 from fastparquet.parquet_thrift.parquet.ttypes import Type, FieldRepetitionType, SchemaElement, ConvertedType
 from fastparquet.thrift_structures import parquet_thrift
 
-from jx_base import NESTED, python_type_to_json_type
 from mo_dots import concat_field, split_field, join_field, Data, relative_field, coalesce
-from mo_future import none_type
+from mo_future import none_type, long
 from mo_future import sort_using_key, PY2, text_type
+from mo_json.typed_encoder import NESTED, python_type_to_json_type, json_type_to_inserter_type
 from mo_logs import Log
-from pyLibrary.env.typed_inserter import json_type_to_inserter_type
 
 REQUIRED = FieldRepetitionType.REQUIRED
 OPTIONAL = FieldRepetitionType.OPTIONAL
@@ -227,7 +227,7 @@ def get_repetition_type(jtype):
 
 
 def merge_schema_element(element, name, value, ptype, ltype, dtype, jtype, ittype, length):
-    element.type_length = max(element.type_length, length)
+    element.type_length = MAX((element.type_length, length))
     return element
 
 
