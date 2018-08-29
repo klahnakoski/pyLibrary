@@ -42,7 +42,7 @@ def override(func):
 
     def raise_error(e, packed):
         e = Except.wrap(e)
-        if e.message.startswith(func_name) and "takes at least" in e:
+        if e.message.startswith(func_name) and ("takes at least" in e or "required positional argument" in e):
             missing = [p for p in params if str(p) not in packed]
             get_logger().error(
                 "Problem calling {{func_name}}:  Expecting parameter {{missing}}, given {{given}}",
