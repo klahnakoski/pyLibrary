@@ -20,6 +20,21 @@ from pyLibrary.graphs.algorithms import dominator_tree, LOOPS, ROOTS
 
 class TestGraph(FuzzyTestCase):
 
+
+    def test_single(self):
+        edges = [
+            (1, 1)
+        ]
+
+        g = Graph(int)
+        for e in edges:
+            g.add_edge(Edge(*e))
+
+        dom = dominator_tree(g)
+        expected = {(ROOTS, 1)}
+        self.assertEqual(dom.edges, expected)
+
+
     def test_dominator(self):
         edges = [
             (1, 2),
