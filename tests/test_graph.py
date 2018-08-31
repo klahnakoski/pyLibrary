@@ -90,6 +90,7 @@ class TestGraph(FuzzyTestCase):
         dom = dominator_tree(g)
         expected = {(LOOPS, 2), (2, 3), (3, 1), (1, "A")}
         expected = {(LOOPS, 1), (2, 3), (1, 2), (1, "A")}
+        expected = {("LOOPS", 1), ("LOOPS", 2), ("LOOPS", 3), (1, "A")}
         self.assertEqual(dom.edges, expected)
 
     def test_double_loop_B(self):
@@ -144,6 +145,7 @@ class TestGraph(FuzzyTestCase):
         dom = dominator_tree(g)
         expected = {(LOOPS, 2), (LOOPS, 4), (2, 3), (3, 1), (1, "A")}
         expected = {(LOOPS, 2), (1, 4), (2, 3), (3, 1), (1, "A")}
+        expected = {("LOOPS", 1), ("LOOPS", 2), ("LOOPS", 3), ("LOOPS", 4), (1, "A")}
         self.assertEqual(dom.edges, expected)
 
     def test_triple_loop_B(self):
@@ -201,4 +203,5 @@ class TestGraph(FuzzyTestCase):
 
         dom = dominator_tree(g)
         expected = {(LOOPS, 2), (2, 3), (3, 1), (1, 4), (4, "D")}
+        expected = {("LOOPS", 3), ("LOOPS", 2), ("LOOPS", 1), (1, 4), (4, "D")}
         self.assertEqual(dom.edges, expected)
