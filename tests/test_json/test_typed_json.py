@@ -14,7 +14,7 @@ import datetime
 from mo_dots import wrap
 from mo_logs.strings import quote
 
-from mo_json.typed_encoder import EXISTS_TYPE, NUMBER_TYPE, STRING_TYPE, BOOLEAN_TYPE, NESTED_TYPE
+from mo_json.typed_encoder import EXISTS_TYPE, NUMBER_TYPE, STRING_TYPE, BOOLEAN_TYPE, NESTED_TYPE, untyped
 from mo_json.typed_encoder import encode as typed_encode
 
 
@@ -158,3 +158,10 @@ class TestJSON(unittest.TestCase):
         # expected = u'{"a":{' + quote(NESTED_TYPE) + ':[]},"b":{' + quote(NUMBER_TYPE) + u':1},' + quote(EXISTS_TYPE) + u':1}'
         expected = u'{"b":{' + quote(NUMBER_TYPE) + u':1},' + quote(EXISTS_TYPE) + u':1}'
         self.assertEqual(test1, expected)
+
+    def test_empty_object(self):
+        typed = {EXISTS_TYPE: 1}
+        test = untyped(typed)
+
+        self.assertIsInstance(test, dict)
+        self.assertEqual(len(test), 0)
