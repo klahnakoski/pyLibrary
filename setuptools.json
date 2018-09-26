@@ -1,0 +1,22 @@
+{
+	"name": "pyLibrary",
+	"version": "2.16.18199",
+	"description": "Library of Wonderful Things",
+	"author": "Kyle Lahnakoski",
+	"author_email": "kyle@lahnakoski.com",
+	"url": "https://github.com/klahnakoski/pyLibrary",
+	"license": "MPL 2.0",
+	"install_requires": [
+		"boto",
+		"pymysql",
+		"requests"
+	],
+	"include_package_data": true,
+	"zip_safe": false,
+	"classifiers": [
+		"Development Status :: 4 - Beta",
+		"Topic :: Software Development :: Libraries",
+		"Topic :: Software Development :: Libraries :: Python Modules",
+		"License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+	]
+}
