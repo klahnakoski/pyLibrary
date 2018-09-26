@@ -23,6 +23,7 @@ from pyLibrary.sql.sqlite import Sqlite, quote_value, quote_list
 
 DEBUG = True
 SLEEP_ON_ERROR = 30
+MAX_BAD_REQUESTS = 3
 
 class TuidClient(object):
 
@@ -78,8 +79,7 @@ class TuidClient(object):
         with Timer(
             "ask tuid service for {{num}} files at {{revision|left(12)}}",
             {"num": len(files), "revision": revision},
-            debug=DEBUG,
-            silent=not self.enabled
+            silent=not DEBUG or not self.enabled
         ):
             response = self.db.query(
                 "SELECT file, tuids FROM tuid WHERE revision=" + quote_value(revision) +
@@ -136,8 +136,14 @@ class TuidClient(object):
 
             except Exception as e:
                 self.num_bad_requests += 1
-                Till(seconds=SLEEP_ON_ERROR).wait()
-                if self.enabled and self.num_bad_requests >= 3:
-                    self.enabled = False
-                    Log.error("TUID service has problems.", cause=e)
+                if self.enabled:
+                    if "502 Bad Gateway" in e:
+                        self.enabled = False
+                        Log.error("TUID service has problems.", cause=e)
+                    elif self.num_bad_requests >= MAX_BAD_REQUESTS:
+                        self.enabled = False
+                        Log.error("TUID service has problems.", cause=e)
+                    else:
+                        Log.warning("TUID service has problems.", cause=e)
+                        Till(seconds=SLEEP_ON_ERROR).wait()
                 return found
