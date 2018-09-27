@@ -11,7 +11,9 @@ from __future__ import unicode_literals
 from unittest import skip
 
 from jx_python import jx
+from jx_python.containers.list_usingPythonList import ListContainer
 from jx_python.expressions import NullOp
+from jx_python.table import Table
 from mo_dots import Data
 from mo_dots import unwrap, wrap
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -181,7 +183,7 @@ class TestQb(FuzzyTestCase):
         ]
 
         result = jx.run({
-            "from": data,
+            "from": ListContainer(".", data),
             "select": [
                 "a",
                 {"name": "is_e", "value": {"when": {"in": [{"literal": "e"}, "a"]}, "then": 1, "else": 0}},

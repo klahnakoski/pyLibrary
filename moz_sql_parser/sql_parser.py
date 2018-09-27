@@ -45,6 +45,7 @@ else:
 keywords = [
     "and",
     "as",
+    "asc",
     "between",
     "case",
     "collate nocase",
@@ -60,6 +61,8 @@ keywords = [
     "is",
     "join",
     "limit",
+    "offset",
+    "like",
     "on",
     "or",
     "order by",
@@ -90,11 +93,12 @@ KNOWN_OPS = [
     Literal("<").setName("lt").setDebugActions(*debug),
     Literal(">=").setName("gte").setDebugActions(*debug),
     Literal("<=").setName("lte").setDebugActions(*debug),
-    IN.setName("in").setDebugActions(*debug),
-    IS.setName("is").setDebugActions(*debug),
     Literal("=").setName("eq").setDebugActions(*debug),
     Literal("==").setName("eq").setDebugActions(*debug),
     Literal("!=").setName("neq").setDebugActions(*debug),
+    IN.setName("in").setDebugActions(*debug),
+    IS.setName("is").setDebugActions(*debug),
+    LIKE.setName("like").setDebugActions(*debug),
     OR.setName("or").setDebugActions(*debug),
     AND.setName("and").setDebugActions(*debug)
 ]
@@ -170,7 +174,11 @@ def to_when_call(instring, tokensStart, retTokens):
 def to_join_call(instring, tokensStart, retTokens):
     tok = retTokens
 
-    output = {tok.op: tok.join}
+    if tok.join.name:
+        output = {tok.op: {"name": tok.join.name, "value": tok.join.value}}
+    else:
+        output = {tok.op: tok.join}
+
     if tok.on:
         output['on'] = tok.on
     return output
@@ -299,9 +307,9 @@ tableName = (
     ident.setName("table name").setDebugActions(*debug)
 )
 
-join = ((CROSSJOIN | INNERJOIN | JOIN)("op") + tableName("join") + Optional(ON + expr("on"))).addParseAction(to_join_call)
+join = ((CROSSJOIN | INNERJOIN | JOIN)("op") + Group(tableName)("join") + Optional(ON + expr("on"))).addParseAction(to_join_call)
 
-sortColumn = expr("value").setName("sort1").setDebugActions(*debug) + Optional(DESC("sort")) | \
+sortColumn = expr("value").setName("sort1").setDebugActions(*debug) + Optional(DESC("sort") | ASC("sort")) | \
              expr("value").setName("sort2").setDebugActions(*debug)
 
 # define SQL tokens
@@ -315,14 +323,16 @@ selectStmt << Group(
                     Optional(WHERE.suppress().setDebugActions(*debug) + expr.setName("where"))("where") +
                     Optional(GROUPBY.suppress().setDebugActions(*debug) + delimitedList(Group(selectColumn))("groupby").setName("groupby")) +
                     Optional(HAVING.suppress().setDebugActions(*debug) + expr("having").setName("having")) +
-                    Optional(LIMIT.suppress().setDebugActions(*debug) + expr("limit"))
+                    Optional(LIMIT.suppress().setDebugActions(*debug) + expr("limit")) +
+                    Optional(OFFSET.suppress().setDebugActions(*debug) + expr("offset"))
                 )
             ),
             delim=UNION
         )
     )("union"))("from") +
     Optional(ORDERBY.suppress().setDebugActions(*debug) + delimitedList(Group(sortColumn))("orderby").setName("orderby")) +
-    Optional(LIMIT.suppress().setDebugActions(*debug) + expr("limit"))
+    Optional(LIMIT.suppress().setDebugActions(*debug) + expr("limit")) +
+    Optional(OFFSET.suppress().setDebugActions(*debug) + expr("offset"))
 ).addParseAction(to_union_call)
 
 

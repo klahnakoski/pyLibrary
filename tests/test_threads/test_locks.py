@@ -12,26 +12,24 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import gc
 import json
+import os
 import threading
 from time import time
-
-import gc
-
-import os
+from unittest import skip
 
 import objgraph
-import requests
 import psutil
+import requests
 
+import mo_threads
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text_type
 from mo_logs import Log, machine_metadata
 from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
-
-import mo_threads
-from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till, till, lock
+from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
 
@@ -113,14 +111,14 @@ class TestLocks(FuzzyTestCase):
 
     def test_lock_and_till(self):
         locker = Lock("prime lock")
-        got_lock = Signal()
+        got_signal = Signal()
         a_is_ready = Signal("a lock")
         b_is_ready = Signal("b lock")
 
         Log.note("begin")
         def loop(is_ready, please_stop):
             with locker:
-                while not got_lock:
+                while not got_signal:
                     locker.wait(till=Till(seconds=0))
                     is_ready.go()
                     Log.note("is ready", thread=Thread.current().name)
@@ -133,7 +131,7 @@ class TestLocks(FuzzyTestCase):
         a_is_ready.wait()
         b_is_ready.wait()
         with locker:
-            got_lock.go()
+            got_signal.go()
             locker.wait(till=Till(seconds=0.1))
             Log.note("leaving")
             pass
@@ -242,6 +240,7 @@ class TestLocks(FuzzyTestCase):
 
         self.assertLess(end_mem, (start_mem+mid_mem)/2, "end memory should be closer to start")
 
+    @skip("takes too long")
     def test_memory_cleanup_with_signal(self):
         """
         LOOKING FOR A MEMORY LEAK THAT HAPPENS ONLY DURING THREADING

@@ -107,7 +107,7 @@ diffs_2=["""@@ -0,0 +1,3 @@
 -before china goes live, the content team will have to manually update the settings for the china-ready apps currently in marketplace.
 +before china goes live (end January developer release, June general audience release) , the content team will have to manually update the settings for the china-ready apps currently in marketplace.""",
 """ 	@@ -1 +1 @@
--before china goes live (end January developer release, June general audience release), the content team will have to manually update the settings for the china-ready apps currently in marketplace.
+-before china goes live (end January developer release, June general audience release) , the content team will have to manually update the settings for the china-ready apps currently in marketplace.
 +before china goes live, the content team will have to manually update the settings for the china-ready apps currently in marketplace.
 @@ -3 +3 ,6 @@
 -kward has the details.+kward has the details.

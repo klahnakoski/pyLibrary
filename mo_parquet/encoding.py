@@ -7,6 +7,7 @@ from __future__ import print_function
 from itertools import izip
 
 import numba
+from fastparquet.encoding import _mask_for_bits
 
 
 @numba.njit(nogil=True)

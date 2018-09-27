@@ -9,17 +9,16 @@
 
 from mo_logs.strings import is_hex
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from pyLibrary.env.git import get_git_revision
-from pyLibrary.env.git import get_remote_revision
+from pyLibrary.env import git
 
 
 class TestGit(FuzzyTestCase):
     def test_get_revision(self):
-        rev = get_git_revision()
+        rev = git.get_revision()
         self.assertTrue(is_hex(rev))
         self.assertEqual(len(rev), 40)
 
     def test_get_remote_revision(self):
-        rev = get_remote_revision('https://github.com/klahnakoski/pyLibrary.git', 'master')
+        rev = git.get_remote_revision('https://github.com/klahnakoski/pyLibrary.git', 'master')
         self.assertTrue(is_hex(rev))
         self.assertEqual(len(rev), 40)
