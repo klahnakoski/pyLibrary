@@ -57,7 +57,6 @@
         "pyLibrary/testing",
         "pyLibrary/vendor",
         "pyLibrary",
-        "pyparsing",
         "tests/test_collections",
         "tests/test_dots",
         "tests/test_elasticsearch",
@@ -77,6 +76,6 @@
         ""
     ],
     "url": "https://github.com/klahnakoski/pyLibrary",
-    "version": "2.25.18269",
+    "version": "2.25.18270",
     "zip_safe": false
 }
