@@ -56,5 +56,6 @@ class TestDate(FuzzyTestCase):
         expected = Date("2016-09-25")
         self.assertEqual(f, expected)
 
-
-
+    def test_dow(self):
+        date = Date('2018-10-01 12:42:00')
+        self.assertEqual(date.dow, 0)   # MONDAY
