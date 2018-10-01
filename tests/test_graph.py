@@ -155,10 +155,11 @@ class TestGraph(FuzzyTestCase):
 
         dom = dominator_tree(g)
         expected = [
-            {(LOOPS, 2), (1, 4), (2, 3), (3, 1), (1, "A")},
-            {(LOOPS, 2), (LOOPS, 4), (2, 3), (3, 1), (1, "A")},
             {(LOOPS, 1), (LOOPS, 2), (LOOPS, 3), (LOOPS, 4), (1, "A")},
-            {(LOOPS, 2), (LOOPS, 3), (LOOPS, 4), (2, 1), (1, "A")}
+            {(LOOPS, 2), (LOOPS, 3), (LOOPS, 4), (2, 1), (1, "A")},
+            {(LOOPS, 2), (LOOPS, 3), (1, 4), (2, 1), (1, "A")},
+            {(LOOPS, 2), (LOOPS, 4), (2, 3), (3, 1), (1, "A")},
+            {(LOOPS, 2), (1, 4), (2, 3), (3, 1), (1, "A")},
         ]
         self.assertTrue(any(dom.edges == e for e in expected), "not found " + value2json(dom.edges))
 
@@ -247,6 +248,7 @@ class TestGraph(FuzzyTestCase):
 
         dom = dominator_tree(g)
         expected = [
-            {(LOOPS, 2), (LOOPS, 4), (2, 1), (4, 3), (1, "A")}
+            {(LOOPS, 2), (LOOPS, 4), (2, 1), (4, 3), (1, "A")},
+            {(LOOPS, 1), (LOOPS, 3), (1, 2), (3, 4), (1, "A")}
         ]
         self.assertTrue(any(dom.edges == e for e in expected), "not found " + value2json(dom.edges))
