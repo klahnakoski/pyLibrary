@@ -18,8 +18,8 @@ from decimal import Decimal
 from json.encoder import encode_basestring
 
 from mo_dots import Data, FlatList, NullType, join_field, split_field, _get, SLOT, DataObject
-from mo_future import text_type, binary_type, sort_using_key, long, PY2, none_type, generator_types
-from mo_json import ESCAPE_DCT, float2json, BOOLEAN, INTEGER, NUMBER, STRING, EXISTS, OBJECT, NESTED
+from mo_future import text_type, binary_type, sort_using_key, long, generator_types
+from mo_json import ESCAPE_DCT, float2json, BOOLEAN, INTEGER, NUMBER, STRING, EXISTS, NESTED, python_type_to_json_type
 from mo_json.encoder import UnicodeBuilder, COLON, COMMA, problem_serializing, json_encoder
 from mo_logs import Log
 from mo_logs.strings import quote, utf82unicode

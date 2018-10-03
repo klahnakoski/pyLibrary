@@ -11,7 +11,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from mo_dots import concat_field
-from mo_json.typed_encoder import NESTED, OBJECT, python_type_to_json_type, PRIMITIVE, STRING
+from mo_json import NESTED, OBJECT, python_type_to_json_type, PRIMITIVE, STRING
 from mo_logs import Log
 from mo_parquet.schema import SchemaTree, get_length, get_repetition_type, merge_schema_element, python_type_to_all_types, OPTIONAL, REQUIRED, REPEATED
 from mo_parquet.table import Table
