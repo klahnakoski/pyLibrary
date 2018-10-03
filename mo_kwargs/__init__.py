@@ -77,10 +77,10 @@ def override(func):
                 packed = params_pack(params, kwargs, dict_zip(params, args), kwargs["kwargs"], defaults)
             elif len(args) == 2 and len(kwargs) == 0 and isinstance(args[1], Mapping):
                 # ASSUME SECOND UNNAMED PARAM IS kwargs
-                packed = params_pack(params, {"self": args[0]}, args[1], defaults)
+                packed = params_pack(params, {"self":args[0]}, args[1], defaults)
             else:
                 # DO NOT INCLUDE self IN kwargs
-                packed = params_pack(params, kwargs, dict_zip(params, args), defaults)
+                packed = params_pack(params, dict_zip(params, args), kwargs, defaults)
             try:
                 return func(**packed)
             except TypeError as e:

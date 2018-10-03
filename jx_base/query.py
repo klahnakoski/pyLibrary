@@ -24,7 +24,8 @@ from mo_dots import coalesce, Null, set_default, unwraplist, literal_field
 from mo_dots import wrap, unwrap, listwrap
 from mo_dots.lists import FlatList
 from mo_future import text_type
-from mo_json.typed_encoder import untype_path, STRUCT
+from mo_json import STRUCT
+from mo_json.typed_encoder import untype_path
 from mo_logs import Log
 from mo_math import AND, UNION, Math
 
@@ -441,7 +442,7 @@ def _normalize_edge(edge, dim_index, limit, schema=None):
     if not _Column:
         _late_import()
 
-    if edge == None:
+    if not edge:
         Log.error("Edge has no value, or expression is empty")
     elif isinstance(edge, text_type):
         if schema:
