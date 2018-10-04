@@ -333,7 +333,7 @@ class Thread(BaseThread):
             else:
                 Log.error("Thread {{name|quote}} did not end well", name=self.name, cause=self.end_of_thread.exception)
         else:
-            raise Except(type=THREAD_TIMEOUT)
+            raise Except(context=THREAD_TIMEOUT)
 
     @staticmethod
     def run(name, target, *args, **kwargs):

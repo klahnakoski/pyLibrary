@@ -345,7 +345,7 @@ class Sqlite(DB):
                     self.transaction_stack.append(transaction)
                 elif transaction.exception and query is not ROLLBACK:
                     result.exception = Except(
-                        type=ERROR,
+                        context=ERROR,
                         template="Not allowed to continue using a transaction that failed",
                         cause=transaction.exception,
                         trace=trace
@@ -359,7 +359,7 @@ class Sqlite(DB):
                     # DEAL WITH ERRORS IN QUEUED COMMANDS
                     # WE WILL UNWRAP THE OUTER EXCEPTION TO GET THE CAUSE
                     err = Except(
-                        type=ERROR,
+                        context=ERROR,
                         template="Bad call to Sqlite3 while "+FORMAT_COMMAND,
                         params={"command": e.params.current.command},
                         cause=e.cause,
@@ -392,7 +392,7 @@ class Sqlite(DB):
             except Exception as e:
                 e = Except.wrap(e)
                 err = Except(
-                    type=ERROR,
+                    context=ERROR,
                     template="Bad call to Sqlite while " + FORMAT_COMMAND,
                     params={"command": query},
                     trace=trace,

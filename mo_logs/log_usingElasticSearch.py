@@ -15,14 +15,15 @@ from collections import Mapping
 
 from datetime import date, datetime
 
+import sys
 
 from jx_python import jx
-from mo_dots import wrap, coalesce, FlatList
+from mo_dots import wrap, coalesce, FlatList, set_default
 from mo_future import text_type, binary_type, number_types
-from mo_json import value2json, json2value, datetime2unix
+from mo_json import value2json, json2value, datetime2unix, scrub
 from mo_kwargs import override
 from mo_logs import Log, strings
-from mo_logs.exceptions import suppress_exception
+from mo_logs.exceptions import suppress_exception, Except
 from mo_logs.log_usingNothing import StructuredLogger
 from mo_threads import Thread, Queue, Till, THREAD_STOP
 from mo_times import MINUTE, Duration, Date
@@ -56,12 +57,12 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
         self.worker = Thread.run("add debug logs to es", self._insert_loop)
 
     def write(self, template, params):
-        if params.get("template") == '{{error|unicode}}':
-            # WARNING AND ERROS ARE HERE
-            self.queue.add({"value": params.error})
-        else:
-            template = strings.limit(template, 2000)
-            self.queue.add({"value": {"template": template, "params": params}}, timeout=3 * MINUTE)
+        try:
+            params.template = strings.limit(params.template, 2000)
+            params.format = None
+            self.queue.add({"value": _deep_json_to_string(params, 3)}, timeout=3 * 60)
+        except Exception as e:
+            sys.stdout.write(text_type(Except.wrap(e)))
         return self
 
     def _insert_loop(self, please_stop=None):

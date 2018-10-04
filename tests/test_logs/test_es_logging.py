@@ -12,7 +12,7 @@ from __future__ import unicode_literals
 
 from jx_base.expressions import NULL
 from mo_dots import Data
-from mo_logs import Log
+from mo_logs import Log, machine_metadata
 from mo_logs.log_usingElasticSearch import StructuredLogger_usingElasticSearch
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.env.elasticsearch import Cluster
@@ -28,14 +28,17 @@ class TestESLogging(FuzzyTestCase):
 
     cluster = Cluster(TEST_CONFIG)
 
+    def setUp(self):
+        Log.start({"trace": True})
+
     def test_note(self):
         self._before_test()
-        Log.note("this is a {{type}} test", test="basic")
+        Log.note("this is a {{type}} test", type="basic")
         es = self._after_test()
 
         # VERIFY LOG
         result = es.search({
-            "query": {"match_all": {}},
+            "query": {"term": {"template.~s~": "this is a {{type}} test"}},
             "from": 0,
             "size": 1,
             "sort": [{"timestamp.~n~": "desc"}],
@@ -44,11 +47,13 @@ class TestESLogging(FuzzyTestCase):
         expected = {
             "context": {"~s~": "NOTE"},
             "template": {"~s~": "this is a {{type}} test"},
-            "params": {"test": {"~s~": "basic"}, "~e~": 1}
+            "params": {"type": {"~s~": "basic"}, "~e~": 1}
         }
         self.assertEqual(result, expected)
 
         self.assertIsNotNone(result.machine.name)
+        self.assertIsNotNone(result.location)
+        self.assertIsNotNone(result.thread)
         self.assertIsNotNone(result.timestamp['~n~'])
 
         self.assertEqual(result.timestamp['~s~'], NULL)
@@ -56,12 +61,12 @@ class TestESLogging(FuzzyTestCase):
 
     def test_warning(self):
         self._before_test()
-        Log.warning("this is a {{type}} test", test="basic")
+        Log.warning("this is a {{type}} test", type="basic")
         es = self._after_test()
 
         # VERIFY LOG
         result = es.search({
-            "query": {"match_all": {}},
+            "query": {"term": {"template.~s~": "this is a {{type}} test"}},
             "from": 0,
             "size": 1,
             "sort": [{"timestamp.~n~": "desc"}],
@@ -70,11 +75,41 @@ class TestESLogging(FuzzyTestCase):
         expected = {
             "context": {"~s~": "WARNING"},
             "template": {"~s~": "this is a {{type}} test"},
-            "params": {"test": {"~s~": "basic"}, "~e~": 1}
+            "params": {"type": {"~s~": "basic"}, "~e~": 1}
         }
         self.assertEqual(result, expected)
 
         self.assertIsNotNone(result.machine.name)
+        self.assertIsNotNone(result.location)
+        self.assertIsNotNone(result.thread)
+        self.assertIsNotNone(result.timestamp['~n~'])
+
+        self.assertEqual(result.timestamp['~s~'], NULL)
+        self._delete_testindex()
+
+    def test_alarm(self):
+        self._before_test()
+        Log.alarm("this is a {{type}} test", type="basic")
+        es = self._after_test()
+
+        # VERIFY LOG
+        result = es.search({
+            "query": {"term": {"template.~s~": "this is a {{type}} test"}},
+            "from": 0,
+            "size": 1,
+            "sort": [{"timestamp.~n~": "desc"}],
+            "stored_fields": ["_source"]
+        }).hits.hits[0]._source
+        expected = {
+            "context": {"~s~": "ALARM"},
+            "template": {"~s~": "this is a {{type}} test"},
+            "params": {"type": {"~s~": "basic"}, "~e~": 1}
+        }
+        self.assertEqual(result, expected)
+
+        self.assertIsNotNone(result.machine.name)
+        self.assertIsNotNone(result.location)
+        self.assertIsNotNone(result.thread)
         self.assertIsNotNone(result.timestamp['~n~'])
 
         self.assertEqual(result.timestamp['~s~'], NULL)
