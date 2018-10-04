@@ -13,17 +13,19 @@ from __future__ import unicode_literals
 
 from collections import Mapping
 
-import mo_json
+from datetime import date, datetime
+
+
 from jx_python import jx
 from mo_dots import wrap, coalesce, FlatList
 from mo_future import text_type, binary_type, number_types
-from mo_json import value2json
+from mo_json import value2json, json2value, datetime2unix
 from mo_kwargs import override
 from mo_logs import Log, strings
 from mo_logs.exceptions import suppress_exception
 from mo_logs.log_usingNothing import StructuredLogger
 from mo_threads import Thread, Queue, Till, THREAD_STOP
-from mo_times import MINUTE, Duration
+from mo_times import MINUTE, Duration, Date
 from pyLibrary.convert import bytes2base64
 from pyLibrary.env.elasticsearch import Cluster
 
@@ -42,7 +44,7 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
         kwargs.retry.sleep = Duration(coalesce(kwargs.retry.sleep, MINUTE)).seconds
 
         self.es = Cluster(kwargs).get_or_create_index(
-            schema=mo_json.json2value(value2json(SCHEMA), leaves=True),
+            schema=json2value(value2json(SCHEMA), leaves=True),
             limit_replicas=True,
             typed=True,
             kwargs=kwargs
@@ -51,12 +53,12 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
         self.es.add_alias(coalesce(kwargs.alias, kwargs.index))
         self.queue = Queue("debug logs to es", max=queue_size, silent=True)
 
-        Thread.run("add debug logs to es", self._insert_loop)
+        self.worker = Thread.run("add debug logs to es", self._insert_loop)
 
     def write(self, template, params):
-        if params.get("template"):
-            # DETECTED INNER TEMPLATE, ASSUME TRACE IS ON, SO DO NOT NEED THE OUTER TEMPLATE
-            self.queue.add({"value": params})
+        if params.get("template") == '{{error|unicode}}':
+            # WARNING AND ERROS ARE HERE
+            self.queue.add({"value": params.error})
         else:
             template = strings.limit(template, 2000)
             self.queue.add({"value": {"template": template, "params": params}}, timeout=3 * MINUTE)
@@ -76,7 +78,7 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
                     for i, message in enumerate(mm):
                         if message is THREAD_STOP:
                             please_stop.go()
-                            return
+                            continue
                         try:
                             scrubbed.append(_deep_json_to_string(message, depth=3))
                         except Exception as e:
@@ -90,6 +92,8 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
                 if bad_count > MAX_BAD_COUNT:
                     Log.warning("Given up trying to write debug logs to ES index {{index}}", index=self.es.settings.index)
                 Till(seconds=30).wait()
+
+        self.es.flush()
 
         # CONTINUE TO DRAIN THIS QUEUE
         while not please_stop:
@@ -105,6 +109,7 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
 
         with suppress_exception:
             self.queue.close()
+        self.worker.join()
 
 
 def _deep_json_to_string(value, depth):
@@ -126,6 +131,8 @@ def _deep_json_to_string(value, depth):
         return strings.limit(value, LOG_STRING_LENGTH)
     elif isinstance(value, binary_type):
         return strings.limit(bytes2base64(value), LOG_STRING_LENGTH)
+    elif isinstance(value, (datetime, date)):
+        return datetime2unix(value)
     else:
         return strings.limit(value2json(value), LOG_STRING_LENGTH)
 
