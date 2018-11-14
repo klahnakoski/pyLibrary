@@ -18,11 +18,11 @@ from copy import deepcopy
 from jx_python import jx
 from jx_python.expressions import jx_expression_to_function
 from jx_python.meta import Column
-from mo_dots import wrap, FlatList, coalesce, Null, Data, set_default, listwrap, literal_field, ROOT_PATH, concat_field, split_field, SLOT
+from mo_dots import wrap, FlatList, coalesce, Null, Data, set_default, listwrap, literal_field, ROOT_PATH, concat_field, split_field, SLOT, join_field
 from mo_files.url import URL
 from mo_future import text_type, binary_type, items
 from mo_json import value2json, json2value
-from mo_json.typed_encoder import EXISTS_TYPE, BOOLEAN_TYPE, STRING_TYPE, NUMBER_TYPE, NESTED_TYPE, TYPE_PREFIX, json_type_to_inserter_type
+from mo_json.typed_encoder import json_type_to_inserter_type, EXISTS_TYPE, BOOLEAN_TYPE, STRING_TYPE, NUMBER_TYPE, NESTED_TYPE, TYPE_PREFIX
 from mo_kwargs import override
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
@@ -40,6 +40,7 @@ ES_STRUCT = ["object", "nested"]
 ES_NUMERIC_TYPES = ["long", "integer", "double", "float"]
 ES_PRIMITIVE_TYPES = ["string", "boolean", "integer", "date", "long", "double"]
 INDEX_DATE_FORMAT = "%Y%m%d_%H%M%S"
+SUFFIX_PATTERN = r'\d{8}_\d{6}'
 
 STALE_METADATA = 10 * MINUTE
 
@@ -303,6 +304,8 @@ class Index(Features):
         lines = []
         try:
             for r in records:
+                if '_id' in r or 'value' not in r:  # I MAKE THIS MISTAKE SO OFTEN, I NEED A CHECK
+                    Log.error('Expecting {"id":id, "value":document} form.  Not expecting _id')
                 rec = self.encode(r)
                 json_bytes = rec['json']
                 lines.append('{"index":{"_id": ' + convert.value2json(rec['id']) + '}}')
@@ -351,13 +354,15 @@ class Index(Features):
                         cause = [
                             Except(
                                 template="{{status}} {{error}} (and {{some}} others) while loading line id={{id}} into index {{index|quote}} (typed={{typed}}):\n{{line}}",
-                                status=items[i].index.status,
-                                error=items[i].index.error,
-                                some=len(fails) - 1,
-                                line=strings.limit(lines[i * 2 + 1], 500 if not self.debug else 100000),
-                                index=self.settings.index,
-                                typed=self.settings.typed,
-                                id=items[i].index._id
+                                params={
+                                    "status":items[i].index.status,
+                                    "error":items[i].index.error,
+                                    "some":len(fails) - 1,
+                                    "line":strings.limit(lines[i * 2 + 1], 500 if not self.debug else 100000),
+                                    "index":self.settings.index,
+                                    "typed":self.settings.typed,
+                                    "id":items[i].index._id
+                                }
                             )
                             for i in fails
                         ]
@@ -365,13 +370,15 @@ class Index(Features):
                         i=fails[0]
                         cause = Except(
                             template="{{status}} {{error}} (and {{some}} others) while loading line id={{id}} into index {{index|quote}} (typed={{typed}}):\n{{line}}",
-                            status=items[i].index.status,
-                            error=items[i].index.error,
-                            some=len(fails) - 1,
-                            line=strings.limit(lines[i * 2 + 1], 500 if not self.debug else 100000),
-                            index=self.settings.index,
-                            typed=self.settings.typed,
-                            id=items[i].index._id
+                            params={
+                                "status":items[i].index.status,
+                                "error":items[i].index.error,
+                                "some":len(fails) - 1,
+                                "line":strings.limit(lines[i * 2 + 1], 500 if not self.debug else 100000),
+                                "index":self.settings.index,
+                                "typed":self.settings.typed,
+                                "id":items[i].index._id
+                            }
                         )
                     Log.error("Problems with insert", cause=cause)
             pass
@@ -507,7 +514,8 @@ HOPELESS = [
     "400 MapperParsingException",
     "400 RoutingMissingException",
     "500 IllegalArgumentException[cannot change DocValues type",
-    "JsonParseException"
+    "JsonParseException",
+    " as object, but found a concrete value"
 ]
 
 known_clusters = {}  # MAP FROM (host, port) PAIR TO CLUSTER INSTANCE
@@ -576,11 +584,11 @@ class Cluster(object):
 
         if typed == None:
             typed = True
-            columns = parse_properties(index, ".", about.properties)
+            columns = parse_properties(index, ".", ROOT_PATH, about.properties)
             if len(columns) > 0:
                 typed = any(
-                    c.names["."].startswith(TYPE_PREFIX) or
-                    c.names["."].find("." + TYPE_PREFIX) != -1
+                    c.name.startswith(TYPE_PREFIX) or
+                    c.name.find("." + TYPE_PREFIX) != -1
                     for c in columns
                 )
             kwargs.typed = typed
@@ -659,7 +667,7 @@ class Cluster(object):
         indexes = jx.sort(
             [
                 ai_pair
-                for pattern in [re.escape(index) + r'\d{8}_\d{6}']
+                for pattern in [re.escape(index) + SUFFIX_PATTERN]
                 for ai_pair in self.get_aliases()
                 for a, i in [(ai_pair.alias, ai_pair.index)]
                 if (a == index and alias == None) or
@@ -695,7 +703,6 @@ class Cluster(object):
             if re.match(re.escape(prefix) + "\\d{8}_\\d{6}", a.index) and a.index != name:
                 self.delete_index(a.index)
 
-
     @override
     def create_index(
         self,
@@ -712,10 +719,15 @@ class Cluster(object):
         if kwargs.tjson != None:
             Log.error("used `typed` parameter, not `tjson`")
         if not alias:
-            alias = kwargs.alias = kwargs.index
-            index = kwargs.index = proto_name(alias, create_timestamp)
+            requested_name = kwargs.index
 
-        if kwargs.alias == index:
+            index = kwargs.index = proto_name(requested_name, create_timestamp)
+            if requested_name == index:
+                kwargs.alias = None
+            else:
+                kwargs.alias = requested_name
+
+        if not re.match('.*' + SUFFIX_PATTERN, index):
             Log.error("Expecting index name to conform to pattern")
 
         if kwargs.schema_file:
@@ -847,7 +859,7 @@ class Cluster(object):
             for old_index_name, old_meta in old_indices.items():
                 new_index = self._metadata.indices[old_index_name]
                 if not new_index:
-                    DEBUG_METADATA_UPDATE and Log.note("Old index lost: {{index}} at {{time}}", index=new_index_name, time=now)
+                    DEBUG_METADATA_UPDATE and Log.note("Old index lost: {{index}} at {{time}}", index=old_index_name, time=now)
                     self.index_last_updated[old_index_name] = now
         self.info = wrap(self.get("/", stream=False))
         self._version = self.info.version.number
@@ -889,7 +901,7 @@ class Cluster(object):
             self.debug and Log.note("POST {{url}}", url=url)
             response = http.post(url, **kwargs)
             if response.status_code not in [200, 201]:
-                Log.error(text_type(response.reason) + ": " + strings.limit(response.content.decode("latin1"), 100 if self.debug else 10000))
+                Log.error(text_type(response.reason) + ": " + strings.limit(response.content.decode("latin1"), 1000 if self.debug else 10000))
             self.debug and Log.note("response: {{response}}", response=utf82unicode(response.content)[:130])
             details = json2value(utf82unicode(response.content))
             if details.error:
@@ -911,7 +923,7 @@ class Cluster(object):
                 Log.error(
                     "Problem with call to {{url}}" + suggestion + "\n{{body|left(10000)}}",
                     url=url,
-                    body=strings.limit(utf82unicode(kwargs[DATA_KEY]), 100 if self.debug else 10000),
+                    body=strings.limit(utf82unicode(kwargs[DATA_KEY]), 500 if self.debug else 10000),
                     cause=e
                 )
             else:
@@ -923,7 +935,7 @@ class Cluster(object):
             response = http.delete(url, **kwargs)
             if response.status_code not in [200]:
                 Log.error(response.reason+": "+response.all_content)
-            self.debug and Log.note("response: {{response}}", response=strings.limit(utf82unicode(response.all_content), 130))
+            self.debug and Log.note("response: {{response}}", response=strings.limit(utf82unicode(response.all_content), 500))
             details = wrap(json2value(utf82unicode(response.all_content)))
             if details.error:
                 Log.error(details.error)
@@ -938,7 +950,7 @@ class Cluster(object):
             response = http.get(url, **kwargs)
             if response.status_code not in [200]:
                 Log.error(response.reason + ": " + response.all_content)
-            self.debug and Log.note("response: {{response}}", response=strings.limit(utf82unicode(response.all_content), 130))
+            self.debug and Log.note("response: {{response}}", response=strings.limit(utf82unicode(response.all_content), 500))
             details = wrap(json2value(utf82unicode(response.all_content)))
             if details.error:
                 Log.error(details.error)
@@ -952,7 +964,7 @@ class Cluster(object):
             response = http.head(url, **kwargs)
             if response.status_code not in [200]:
                 Log.error(response.reason+": "+response.all_content)
-            self.debug and Log.note("response: {{response}}", response=strings.limit(utf82unicode(response.all_content), 130))
+            self.debug and Log.note("response: {{response}}", response=strings.limit(utf82unicode(response.all_content), 500))
             if response.all_content:
                 details = wrap(json2value(utf82unicode(response.all_content)))
                 if details.error:
@@ -1003,6 +1015,12 @@ class Cluster(object):
 
 
 def proto_name(prefix, timestamp=None):
+    suffix = re.search(SUFFIX_PATTERN, prefix)
+    if suffix:
+        start, stop = suffix.regs[0]
+        if stop == len(prefix):
+            return prefix
+
     if not timestamp:
         timestamp = Date.now()
     else:
@@ -1119,10 +1137,9 @@ class Alias(Features):
                 # TODO: MERGE THE mappings OF ALL candidates, DO NOT JUST PICK THE LAST ONE
 
                 index = "dummy value"
-                schema = wrap({"_routing": {}, "properties": {}})
+                schema = wrap({"properties": {}})
                 for _, ind in jx.sort(candidates, {"value": 0, "sort": -1}):
                     mapping = ind.mappings[self.settings.type]
-                    set_default(schema._routing, mapping._routing)
                     schema.properties = _merge_mapping(schema.properties, mapping.properties)
             else:
                 #FULLY DEFINED settings
@@ -1198,13 +1215,7 @@ class Alias(Features):
     def search(self, query, timeout=None):
         query = wrap(query)
         try:
-            if self.debug:
-                if len(query.facets.keys()) > 20:
-                    show_query = query.copy()
-                    show_query.facets = {k: "..." for k in query.facets.keys()}
-                else:
-                    show_query = query
-                Log.note("Query {{path}}\n{{query|indent}}", path=self.path + "/_search", query=show_query)
+            self.debug and Log.note("Query {{path}}\n{{query|indent}}", path=self.path + "/_search", query=query)
             return self.cluster.post(
                 self.path + "/_search",
                 data=query,
@@ -1222,7 +1233,7 @@ class Alias(Features):
         self.cluster.post("/" + self.settings.alias + "/_refresh")
 
 
-def parse_properties(parent_index_name, parent_name, esProperties):
+def parse_properties(parent_index_name, parent_name, nested_path, esProperties):
     """
     RETURN THE COLUMN DEFINITIONS IN THE GIVEN esProperties OBJECT
     """
@@ -1235,29 +1246,31 @@ def parse_properties(parent_index_name, parent_name, esProperties):
         if property.type == "nested" and property.properties:
             # NESTED TYPE IS A NEW TYPE DEFINITION
             # MARKUP CHILD COLUMNS WITH THE EXTRA DEPTH
-            self_columns = parse_properties(index_name, column_name, property.properties)
-            for c in self_columns:
-                c.nested_path = [column_name] + c.nested_path
+            self_columns = parse_properties(index_name, column_name, [column_name] + nested_path, property.properties)
             columns.extend(self_columns)
             columns.append(Column(
+                name=jx_name,
                 es_index=index_name,
                 es_column=column_name,
-                names={".": jx_name},
                 es_type="nested",
-                nested_path=ROOT_PATH
+                jx_type='nested',
+                last_updated=Date.now(),
+                nested_path=nested_path
             ))
 
             continue
 
         if property.properties:
-            child_columns = parse_properties(index_name, column_name, property.properties)
+            child_columns = parse_properties(index_name, column_name, nested_path, property.properties)
             columns.extend(child_columns)
             columns.append(Column(
-                names={".": jx_name},
+                name=jx_name,
                 es_index=index_name,
                 es_column=column_name,
-                nested_path=ROOT_PATH,
-                es_type="source" if property.enabled == False else "object"
+                es_type="source" if property.enabled == False else "object",
+                jx_type='object',
+                last_updated=Date.now(),
+                nested_path=nested_path
             ))
 
         if property.dynamic:
@@ -1265,11 +1278,10 @@ def parse_properties(parent_index_name, parent_name, esProperties):
         if not property.type:
             continue
 
-
-        cardinality = 0 if not property.store and not name != '_id' else None
+        cardinality = 0 if not (property.store or property.enabled) and name != '_id' else None
 
         if property.fields:
-            child_columns = parse_properties(index_name, column_name, property.fields)
+            child_columns = parse_properties(index_name, column_name, nested_path, property.fields)
             if cardinality is None:
                 for cc in child_columns:
                     cc.cardinality = None
@@ -1277,30 +1289,36 @@ def parse_properties(parent_index_name, parent_name, esProperties):
 
         if property.type in es_type_to_json_type.keys():
             columns.append(Column(
+                name=jx_name,
                 es_index=index_name,
                 es_column=column_name,
-                names={".": jx_name},
-                nested_path=ROOT_PATH,
+                es_type=property.type,
+                jx_type=es_type_to_json_type[property.type],
                 cardinality=cardinality,
-                es_type=property.type
+                last_updated=Date.now(),
+                nested_path=nested_path
             ))
             if property.index_name and name != property.index_name:
                 columns.append(Column(
+                    name=jx_name,
                     es_index=index_name,
                     es_column=column_name,
-                    names={".": jx_name},
-                    nested_path=ROOT_PATH,
+                    es_type=property.type,
+                    jx_type=es_type_to_json_type[property.type],
                     cardinality=0 if property.store else None,
-                    es_type=property.type
+                    last_updated=Date.now(),
+                    nested_path=nested_path
                 ))
         elif property.enabled == None or property.enabled == False:
             columns.append(Column(
+                name=jx_name,
                 es_index=index_name,
                 es_column=column_name,
-                names={".": jx_name},
-                nested_path=ROOT_PATH,
+                es_type="source" if property.enabled == False else "object",
+                jx_type=es_type_to_json_type['object'],
                 cardinality=0 if property.store else None,
-                es_type="source" if property.enabled == False else "object"
+                last_updated=Date.now(),
+                nested_path=nested_path
             ))
         else:
             Log.warning("unknown type {{type}} for property {{path}}", type=property.type, path=parent_name)
@@ -1508,37 +1526,61 @@ def diff_schema(A, B):
 DEFAULT_DYNAMIC_TEMPLATES = wrap([
     {
         "default_typed_boolean": {
-            "mapping": {"type": "boolean", "store": True},
+            "mapping": {
+                "type": "boolean",
+                "store": True,
+                "norms": False
+            },
             "match": BOOLEAN_TYPE
         }
     },
     {
         "default_typed_number": {
-            "mapping": {"type": "double", "store": True},
+            "mapping": {
+                "type": "double",
+                "store": True,
+                "norms": False
+            },
             "match": NUMBER_TYPE
         }
     },
     {
         "default_typed_string": {
-            "mapping": {"type": "keyword", "store": True},
+            "mapping": {
+                "type": "keyword",
+                "store": True,
+                "norms": False
+            },
             "match": STRING_TYPE
         }
     },
     {
         "default_typed_exist": {
-            "mapping": {"type": "long", "store": True},
+            "mapping": {
+                "type": "long",
+                "store": True,
+                "norms": False
+            },
             "match": EXISTS_TYPE
         }
     },
     {
         "default_typed_nested": {
-            "mapping": {"type": "nested", "store": True},
+            "mapping": {
+                "type": "nested",
+                "store": True,
+                "norms": False
+            },
             "match": NESTED_TYPE
         }
     },
     {
         "default_string": {
-            "mapping": {"type": "keyword", "store": True},
+            "mapping": {
+                "type": "keyword",
+                "store": True,
+                "norms": False
+            },
             "match_mapping_type": "string"
         }
     },

@@ -19,13 +19,13 @@ from decimal import Decimal
 
 from mo_dots import FlatList, NullType, Data, wrap_leaves, wrap, Null, SLOT
 from mo_dots.objects import DataObject
-from mo_future import text_type, none_type, long, binary_type, PY2
+from mo_future import text_type, none_type, long, binary_type, PY2, items
 from mo_logs import Except, strings, Log
 from mo_logs.strings import expand_template
 from mo_times import Date, Duration
 
 FIND_LOOPS = False
-SNAP_TO_BASE_10 = True  # Identify floats near a round base10 value (has 000 or 999) and shorten
+SNAP_TO_BASE_10 = False  # Identify floats near a round base10 value (has 000 or 999) and shorten
 CAN_NOT_DECODE_JSON = "Can not decode JSON"
 
 IS_NULL = '0'
@@ -97,6 +97,7 @@ def float2json(value):
 
 
 def _snap_to_base_10(mantissa):
+    # TODO: https://lists.nongnu.org/archive/html/gcl-devel/2012-10/pdfkieTlklRzN.pdf
     digits = mantissa.replace('.', '')
     if SNAP_TO_BASE_10:
         f9 = strings.find(digits, '999')
@@ -203,7 +204,7 @@ def _scrub(value, is_done, stack, scrub_text, scrub_number):
         for v in value:
             v = _scrub(v, is_done, stack, scrub_text, scrub_number)
             output.append(v)
-        return output
+        return output # if output else None
     elif type_ is type:
         return value.__name__
     elif type_.__name__ == "bool_":  # DEAR ME!  Numpy has it's own booleans (value==False could be used, but 0==False in Python.  DOH!)
@@ -387,7 +388,6 @@ python_type_to_json_type = {
     int: NUMBER,
     text_type: STRING,
     float: NUMBER,
-    None: OBJECT,
     bool: BOOLEAN,
     NullType: OBJECT,
     none_type: OBJECT,
@@ -396,6 +396,8 @@ python_type_to_json_type = {
     object: OBJECT,
     Mapping: OBJECT,
     list: NESTED,
+    set: NESTED,
+    # tuple: NESTED,  # DO NOT INCLUDE, WILL HIDE LOGIC ERRORS
     FlatList: NESTED,
     Date: NUMBER
 }
@@ -404,6 +406,24 @@ if PY2:
     python_type_to_json_type[str] = STRING
     python_type_to_json_type[long] = NUMBER
 
+for k, v in items(python_type_to_json_type):
+    python_type_to_json_type[k.__name__] = v
+
+
+_merge_order= {
+    BOOLEAN: 1,
+    INTEGER: 2,
+    NUMBER: 3,
+    STRING: 4,
+    OBJECT: 5,
+    NESTED: 6
+}
+
+
+def _merge_json_type(A, B):
+    a = _merge_order[A]
+    b = _merge_order[B]
+    return A if a >= b else B
 
 
 from mo_json.decoder import json_decoder

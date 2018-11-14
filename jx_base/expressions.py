@@ -12,14 +12,17 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import operator
+import re
 from collections import Mapping
 from decimal import Decimal
 
 import mo_json
+from jx_base import first
 from jx_base.queries import is_variable_name, get_property_name
 from mo_dots import coalesce, wrap, Null, split_field
 from mo_future import text_type, utf8_json_encoder, get_function_name, zip_longest
 from mo_json import scrub, IS_NULL, OBJECT, BOOLEAN, NUMBER, INTEGER, STRING, python_type_to_json_type
+from mo_json.typed_encoder import inserter_type_to_json_type
 from mo_logs import Log, Except
 from mo_math import Math, MAX, MIN, UNION
 from mo_times.dates import Date, unicode2Date
@@ -38,6 +41,13 @@ def extend(cls):
         setattr(cls, get_function_name(func), func)
         return func
     return extender
+
+
+def last(values):
+    if len(values):
+        return values[-1]
+    else:
+        return Null
 
 
 def simplified(func):
@@ -63,7 +73,7 @@ def jx_expression(expr, schema=None):
         if len(leaves) == 0:
             v.data_type = IS_NULL
         if len(leaves) == 1:
-            v.data_type = list(leaves)[0].jx_type
+            v.data_type = first(leaves).jx_type
     return output
 
 
@@ -219,7 +229,6 @@ class Expression(object):
         ATTEMPT TO SIMPLIFY THE EXPRESSION:
         PREFERABLY RETURNING A LITERAL, BUT MAYBE A SIMPLER EXPRESSION, OR self IF NOT POSSIBLE
         """
-        self.simplified = True
         return self
 
     @property
@@ -227,8 +236,11 @@ class Expression(object):
         return self.data_type
 
     def __eq__(self, other):
-        Log.note("this is slow on {{type}}", type=text_type(self.__class__.__name__))
+        self_class = self.__class__
+        Log.note("this is slow on {{type}}", type=text_type(self_class.__name__))
         if other is None:
+            return False
+        if not isinstance(other, self_class):
             return False
         return self.__data__() == other.__data__()
 
@@ -238,10 +250,13 @@ class Variable(Expression):
     def __init__(self, var):
         """
         :param var:  DOT DELIMITED PATH INTO A DOCUMENT
-        :param verify: True - VERIFY THIS IS A VALID NAME (use False for trusted code only)
+
         """
         Expression.__init__(self, "", None)
         self.var = get_property_name(var)
+        jx_type = inserter_type_to_json_type.get(last(split_field(var)))
+        if jx_type:
+            self.data_type = jx_type
 
     def __call__(self, row, rownum=None, rows=None):
         path = split_field(self.var)
@@ -566,6 +581,10 @@ class NullOp(Literal):
     """
     data_type = OBJECT
 
+    @classmethod
+    def define(cls, expr):
+        return NULL
+
     def __new__(cls, *args, **kwargs):
         return object.__new__(cls, *args, **kwargs)
 
@@ -851,7 +870,6 @@ class BinaryOp(Expression):
         if isinstance(lhs, Literal) and isinstance(rhs, Literal):
             return Literal("literal", builtin_ops[self.op](lhs.value, rhs.value))
         return BinaryOp(self.op, [lhs, rhs])
-
 
 
 class InequalityOp(Expression):
@@ -1203,7 +1221,9 @@ class AndOp(Expression):
                 elif simple not in and_terms:
                     and_terms.append(simple)
 
-        if len(or_terms) == 1:
+        if len(or_terms) == 0:
+            return FALSE
+        elif len(or_terms) == 1:
             and_terms = or_terms[0]
             if len(and_terms) == 0:
                 return TRUE
@@ -1607,19 +1627,20 @@ class CountOp(Expression):
 
     def __init__(self, op, terms, **clauses):
         Expression.__init__(self, op, terms)
-        self.terms = terms
+        if isinstance(terms, list):
+            # SHORTCUT: ASSUME AN ARRAY OF IS A TUPLE
+            self.terms = TupleOp(None, terms)
+        else:
+            self.terms = terms
 
     def __data__(self):
-        return {"count": [t.__data__() for t in self.terms]}
+        return {"count": self.terms.__data__()}
 
     def vars(self):
-        output = set()
-        for t in self.terms:
-            output |= t.vars()
-        return output
+        return self.terms.vars()
 
     def map(self, map_):
-        return CountOp("count", [t.map(map_) for t in self.terms])
+        return CountOp("count", self.terms.map(map_))
 
     def missing(self):
         return FALSE
@@ -1805,6 +1826,7 @@ class MultiOp(Expression):
             else:
                 return Literal(None, acc)
         elif self.nulls:
+            # DECISIVE
             if acc is not None:
                 terms.append(Literal("literal", acc))
 
@@ -1820,12 +1842,13 @@ class MultiOp(Expression):
                 }
             ).partial_eval()
         else:
+            # CONSERVATIVE
             if acc is not None:
                 terms.append(Literal("literal", acc))
 
             output = WhenOp(
                 "when",
-                AndOp("or", [t.missing() for t in terms]),
+                OrOp("or", [t.missing() for t in terms]),
                 **{
                     "then": self.default,
                     "else": BasicMultiOp("basic." + self.op, terms)
@@ -2017,9 +2040,20 @@ class PrefixOp(Expression):
     def missing(self):
         return FALSE
 
+    def partial_eval(self):
+        if not self.expr:
+            return TRUE
+
+        return WhenOp(
+            "when",
+            AndOp("and", [self.expr.exists(), self.prefix.exists()]),
+            **{"then":BasicStartsWithOp(None, [self.expr, self.prefix]), "else": FALSE}
+        ).partial_eval()
+
 
 class SuffixOp(Expression):
     has_simple_form = True
+    data_type = BOOLEAN
 
     def __init__(self, op, term):
         Expression.__init__(self, op, term)
@@ -2038,6 +2072,14 @@ class SuffixOp(Expression):
         else:
             return {"suffix": [self.expr.__data__(), self.suffix.__data__()]}
 
+    def missing(self):
+        """
+        THERE IS PLENTY OF OPPORTUNITY TO SIMPLIFY missing EXPRESSIONS
+        OVERRIDE THIS METHOD TO SIMPLIFY
+        :return:
+        """
+        return FALSE
+
     def vars(self):
         if self.expr is None:
             return set()
@@ -2048,6 +2090,21 @@ class SuffixOp(Expression):
             return TRUE
         else:
             return SuffixOp("suffix", [self.expr.map(map_), self.suffix.map(map_)])
+
+    def partial_eval(self):
+        if self.expr is None:
+            return TRUE
+        if not isinstance(self.suffix, Literal) and self.suffix.type == STRING:
+            Log.error("can only hanlde literal suffix ")
+
+        return WhenOp(
+            "when",
+            AndOp("and", [self.expr.exists(), self.suffix.exists()]),
+            **{"then": RegExpOp(None, [self.expr, Literal(None, ".*" + re.escape(self.suffix.value))]), "else": FALSE}
+        ).partial_eval()
+
+
+
 
 
 class ConcatOp(Expression):
@@ -2493,7 +2550,9 @@ class BetweenOp(Expression):
     def map(self, map_):
         return BetweenOp(
             "between",
-            [self.value.map(map_), self.prefix.map(map_), self.suffix.map(map_)],
+            self.value.map(map_),
+            self.prefix.map(map_),
+            self.suffix.map(map_),
             default=self.default.map(map_),
             start=self.start.map(map_)
         )
@@ -2559,6 +2618,13 @@ class BetweenOp(Expression):
 class InOp(Expression):
     has_simple_form = True
     data_type = BOOLEAN
+
+    def __new__(cls, op, terms):
+        if isinstance(terms[0], Variable) and isinstance(terms[1], Literal):
+            name, value = terms
+            if not isinstance(value.value, (list, tuple)):
+                return EqOp("in", [name, Literal(None, [value.value])])
+        return object.__new__(cls)
 
     def __init__(self, op, term):
         Expression.__init__(self, op, term)
@@ -2679,13 +2745,13 @@ class CaseOp(Expression):
         if not isinstance(terms, (list, tuple)):
             Log.error("case expression requires a list of `when` sub-clauses")
         Expression.__init__(self, op, terms)
-        if len(terms) <= 1:
-            Log.error("Expecting at least two clauses")
-        else:
-            for w in terms[:-1]:
-                if not isinstance(w, WhenOp) or w.els_:
-                    Log.error("case expression does not allow `else` clause in `when` sub-clause")
-            self.whens = terms
+        if len(terms) == 0:
+            Log.error("Expecting at least one clause")
+
+        for w in terms[:-1]:
+            if not isinstance(w, WhenOp) or w.els_:
+                Log.error("case expression does not allow `else` clause in `when` sub-clause")
+        self.whens = terms
 
     def __data__(self):
         return {"case": [w.__data__() for w in self.whens]}
@@ -2741,7 +2807,116 @@ class CaseOp(Expression):
         if len(types) > 1:
             return OBJECT
         else:
-            return list(types)[0]
+            return first(types)
+
+
+class UnionOp(Expression):
+
+    def __init__(self, op, terms):
+        Expression.__init__(self, op, terms)
+        if terms == None:
+            self.terms = []
+        elif isinstance(terms, list):
+            self.terms = terms
+        else:
+            self.terms = [terms]
+
+    def __data__(self):
+        return {"union": [t.__data__() for t in self.terms]}
+
+    @property
+    def type(self):
+        return merge_types(t.type for t in self.terms)
+
+    def vars(self):
+        output = set()
+        for t in self.terms:
+            output |= t.vars()
+        return output
+
+    def map(self, map_):
+        return UnionOp("union", [t.map(map_) for t in self.terms])
+
+    def missing(self):
+        return FALSE
+
+    @simplified
+    def partial_eval(self):
+        minimum = None
+        terms = []
+        for t in self.terms:
+            simple = t.partial_eval()
+            if isinstance(simple, NullOp):
+                pass
+            elif isinstance(simple, Literal):
+                minimum = MIN([minimum, simple.value])
+            else:
+                terms.append(simple)
+        if len(terms) == 0:
+            if minimum == None:
+                return NULL
+            else:
+                return Literal(None, minimum)
+        else:
+            if minimum == None:
+                output = UnionOp("Union", terms)
+            else:
+                output = UnionOp("Union", [Literal(None, minimum)] + terms)
+
+        return output
+
+class EsNestedOp(Expression):
+    data_type = BOOLEAN
+    has_simple_form = False
+
+    def __init__(self, op, terms):
+        Expression.__init__(self, op, terms)
+        self.path, self.query = terms
+
+    @simplified
+    def partial_eval(self):
+        if self.path.var == '.':
+            return self.query.partial_eval()
+        return EsNestedOp("es.nested", [self.path, self.query.partial_eval()])
+
+    def __data__(self):
+        return {"es.nested": {self.path.var: self.query.__data__()}}
+
+    def __eq__(self, other):
+        if isinstance(other, EsNestedOp):
+            return self.path.var == other.path.var and self.query == other.query
+        return False
+
+
+class BasicStartsWithOp(Expression):
+    """
+    PLACEHOLDER FOR BASIC value.startsWith(find, start) (CAN NOT DEAL WITH NULLS)
+    """
+    data_type = BOOLEAN
+
+    def __init__(self, op, params):
+        Expression.__init__(self, op, params)
+        self.value, self.prefix = params
+
+    def __data__(self):
+        return {"basic.startsWith": [self.value.__data__(), self.prefix.__data__()]}
+
+    def __eq__(self, other):
+        if isinstance(other, BasicStartsWithOp):
+            return self.value==other.value and self.prefix==other.prefix
+
+    def vars(self):
+        return self.value.vars() | self.prefix.vars()
+
+    def missing(self):
+        return FALSE
+
+    @simplified
+    def partial_eval(self):
+        return BasicStartsWithOp("startsWith", [
+            StringOp("string", self.value).partial_eval(),
+            StringOp("string", self.prefix).partial_eval(),
+        ])
 
 
 class BasicIndexOfOp(Expression):
@@ -2851,13 +3026,22 @@ class BasicEqOp(Expression):
 
 class BasicMultiOp(Expression):
     """
-    PLACEHOLDER FOR BASIC `==` OPERATOR (CAN NOT DEAL WITH NULLS)
+    PLACEHOLDER FOR BASIC OPERATOR (CAN NOT DEAL WITH NULLS)
     """
     data_type = NUMBER
 
     def __init__(self, op, terms):
         self.op = op
         self.terms = terms
+
+    def vars(self):
+        output = set()
+        for t in self.terms:
+            output.update(t.vars())
+        return output
+
+    def map(self, map):
+        return BasicMultiOp(self.op, [t.map(map) for t in self.terms])
 
     def __data__(self):
         return {"basic."+self.op: [t.__data__() for t in self.terms]}
@@ -2881,6 +3065,24 @@ class BasicSubstringOp(Expression):
     def missing(self):
         return FALSE
 
+
+def merge_types(jx_types):
+    """
+    :param jx_types: ITERABLE OF jx TYPES
+    :return: ONE TYPE TO RULE THEM ALL
+    """
+    return _merge_types[max(_merge_score[t] for t in jx_types)]
+
+
+_merge_score = {
+    IS_NULL: 0,
+    BOOLEAN: 1,
+    INTEGER: 2,
+    NUMBER: 3,
+    STRING: 4,
+    OBJECT: 5
+}
+_merge_types = {v: k for k, v in _merge_score.items()}
 
 
 operators = {
@@ -2949,6 +3151,7 @@ operators = {
     "term": EqOp,
     "terms": InOp,
     "tuple": TupleOp,
+    "union": UnionOp,
     "unix": UnixOp,
     "when": WhenOp,
 }

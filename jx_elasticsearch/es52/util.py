@@ -11,18 +11,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from jx_base.expressions import TRUE, AndOp, EsNestedOp
 from jx_elasticsearch.es52.expressions import Variable
-from mo_dots import wrap
-from mo_future import text_type
-from mo_json.typed_encoder import STRING, BOOLEAN, NUMBER, OBJECT
+from mo_dots import wrap, literal_field
+from mo_future import text_type, sort_using_key
+from mo_json import STRING, BOOLEAN, NUMBER, OBJECT, IS_NULL
 from mo_logs import Log
+from pyLibrary.convert import value2boolean
 
 
 def es_query_template(path):
     """
     RETURN TEMPLATE AND PATH-TO-FILTER AS A 2-TUPLE
     :param path: THE NESTED PATH (NOT INCLUDING TABLE NAME)
-    :return:
+    :return: (es_query, es_filters) TUPLE
     """
 
     if not isinstance(path, text_type):
@@ -54,6 +56,7 @@ def es_query_template(path):
             "sort": []
         })
         return output, wrap([f0])
+
 
 
 def jx_sort_to_es_sort(sort, schema):
@@ -91,6 +94,7 @@ aggregates = {
     "sum": "sum",
     "add": "sum",
     "count": "value_count",
+    "count_values": "count_values",
     "maximum": "max",
     "minimum": "min",
     "max": "max",
@@ -133,3 +137,11 @@ def es_script(term):
 
 def es_missing(term):
     return {"bool": {"must_not": {"exists": {"field": term}}}}
+
+
+pull_functions = {
+    IS_NULL: lambda x: None,
+    STRING: lambda x: x,
+    NUMBER: lambda x: float(x) if x !=None else None,
+    BOOLEAN: value2boolean
+}
