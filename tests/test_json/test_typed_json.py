@@ -148,14 +148,12 @@ class TestJSON(unittest.TestCase):
     def test_empty_list1(self):
         value = wrap({"a": []})
         test1 = typed_encode(value)
-        # expected = u'{"a":{' + quote(NESTED_TYPE) + u':[]},' + quote(EXISTS_TYPE) + u':1}'
         expected = u'{' + quote(EXISTS_TYPE) + u':1}'
         self.assertEqual(test1, expected)
 
     def test_empty_list2(self):
         value = wrap({"a": [], "b": 1})
         test1 = typed_encode(value)
-        # expected = u'{"a":{' + quote(NESTED_TYPE) + ':[]},"b":{' + quote(NUMBER_TYPE) + u':1},' + quote(EXISTS_TYPE) + u':1}'
         expected = u'{"b":{' + quote(NUMBER_TYPE) + u':1},' + quote(EXISTS_TYPE) + u':1}'
         self.assertEqual(test1, expected)
 
@@ -165,3 +163,11 @@ class TestJSON(unittest.TestCase):
 
         self.assertIsInstance(test, dict)
         self.assertEqual(len(test), 0)
+
+
+    def test_empty_object_in_list(self):
+        value = wrap({"a": [{"b": {}}]})
+
+        test = typed_encode(value)
+        expected = u'{"a":{"b":{' + quote(EXISTS_TYPE) + u':1},' + quote(EXISTS_TYPE) + u':1},' + quote(EXISTS_TYPE) + u':1}'
+        self.assertEqual(test, expected)

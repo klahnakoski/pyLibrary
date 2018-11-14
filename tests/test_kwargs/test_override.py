@@ -313,6 +313,9 @@ class TestOverride(FuzzyTestCase):
         self.assertEqual(len(result["kwargs"]), 3)
         self.assertEqual(len(result["kwargs"]["kwargs"]), 3)
 
+    def test_deeper_call_raises_type_error(self):
+        self.assertRaises("oops", oops)
+
 
 @override
 def basic(required, optional=3):
@@ -337,6 +340,11 @@ def required(required, optional=3, kwargs=None):
 @override
 def kwargs(kwargs=None, **kwargs_):
     return {"kwargs": kwargs, "kwargs_": kwargs_}
+
+
+@override
+def oops(self):
+    required()  # SHOULD RAISE TypeError
 
 
 class TestObject(object):
