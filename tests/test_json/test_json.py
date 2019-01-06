@@ -25,6 +25,15 @@ from mo_json.encoder import pretty_json, cPythonJSONEncoder, pypy_json_encode
 
 
 class TestJSON(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.backup = mo_json.SNAP_TO_BASE_10
+        mo_json.SNAP_TO_BASE_10 = True
+
+    @classmethod
+    def tearDownClass(cls):
+        mo_json.SNAP_TO_BASE_10=cls.backup
+
     def test_date(self):
         output = value2json({"test": datetime.date(2013, 11, 13)})
         Log.note("JSON = {{json}}", json= output)

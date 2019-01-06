@@ -52,25 +52,25 @@ class TestJSON(unittest.TestCase):
     def test_empty_list(self):
         value = {"value": []}
         test1 = typed_encode(value)
-        expected = u'{"value":{' + quote(NESTED_TYPE) + u':[]},' + quote(EXISTS_TYPE) + u':1}'
+        expected = u'{"value":{' + quote(EXISTS_TYPE) + u':0},' + quote(EXISTS_TYPE) + u':1}'
         self.assertEqual(test1, expected)
 
     def test_nested(self):
         value = {"a": {}, "b": {}}
         test1 = typed_encode(value)
-        expected = u'{"a":{' + quote(EXISTS_TYPE) + u':0},"b":{' + quote(EXISTS_TYPE) + u':0},' + quote(EXISTS_TYPE) + u':1}'
+        expected = u'{"a":{' + quote(EXISTS_TYPE) + u':1},"b":{' + quote(EXISTS_TYPE) + u':1},' + quote(EXISTS_TYPE) + u':1}'
         self.assertEqual(test1, expected)
 
     def test_list_of_objects(self):
         value = {"a": [{}, "b"]}
         test1 = typed_encode(value)
-        expected = u'{"a":{"'+NESTED_TYPE+u'":[{' + quote(EXISTS_TYPE) + u':0},{' + quote(STRING_TYPE) + u':"b"}],' + quote(EXISTS_TYPE) + u':2},' + quote(EXISTS_TYPE) + u':1}'
+        expected = u'{"a":{"'+NESTED_TYPE+u'":[{' + quote(EXISTS_TYPE) + u':1},{' + quote(STRING_TYPE) + u':"b"}],' + quote(EXISTS_TYPE) + u':2},' + quote(EXISTS_TYPE) + u':1}'
         self.assertEqual(test1, expected)
 
     def test_empty_list_value(self):
         value = []
         test1 = typed_encode(value)
-        expected = u'{'+quote(NESTED_TYPE)+':[]}'
+        expected = u'{'+quote(EXISTS_TYPE)+':0}'
         self.assertEqual(test1, expected)
 
     def test_list_value(self):
@@ -136,7 +136,7 @@ class TestJSON(unittest.TestCase):
     def test_empty_dict(self):
         value = wrap({"match_all": wrap({})})
         test1 = typed_encode(value)
-        expected = u'{"match_all":{' + quote(EXISTS_TYPE) + u':0},' + quote(EXISTS_TYPE) + u':1}'
+        expected = u'{"match_all":{' + quote(EXISTS_TYPE) + u':1},' + quote(EXISTS_TYPE) + u':1}'
         self.assertEqual(test1, expected)
 
     def test_complex_object(self):
@@ -164,10 +164,16 @@ class TestJSON(unittest.TestCase):
         self.assertIsInstance(test, dict)
         self.assertEqual(len(test), 0)
 
-
     def test_empty_object_in_list(self):
         value = wrap({"a": [{"b": {}}]})
 
         test = typed_encode(value)
         expected = u'{"a":{"b":{' + quote(EXISTS_TYPE) + u':1},' + quote(EXISTS_TYPE) + u':1},' + quote(EXISTS_TYPE) + u':1}'
+        self.assertEqual(test, expected)
+
+    def test_null_object_in_list(self):
+        value = wrap({"a": [{"b": None}]})
+
+        test = typed_encode(value)
+        expected = u'{"a":{' + quote(EXISTS_TYPE) + u':1},' + quote(EXISTS_TYPE) + u':1}'
         self.assertEqual(test, expected)
