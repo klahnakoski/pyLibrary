@@ -19,16 +19,16 @@ LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
 """
 from __future__ import absolute_import, division, unicode_literals
 
-from collections import Mapping
-from decimal import Decimal
 import operator
 import re
+from collections import Mapping
+from decimal import Decimal
 
-from jx_base.queries import get_property_name, is_variable_name
-from jx_base.utils import BaseExpression, define_language, first, TYPE_ORDER, value_compare, JX
-from mo_dots import Null, coalesce, split_field, wrap
-from mo_future import get_function_name, items as items_, text_type, utf8_json_encoder, zip_longest
 import mo_json
+from jx_base.queries import get_property_name, is_variable_name
+from jx_base.utils import BaseExpression, define_language, TYPE_ORDER, value_compare
+from mo_dots import Null, coalesce, split_field, wrap
+from mo_future import get_function_name, items as items_, text_type, utf8_json_encoder, zip_longest, first
 from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, OBJECT, STRING, python_type_to_json_type, scrub
 from mo_json.typed_encoder import inserter_type_to_json_type
 from mo_logs import Except, Log

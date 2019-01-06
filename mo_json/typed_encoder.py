@@ -262,8 +262,16 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
                 append(buffer, QUOTED_EXISTS_TYPE)
                 append(buffer, '0}')
             elif any(isinstance(v, (Mapping, set, list, tuple, FlatList)) for v in value):
+                # THIS IS NOT DONE BECAUSE
                 if len(value) == 1:
-                    typed_encode(value[0], sub_schema, path, net_new_properties, buffer)
+                    if NESTED_TYPE in sub_schema:
+                        append(buffer, '{')
+                        append(buffer, QUOTED_NESTED_TYPE)
+                        _list2json(value, sub_schema[NESTED_TYPE], path + [NESTED_TYPE], net_new_properties, buffer)
+                        append(buffer, '}')
+                    else:
+                        # NO NEED TO NEST, SO DO NOT DO IT
+                        typed_encode(value[0], sub_schema, path, net_new_properties, buffer)
                 else:
                     if NESTED_TYPE not in sub_schema:
                         sub_schema[NESTED_TYPE] = {}

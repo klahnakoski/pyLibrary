@@ -13,3 +13,5 @@ pyLibrary.egg-info
 /docs/~$Libraries.pptx
 /pyLibrary/vendor/sqlite
 /this is a test file.sqlite
+/*.sqlite-journal
+/*.sqlite

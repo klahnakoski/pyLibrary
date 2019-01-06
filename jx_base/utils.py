@@ -23,10 +23,6 @@ expression_module = None
 JX = None
 
 
-def first(values):
-    return iter(values).next()
-
-
 _next_id = 0
 
 

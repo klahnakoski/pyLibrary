@@ -1492,7 +1492,7 @@ def retro_properties(properties):
 
 
 def add_typed_annotations(meta):
-    if meta.type in ["text", "keyword", "string", "float", "double", "integer", "nested", "boolean"]:
+    if meta.type in ["text", "keyword", "string", "float", "double", "integer", "boolean"]:
         return {
             "type": "object",
             "dynamic": True,

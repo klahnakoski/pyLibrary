@@ -11,43 +11,74 @@
 from __future__ import unicode_literals
 
 import sqlite3
+from unittest import skip
 
 from mo_future import text_type
-
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_threads import Till, Thread
-from mo_times.durations import SECOND
-
 
 call_count = 0
 
 
 class TestMeta(FuzzyTestCase):
-
+    @skip("takes a long time")
     def test_sqlite_does_not_lock_gil(self):
+        # USE THIS TEST TO VERIFY THE runner() IS GOING SAME SPEED WHILE DATABASE DOES ITS WORK
         def make_database(num, please_stop):
             db = sqlite3.connect(
-                database="this is a test file.sqlite",
+                database=":memory:" if num == 1 else "this is a test file" + text_type(num) + ".sqlite",
                 check_same_thread=False,
-                isolation_level=None
+                isolation_level=None,
             )
-            db.execute("DROP TABLE IF EXISTS digits"+text_type(num))
-            db.execute("DROP TABLE IF EXISTS thousand"+text_type(num))
-            db.execute("DROP TABLE IF EXISTS million"+text_type(num))
-            db.execute("DROP TABLE IF EXISTS billion"+text_type(num))
-            db.execute("CREATE TABLE digits"+text_type(num)+" (value TEXT)")
+            db.execute("DROP TABLE IF EXISTS digits" + text_type(num))
+            db.execute("DROP TABLE IF EXISTS thousand" + text_type(num))
+            db.execute("DROP TABLE IF EXISTS million" + text_type(num))
+            db.execute("DROP TABLE IF EXISTS billion" + text_type(num))
+            db.execute("CREATE TABLE digits" + text_type(num) + " (value TEXT)")
 
             Log.note("ten")
-            db.execute("INSERT INTO digits"+text_type(num)+" VALUES ('1'), ('2'), ('3'), ('4'), ('5'), ('6'), ('7'), ('8'), ('9')")
+            db.execute(
+                "INSERT INTO digits"
+                + text_type(num)
+                + " VALUES ('1'), ('2'), ('3'), ('4'), ('5'), ('6'), ('7'), ('8'), ('9')"
+            )
+            db.commit()
             Log.note("thousand")
-            db.execute("CREATE TABLE thousand"+text_type(num)+" AS SELECT d1.value || d2.value || d3.value AS value FROM digits d1, digits d2, digits d3")
+            db.execute(
+                "CREATE TABLE thousand"
+                + text_type(num)
+                + " AS SELECT d1.value || d2.value || d3.value AS value FROM digits"
+                + text_type(num)
+                + " d1, digits"
+                + text_type(num)
+                + " d2, digits"
+                + text_type(num)
+                + " d3"
+            )
             Log.note("million")
-            db.execute("CREATE TABLE million"+text_type(num)+" AS SELECT d1.value || d2.value AS value FROM thousand d1, thousand d2")
+            db.execute(
+                "CREATE TABLE million"
+                + text_type(num)
+                + " AS SELECT d1.value || d2.value AS value FROM thousand"
+                + text_type(num)
+                + " d1, thousand"
+                + text_type(num)
+                + " d2"
+            )
             Log.note("billion")
-            db.execute("CREATE TABLE billion"+text_type(num)+" AS SELECT d1.value || d2.value || d3.value AS value FROM thousand d1, thousand d2, thousand d3")
+            db.execute(
+                "CREATE TABLE billion"
+                + text_type(num)
+                + " AS SELECT d1.value || d2.value || d3.value AS value FROM thousand"
+                + text_type(num)
+                + " d1, thousand"
+                + text_type(num)
+                + " d2, thousand"
+                + text_type(num)
+                + " d3"
+            )
             Log.note("done")
-
 
         def runner(please_stop):
             global call_count
@@ -62,19 +93,20 @@ class TestMeta(FuzzyTestCase):
                 Log.note("call count={{count}}", count=c)
                 Till(seconds=1).wait()
 
+        Log.note("First, we report the number of increments done by runner() each second:")
         run = Thread.run("", runner)
         rep = Thread.run("", reporter)
 
         Till(seconds=10).wait()
-        Log.note("build database")
+        Log.note("Second, we run some database updates:")
         t1 = Thread.run("1", make_database, 1)
-        # t2 = Thread.run("2", make_database, 2)
+        t2 = Thread.run("2", make_database, 2)
         # t3 = Thread.run("3", make_database, 3)
 
         t1.join()
-        # t2.join()
+        t2.join()
         # t3.join()
 
-        Log.note("Done build")
+        Log.note("Done")
         run.please_stop.go()
         rep.please_stop.go()
