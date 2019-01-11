@@ -7,28 +7,24 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-import itertools
-from collections import Mapping
 from copy import copy
+import itertools
 
 import jx_base
 from jx_base import Container
-from jx_base.expressions import Expression, Variable, TRUE
+from jx_base.expressions import TRUE, Variable
+from jx_base.language import is_expression, is_op
 from jx_python.expressions import jx_expression_to_function
 from jx_python.lists.aggs import is_aggs, list_aggs
 from jx_python.meta import get_schema_from_list
 from mo_collections import UniqueIndex
-from mo_dots import Data, wrap, listwrap, unwraplist, unwrap, Null
-from mo_future import sort_using_key, first
+from mo_dots import Data, Null, is_data, is_list, listwrap, unwrap, unwraplist, wrap
+from mo_future import first, sort_using_key
 from mo_logs import Log
 from mo_threads import Lock
 from pyLibrary import convert
-
-_get = object.__getattribute__
 
 
 class ListContainer(Container, jx_base.Namespace, jx_base.Table):
@@ -144,9 +140,9 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
         return self.where(where)
 
     def where(self, where):
-        if isinstance(where, Mapping):
+        if is_data(where):
             temp = jx_expression_to_function(where)
-        elif isinstance(where, Expression):
+        elif is_expression(where):
             temp = jx_expression_to_function(where)
         else:
             temp = where
@@ -161,7 +157,7 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
         :param select: the variable to extract from list
         :return:  a simple list of the extraction
         """
-        if isinstance(select, list):
+        if is_list(select):
             return [(d[s] for s in select) for d in self.data]
         else:
             return [d[select] for d in self.data]
@@ -169,16 +165,16 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
     def select(self, select):
         selects = listwrap(select)
 
-        if len(selects) == 1 and isinstance(selects[0].value, Variable) and selects[0].value.var == ".":
+        if len(selects) == 1 and is_op(selects[0].value, Variable) and selects[0].value.var == ".":
             new_schema = self.schema
             if selects[0].name == ".":
                 return self
         else:
             new_schema = None
 
-        if isinstance(select, list):
+        if is_list(select):
             if all(
-                isinstance(s.value, Variable) and s.name == s.value.var
+                is_op(s.value, Variable) and s.name == s.value.var
                 for s in select
             ):
                 names = set(s.value.var for s in select)
@@ -195,7 +191,7 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
         else:
             select_value = jx_expression_to_function(select.value)
             new_data = map(select_value, self.data)
-            if isinstance(select.value, Variable):
+            if is_op(select.value, Variable):
                 column = copy(first(c for c in self.schema.columns if c.name == select.value.var))
                 column.name = '.'
                 new_schema = Schema("from " + self.name, [column])
@@ -274,8 +270,6 @@ class ListContainer(Container, jx_base.Namespace, jx_base.Table):
     def __len__(self):
         return len(self.data)
 
-    # class Namespace(jx_base.Namespace):
-
     def get_snowflake(self, name):
         if self.name != name:
             Log.error("This container only has table by name of {{name}}", name=name)
@@ -299,8 +293,6 @@ def _exec(code):
         return temp
     except Exception as e:
         Log.error("Could not execute {{code|quote}}", code=code, cause=e)
-
-
 
 
 from jx_base.schema import Schema

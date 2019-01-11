@@ -10,12 +10,9 @@
 
 import unittest
 
-from mo_math.randoms import Random
-
-from mo_math import Math
-
 from mo_dots.lists import FlatList
 from mo_future import PY2, PY3
+from mo_math.randoms import Random
 from mo_times import Timer
 
 
