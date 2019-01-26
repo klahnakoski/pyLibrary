@@ -9,8 +9,11 @@
 #
 
 import unittest
+
 from mo_dots.lists import FlatList
 from mo_future import PY2, PY3
+from mo_math.randoms import Random
+from mo_times import Timer
 
 
 class NaiveList(list):
@@ -40,7 +43,6 @@ class NaiveList(list):
         return len(self.list)
 
 
-
 class TestPython(unittest.TestCase):
     def test_space(self):
         if PY3:
@@ -49,7 +51,7 @@ class TestPython(unittest.TestCase):
             assert u" " == b" "
 
     def test_slice(self):
-        my_list = NaiveList(['a', 'b', 'c', 'd', 'e'])
+        my_list = NaiveList(["a", "b", "c", "d", "e"])
 
         assert 0 == len(my_list[-2:0])
         assert (0 if PY2 else 1) == len(my_list[-1:1])  # EXPECT 1
@@ -61,7 +63,7 @@ class TestPython(unittest.TestCase):
         assert 0 == len(my_list[5:7])
 
     def test_over_slice_left(self):
-        my_list = NaiveList(['a', 'b', 'c', 'd', 'e'])
+        my_list = NaiveList(["a", "b", "c", "d", "e"])
 
         assert 2 == len(my_list[1:3])
         assert 3 == len(my_list[0:3])
@@ -70,9 +72,8 @@ class TestPython(unittest.TestCase):
         assert (1 if PY2 else 3) == len(my_list[-3:3])  # EXPECT 3
         assert (2 if PY2 else 3) == len(my_list[-4:3])  # EXPECT 3
 
-
     def test_over_slice_right(self):
-        my_list = NaiveList(['a', 'b', 'c', 'd', 'e'])
+        my_list = NaiveList(["a", "b", "c", "d", "e"])
 
         assert 3 == len(my_list[1:4])
         assert 4 == len(my_list[1:5])
@@ -82,7 +83,7 @@ class TestPython(unittest.TestCase):
         assert 4 == len(my_list[1:9])
 
     def test_better_slice(self):
-        my_list = FlatList(['a', 'b', 'c', 'd', 'e'])
+        my_list = FlatList(["a", "b", "c", "d", "e"])
 
         assert 0 == len(my_list[-2:0:])
         assert 1 == len(my_list[-1:1:])
@@ -94,7 +95,7 @@ class TestPython(unittest.TestCase):
         assert 0 == len(my_list[5:7:])
 
     def test_better_over_slice_left(self):
-        my_list = FlatList(['a', 'b', 'c', 'd', 'e'])
+        my_list = FlatList(["a", "b", "c", "d", "e"])
 
         assert 2 == len(my_list[1:3:])
         assert 3 == len(my_list[0:3:])
@@ -103,9 +104,8 @@ class TestPython(unittest.TestCase):
         assert 3 == len(my_list[-3:3:])
         assert 3 == len(my_list[-4:3:])
 
-
     def test_better_over_slice_right(self):
-        my_list = FlatList(['a', 'b', 'c', 'd', 'e'])
+        my_list = FlatList(["a", "b", "c", "d", "e"])
 
         assert 3 == len(my_list[1:4:])
         assert 4 == len(my_list[1:5:])
@@ -114,3 +114,30 @@ class TestPython(unittest.TestCase):
         assert 4 == len(my_list[1:8:])
         assert 4 == len(my_list[1:9:])
 
+    def test_id_vs_id(self):
+
+        ops = [Op() for _ in range(200)]
+        lang1 = {id(o): o for o in ops}
+
+        sample = Random.sample(ops, 1000 * 1000)
+        with Timer("using id()"):
+            result1 = [lang1[id(o)] for o in sample]
+
+        lang2 = [None] * (max(o.id for o in ops) + 1)
+        for o in ops:
+            lang2[o.id] = o
+        # lang2 = tuple(lang2)
+
+        with Timer("using o.id"):
+            result2 = [lang2[o.id] for o in sample]
+
+
+op_count = 0
+
+
+class Op(object):
+
+    def __init__(self):
+        global op_count
+        self.id = op_count
+        op_count += 1

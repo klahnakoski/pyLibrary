@@ -7,15 +7,11 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import text_type, xrange
-from mo_dots import Null, Data, coalesce, get_module
-from mo_kwargs import override
+from mo_dots import Data, Null, coalesce, get_module, is_sequence
+from mo_future import text_type, transpose, xrange
 from mo_logs import Log
-from mo_logs.exceptions import suppress_exception
 
 
 class Matrix(object):
@@ -24,7 +20,6 @@ class Matrix(object):
     """
     ZERO = None
 
-    @override
     def __init__(self, dims=[], list=None, value=None, zeros=None, kwargs=None):
         if list:
             self.num = 1
@@ -41,7 +36,7 @@ class Matrix(object):
         self.num = len(dims)
         self.dims = tuple(dims)
         if zeros != None:
-            if self.num == 0 or any(d == 0 for d in dims):  #NO DIMS, OR HAS A ZERO DIM, THEN IT IS A NULL CUBE
+            if self.num == 0 or any(d == 0 for d in dims):  # NO DIMS, OR HAS A ZERO DIM, THEN IT IS A NULL CUBE
                 if hasattr(zeros, "__call__"):
                     self.cube = zeros()
                 else:
@@ -62,7 +57,7 @@ class Matrix(object):
         return output
 
     def __getitem__(self, index):
-        if not isinstance(index, (list, tuple)):
+        if not is_sequence(index):
             if isinstance(index, slice):
                 sub = self.cube[index]
                 output = Matrix()
@@ -172,10 +167,11 @@ class Matrix(object):
 
     def __iter__(self):
         if not self.dims:
-            return [self.value].__iter__()
+            yield (tuple(), self.value)
         else:
             # TODO: MAKE THIS FASTER BY NOT CALLING __getitem__ (MAKES CUBE OBJECTS)
-            return ((c, self[c]) for c in self._all_combos())
+            for c in self._all_combos():
+                yield (c, self[c])
 
     def __float__(self):
         return self.value
@@ -341,7 +337,10 @@ def _getitem(c, i):
             return (), c[select]
     else:
         select = i[0]
-        if select == None:
+        if isinstance(select, int):
+
+            return _getitem(c[select], i[1::])
+        elif select == None:
             dims, cube = transpose(*[_getitem(cc, i[1::]) for cc in c])
             return (len(cube),)+dims[0], cube
         elif isinstance(select, slice):
@@ -349,8 +348,7 @@ def _getitem(c, i):
             dims, cube = transpose(*[_getitem(cc, i[1::]) for cc in sub])
             return (len(cube),)+dims[0], cube
         else:
-            with suppress_exception:
-                return _getitem(c[select], i[1::])
+            return _getitem(c[select], i[1::])
 
 
 def _zero_dim(value):

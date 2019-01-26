@@ -168,7 +168,7 @@ class TestOverride(FuzzyTestCase):
         self.assertEqual(len(result["kwargs"]["kwargs"]), 3)
 
     def test_object_not_enough_parameters(self):
-        self.assertRaises('Expecting parameter ["self", "required"], given ["optional", "kwargs"]', lambda: TestObject({}))
+        self.assertRaises('Expecting parameter ["required"], given ["self", "optional", "kwargs"]', lambda: TestObject({}))
 
     def test_object(self):
         result = TestObject(kw)
@@ -313,6 +313,9 @@ class TestOverride(FuzzyTestCase):
         self.assertEqual(len(result["kwargs"]), 3)
         self.assertEqual(len(result["kwargs"]["kwargs"]), 3)
 
+    def test_deeper_call_raises_type_error(self):
+        self.assertRaises("oops", oops)
+
 
 @override
 def basic(required, optional=3):
@@ -337,6 +340,11 @@ def required(required, optional=3, kwargs=None):
 @override
 def kwargs(kwargs=None, **kwargs_):
     return {"kwargs": kwargs, "kwargs_": kwargs_}
+
+
+@override
+def oops(self):
+    required()  # SHOULD RAISE TypeError
 
 
 class TestObject(object):

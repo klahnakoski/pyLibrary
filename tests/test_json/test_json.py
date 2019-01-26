@@ -25,6 +25,15 @@ from mo_json.encoder import pretty_json, cPythonJSONEncoder, pypy_json_encode
 
 
 class TestJSON(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.backup = mo_json.SNAP_TO_BASE_10
+        mo_json.SNAP_TO_BASE_10 = True
+
+    @classmethod
+    def tearDownClass(cls):
+        mo_json.SNAP_TO_BASE_10=cls.backup
+
     def test_date(self):
         output = value2json({"test": datetime.date(2013, 11, 13)})
         Log.note("JSON = {{json}}", json= output)
@@ -182,6 +191,21 @@ class TestJSON(unittest.TestCase):
         test = pretty_json(j)
         expecting = u'{"not": {"match_all": {}}}'
         self.assertEqual(test, expecting, "expecting empty dict to serialize")
+
+    def test_pretty_indent1(self):
+        j = wrap({"a": {"b": {"c": {"d": 1, "e": 2, "f": 3}}}})
+        test = pretty_json(j)
+        expecting = u'{"a": {"b": {"c": {\n    "d": 1,\n    "e": 2,\n    "f": 3\n}}}}'
+        self.assertEqual(test, expecting, "expecting proper indentation")
+
+    def test_pretty_indent2(self):
+        j = wrap({"a": {
+            "b1": {"c": {"d": 1, "e": 2, "f": 3}},
+            "b2": {"c": {"d": 1, "e": 2, "f": 3}}
+        }})
+        test = pretty_json(j)
+        expecting = u'{"a": {\n    "b1": {"c": {\n        "d": 1,\n        "e": 2,\n        "f": 3\n    }},\n    "b2": {"c": {\n        "d": 1,\n        "e": 2,\n        "f": 3\n    }}\n}}'
+        self.assertEqual(test, expecting, "expecting proper indentation")
 
     def test_Date(self):
         test = Date(1430983248.0)

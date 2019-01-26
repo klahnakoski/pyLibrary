@@ -10,12 +10,14 @@
 
 from __future__ import unicode_literals
 
-from mo_json import value2json
+from unittest import skip
+
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary.env import elasticsearch
 
 
 class TestSchemas(FuzzyTestCase):
+    @skip("not valid")
     def test_diff(self):
         branch_props = elasticsearch.Cluster(host="http://localhost").get_index("debug_active_data", "active_data").get_properties()
         debug_props = elasticsearch.Cluster(host="http://localhost").get_index("debug", "bz_etl").get_properties()
@@ -23,5 +25,3 @@ class TestSchemas(FuzzyTestCase):
         elasticsearch.diff_schema(branch_props, debug_props)
 
 
-
-a = value2json

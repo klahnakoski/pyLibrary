@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 import ast
 import sys
 
-from pyparsing import CaselessLiteral, Word, delimitedList, Optional, Combine, Group, alphas, nums, alphanums, Forward, restOfLine, Keyword, Literal, ParserElement, infixNotation, opAssoc, Regex, MatchFirst, ZeroOrMore, _ustr
+from pyparsing import Word, delimitedList, Optional, Combine, Group, alphas, alphanums, Forward, restOfLine, Keyword, Literal, ParserElement, infixNotation, opAssoc, Regex, MatchFirst, ZeroOrMore
 
 ParserElement.enablePackrat()
 
@@ -54,21 +54,28 @@ keywords = [
     "else",
     "end",
     "from",
+    "full join",
+    "full outer join",
     "group by",
     "having",
     "in",
     "inner join",
     "is",
     "join",
+    "left join",
+    "left outer join",
     "limit",
     "offset",
     "like",
     "on",
     "or",
     "order by",
+    "right join",
+    "right outer join",
     "select",
     "then",
     "union",
+    "union all",
     "when",
     "where",
     "with"
@@ -84,7 +91,7 @@ RESERVED = MatchFirst(reserved)
 KNOWN_OPS = [
     (BETWEEN, AND),
     Literal("||").setName("concat").setDebugActions(*debug),
-    Literal("*").setName("mult").setDebugActions(*debug),
+    Literal("*").setName("mul").setDebugActions(*debug),
     Literal("/").setName("div").setDebugActions(*debug),
     Literal("+").setName("add").setDebugActions(*debug),
     Literal("-").setName("sub").setDebugActions(*debug),
@@ -198,21 +205,17 @@ def to_union_call(instring, tokensStart, retTokens):
     unions = tok['from']['union']
     if len(unions) == 1:
         output = unions[0]
-        if tok.get('orderby'):
-            output["orderby"] = tok.get('orderby')
-        if tok.get('limit'):
-            output["limit"] = tok.get('limit')
-        return output
     else:
         if not tok.get('orderby') and not tok.get('limit'):
             return tok['from']
         else:
-            return {
-                "from": {"union": unions},
-                "orderby": tok.get('orderby') if tok.get('orderby') else None,
-                "limit": tok.get('limit') if tok.get('limit') else None
-            }
+            output = {"from": {"union": unions}}
 
+    if tok.get('orderby'):
+        output["orderby"] = tok.get('orderby')
+    if tok.get('limit'):
+        output["limit"] = tok.get('limit')
+    return output
 
 def unquote(instring, tokensStart, retTokens):
     val = retTokens[0]
@@ -222,6 +225,8 @@ def unquote(instring, tokensStart, retTokens):
     elif val.startswith('"') and val.endswith('"'):
         val = '"'+val[1:-1].replace('""', '\\"')+'"'
         # val = val.replace(".", "\\.")
+    elif val.startswith('`') and val.endswith('`'):
+          val = "'" + val[1:-1].replace("``","`") + "'"
     elif val.startswith("+"):
         val = val[1:]
     un = ast.literal_eval(val)
@@ -240,7 +245,8 @@ intNum = Regex(r"[+-]?\d+([eE]\+?\d+)?").addParseAction(unquote)
 # STRINGS, NUMBERS, VARIABLES
 sqlString = Regex(r"\'(\'\'|\\.|[^'])*\'").addParseAction(to_string)
 identString = Regex(r'\"(\"\"|\\.|[^"])*\"').addParseAction(unquote)
-ident = Combine(~RESERVED + (delimitedList(Literal("*") | Word(alphas + "_", alphanums + "_$") | identString, delim=".", combine=True))).setName("identifier")
+mysqlidentString = Regex(r'\`(\`\`|\\.|[^`])*\`').addParseAction(unquote)
+ident = Combine(~RESERVED + (delimitedList(Literal("*") | Word(alphas + "_", alphanums + "_$") | identString | mysqlidentString, delim=".", combine=True))).setName("identifier")
 
 # EXPRESSIONS
 expr = Forward()
@@ -307,7 +313,7 @@ tableName = (
     ident.setName("table name").setDebugActions(*debug)
 )
 
-join = ((CROSSJOIN | INNERJOIN | JOIN)("op") + Group(tableName)("join") + Optional(ON + expr("on"))).addParseAction(to_join_call)
+join = ((CROSSJOIN | FULLJOIN | FULLOUTERJOIN | INNERJOIN | JOIN | LEFTJOIN | LEFTOUTERJOIN | RIGHTJOIN | RIGHTOUTERJOIN)("op") + Group(tableName)("join") + Optional(ON + expr("on"))).addParseAction(to_join_call)
 
 sortColumn = expr("value").setName("sort1").setDebugActions(*debug) + Optional(DESC("sort") | ASC("sort")) | \
              expr("value").setName("sort2").setDebugActions(*debug)
@@ -327,7 +333,7 @@ selectStmt << Group(
                     Optional(OFFSET.suppress().setDebugActions(*debug) + expr("offset"))
                 )
             ),
-            delim=UNION
+            delim=(UNION | UNIONALL)
         )
     )("union"))("from") +
     Optional(ORDERBY.suppress().setDebugActions(*debug) + delimitedList(Group(sortColumn))("orderby").setName("orderby")) +

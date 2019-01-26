@@ -6,10 +6,12 @@ util/.svn
 build
 dist
 pyLibrary.egg-info
-*.json
 *.tab
 
 /examples
 
 /docs/~$Libraries.pptx
 /pyLibrary/vendor/sqlite
+/this is a test file.sqlite
+/*.sqlite-journal
+/*.sqlite

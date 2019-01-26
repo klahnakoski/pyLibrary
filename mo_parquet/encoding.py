@@ -1,13 +1,13 @@
 """encoding.py - methods for reading parquet encoded data blocks."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from itertools import izip
 
 import numba
+
 from fastparquet.encoding import _mask_for_bits
+from mo_future import binary_type
 
 
 @numba.njit(nogil=True)
@@ -50,7 +50,10 @@ class Encoder(object):
         return bytearray(self.data)
 
     def bytes(self, data):
-        self.data.extend(data)
+        if isinstance(data, binary_type):
+            self.data.extend(bytearray(data))
+        else:
+            self.data.extend(data)
 
     def byte(self, value):
         self.data.append(value)
@@ -88,7 +91,7 @@ class Encoder(object):
             offset += bit_width
             while offset >= 8:
                 self.byte(acc & 0xFF)
-                acc >> 8
+                acc >>= 8
                 offset -= 8
         if acc:
             self.byte(acc)
@@ -147,24 +150,32 @@ class Encoder(object):
         self.set_fixed_int(len(self) - all_start, 4, all_start - 4)
 
 
-def assemble(values, rep_levels, def_levels, schema):
-    max = schema.max_definition_level()+1
+def assemble(rep_type, values, rep_levels, def_levels, max_def_level):
+    if def_levels is None:
+        def temp():
+            while True:
+                yield max_def_level
+        def_levels = temp()
 
-    def _add(value, rep_level, def_level, parents):
-        if def_level == len(parents):
-            new_parents = parents[0:rep_level + 1]
-            for _ in range(rep_level, max):
-                new_child = []
-                new_parents[-1].append(new_child)
-                new_parents.append(new_child)
-            new_parents[-1].append(value)
-        else:
-            new_parents = parents[0:def_level + 1]
-            new_parents.append(None)
+    def _add(parents, value, rep_level, def_level):
+        del parents[rep_level+1:]
+        for r in rep_type[rep_level:def_level+1]:
+            if r == 0:
+                row = parents[-1]
+                parents.append(row)
+            elif r == 1:
+                row = parents[-1]
+                parents.append(row)
+            elif r == 2:
+                row = []
+                parents[-1].append(row)
+                parents.append(row)
+        parents[-1].append(value)
 
-    rows = []
-    parents = [rows]
-    for value, rep_level, def_level in zip(values, def_levels, rep_levels):
+    parents = [[]]
+    for value, def_level, rep_level in zip(values, def_levels, rep_levels):
         _add(parents, value, rep_level, def_level)
+    return parents[0]
 
 
+_ = value2json

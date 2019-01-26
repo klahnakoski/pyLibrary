@@ -9,13 +9,12 @@
 #
 
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-from mo_logs import Log, Except, suppress_exception
+from mo_future import is_text, is_binary
+from mo_logs import Except, Log, suppress_exception
 from mo_logs.log_usingNothing import StructuredLogger
-from mo_threads import Thread, Queue, Till, THREAD_STOP
+from mo_threads import Queue, THREAD_STOP, Thread, Till
 
 DEBUG = False
 
@@ -32,8 +31,10 @@ class StructuredLogger_usingThread(StructuredLogger):
         def worker(logger, please_stop):
             try:
                 while not please_stop:
-                    (Till(seconds=1) | please_stop).wait()
                     logs = self.queue.pop_all()
+                    if not logs:
+                        (Till(seconds=1) | please_stop).wait()
+                        continue
                     for log in logs:
                         if log is THREAD_STOP:
                             please_stop.go()
@@ -58,7 +59,6 @@ class StructuredLogger_usingThread(StructuredLogger):
             raise e  # OH NO!
 
     def stop(self):
-        Log.warning("Stopping threaded logger")
         try:
             self.queue.add(THREAD_STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
             self.thread.join()

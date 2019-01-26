@@ -1,3 +1,4 @@
 pymysql
 requests
 boto
+beautifulsoup4

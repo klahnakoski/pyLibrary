@@ -31,10 +31,18 @@ def value2json(value):
 
 class TestPyPyJSON(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.backup = mo_json.SNAP_TO_BASE_10
+        mo_json.SNAP_TO_BASE_10 = True
+
+    @classmethod
+    def tearDownClass(cls):
+        mo_json.SNAP_TO_BASE_10=cls.backup
+
     def test_date(self):
         output = value2json({"test": datetime.date(2013, 11, 13)})
         Log.note("JSON = {{json}}", json= output)
-
 
     def test_unicode1(self):
         output = value2json({"comment": u"Open all links in the current tab, except the pages opened from external apps â€” open these ones in new windows"})

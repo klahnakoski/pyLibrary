@@ -12,7 +12,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from collections import Mapping
-from copy import deepcopy
+from copy import deepcopy, copy
 
 from mo_future import UserDict
 from mo_logs import Log
@@ -63,6 +63,14 @@ class TestDot(FuzzyTestCase):
 
     def test_is_mapping(self):
         self.assertTrue(isinstance(Data(), Mapping), "All Data must be Mappings")
+
+    def test_kwargs(self):
+        d = Data(a=1, b=2)
+
+        def func(a, b):
+            return a == 1, b == 2
+
+        self.assertTrue(func(**d))
 
     def test_none(self):
         a = 0
@@ -606,6 +614,85 @@ class TestDot(FuzzyTestCase):
         self.assertTrue(b == Null)
         self.assertTrue(None == b)
         self.assertTrue(Null == b)
+
+    def test_add_1(self):
+        a = wrap({"a": 1, "y": {"b": 4, "c": [5]}})
+        b = wrap({"a": 1, "x": 5, "y": {"b": 6, "c": [12]}})
+
+        expected_ab = {"a": 2, "x": 5, "y": {"b": 10, "c": [5, 12]}}
+        expected_ba = {"a": 2, "x": 5, "y": {"b": 10, "c": [12, 5]}}
+        self.assertEqual(a + b, expected_ab)
+        self.assertEqual(b + a, expected_ba)
+
+        a += b
+        self.assertEqual(a, expected_ab)
+
+    def test_add_2(self):
+        a = wrap({"a": 1, "y": {"b": 4, "c": [5]}})
+        b = wrap({"a": 1, "x": 5, "y": {"b": 6, "c": 12}})
+
+        expected_ab = {"a": 2, "x": 5, "y": {"b": 10, "c": [5, 12]}}
+        expected_ba = {"a": 2, "x": 5, "y": {"b": 10, "c": [12, 5]}}
+        self.assertEqual(a + b, expected_ab)
+        self.assertEqual(b + a, expected_ba)
+
+        a += b
+        self.assertEqual(a, expected_ab)
+
+    def test_list_get(self):
+        flat_list = wrap([{"a": 1}, {"a": None}])
+        # THIS IS NOT AN OPTION BECAUSE [] IS RESERVED FOR INDEXING AND SLICING
+        self.assertEqual(flat_list["a"], None)
+
+    def test_copy1(self):
+        a = Data(b="c")
+        aa = a.copy()
+        self.assertEqual(aa, a, "expecting to be the same")
+        self.assertEqual(a, aa, "expecting to be the same")
+
+        a.b = "d"
+        self.assertNotEqual(a, aa, "expecting to be different now")
+        self.assertNotEqual(aa, a, "expecting to be different now")
+
+    def test_copy2(self):
+        a = Data(b="c")
+        aa = copy(a)
+        self.assertEqual(aa, a, "expecting to be the same")
+        self.assertEqual(a, aa, "expecting to be the same")
+
+        a.b = "d"
+        self.assertNotEqual(a, aa, "expecting to be different now")
+        self.assertNotEqual(aa, a, "expecting to be different now")
+
+    def test_copy_value(self):
+        a = wrap({})
+        a["."] = "test"
+
+        aa = a.copy()
+        self.assertEqual(aa, a, "expecting to be the same")
+        self.assertEqual(a, aa, "expecting to be the same")
+
+    def test_in(self):
+        a = {"_id": "yes"}
+        b = {"id": "no"}
+        aa = wrap(a)
+        bb = wrap(b)
+
+        self.assertEqual("_id" in aa, "_id" in a)
+        self.assertEqual("_id" in bb, "_id" in b)
+
+    def test_in_null(self):
+        self.assertIn(Null, [None])
+
+    def test_in_none(self):
+        self.assertIn(None, [Null])
+
+    def test_none_and_null_in_dict(self):
+        d = {
+            None: None,
+            Null: None
+        }
+        self.assertEqual(len(d), 1)
 
 
 

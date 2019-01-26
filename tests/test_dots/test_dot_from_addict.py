@@ -119,7 +119,7 @@ class AddictTests(FuzzyTestCase):
         self.assertEqual(prop.a.b.c, TEST_VAL)
 
     def test_isinstance(self):
-        self.assertTrue(isinstance(Data(), Mapping))
+        self.assertIsInstance(Data(), Mapping)
 
     def test_str(self):
         prop = Data(TEST_DICT)
@@ -327,7 +327,7 @@ class AddictTests(FuzzyTestCase):
         def run():
             d.x += 1
 
-        self.assertRaises(TypeError, run)
+        self.assertRaises(Exception, run)
 
     def test_add_on_non_empty_value(self):
         d = Data()

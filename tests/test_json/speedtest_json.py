@@ -29,7 +29,7 @@ from mo_dots import wrap, unwrap
 TARGET_RUNTIME = 10
 
 EMPTY = ({}, 200000)
-UNICODE = (json._default_decoder.decode('{"key1": "\u0105\u0107\u017c", "key2": "\u0105\u0107\u017c"}'), 10000)
+UNICODE = (json._default_decoder.decode('{"key1": "\u0105\u0107\u017c", "key2": "\u0105\u0107\u017c"}'), 200000)
 SIMPLE = ({
     'key1': 0,
     'key2': True,
@@ -48,7 +48,7 @@ NESTED = ({
     'key6': ["test", u"test2", 99],
     'key7': {1, 2.5, 3, 4},
     u'key': u'\u0105\u0107\u017c'
-}, 100000)
+}, 25000)
 HUGE = ([NESTED[0]] * 1000, 100)
 
 cases = [
