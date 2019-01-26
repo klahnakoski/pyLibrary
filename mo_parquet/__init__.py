@@ -13,7 +13,7 @@ import numpy as np
 from mo_dots import concat_field, startswith_field
 from mo_json import NESTED, OBJECT, PRIMITIVE, STRING, python_type_to_json_type
 from mo_logs import Log
-from mo_parquet.schema import OPTIONAL, REPEATED, REQUIRED, SchemaTree, get_length, get_repetition_type, merge_schema_element, python_type_to_all_types
+from mo_parquet.schema import OPTIONAL, REPEATED, REQUIRED, SchemaTree, get_length, get_repetition_type, merge_schema, python_type_to_all_types
 from mo_parquet.table import Table
 
 
@@ -25,14 +25,14 @@ def rows_to_columns(data, schema=None):
     """
     if not schema:
         schema = SchemaTree()
-
+    all_schema = schema
     all_leaves = schema.leaves
     values = {full_name: [] for full_name in all_leaves}
     reps = {full_name: [] for full_name in all_leaves}
     defs = {full_name: [] for full_name in all_leaves}
 
     def _none_to_column(schema, path, rep_level, def_level):
-        for full_path in all_leaves:
+        for full_path in all_schema.leaves:
             if startswith_field(full_path, path):
                 reps[full_path].append(rep_level)
                 defs[full_path].append(def_level)
@@ -51,10 +51,25 @@ def rows_to_columns(data, schema=None):
             else:
                 try:
                     new_schema = schema.more.get('.')
+
                     if not new_schema:
-                        # DEFAULT TO REQUIRED ENTRIES
-                        new_schema = schema
-                        schema.element.repetition_type = REQUIRED
+                        if schema.locked:
+                            # DEFAULT TO REQUIRED ENTRIES
+                            new_schema = schema
+                            schema.element.repetition_type = REQUIRED
+                        else:
+                            new_path = path
+                            new_value = value[0]
+                            ptype = type(new_value)
+                            new_schema = schema.add(
+                                new_path,
+                                OPTIONAL,
+                                ptype
+                            )
+                            if new_value is None or python_type_to_json_type[ptype] in PRIMITIVE:
+                                values[new_path] = []
+                                reps[new_path] = [0] * counters[0]
+                                defs[new_path] = [0] * counters[0]
                     for k, new_value in enumerate(value):
                         new_counters = counters + (k,)
                         _value_to_column(new_value, new_schema, new_path, new_counters, def_level+1)
@@ -72,6 +87,7 @@ def rows_to_columns(data, schema=None):
                 if schema.element.repetition_type == REQUIRED:
                     new_def_level = def_level
                 else:
+                    counters = counters + (0,)
                     new_def_level = def_level+1
 
                 for name, sub_schema in schema.more.items():
@@ -84,12 +100,13 @@ def rows_to_columns(data, schema=None):
                         Log.error("{{path}} is not allowed in the schema", path=path)
                     new_path = concat_field(path, name)
                     new_value = value.get(name, None)
+                    ptype = type(new_value)
                     sub_schema = schema.add(
                         new_path,
                         REPEATED if isinstance(new_value, list) else OPTIONAL,
-                        type(new_value)
+                        ptype
                     )
-                    if python_type_to_json_type[type(new_value)] in PRIMITIVE:
+                    if python_type_to_json_type[ptype] in PRIMITIVE:
                         values[new_path] = []
                         reps[new_path] = [0] * counters[0]
                         defs[new_path] = [0] * counters[0]
@@ -97,14 +114,14 @@ def rows_to_columns(data, schema=None):
         else:
             if jtype is STRING:
                 value = value.encode('utf8')
-            merge_schema_element(schema.element, path, value, ptype, ltype, dtype, jtype, itype, byte_width)
+            merge_schema(schema, path, value)
             values[path].append(value)
             if schema.element.repetition_type == REQUIRED:
                 reps[path].append(get_rep_level(counters))
                 defs[path].append(def_level)
             else:
                 reps[path].append(get_rep_level(counters))
-                defs[path].append(def_level+1)
+                defs[path].append(def_level + 1)
 
     for rownum, new_value in enumerate(data):
         try:
@@ -116,7 +133,7 @@ def rows_to_columns(data, schema=None):
 
 
 def get_rep_level(counters):
-    for rep_level, c in reversed(list(enumerate(counters))):
+    for rep_level, c in list(reversed(list(enumerate(counters)))):
         if c > 0:
             return rep_level
     return 0  # SHOULD BE -1 FOR MISSING RECORD, BUT WE WILL ASSUME THE RECORD EXISTS
