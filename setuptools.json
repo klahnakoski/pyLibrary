@@ -153,6 +153,6 @@
         "pyLibrary/testing",  "pyLibrary/vendor",         "pyLibrary"
     ],
     "url": "https://github.com/klahnakoski/pyLibrary",
-    "version": "2.55.19240",
+    "version": "2.56.19240",
     "zip_safe": false
 }
