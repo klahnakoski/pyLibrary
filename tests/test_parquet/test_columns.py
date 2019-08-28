@@ -73,7 +73,7 @@ class TestColumns(FuzzyTestCase):
         expected_reps = {"v": [0, 0, 0, 0, 1]}
         expected_defs = {"v": [0, 0, 1, 1, 1]}
 
-        schema=SchemaTree(locked=True)
+        schema = SchemaTree(locked=True)
         schema.add("v", (REPEATED, OPTIONAL), object)
 
         table = rows_to_columns(data, schema)

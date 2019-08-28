@@ -9,19 +9,18 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 from jx_base.dimensions import Dimension
 from jx_base.domains import DefaultDomain, PARTITION, SimpleSetDomain
 from jx_base.expressions import ExistsOp, FirstOp, GtOp, GteOp, LeavesOp, LtOp, LteOp, MissingOp, TupleOp, Variable
-from jx_base.query import DEFAULT_LIMIT, MAX_LIMIT
 from jx_base.language import is_op
+from jx_base.query import DEFAULT_LIMIT, MAX_LIMIT
 from jx_elasticsearch.es52.es_query import Aggs, FilterAggs, FiltersAggs, NestedAggs, RangeAggs, TermsAggs
 from jx_elasticsearch.es52.expressions import AndOp, InOp, Literal, NotOp
 from jx_elasticsearch.es52.painless import LIST_TO_PIPE, Painless
 from jx_elasticsearch.es52.util import pull_functions
 from jx_python import jx
 from mo_dots import Data, coalesce, concat_field, is_data, literal_field, relative_field, set_default, wrap
-from mo_future import first, text_type, transpose
+from mo_future import first, is_text, text_type, transpose
 from mo_json import EXISTS, OBJECT, STRING
 from mo_json.typed_encoder import EXISTS_TYPE, NESTED_TYPE, untype_path
 from mo_logs import Log
@@ -74,12 +73,12 @@ class AggsDecoder(object):
                     )
                     e.domain = set_default(DefaultDomain(limit=limit), e.domain.__data__())
                     return object.__new__(DefaultDecoder)
-                elif col.partitions == None:
+                elif col.multi <= 1 and col.partitions == None:
                     e.domain = set_default(DefaultDomain(limit=limit), e.domain.__data__())
                     return object.__new__(DefaultDecoder)
                 else:
                     DEBUG and Log.note("id={{id}} has parts!!!", id=id(col))
-                    if col.multi > 1 and len(col.partitions) < 10:
+                    if col.multi > 1:
                         return object.__new__(MultivalueDecoder)
 
                     partitions = col.partitions[:limit:]
@@ -444,16 +443,16 @@ class RangeDecoder(AggsDecoder):
 
 class MultivalueDecoder(SetDecoder):
     def __init__(self, edge, query, limit):
-        AggsDecoder.__init__(self, edge, query, limit)
+        SetDecoder.__init__(self, edge, query, limit)
         self.var = edge.value.var
-        self.values = query.frum.schema[edge.value.var][0].partitions
         self.parts = []
 
     def append_query(self, query_path, es_query):
         es_field = first(self.query.frum.schema.leaves(self.var)).es_column
 
         return Aggs().add(TermsAggs("_match", {
-            "script": expand_template(LIST_TO_PIPE, {"expr": 'doc[' + quote(es_field) + '].values'})
+            "script": expand_template(LIST_TO_PIPE, {"expr": 'doc[' + quote(es_field) + '].values'}),
+            "size": self.limit
         }, self).add(es_query))
 
     def get_value_from_row(self, row):
