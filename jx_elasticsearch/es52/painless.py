@@ -9,16 +9,21 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import (AddOp as AddOp_, AndOp as AndOp_, BasicAddOp as BasicAddOp_, BasicEqOp as BasicEqOp_, BasicIndexOfOp as BasicIndexOfOp_, BasicMulOp as BasicMulOp_, BasicStartsWithOp as BasicStartsWithOp_, BasicSubstringOp as BasicSubstringOp_, BooleanOp as BooleanOp_, CaseOp as CaseOp_, CoalesceOp as CoalesceOp_, ConcatOp as ConcatOp_, CountOp as CountOp_, DateOp as DateOp_, DivOp as DivOp_, EqOp as EqOp_, EsScript as EsScript_, ExistsOp as ExistsOp_, ExpOp as ExpOp_, FALSE, FalseOp as FalseOp_, FirstOp as FirstOp_, FloorOp as FloorOp_, GtOp as GtOp_, GteOp as GteOp_, InOp as InOp_, IntegerOp as IntegerOp_, IsNumberOp as IsNumberOp_, LeavesOp as LeavesOp_, LengthOp as LengthOp_, Literal as Literal_, LtOp as LtOp_, LteOp as LteOp_, MaxOp as MaxOp_, MinOp as MinOp_, MissingOp as MissingOp_, ModOp as ModOp_, MulOp as MulOp_, NULL, NeOp as NeOp_, NotLeftOp as NotLeftOp_, NotOp as NotOp_, NullOp, NumberOp as NumberOp_, ONE, OrOp as OrOp_, PrefixOp as PrefixOp_,
-                                 StringOp as StringOp_, SubOp as SubOp_, SuffixOp as SuffixOp_, TRUE, TrueOp as TrueOp_, TupleOp as TupleOp_, UnionOp as UnionOp_, Variable as Variable_, WhenOp as WhenOp_, ZERO, define_language, extend, merge_types, is_literal)
+from jx_base.expressions import (FindOp as FindOp_, AddOp as AddOp_, AndOp as AndOp_, BasicAddOp as BasicAddOp_, BasicEqOp as BasicEqOp_, BasicIndexOfOp as BasicIndexOfOp_, BasicMulOp as BasicMulOp_, BasicStartsWithOp as BasicStartsWithOp_, BasicSubstringOp as BasicSubstringOp_, BooleanOp as BooleanOp_, CaseOp as CaseOp_, CoalesceOp as CoalesceOp_, ConcatOp as ConcatOp_, CountOp as CountOp_, DateOp as DateOp_, DivOp as DivOp_, EqOp as EqOp_, EsScript as EsScript_, ExistsOp as ExistsOp_, ExpOp as ExpOp_, FALSE, FalseOp as FalseOp_, FirstOp as FirstOp_, FloorOp as FloorOp_, GtOp as GtOp_, GteOp as GteOp_, InOp as InOp_, IntegerOp as IntegerOp_, IsNumberOp as IsNumberOp_, LeavesOp as LeavesOp_, LengthOp as LengthOp_, Literal as Literal_, LtOp as LtOp_, LteOp as LteOp_, MaxOp as MaxOp_, MinOp as MinOp_, MissingOp as MissingOp_, ModOp as ModOp_, MulOp as MulOp_, NULL, NeOp as NeOp_, NotLeftOp as NotLeftOp_, NotOp as NotOp_, NullOp, NumberOp as NumberOp_, ONE, OrOp as OrOp_, PrefixOp as PrefixOp_,
+                                 StringOp as StringOp_, SubOp as SubOp_, SuffixOp as SuffixOp_, TRUE, TrueOp as TrueOp_, TupleOp as TupleOp_, UnionOp as UnionOp_, Variable as Variable_, WhenOp as WhenOp_, ZERO, define_language, extend, is_literal, merge_types, simplified)
 from jx_base.language import is_op
 from jx_elasticsearch.es52.util import es_script
-from mo_dots import FlatList, data_types, Null, coalesce
-from mo_future import PY2, text_type
+from mo_dots import FlatList, Null, coalesce, data_types
+from mo_future import PY2, integer_types, text_type
 from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, OBJECT, STRING
 from mo_logs import Log
 from mo_logs.strings import expand_template, quote
 from mo_times import Date
+
+
+MAX_INT32 = 2147483647
+MIN_INT32 = -2147483648
+
 
 NUMBER_TO_STRING = """
 Optional.of({{expr}}).map(
@@ -104,7 +109,7 @@ class EsScript(EsScript_):
         return self.miss
 
     def __data__(self):
-        return {"script": self.script}
+        return {"script": text_type(self)}
 
     def __eq__(self, other):
         if not isinstance(other, EsScript_):
@@ -221,7 +226,7 @@ class ModOp(ModOp_):
 
 class CaseOp(CaseOp_):
     def to_es_script(self, schema, not_null=False, boolean=False, many=True):
-        acc = self.whens[-1].partial_eval().to_es_script(schema)
+        acc = Painless[self.whens[-1]].partial_eval().to_es_script(schema)
         for w in reversed(self.whens[0:-1]):
             acc = (
                 WhenOp(w.when, **{"then": w.then, "else": acc})
@@ -295,15 +300,21 @@ class Literal(Literal_):
             class_ = v.__class__
             if class_ is text_type:
                 return EsScript(type=STRING, expr=quote(v), frum=self, schema=schema)
-            if class_ is int:
-                return EsScript(
-                    type=INTEGER, expr=text_type(v), frum=self, schema=schema
-                )
+            if class_ in integer_types:
+                if MIN_INT32 <= v <= MAX_INT32:
+                    return EsScript(
+                        type=INTEGER, expr=text_type(v), frum=self, schema=schema
+                    )
+                else:
+                    return EsScript(
+                        type=INTEGER, expr=text_type(v) + "L", frum=self, schema=schema
+                    )
+
             if class_ is float:
                 return EsScript(
-                    type=NUMBER, expr=text_type(v), frum=self, schema=schema
+                    type=NUMBER, expr=text_type(v) + "D", frum=self, schema=schema
                 )
-            if class_ is data_types:
+            if class_ in data_types:
                 return EsScript(
                     type=OBJECT,
                     expr="["
@@ -324,7 +335,7 @@ class Literal(Literal_):
                     type=NUMBER, expr=text_type(v.unix), frum=self, schema=schema
                 )
 
-        return _convert(self.term)
+        return _convert(self._value)
 
 
 class DateOp(DateOp_):
@@ -457,7 +468,7 @@ class DivOp(DivOp_):
 
         output = (
             WhenOp(
-                OrOp([self.lhs.missing(), self.rhs.missing(), EqOp([self.rhs, ZERO])]),
+                OrOp([lhs.missing(), rhs.missing(), EqOp([rhs, ZERO])]),
                 **{
                     "then": self.default,
                     "else": EsScript(
@@ -596,7 +607,7 @@ class BasicEqOp(BasicEqOp_):
             else:
                 return EsScript(
                     type=BOOLEAN,
-                    expr="(" + lhs.expr + "==" + rhs.expr + ")",
+                    expr="(" + lhs.expr + ")==(" + rhs.expr + ")",
                     frum=self,
                     schema=schema,
                 )
@@ -867,6 +878,7 @@ class IntegerOp(IntegerOp_):
 class NumberOp(NumberOp_):
     def to_es_script(self, schema, not_null=False, boolean=False, many=True):
         term = FirstOp(self.term).partial_eval()
+
         value = term.to_es_script(schema)
 
         if is_op(value.frum, CoalesceOp_):
@@ -881,7 +893,7 @@ class NumberOp(NumberOp_):
             return EsScript(
                 miss=term.missing().partial_eval(),
                 type=NUMBER,
-                expr=value.expr + " ? 1 : 0",
+                expr="(" + value.expr + ") ? 1 : 0",
                 frum=self,
                 schema=schema,
             )
@@ -1256,6 +1268,44 @@ class BasicIndexOfOp(BasicIndexOfOp_):
             frum=self,
             schema=schema,
         )
+
+
+class FindOp(FindOp_):
+
+    @simplified
+    def partial_eval(self):
+        index = self.lang[BasicIndexOfOp([
+            self.value,
+            self.find,
+            self.start
+        ])].partial_eval()
+
+        output = self.lang[WhenOp(
+            OrOp([
+                self.value.missing(),
+                self.find.missing(),
+                BasicEqOp([index, Literal(-1)])
+            ]),
+            **{"then": self.default, "else": index}
+        )].partial_eval()
+        return output
+
+    def missing(self):
+        output = AndOp([
+            self.default.missing(),
+            OrOp([
+                self.value.missing(),
+                self.find.missing(),
+                EqOp([BasicIndexOfOp([
+                    self.value,
+                    self.find,
+                    self.start
+                ]), Literal(-1)])
+            ])
+        ]).partial_eval()
+        return output
+
+
 
 
 class BasicSubstringOp(BasicSubstringOp_):

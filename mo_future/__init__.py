@@ -29,11 +29,12 @@ boolean_type = type(True)
 if PY3:
     import itertools
     import collections
-    from functools import cmp_to_key
+    from collections import Callable
+    from functools import cmp_to_key, reduce, update_wrapper
     from configparser import ConfigParser
     from itertools import zip_longest
-    from functools import reduce
     import builtins as __builtin__
+    from builtins import input
 
     izip = zip
     zip_longest = itertools.zip_longest
@@ -41,7 +42,7 @@ if PY3:
     text_type = str
     string_types = str
     binary_type = bytes
-    integer_types = int
+    integer_types = (int, )
     number_types = (int, float)
     long = int
     unichr = chr
@@ -54,7 +55,8 @@ if PY3:
         type(_gen()),
         type(filter(lambda x: True, [])),
         type({}.items()),
-        type({}.values())
+        type({}.values()),
+        type(map(lambda: 0, []))
     )
     unichr = chr
 
@@ -93,7 +95,10 @@ if PY3:
         return sorted(data, key=key)
 
     def first(values):
-        return iter(values).__next__()
+        try:
+            return iter(values).__next__()
+        except StopIteration:
+            return None
 
     def is_text(t):
         return t.__class__ is str
@@ -116,12 +121,16 @@ if PY3:
 
 else:
     import collections
+    from collections import Callable
+    from functools import cmp_to_key, reduce, update_wrapper
+
     import __builtin__
     from types import GeneratorType
     from ConfigParser import ConfigParser
     from itertools import izip_longest as zip_longest
     from __builtin__ import zip as transpose
     from itertools import izip
+    from __builtin__ import raw_input as input
 
     reduce = __builtin__.reduce
     text_type = __builtin__.unicode
@@ -172,7 +181,10 @@ else:
         # )
 
     def first(values):
-        return iter(values).next()
+        try:
+            return iter(values).next()
+        except StopIteration:
+            return None
 
     def is_text(t):
         return t.__class__ is unicode
@@ -254,5 +266,18 @@ else:
             for key in iterable:
                 d[key] = value
             return d
+
+
+class decorate(object):
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, caller):
+        """
+        :param caller: A METHOD THAT IS EXPECTED TO CALL func
+        :return: caller, BUT WITH SIGNATURE OF  self.func
+        """
+        return update_wrapper(caller, self.func)
+
 
 _keep_imports = (ConfigParser, zip_longest, reduce, transpose, izip, HTMLParser, urlparse, StringIO, BytesIO, allocate_lock, get_ident, start_new_thread, interrupt_main)

@@ -9,12 +9,12 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from datetime import date, datetime
 import sys
+from datetime import date, datetime
 
 from jx_python import jx
-from mo_dots import coalesce, is_data, is_sequence, listwrap, wrap
-from mo_future import is_binary, is_text, number_types, text_type
+from mo_dots import coalesce, listwrap, set_default, wrap, is_data, is_sequence
+from mo_future import number_types, text_type, is_text, is_binary
 from mo_json import datetime2unix, json2value, value2json
 from mo_kwargs import override
 from mo_logs import Log, strings
@@ -25,7 +25,7 @@ from mo_threads import Queue, THREAD_STOP, Thread, Till
 from mo_times import Duration, MINUTE
 from mo_times.dates import datetime2unix
 from pyLibrary.convert import bytes2base64
-from pyLibrary.env.elasticsearch import Cluster
+from pyLibrary.env.rollover_index import RolloverIndex
 
 MAX_BAD_COUNT = 5
 LOG_STRING_LENGTH = 2000
@@ -53,16 +53,26 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
         kwargs.retry.sleep = Duration(coalesce(kwargs.retry.sleep, MINUTE)).seconds
         kwargs.host = Random.sample(listwrap(host), 1)[0]
 
-        schema = json2value(value2json(SCHEMA), leaves=True)
-        schema.mappings[type].properties["~N~"].type = "nested"
-        self.es = Cluster(kwargs).get_or_create_index(
+        rollover_interval = coalesce(kwargs.rollover.interval, kwargs.rollover.max, "year")
+        rollover_max = coalesce(kwargs.rollover.max, kwargs.rollover.interval, "year")
+
+        schema = set_default(
+            kwargs.schema,
+            {"mappings": {kwargs.type: {"properties": {"~N~": {"type": "nested"}}}}},
+            json2value(value2json(SCHEMA), leaves=True)
+        )
+
+        self.es = RolloverIndex(
+            rollover_field={"get": [{"first": "."}, {"literal": "timestamp"}]},
+            rollover_interval=rollover_interval,
+            rollover_max=rollover_max,
             schema=schema,
             limit_replicas=True,
             typed=True,
+            read_only=False,
             kwargs=kwargs,
         )
         self.batch_size = batch_size
-        self.es.add_alias(coalesce(kwargs.alias, kwargs.index))
         self.queue = Queue("debug logs to es", max=queue_size, silent=True)
 
         self.worker = Thread.run("add debug logs to es", self._insert_loop)
@@ -71,7 +81,7 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
         try:
             params.template = strings.limit(params.template, 2000)
             params.format = None
-            self.queue.add({"value": _deep_json_to_string(params, 3)}, timeout=3 * 60)
+            self.queue.add({"value": params}, timeout=3 * 60)
         except Exception as e:
             sys.stdout.write(text_type(Except.wrap(e)))
         return self
@@ -85,19 +95,19 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
                     Till(seconds=PAUSE_AFTER_GOOD_INSERT).wait()
                     continue
 
-                for g, mm in jx.groupby(messages, size=self.batch_size):
+                for g, mm in jx.chunk(messages, size=self.batch_size):
                     scrubbed = []
                     for i, message in enumerate(mm):
                         if message is THREAD_STOP:
                             please_stop.go()
                             continue
                         try:
-                            messages = flatten_causal_chain(message.value)
+                            chain = flatten_causal_chain(message.value)
                             scrubbed.append(
                                 {
                                     "value": [
-                                        _deep_json_to_string(m, depth=3)
-                                        for m in messages
+                                        _deep_json_to_string(link, depth=3)
+                                        for link in chain
                                     ]
                                 }
                             )
@@ -114,9 +124,8 @@ class StructuredLogger_usingElasticSearch(StructuredLogger):
                         "Given up trying to write debug logs to ES index {{index}}",
                         index=self.es.settings.index,
                     )
+                    break
                 Till(seconds=PAUSE_AFTER_BAD_INSERT).wait()
-
-        self.es.flush()
 
         # CONTINUE TO DRAIN THIS QUEUE
         while not please_stop:
@@ -175,7 +184,7 @@ def _deep_json_to_string(value, depth):
 
 
 SCHEMA = {
-    "settings": {"index.number_of_shards": 2, "index.number_of_replicas": 2},
+    "settings": {"index.number_of_shards": 6, "index.number_of_replicas": 2},
     "mappings": {
         "_default_": {
             "dynamic_templates": [

@@ -10,13 +10,19 @@
 
 from __future__ import unicode_literals
 
+import os
+from unittest import skipIf
+
 from jx_base.expressions import NULL
 from mo_dots import Data
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from pyLibrary.env.elasticsearch import Cluster
 
 from mo_logs import Log
-from mo_logs.log_usingElasticSearch import StructuredLogger_usingElasticSearch
+from mo_threads import Till
+from mo_times import Date
+
+IS_TRAVIS = os.environ.get('TRAVIS')
+
 
 TEST_CONFIG = Data(
     host="http://localhost",
@@ -37,9 +43,15 @@ GET_RECENT_LOG = {
 }
 
 
+@skipIf(IS_TRAVIS, "ES logging not tested on travis")
 class TestESLogging(FuzzyTestCase):
 
-    cluster = Cluster(TEST_CONFIG)
+    cluster = None
+
+    @classmethod
+    def setUpClass(cls):
+        from pyLibrary.env.elasticsearch import Cluster
+        cls.cluster = Cluster(TEST_CONFIG)
 
     def setUp(self):
         Log.start({"trace": True})
@@ -114,14 +126,34 @@ class TestESLogging(FuzzyTestCase):
         self._delete_testindex()
 
         # CREATE INDEX, AND LOG
-        self.es_logger = Log.main_log = self.es_logger = StructuredLogger_usingElasticSearch(TEST_CONFIG)
         self.temp = Log.main_log
+        from mo_logs.log_usingElasticSearch import StructuredLogger_usingElasticSearch
+        self.es_logger = Log.main_log = self.es_logger = StructuredLogger_usingElasticSearch(TEST_CONFIG)
 
     def _after_test(self):
         Log.main_log = self.temp
+        cluster = self.es_logger.es.cluster
+
+        # WAIT FOR SOMETHING TO SHOW UP IN THE LOG
+        found = False
+        while not found:
+            for q in self.es_logger.es.known_queues.values():
+                result = q.slow_queue.search({
+                    "from": 0,
+                    "size": 1,
+                    "stored_fields": ["_source"]
+                })
+                if result.hits.total:
+                    found = True
+                    break
+                q.slow_queue.refresh()
+            else:
+                Till(seconds=1).wait()
+
         self.es_logger.stop()
-        self.cluster.get_metadata(force=True)
-        return self.cluster.get_index(TEST_CONFIG)
+        cluster.get_metadata(after=Date.now())
+        index = cluster.get_index(TEST_CONFIG)
+        return index
 
     def _delete_testindex(self):
         # DELETE OLD INDEX
@@ -131,4 +163,4 @@ class TestESLogging(FuzzyTestCase):
                 self.cluster.delete_index(i.index)
         except Exception as e:
             pass
-        self.cluster.get_metadata(force=True)
+        self.cluster.get_metadata(after=Date.now())

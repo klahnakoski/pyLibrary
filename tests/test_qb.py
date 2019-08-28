@@ -10,10 +10,9 @@ from __future__ import unicode_literals
 
 from unittest import skip
 
+from jx_base.expressions import NULL
 from jx_python import jx
 from jx_python.containers.list_usingPythonList import ListContainer
-from jx_python.expressions import NullOp
-from jx_python.table import Table
 from mo_dots import Data
 from mo_dots import unwrap, wrap
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -21,27 +20,36 @@ from pyLibrary import convert
 
 
 class TestQb(FuzzyTestCase):
-    def test_groupby(self):
+    def test_chunk(self):
         data = []
-        for g, d in jx.groupby(data, size=5):
+        for g, d in jx.chunk(data, size=5):
              assert False
 
         data = [1, 2, 3]
-        for g, d in jx.groupby(data, size=5):
+        for g, d in jx.chunk(data, size=5):
             assert d == [1, 2, 3]
 
         data = [1, 2, 3, 4, 5]
-        for g, d in jx.groupby(data, size=5):
+        for g, d in jx.chunk(data, size=5):
             assert d == [1, 2, 3, 4, 5]
 
         data = [1, 2, 3, 4, 5, 6]
-        for g, d in jx.groupby(data, size=5):
+        for g, d in jx.chunk(data, size=5):
             assert d == [1, 2, 3, 4, 5] or d == [6]
 
         data = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        for g, d in jx.groupby(data, size=5):
+        for g, d in jx.chunk(data, size=5):
             assert d == [1, 2, 3, 4, 5] or d == [6, 7, 8, 9]
 
+    def test_groupby_values(self):
+        self.assertAlmostEqual(
+            list(jx.groupby(["ok", "not ok"])),
+            [
+                ("not ok", ("not ok", )),
+                ("ok", ("ok", ))
+            ],
+            "expecting to group by whole value"
+        )
 
     def test_select_w_dot(self):
         data = [{
@@ -197,7 +205,7 @@ class TestQb(FuzzyTestCase):
             {"a": "e", "is_e": 1, "not_e": 0, "is_c": 0},
             {"a": "c", "is_e": 0, "not_e": 1, "is_c": 1},
             {"a": ["e", "c"], "is_e": 1, "not_e": 0, "is_c": 1},
-            {"a": NullOp(), "is_e": 0, "not_e": 1, "is_c": 0}
+            {"a": NULL, "is_e": 0, "not_e": 1, "is_c": 0}
         ]}
 
         self.assertAlmostEqual(result, expected)

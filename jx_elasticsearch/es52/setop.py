@@ -28,6 +28,9 @@ from mo_logs import Log
 from mo_math import AND, MAX
 from mo_times.timer import Timer
 
+
+DEBUG = False
+
 format_dispatch = {}
 
 
@@ -201,7 +204,7 @@ def es_setop(es, query):
     es_query.size = coalesce(query.limit, DEFAULT_LIMIT)
     es_query.sort = jx_sort_to_es_sort(query.sort, schema)
 
-    with Timer("call to ES", silent=True) as call_timer:
+    with Timer("call to ES", silent=DEBUG) as call_timer:
         data = es_post(es, es_query, query.limit)
 
     T = data.hits.hits
@@ -327,20 +330,24 @@ def format_table(T, select, query=None):
     )
 
 
+def scrub_select(select):
+    return wrap([{k: v for k, v in s.items() if k not in ['pull', 'put']} for s in select])
+
+
 def format_cube(T, select, query=None):
     with Timer("format table"):
         table = format_table(T, select, query)
 
     if len(table.data) == 0:
         return Cube(
-            select,
+            scrub_select(select),
             edges=[{"name": "rownum", "domain": {"type": "rownum", "min": 0, "max": 0, "interval": 1}}],
             data={h: Matrix(list=[]) for i, h in enumerate(table.header)}
         )
 
     cols = transpose(*unwrap(table.data))
     return Cube(
-        select,
+        scrub_select(select),
         edges=[{"name": "rownum", "domain": {"type": "rownum", "min": 0, "max": len(table.data), "interval": 1}}],
         data={h: Matrix(list=cols[i]) for i, h in enumerate(table.header)}
     )
@@ -372,17 +379,16 @@ def get_pull_source(es_column):
     return output
 
 
-def get_pull_stats(stats_name, median_name):
+def get_pull_stats():
     return jx_expression_to_function({"select": [
-        {"name": "count", "value": join_field([stats_name, "count"])},
-        {"name": "sum", "value": join_field([stats_name, "sum"])},
-        {"name": "min", "value": join_field([stats_name, "min"])},
-        {"name": "max", "value": join_field([stats_name, "max"])},
-        {"name": "avg", "value": join_field([stats_name, "avg"])},
-        {"name": "sos", "value": join_field([stats_name, "sum_of_squares"])},
-        {"name": "std", "value": join_field([stats_name, "std_deviation"])},
-        {"name": "var", "value": join_field([stats_name, "variance"])},
-        {"name": "median", "value": join_field([median_name, "values", "50.0"])}
+        {"name": "count", "value": "count"},
+        {"name": "sum", "value": "sum"},
+        {"name": "min", "value": "min"},
+        {"name": "max", "value": "max"},
+        {"name": "avg", "value": "avg"},
+        {"name": "sos", "value": "sum_of_squares"},
+        {"name": "std", "value": "std_deviation"},
+        {"name": "var", "value": "variance"}
     ]})
 
 

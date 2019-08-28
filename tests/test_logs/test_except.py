@@ -11,11 +11,12 @@
 from __future__ import unicode_literals
 
 import logging
+import sys
 import unittest
 from unittest import skip
 import zlib
 
-from mo_dots import listwrap, wrap
+from mo_dots import listwrap, wrap, Data
 from mo_dots.objects import DataObject
 from mo_json import value2json
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -79,6 +80,38 @@ class TestExcept(FuzzyTestCase):
                     break
             else:
                 self.fail("expecting stack to show this method")
+
+    @skip("not implemented")
+    def test_local_variable_capture(self):
+        a = {"c": "a", "b": "d"}
+        b = {"c": "b"}
+
+        A = '{\n    "b": "d",\n    "c": "a"\n}'
+        B = '{"c": "b"}'
+
+        log_queue = StructuredLogger_usingQueue("abba")
+        backup_log, Log.main_log = Log.main_log, log_queue
+
+        Log.note("{{a}} and {{b}}")
+        self.assertEqual(Log.main_log.pop(), A + ' and ' + B)
+
+        Log.warning("{{a}} and {{b}}", a=a, b=b)
+        self.assertEqual(Log.main_log.pop(), A + ' and ' + B)
+
+    @skip("not implemented")
+    def test_missing_local_variable(self):
+        a = {"c": "a", "b": "d"}
+        b = {"c": "b"}
+
+        log_queue = StructuredLogger_usingQueue("abba")
+        backup_log, Log.main_log = Log.main_log, log_queue
+
+        try:
+            Log.note("{{c}}")
+            Log.error("not expected")
+        except Exception as e:
+            self.assertTrue("c local is not found" in e)
+
 
     def test_warning_keyword_parameters(self):
         a = {"c": "a", "b": "d"}
@@ -296,6 +329,13 @@ class TestExcept(FuzzyTestCase):
         except Exception as e:
             self.assertIn("recursive", e, "expecting the recursive loop to be identified")
 
+    def test_locals_in_stack_trace(self):
+        try:
+            problem_c("test_value")
+        except Exception as e:
+            tb = sys.exc_info()[2]
+            self.assertEqual(tb.tb_next.tb_frame.f_locals['a'].value, "test_value")
+
 
 def problem_a():
     problem_b()
@@ -310,6 +350,12 @@ def problem_a2():
         problem_b()
     except Exception as e:
         Log.error("this is a problem", e)
+
+
+def problem_c(value):
+    a = Data(value=value)
+    b="something"
+    c = 1/0
 
 
 if __name__ == '__main__':

@@ -7,37 +7,55 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
-import json
 from collections import Mapping
+import json
+from threading import Lock
 
-from mo_future import text_type, number_types, binary_type, items
+from mo_future import binary_type, items, number_types, text_type
 from pyparsing import ParseException, ParseResults
 
-from moz_sql_parser.sql_parser import SQLParser, all_exceptions
-from moz_sql_parser.formatting import Formatter
+from moz_sql_parser.debugs import all_exceptions
+from moz_sql_parser.sql_parser import SQLParser
+
+
+def __deploy__():
+    # ONLY MEANT TO BE RUN FOR DEPLOYMENT
+    from mo_files import File
+    source_file = File("moz_sql_parser/sql_parser.py")
+    lines = source_file.read().split("\n")
+    lines = [
+        "sys.setrecursionlimit(1500)" if line.startswith("sys.setrecursionlimit") else line
+        for line in lines
+    ]
+    source_file.write("\n".join(lines))
+
+
+parseLocker = Lock()  # ENSURE ONLY ONE PARSING AT A TIME
 
 
 def parse(sql):
-    try:
-        parse_result = SQLParser.parseString(sql, parseAll=True)
-    except Exception as e:
-        if isinstance(e, ParseException) and e.msg == "Expected end of text":
-            problems = all_exceptions.get(e.loc, [])
-            expecting = [
-                f
-                for f in (set(p.msg.lstrip("Expected").strip() for p in problems)-{"Found unwanted token"})
-                if not f.startswith("{")
-            ]
-            raise ParseException(sql, e.loc, "Expecting one of (" + (", ".join(expecting)) + ")")
-        raise
-    return _scrub(parse_result)
+    with parseLocker:
+        try:
+            all_exceptions.clear()
+            sql = sql.rstrip().rstrip(";")
+            parse_result = SQLParser.parseString(sql, parseAll=True)
+            return _scrub(parse_result)
+        except Exception as e:
+            if isinstance(e, ParseException) and e.msg == "Expected end of text":
+                problems = all_exceptions.get(e.loc, [])
+                expecting = [
+                    f
+                    for f in (set(p.msg.lstrip("Expected").strip() for p in problems)-{"Found unwanted token"})
+                    if not f.startswith("{")
+                ]
+                raise ParseException(sql, e.loc, "Expecting one of (" + (", ".join(expecting)) + ")")
+            raise
 
 
 def format(json, **kwargs):
+    from moz_sql_parser.formatting import Formatter
     return Formatter(**kwargs).format(json)
 
 
@@ -63,8 +81,10 @@ def _scrub(result):
                 if rr != None
             ]
             # IF ALL MEMBERS OF A LIST ARE LITERALS, THEN MAKE THE LIST LITERAL
-            if all(isinstance(r, Mapping) and "literal" in r.keys() for r in output):
-                output = {"literal": [r['literal'] for r in output]}
+            if all(isinstance(r, number_types) for r in output):
+                pass
+            elif all(isinstance(r, number_types) or (isinstance(r, Mapping) and "literal" in r.keys()) for r in output):
+                output = {"literal": [r['literal'] if isinstance(r, Mapping) else r for r in output]}
             return output
     elif not items(result):
         return {}
@@ -78,3 +98,9 @@ def _scrub(result):
 
 
 _ = json.dumps
+
+
+__all__ = [
+    'parse',
+    'format'
+]

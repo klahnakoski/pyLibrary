@@ -18,7 +18,7 @@ from jx_base.domains import DefaultDomain, Domain, SetDomain
 from jx_base.expressions import Expression, FALSE, LeavesOp, QueryOp as QueryOp_, ScriptOp, TRUE, Variable, jx_expression
 from jx_base.utils import is_variable_name
 from jx_base.language import is_expression, is_op
-from mo_dots import Data, FlatList, Null, coalesce, concat_field, is_container, is_data, is_list, listwrap, literal_field, relative_field, set_default, unwrap, unwraplist, wrap
+from mo_dots import Data, FlatList, Null, coalesce, concat_field, is_container, is_data, is_list, listwrap, literal_field, relative_field, set_default, unwrap, unwraplist, wrap, is_many
 from mo_future import is_text, text_type
 from mo_json import STRUCT
 from mo_json.typed_encoder import untype_path
@@ -38,7 +38,7 @@ def _late_import():
     global _jx
     global _Column
 
-    from jx_python.meta import Column as _Column
+    from jx_base import Column as _Column
     from jx_python import jx as _jx
 
     _ = _jx
@@ -233,7 +233,7 @@ class QueryOp(QueryOp_):
             output.edges = Null
             output.groupby = Null
 
-        output.where = _normalize_where(query.where, schema=schema)
+        output.where = _normalize_where({"and": listwrap(query.where)}, schema=schema)
         output.window = [_normalize_window(w) for w in listwrap(query.window)]
         output.having = None
         output.sort = _normalize_sort(query.sort)
@@ -584,7 +584,7 @@ def _normalize_domain(domain=None, limit=None, schema=None):
     if not domain:
         return Domain(type="default", limit=limit)
     elif isinstance(domain, _Column):
-        if domain.partitions:
+        if domain.partitions and domain.multi <= 1:  # MULTI FIELDS ARE TUPLES, AND THERE ARE TOO MANY POSSIBLE COMBOS AT THIS TIME
             return SetDomain(partitions=domain.partitions.left(limit))
         else:
             return DefaultDomain(type="default", limit=limit)
@@ -635,8 +635,6 @@ def _normalize_range(range):
 
 
 def _normalize_where(where, schema=None):
-    if where == None:
-        return TRUE
     return jx_expression(where, schema=schema)
 
 

@@ -9,7 +9,6 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 import math
@@ -17,7 +16,7 @@ import re
 
 from mo_dots import Data, FlatList, Null, NullType, SLOT, is_data, wrap, wrap_leaves
 from mo_dots.objects import DataObject
-from mo_future import PY2, is_binary, is_text, items, long, none_type, text_type
+from mo_future import PY2, integer_types, is_binary, is_text, items, long, none_type, text_type
 from mo_logs import Except, Log, strings
 from mo_logs.strings import expand_template
 from mo_times import Date, Duration
@@ -40,6 +39,7 @@ JSON_TYPES = [BOOLEAN, INTEGER, NUMBER, STRING, OBJECT]
 PRIMITIVE = [EXISTS, BOOLEAN, INTEGER, NUMBER, STRING]
 STRUCT = [EXISTS, OBJECT, NESTED]
 
+true, false, null = True, False, None
 
 _get = object.__getattribute__
 
@@ -156,7 +156,7 @@ def _scrub(value, is_done, stack, scrub_text, scrub_number):
         return scrub_number(value)
     elif type_ is bool:
         return value
-    elif type_ in (int, long):
+    elif type_ in integer_types:
         return scrub_number(value)
     elif type_ in (date, datetime):
         return scrub_number(datetime2unix(value))

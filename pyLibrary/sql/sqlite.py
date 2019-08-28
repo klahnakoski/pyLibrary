@@ -322,7 +322,7 @@ class Sqlite(DB):
                     with self.locker:
                         if self.too_long is None:
                             self.too_long = Till(seconds=TOO_LONG_TO_HOLD_TRANSACTION)
-                            self.too_long.on_go(self.show_transactions_blocked_warning)
+                            self.too_long.then(self.show_transactions_blocked_warning)
                         self.delayed_queries.append(command_item)
                     return
             elif self.transaction_stack and self.transaction_stack[-1] not in [transaction, transaction.parent]:
@@ -330,7 +330,7 @@ class Sqlite(DB):
                 with self.locker:
                     if self.too_long is None:
                         self.too_long = Till(seconds=TOO_LONG_TO_HOLD_TRANSACTION)
-                        self.too_long.on_go(self.show_transactions_blocked_warning)
+                        self.too_long.then(self.show_transactions_blocked_warning)
                     self.delayed_transactions.append(command_item)
                 return
             else:
@@ -464,7 +464,6 @@ class Transaction(object):
         except Exception as e:
             Log.error("problem running commands", current=c, cause=e)
 
-
     def query(self, query):
         if self.db.closed:
             Log.error("database is closed")
@@ -531,7 +530,7 @@ def quote_list(list):
 def join_column(a, b):
     a = quote_column(a)
     b = quote_column(b)
-    return SQL(a.template.rstrip() + "." + b.template.lstrip())
+    return SQL(a.value.rstrip() + "." + b.value.lstrip())
 
 
 BEGIN = "BEGIN"
