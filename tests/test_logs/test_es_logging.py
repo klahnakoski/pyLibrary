@@ -18,7 +18,7 @@ from mo_dots import Data
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
 from mo_logs import Log
-
+from mo_times import Date
 
 IS_TRAVIS = os.environ.get('TRAVIS')
 
@@ -143,4 +143,4 @@ class TestESLogging(FuzzyTestCase):
                 self.cluster.delete_index(i.index)
         except Exception as e:
             pass
-        self.cluster.get_metadata(force=True)
+        self.cluster.get_metadata(after=Date.now())
