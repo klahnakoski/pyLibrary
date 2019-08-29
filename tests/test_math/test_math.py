@@ -65,3 +65,9 @@ class TestMath(unittest.TestCase):
                 self.assertEqual(mo_math.mod(x, m), None)
             else:
                 self.assertAlmostEqual(mo_math.floor(x, m)+mo_math.mod(x, m), x, places=7)
+
+    def test_round(self):
+        self.assertAlmostEqual(mo_math.round(3.1415, digits=0), 1)
+        self.assertAlmostEqual(mo_math.round(4, digits=0), 10)
+        self.assertAlmostEqual(mo_math.round(11, digits=0), 10)
+        self.assertAlmostEqual(mo_math.round(3.1415), 3)

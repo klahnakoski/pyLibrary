@@ -430,7 +430,7 @@ class TestDot(FuzzyTestCase):
 
         self.assertEqual(dd["a"], 20)
         self.assertEqual(dd, {"a": 20, "b": 30})
-        self.assertIs(unwrap(dd), dd)
+        self.assertIs(unwrap(dd), d)
 
     def test_object_wrap_w_deep_path(self):
         d = SampleData()
