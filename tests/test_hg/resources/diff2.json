@@ -1,0 +1,28 @@
+[
+    {
+        "changes": [
+            {"old": {
+                "content": "if a < 1.5 * 1000 * 1000 * 1000:",
+                "line": 7
+            }},
+            {"old": {
+                "content": "    print \"the past\"",
+                "line": 8
+            }},
+            {"old": {
+                "content": "else:",
+                "line": 9
+            }},
+            {"old": {
+                "content": "    print \"the future\"",
+                "line": 10
+            }},
+            {"new": {
+                "content": "print \"the future\"",
+                "line": 7
+            }}
+        ],
+        "new": {"name": "/tests/resources/example_file.py"},
+        "old": {"name": "/tests/resources/example_file.py"}
+    }
+]

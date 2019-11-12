@@ -1,0 +1,14 @@
+{
+	"use": "sqlite",
+	"db":{
+		"name": "testing",
+		"filename":"test.sqlite",
+		"upgrade": false
+	},
+	"constants": {
+		"pyLibrary.sql.sqlite.DEBUG": true
+	},
+	"debug": {
+		"trace":true
+	}
+}

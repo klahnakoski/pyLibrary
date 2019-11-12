@@ -1,0 +1,16 @@
+[
+    {
+        "changes": [
+            {"old": {
+                "content": "<html class=\"reftest-print\">\r",
+                "line": 0
+            }},
+            {"new": {
+                "content": "<html class=\"reftest-paged\">\r",
+                "line": 0
+            }}
+        ],
+        "new": {"name": "/layout/forms/crashtests/578604-1.html"},
+        "old": {"name": "/layout/forms/crashtests/578604-1.html"}
+    }
+]

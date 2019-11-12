@@ -1,0 +1,22 @@
+
+# HG changeset patch
+# User Carsten "Tomcat" Book <cbook@mozilla.com>
+# Date 1501145845 -7200
+# Node ID e5693cea1ec944ca077c7a46c5f127c828a90f1b
+# Parent  c1ed71da57073d0f5fdbd279c9ad6037f9ae2d06# Parent  c8262422f24494702bc965a241ca6bdaadead161
+merge mozilla-inbound to mozilla-central a=merge
+
+diff --git a/layout/forms/crashtests/578604-1.html b/layout/forms/crashtests/578604-1.html
+--- a/layout/forms/crashtests/578604-1.html
++++ b/layout/forms/crashtests/578604-1.html
+@@ -1,9 +1,9 @@
+-<html class="reftest-print">
++<html class="reftest-paged">
+ <head>
+ <style>
+    h2 { page-break-before: always; }
+    #reviewer { position: fixed;}
+ </style>
+ </head>
+
+ <body>
