@@ -12,7 +12,6 @@ from __future__ import unicode_literals
 import types
 import unittest
 
-from jx_base.expressions import NULL, NullOp
 from mo_collections.unique_index import UniqueIndex
 import mo_dots
 from mo_dots import coalesce, is_container, is_list, literal_field, unwrap, wrap
@@ -83,7 +82,7 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
     test = unwrap(test)
     expected = unwrap(expected)
     try:
-        if test is None and (expected is NULL or expected is None):
+        if test is None and (is_null(expected) or expected is None):
             return
         elif test is expected:
             return
@@ -153,11 +152,11 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
     """
     Snagged from unittest/case.py, then modified (Aug2014)
     """
-    if expected is NULL:
+    if is_null(expected):
         if test == None:  # pandas dataframes reject any comparision with an exception!
             return
         else:
-            raise AssertionError(expand_template("{{test}} != {{expected}}", locals()))
+            raise AssertionError(expand_template("{{test}} != NULL", locals()))
 
     if expected == None:  # None has no expectations
         return
@@ -209,3 +208,7 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
         standardMsg = expand_template("{{test|json}} != {{expected|json}} within {{places}} places", locals())
 
     raise AssertionError(coalesce(msg, "") + ": (" + standardMsg + ")")
+
+
+def is_null(v):
+    return v.__class__.__name__ == "NullOp"

@@ -14,7 +14,7 @@ from __future__ import unicode_literals
 
 from io import BytesIO
 
-from mo_future import text_type
+from mo_future import text
 
 from mo_dots import Null
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -335,7 +335,7 @@ class TestJsonStream(FuzzyTestCase):
 
 
 def slow_stream(bytes):
-    if isinstance(bytes, text_type):
+    if isinstance(bytes, text):
         bytes = bytes.encode("utf8")
 
     r = BytesIO(bytes).read

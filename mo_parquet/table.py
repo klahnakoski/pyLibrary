@@ -13,7 +13,7 @@ import numpy as np
 
 from jx_base.expressions import extend
 from mo_dots import Null, coalesce, join_field, split_field, startswith_field
-from mo_future import text_type
+from mo_future import text
 from mo_json.typed_encoder import TYPE_PREFIX
 from mo_logs import Log
 
@@ -74,7 +74,7 @@ class Table(object):
         return self.values.keys()
 
     def __getitem__(self, item):
-        if isinstance(item, text_type):
+        if isinstance(item, text):
             sub_schema = self.schema
             for n in split_field(item):
                 if n in sub_schema.more:

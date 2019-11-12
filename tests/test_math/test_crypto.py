@@ -13,23 +13,23 @@ from mo_json import json2value
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary import convert
 
-from mo_math import crypto
+from mo_math import aes_crypto
 from mo_math.randoms import Random
 
 
 class TestCrypto(FuzzyTestCase):
     def test_aes(self):
-        crypto.DEBUG = True
+        aes_crypto.DEBUG = True
 
-        crypto.encrypt("this is a test", Random.bytes(32))
-        crypto.encrypt("this is a longer test with more than 16bytes", Random.bytes(32))
-        crypto.encrypt("", Random.bytes(32))
-        crypto.encrypt("testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ", Random.bytes(32))
-        crypto.encrypt("testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ", Random.bytes(32))
+        aes_crypto.encrypt("this is a test", Random.bytes(32))
+        aes_crypto.encrypt("this is a longer test with more than 16bytes", Random.bytes(32))
+        aes_crypto.encrypt("", Random.bytes(32))
+        aes_crypto.encrypt("testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ", Random.bytes(32))
+        aes_crypto.encrypt("testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ", Random.bytes(32))
 
     def test_aes_nothing(self):
         key = convert.base642bytearray(u'nm5/wK20R45AUtetHJwHTdOigvGTxP7NcH/41YE8AZo=')
-        encrypted = crypto.encrypt("", key, salt=convert.base642bytearray("AehqWt1OdEgPJhCx6uylyg=="))
+        encrypted = aes_crypto.encrypt("", key, salt=convert.base642bytearray("AehqWt1OdEgPJhCx6uylyg=="))
         self.assertEqual(
             json2value(encrypted.decode('utf8')),
             json2value(u'{"type": "AES256", "length": 0, "salt": "AehqWt1OdEgPJhCx6uylyg=="}')
@@ -37,7 +37,7 @@ class TestCrypto(FuzzyTestCase):
 
     def test_aes_on_char(self):
         key = convert.base642bytearray(u'nm5/wK20R45AUtetHJwHTdOigvGTxP7NcH/41YE8AZo=')
-        encrypted = crypto.encrypt("kyle", key, salt=convert.base642bytearray("AehqWt1OdEgPJhCx6uylyg=="))
+        encrypted = aes_crypto.encrypt("kyle", key, salt=convert.base642bytearray("AehqWt1OdEgPJhCx6uylyg=="))
         self.assertEqual(
             json2value(encrypted.decode('utf8')),
             json2value(u'{"type": "AES256", "length": 4, "salt": "AehqWt1OdEgPJhCx6uylyg==", "data": "FXUGxdb9E+4UCKwsIT9ugQ=="}')

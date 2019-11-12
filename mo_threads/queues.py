@@ -14,17 +14,17 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+import types
 from collections import deque
 from datetime import datetime
 from time import time
-import types
 
 from mo_dots import Null, coalesce
 from mo_future import long
 from mo_logs import Except, Log
 
 from mo_threads.lock import Lock
-from mo_threads.signal import Signal
+from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, THREAD_TIMEOUT, Thread
 from mo_threads.till import Till
 
@@ -145,7 +145,6 @@ class Queue(object):
 
         :param timeout:  IN SECONDS
         """
-        timeout = coalesce(timeout, DEFAULT_WAIT_TIME)
         wait_time = 5
 
         (DEBUG and len(self.queue) > 1 * 1000 * 1000) and Log.warning("Queue {{name}} has over a million items")
@@ -193,8 +192,7 @@ class Queue(object):
         with self.lock:
             while True:
                 if self.queue:
-                    value = self.queue.popleft()
-                    return value
+                    return self.queue.popleft()
                 if self.closed:
                     break
                 if not self.lock.wait(till=self.closed | till):
@@ -220,7 +218,7 @@ class Queue(object):
         """
         with self.lock:
             if self.closed:
-                return [THREAD_STOP]
+                return THREAD_STOP
             elif not self.queue:
                 return None
             else:
@@ -440,7 +438,6 @@ class ThreadedQueue(Queue):
                     item = self.pop()
                     now = time()
                     if now > last_push + period:
-                        # Log.note("delay next push")
                         next_push = Till(till=now + period)
                 else:
                     item = self.pop(till=next_push)
@@ -454,7 +451,6 @@ class ThreadedQueue(Queue):
                     _post_push_functions.append(item)
                 elif item is not None:
                     _buffer.append(item)
-
             except Exception as e:
                 e = Except.wrap(e)
                 if error_target:
@@ -479,7 +475,6 @@ class ThreadedQueue(Queue):
                         push_to_queue()
                         last_push = now = time()
                     next_push = Till(till=now + period)
-
             except Exception as e:
                 e = Except.wrap(e)
                 if error_target:
@@ -502,6 +497,7 @@ class ThreadedQueue(Queue):
         if _buffer:
             # ONE LAST PUSH, DO NOT HAVE TIME TO DEAL WITH ERRORS
             push_to_queue()
+        self.slow_queue.add(THREAD_STOP)
 
     def add(self, value, timeout=None):
         with self.lock:

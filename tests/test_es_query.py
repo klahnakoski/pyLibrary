@@ -12,7 +12,7 @@ from __future__ import unicode_literals
 import unittest
 from traceback import extract_tb
 
-from mo_future import text_type
+from mo_future import text
 
 import jx_elasticsearch
 from mo_files import File
@@ -68,7 +68,7 @@ class FromESTester(object):
                 self.esq.query(query)
                 return None
         except Exception as e:
-            f = Except(ERROR, text_type(e), trace=extract_tb(1))
+            f = Except(ERROR, text(e), trace=extract_tb(1))
             try:
                 details = str(f)
                 query = json2value(strings.between(details, ">>>>", "<<<<"))

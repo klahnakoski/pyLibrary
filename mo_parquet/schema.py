@@ -16,7 +16,7 @@ import numpy
 from fastparquet.parquet_thrift.parquet.ttypes import ConvertedType, FieldRepetitionType, SchemaElement, Type
 from jx_python.jx import count
 from mo_dots import Data, coalesce, concat_field, join_field, relative_field, split_field
-from mo_future import PY2, none_type, sort_using_key, text_type, is_text
+from mo_future import PY2, none_type, sort_using_key, text, is_text
 from mo_json import NESTED, python_type_to_json_type
 from mo_json.typed_encoder import json_type_to_inserter_type
 from mo_logs import Log
@@ -152,7 +152,7 @@ class SchemaTree(object):
         return output
 
     def schema_element(self, path):
-        if isinstance(path, text_type):
+        if isinstance(path, text):
             path = split_field(path)
         output = self
         while '.' in output.more:
@@ -252,7 +252,7 @@ def merge_schema(schema, name, value):
 all_type_to_parquet_type = {
     none_type: None,
     bool: Type.BOOLEAN,
-    text_type: Type.BYTE_ARRAY,
+    text: Type.BYTE_ARRAY,
     int: Type.INT64,
     float: Type.DOUBLE,
     dict: None,
@@ -265,7 +265,7 @@ all_type_to_parquet_type = {
 all_type_to_parquet_logical_type = {
     none_type: None,
     bool: None,
-    text_type: ConvertedType.UTF8,
+    text: ConvertedType.UTF8,
     int: ConvertedType.UINT_64,
     float: None,
     dict: None,
@@ -278,7 +278,7 @@ all_type_to_parquet_logical_type = {
 all_type_to_numpy_type = {
     none_type: None,
     bool: numpy.dtype(bool),
-    text_type: numpy.dtype(text_type),
+    text: numpy.dtype(text),
     int: numpy.dtype(int),
     float: numpy.dtype(float),
     dict: None,
@@ -291,7 +291,7 @@ all_type_to_numpy_type = {
 all_type_to_length = {
     none_type: None,
     bool: 1,
-    text_type: None,
+    text: None,
     int: 8,
     float: 8,
     dict: None,
