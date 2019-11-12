@@ -24,8 +24,8 @@ from mo_logs import Log
 from mo_logs.exceptions import suppress_exception, Except
 from mo_logs.strings import expand_template
 from pyLibrary import convert
-from pyLibrary.sql import SQL, SQL_IS_NULL, SQL_AND, SQL_IS_NOT_NULL, SQL_ORDERBY, SQL_LIMIT, sql_iso, sql_list, SQL_TRUE, sql_alias, SQL_OR, SQL_WHERE, SQL_NOT
-from pyLibrary.sql.mysql import int_list_packer, quote_column, quote_value, quote_list
+from pyLibrary.sql import SQL, SQL_IS_NULL, SQL_AND, SQL_IS_NOT_NULL, SQL_ORDERBY, SQL_LIMIT, sql_iso, sql_list, SQL_TRUE, SQL_OR, SQL_WHERE, SQL_NOT
+from pyLibrary.sql.mysql import int_list_packer, quote_column, quote_value, quote_list, sql_alias
 
 
 class MySQL(object):

@@ -114,6 +114,6 @@ class TestDB(FuzzyTestCase):
             )
         )"""
         reference = re.sub(r"\s+", "", reference).strip()
-        where = re.sub(r"\s+", "", where).strip()
+        where = re.sub(r"\s+", "", where.sql).strip()
 
         self.assertAlmostEqual(where, reference)
