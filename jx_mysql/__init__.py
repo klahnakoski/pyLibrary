@@ -18,14 +18,14 @@ from mo_collections.matrix import Matrix
 from mo_dots import coalesce
 from mo_dots import wrap, listwrap, unwrap
 from mo_dots.lists import FlatList
-from mo_future import text_type, items
+from mo_future import text, items
 from mo_kwargs import override
 from mo_logs import Log
 from mo_logs.exceptions import suppress_exception, Except
 from mo_logs.strings import expand_template
 from pyLibrary import convert
-from pyLibrary.sql import SQL, SQL_IS_NULL, SQL_AND, SQL_IS_NOT_NULL, SQL_ORDERBY, SQL_LIMIT, sql_iso, sql_list, SQL_TRUE, sql_alias, SQL_OR, SQL_WHERE, SQL_NOT
-from pyLibrary.sql.mysql import int_list_packer, quote_column, quote_value, quote_list
+from pyLibrary.sql import SQL, SQL_IS_NULL, SQL_AND, SQL_IS_NOT_NULL, SQL_ORDERBY, SQL_LIMIT, sql_iso, sql_list, SQL_TRUE, SQL_OR, SQL_WHERE, SQL_NOT
+from pyLibrary.sql.mysql import int_list_packer, quote_column, quote_value, quote_list, sql_alias
 
 
 class MySQL(object):
@@ -80,7 +80,7 @@ class MySQL(object):
         })
 
     def _subquery(self, query, isolate=True, stacked=False):
-        if isinstance(query, text_type):
+        if isinstance(query, text):
             return quote_column(query), None
         if query.name:  # IT WOULD BE SAFER TO WRAP TABLE REFERENCES IN A TYPED OBJECT (Cube, MAYBE?)
             return quote_column(query.name), None
@@ -411,12 +411,12 @@ def _esfilter2sqlwhere(db, esfilter):
             output = sql_iso(SQL_AND.join(terms))
         return output
     elif esfilter.missing:
-        if isinstance(esfilter.missing, text_type):
+        if isinstance(esfilter.missing, text):
             return sql_iso(quote_column(esfilter.missing) + SQL_IS_NULL)
         else:
             return sql_iso(quote_column(esfilter.missing.field) + SQL_IS_NULL)
     elif esfilter.exists:
-        if isinstance(esfilter.exists, text_type):
+        if isinstance(esfilter.exists, text):
             return sql_iso(quote_column(esfilter.exists) + SQL_IS_NOT_NULL)
         else:
             return sql_iso(quote_column(esfilter.exists.field) + SQL_IS_NOT_NULL)
@@ -432,7 +432,7 @@ def expand_json(rows):
     # CONVERT JSON TO VALUES
     for r in rows:
         for k, json in items(r):
-            if isinstance(json, text_type) and json[0:1] in ("[", "{"):
+            if isinstance(json, text) and json[0:1] in ("[", "{"):
                 with suppress_exception:
                     value = mo_json.json2value(json)
                     r[k] = value

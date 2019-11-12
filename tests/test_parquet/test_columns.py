@@ -6,7 +6,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from mo_future import text_type
+from mo_future import text
 from mo_logs import Log
 from mo_parquet import rows_to_columns, SchemaTree
 from mo_parquet.schema import REQUIRED, REPEATED, OPTIONAL
@@ -48,13 +48,13 @@ class TestColumns(FuzzyTestCase):
         schema = SchemaTree(locked=True)
         schema.add("DocId", REQUIRED, int)
         schema.add("Name", REPEATED, object)
-        schema.add("Name.Url", OPTIONAL, text_type)
+        schema.add("Name.Url", OPTIONAL, text)
         schema.add("Links", OPTIONAL, object)
         schema.add("Links.Forward", REPEATED, int)
         schema.add("Links.Backward", REPEATED, int)
         schema.add("Name.Language", REPEATED, object)
-        schema.add("Name.Language.Code", REQUIRED, text_type)
-        schema.add("Name.Language.Country", OPTIONAL, text_type)
+        schema.add("Name.Language.Code", REQUIRED, text)
+        schema.add("Name.Language.Country", OPTIONAL, text)
 
         table = rows_to_columns(DREMEL_DATA, schema=schema)
         self.assertEqual(table.values, expected_values)
@@ -100,7 +100,7 @@ class TestColumns(FuzzyTestCase):
         expected_defs = {"v": [0, 1]}
 
         schema = SchemaTree(locked=True)
-        schema.add("v", OPTIONAL, text_type)
+        schema.add("v", OPTIONAL, text)
 
         table = rows_to_columns(good_data, schema)
         self.assertEqual(table.values, expected_values)
@@ -127,7 +127,7 @@ class TestColumns(FuzzyTestCase):
         expected_defs = {"v": [0]}
 
         schema = SchemaTree(locked=True)
-        schema.add("v", REQUIRED, text_type)
+        schema.add("v", REQUIRED, text)
         table = rows_to_columns(good_data, schema)
         self.assertEqual(table.values, expected_values)
         self.assertEqual(table.reps, expected_reps)
@@ -166,7 +166,7 @@ class TestColumns(FuzzyTestCase):
         }
 
         schema = SchemaTree(locked=True)
-        schema.add("a", REQUIRED, text_type)
+        schema.add("a", REQUIRED, text)
         schema.add("b", REPEATED, object)
         schema.add("b.c", OPTIONAL, int)
         schema.add("b.d", OPTIONAL, int)

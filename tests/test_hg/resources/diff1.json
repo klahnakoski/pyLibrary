@@ -1,0 +1,16 @@
+[
+    {
+        "changes": [
+            {"new": {
+                "content": "b = \"hello world\"",
+                "line": 4
+            }},
+            {"new": {
+                "content": "# SOME COMMENTS WILL HELP READER DEAL WITH THE COMPLEXITY",
+                "line": 6
+            }}
+        ],
+        "new": {"name": "/tests/resources/example_file.py"},
+        "old": {"name": "/tests/resources/example_file.py"}
+    }
+]

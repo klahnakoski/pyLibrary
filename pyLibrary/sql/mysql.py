@@ -10,24 +10,26 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from datetime import datetime
 import subprocess
+from datetime import datetime
 
 from pymysql import InterfaceError, connect, cursors
 
-from jx_python import jx
-from mo_dots import coalesce, is_data, is_list, listwrap, split_field, unwrap, wrap
-from mo_files import File
-from mo_future import is_binary, is_text, text_type, transpose, utf8_json_encoder
 import mo_json
+from jx_python import jx
+from mo_dots import coalesce, is_data, listwrap, unwrap, wrap
+from mo_files import File
+from mo_future import is_binary, is_text, text, transpose, utf8_json_encoder
 from mo_kwargs import override
 from mo_logs import Log
 from mo_logs.exceptions import Except, suppress_exception
 from mo_logs.strings import expand_template, indent, outdent
 from mo_math import is_number
 from mo_times import Date
-from pyLibrary.sql import SQL, SQL_AND, SQL_ASC, SQL_DESC, SQL_FROM, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ONE, SQL_SELECT, SQL_TRUE, SQL_WHERE, sql_alias, sql_iso, sql_list
-from pyLibrary.sql.sqlite import join_column
+from pyLibrary.env import http
+from pyLibrary.sql import SQL, SQL_AND, SQL_ASC, SQL_DESC, SQL_FROM, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, \
+    SQL_ONE, SQL_SELECT, SQL_TRUE, SQL_WHERE, sql_iso, sql_list, SQL_INSERT, SQL_VALUES, ConcatSQL, SQL_EQ, \
+    SQL_UPDATE, SQL_SET, JoinSQL, SQL_DOT, SQL_AS
 
 DEBUG = False
 MAX_BATCH_SIZE = 1
@@ -85,6 +87,12 @@ class MySQL(object):
 
     def _open(self):
         """ DO NOT USE THIS UNLESS YOU close() FIRST"""
+        if self.settings.ssl.ca.startswith("https://"):
+            self.pemfile_url = self.settings.ssl.ca
+            self.pemfile = File("./resources/pem")/self.settings.host
+            self.pemfile.write_bytes(http.get(self.pemfile_url).content)
+            self.settings.ssl.ca = self.pemfile.abspath
+
         try:
             self.db = connect(
                 host=self.settings.host,
@@ -156,7 +164,7 @@ class MySQL(object):
         self.execute("SET TIME_ZONE='+00:00'")
         if EXECUTE_TIMEOUT:
             try:
-                self.execute("SET MAX_EXECUTION_TIME=" + text_type(EXECUTE_TIMEOUT))
+                self.execute("SET MAX_EXECUTION_TIME=" + text(EXECUTE_TIMEOUT))
                 self._execute_backlog()
             except Exception as e:
                 e = Except.wrap(e)
@@ -349,7 +357,7 @@ class MySQL(object):
             Log.error("Expecting transaction to be started before issuing queries")
 
         if param:
-            sql = expand_template(text_type(sql), quote_param(param))
+            sql = expand_template(text(sql), quote_param(param))
         sql = outdent(sql)
         self.backlog.append(sql)
         if self.debug or len(self.backlog) >= MAX_BATCH_SIZE:
@@ -375,9 +383,9 @@ class MySQL(object):
 
         try:
             command = (
-                "INSERT INTO " + quote_column(table_name) +
+                SQL_INSERT + quote_column(table_name) +
                 sql_iso(sql_list([quote_column(k) for k in keys])) +
-                " VALUES " +
+                SQL_VALUES +
                 sql_iso(sql_list([quote_value(record[k]) for k in keys]))
             )
             self.execute(command)
@@ -389,14 +397,9 @@ class MySQL(object):
     def insert_new(self, table_name, candidate_key, new_record):
         candidate_key = listwrap(candidate_key)
 
-        condition = SQL_AND.join([
-            quote_column(k) + "=" + quote_value(new_record[k])
-            if new_record[k] != None
-            else quote_column(k) + SQL_IS_NULL
-            for k in candidate_key
-        ])
+        condition = sql_eq(**{k: new_record[k] for k in candidate_key})
         command = (
-            "INSERT INTO " + quote_column(table_name) + sql_iso(sql_list(
+            SQL_INSERT + quote_column(table_name) + sql_iso(sql_list(
                 quote_column(k) for k in new_record.keys()
             )) +
             SQL_SELECT + "a.*" + SQL_FROM + sql_iso(
@@ -428,12 +431,12 @@ class MySQL(object):
 
         try:
             command = (
-                "INSERT INTO " + quote_column(table_name) +
+                SQL_INSERT + quote_column(table_name) +
                 sql_iso(sql_list([quote_column(k) for k in keys])) +
-                " VALUES " + sql_list([
-                sql_iso(sql_list([quote_value(r[k]) for k in keys]))
-                for r in records
-            ])
+                SQL_VALUES + sql_list(
+                    sql_iso(sql_list([quote_value(r[k]) for k in keys]))
+                    for r in records
+                )
             )
             self.execute(command)
         except Exception as e:
@@ -447,14 +450,11 @@ class MySQL(object):
         """
         new_values = quote_param(new_values)
 
-        where_clause = SQL_AND.join([
-            quote_column(k) + "=" + quote_value(v) if v != None else quote_column(k) + SQL_IS_NULL
-            for k, v in where_slice.items()
-        ])
+        where_clause = sql_eq(**where_slice)
 
         command = (
-            "UPDATE " + quote_column(table_name) + "\n" +
-            "SET " +
+            SQL_UPDATE + quote_column(table_name) +
+            SQL_SET +
             sql_list([quote_column(k) + "=" + v for k, v in new_values.items()]) +
             SQL_WHERE +
             where_clause
@@ -509,7 +509,7 @@ def execute_sql(
 
     if proc.returncode:
         if len(sql) > 10000:
-            sql = "<" + text_type(len(sql)) + " bytes of sql>"
+            sql = "<" + text(len(sql)) + " bytes of sql>"
         Log.error(
             "Unable to execute sql: return code {{return_code}}, {{output}}:\n {{sql}}\n",
             sql=indent(sql),
@@ -569,37 +569,26 @@ def quote_value(value):
             return SQL("'" + "".join(ESCAPE_DCT.get(c, c) for c in value) + "'")
         elif is_data(value):
             return quote_value(json_encode(value))
-        elif is_number(value):
-            return SQL(text_type(value))
         elif isinstance(value, datetime):
             return SQL("str_to_date('" + value.strftime("%Y%m%d%H%M%S.%f") + "', '%Y%m%d%H%i%s.%f')")
         elif isinstance(value, Date):
             return SQL("str_to_date('" + value.format("%Y%m%d%H%M%S.%f") + "', '%Y%m%d%H%i%s.%f')")
+        elif is_number(value):
+            return SQL(text(value))
         elif hasattr(value, '__iter__'):
             return quote_value(json_encode(value))
         else:
-            return quote_value(text_type(value))
+            return quote_value(text(value))
     except Exception as e:
         Log.error("problem quoting SQL {{value}}", value=repr(value), cause=e)
 
 
-def quote_column(column_name, table=None):
-    if column_name == None:
+def quote_column(*path):
+    if not path:
         Log.error("missing column_name")
-    elif is_text(column_name):
-        if table:
-            return join_column(table, column_name)
-        else:
-            return SQL("`" + '`.`'.join(split_field(column_name)) + "`")  # MYSQL QUOTE OF COLUMN NAMES
-    elif is_binary(column_name):
-        return quote_column(column_name.decode('utf8'), table)
-    elif is_list(column_name):
-        if table:
-            return sql_list(join_column(table, c) for c in column_name)
-        return sql_list(quote_column(c) for c in column_name)
-    else:
-        # ASSUME {"name":name, "value":value} FORM
-        return SQL(sql_alias(column_name.value, quote_column(column_name.name)))
+    if len(path)==1:
+        return SQL("`" + path[0].replace('`', '``') + "`")
+    return JoinSQL(SQL_DOT, map(quote_column, path))
 
 
 def quote_sql(value, param=None):
@@ -619,9 +608,15 @@ def quote_sql(value, param=None):
         elif hasattr(value, '__iter__'):
             return quote_list(value)
         else:
-            return text_type(value)
+            return text(value)
     except Exception as e:
         Log.error("problem quoting SQL", e)
+
+
+def sql_alias(value, alias):
+    if not isinstance(value, SQL) or not is_text(alias):
+        Log.error("Expecting (SQL, text) parameters")
+    return ConcatSQL((value, SQL_AS, quote_column(alias)))
 
 
 def quote_param(param):
@@ -631,6 +626,21 @@ def quote_param(param):
 def quote_list(values):
     return sql_iso(sql_list(map(quote_value, values)))
 
+
+def sql_eq(**item):
+    """
+    RETURN SQL FOR COMPARING VARIABLES TO VALUES (AND'ED TOGETHER)
+
+    :param item: keyword parameters representing variable and value
+    :return: SQL
+    """
+
+    return SQL_AND.join([
+        ConcatSQL((quote_column(k), SQL_EQ, quote_value(v)))
+        if v != None
+        else ConcatSQL((quote_column(k), SQL_IS_NULL))
+        for k, v in item.items()
+    ])
 
 
 def utf8_to_unicode(v):
@@ -744,7 +754,7 @@ def json_encode(value):
     FOR PUTTING JSON INTO DATABASE (sort_keys=True)
     dicts CAN BE USED AS KEYS
     """
-    return text_type(utf8_json_encoder(mo_json.scrub(value)))
+    return text(utf8_json_encoder(mo_json.scrub(value)))
 
 
 mysql_type_to_json_type = {
