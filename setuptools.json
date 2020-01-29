@@ -150,5 +150,5 @@
     "name": "pyLibrary",
     "packages": ["pyLibrary/aws", "pyLibrary/env", "pyLibrary"],
     "url": "https://github.com/klahnakoski/pyLibrary",
-    "version": "3.12.20029"
+    "version": "3.13.20029"
 }
