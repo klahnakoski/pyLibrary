@@ -14,32 +14,32 @@ from __future__ import unicode_literals
 from collections import Mapping
 
 import mo_json
+from jx_mysql.mysql import int_list_packer, quote_column, quote_value, quote_list, sql_alias, _esfilter2sqlwhere
 from mo_collections.matrix import Matrix
-from mo_dots import coalesce
-from mo_dots import wrap, listwrap, unwrap
+from mo_dots import listwrap, unwrap
 from mo_dots.lists import FlatList
 from mo_future import text, items
 from mo_kwargs import override
 from mo_logs import Log
-from mo_logs.exceptions import suppress_exception, Except
+from mo_logs.exceptions import suppress_exception
 from mo_logs.strings import expand_template
-from pyLibrary import convert
-from mo_sql import SQL, SQL_IS_NULL, SQL_AND, SQL_IS_NOT_NULL, SQL_ORDERBY, SQL_LIMIT, sql_iso, sql_list, SQL_TRUE, SQL_OR, SQL_WHERE, SQL_NOT
-from jx_mysql.mysql import int_list_packer, quote_column, quote_value, quote_list, sql_alias, _esfilter2sqlwhere
+from mo_sql import SQL, SQL_ORDERBY, SQL_LIMIT, sql_list, SQL_WHERE
 
 
 class MySQL(object):
     """
     jx to MySQL DATABASE QUERIES
+
+    NEW CODE SHOULD NOT USE THIS: SUBSUMED BY THE REST OF THE LIBRARY
     """
 
     @override
     def __init__(
         self,
         host,
-        port,
-        username,
-        password,
+        port=3306,
+        username=None,
+        password=None,
         debug=False,
         schema=None,
         preamble=None,
@@ -333,7 +333,6 @@ class MySQL(object):
         if where == None:
             return ""
         return SQL_WHERE + _esfilter2sqlwhere(self.db, where)
-
 
 
 def expand_json(rows):

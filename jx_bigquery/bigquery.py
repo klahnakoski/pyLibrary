@@ -13,7 +13,8 @@ from jx_bigquery.sql import (
     sql_alias,
     escape_name,
     ApiName,
-    sql_query)
+    sql_query,
+)
 from jx_bigquery.typed_encoder import (
     NESTED_TYPE,
     typed_encode,
@@ -21,13 +22,7 @@ from jx_bigquery.typed_encoder import (
     json_type_to_bq_type,
 )
 from jx_python import jx
-from mo_dots import (
-    listwrap,
-    unwrap,
-    join_field,
-    Null,
-    is_data,
-    Data, wrap)
+from mo_dots import listwrap, unwrap, join_field, Null, is_data, Data, wrap
 from mo_future import is_text, text, first
 from mo_kwargs import override
 from mo_logs import Log, Except
@@ -95,7 +90,7 @@ class Dataset(Container):
         id=None,
         kwargs=None,
     ):
-        if kwargs.lookup != None or kwargs.flake!=None:
+        if kwargs.lookup != None or kwargs.flake != None:
             Log.error("expecting schema, not lookup")
         try:
             return Table(kwargs=kwargs, container=self)
@@ -117,7 +112,7 @@ class Dataset(Container):
         sharded=False,
         kwargs=None,
     ):
-        if kwargs.lookup != None or kwargs.flake!=None:
+        if kwargs.lookup != None or kwargs.flake != None:
             Log.error("expecting schema, not lookup")
 
         try:
@@ -140,12 +135,12 @@ class Dataset(Container):
         typed=True,
         read_only=True,  # TO PREVENT ACCIDENTAL WRITING
         sharded=False,
-        partition=None,  # PARTITION RULES
+        partition=Null,  # PARTITION RULES
         cluster=None,  # TUPLE OF FIELDS TO SORT DATA
         top_level_fields=None,
         kwargs=None,
     ):
-        if kwargs.lookup != None or kwargs.flake!=None:
+        if kwargs.lookup != None or kwargs.flake != None:
             Log.error("expecting schema, not lookup")
         full_name = self.full_name + escape_name(table)
         flake = Snowflake(text(full_name), top_level_fields, partition, schema=schema)
@@ -174,7 +169,7 @@ class Dataset(Container):
             _table.time_partitioning = unwrap(flake._partition.bq_time_partitioning)
             _table.clustering_fields = [
                 l.es_column for f in listwrap(cluster) for l in flake.leaves(f)
-            ]
+            ] or None
             self.client.create_table(_table)
             Log.note("created table {{table}}", table=_table.table_id)
 
@@ -196,7 +191,7 @@ class Dataset(Container):
                     SQL("CREATE VIEW\n"),
                     quote_column(view_api_name),
                     SQL_AS,
-                    sql_query({"from": shard_api_name})
+                    sql_query({"from": shard_api_name}),
                 )
             )
         )
@@ -238,27 +233,51 @@ class Table(Facts):
             id=id,
             partition=partition,
             cluster=cluster,
-            top_level_fields=top_level_fields
+            top_level_fields=top_level_fields,
         )
 
         esc_name = escape_name(table)
         self.full_name = container.full_name + esc_name
         self.alias_view = alias_view = container.client.get_table(text(self.full_name))
+        self.partition = partition
+        self.container = container
+
         if not sharded:
             if not read_only and alias_view.table_type == "VIEW":
                 Log.error("Expecting a table, not a view")
             self.shard = alias_view
+            self._flake = Snowflake.parse(
+                alias_view.schema,
+                text(self.full_name),
+                self.top_level_fields,
+                partition,
+            )
         else:
             if alias_view.table_type != "VIEW":
                 Log.error("Sharded tables require a view")
             current_view = container.client.get_table(text(self.full_name))
             view_sql = current_view.view_query
-            self.shard = container.client.get_table(text(container.full_name+_extract_primary_shard_name(view_sql)))
-        self._flake = Snowflake.parse(
-            alias_view.schema, text(self.full_name), self.top_level_fields, partition
-        )
-        self.partition = partition
-        self.container = container
+            try:
+                self.shard = container.client.get_table(
+                    text(container.full_name + _extract_primary_shard_name(view_sql))
+                )
+                self._flake = Snowflake.parse(
+                    alias_view.schema,
+                    text(self.full_name),
+                    self.top_level_fields,
+                    partition,
+                )
+            except Exception as e:
+                Log.warning("view is invalid", cause=e)
+                self._flake = Snowflake.parse(
+                    alias_view.schema,
+                    text(self.full_name),
+                    self.top_level_fields,
+                    partition,
+                )
+                self._create_new_shard()
+                container.create_view(self.full_name, ApiName(self.shard.table_id))
+
         self.last_extend = Date.now() - EXTEND_LIMIT
 
     @property
@@ -301,7 +320,7 @@ class Table(Facts):
                 Log.note(
                     "added new shard with name: {{shard}}", shard=self.shard.table_id
                 )
-            with Timer("insert to bq"):
+            with Timer("insert {{num}} rows to bq", param={"num": len(rows)}):
                 failures = self.container.client.insert_rows_json(
                     self.shard,
                     json_rows=output,
@@ -313,9 +332,14 @@ class Table(Facts):
                 if all(r == "stopped" for r in wrap(failures).errors.reason):
                     self._create_new_shard()
                     Log.note(
-                        "STOPPED encountered: Added new shard with name: {{shard}}", shard=self.shard.table_id
+                        "STOPPED encountered: Added new shard with name: {{shard}}",
+                        shard=self.shard.table_id,
                     )
-                Log.error("Got {{num}} failures:\n{{failures|json}}", num=len(failures), failures=failures[:5])
+                Log.error(
+                    "Got {{num}} failures:\n{{failures|json}}",
+                    num=len(failures),
+                    failures=failures[:5],
+                )
             else:
                 self.last_extend = Date.now()
                 Log.note("{{num}} rows added", num=len(output))
@@ -324,8 +348,8 @@ class Table(Facts):
             if len(rows) > 1 and "Request payload size exceeds the limit" in e:
                 # TRY A SMALLER BATCH
                 cut = len(rows) // 2
-                self.extend(b"\n".join(rows[:cut]))
-                self.extend(b"\n".join(rows[cut:]))
+                self.extend(rows[:cut])
+                self.extend(rows[cut:])
                 return
             Log.error("Do not know how to handle", cause=e)
 
@@ -359,7 +383,7 @@ class Table(Facts):
 
         shard_flakes = [
             Snowflake.parse(
-                schema=shard.schema,
+                big_query_schema=shard.schema,
                 es_index=text(self.container.full_name + ApiName(shard.table_id)),
                 top_level_fields=self.top_level_fields,
                 partition=self.partition,
@@ -399,8 +423,7 @@ class Table(Facts):
                 (
                     SQL_SELECT,
                     JoinSQL(
-                        ConcatSQL((SQL_COMMA, SQL_CR)),
-                        gen_select(total_flake, flake),
+                        ConcatSQL((SQL_COMMA, SQL_CR)), gen_select(total_flake, flake)
                     ),
                     SQL_FROM,
                     quote_column(ApiName(table.dataset_id, table.table_id)),
@@ -426,9 +449,14 @@ class Table(Facts):
                     JoinSQL(
                         SQL_UNION_ALL,
                         (
-                            sql_query({"from": self.container.full_name + ApiName(shard.table_id)})
+                            sql_query(
+                                {
+                                    "from": self.container.full_name
+                                    + ApiName(shard.table_id)
+                                }
+                            )
                             for _, shard, _ in matched
-                        )
+                        ),
                     ),
                 )
             )
@@ -510,17 +538,20 @@ class Table(Facts):
 def _extract_primary_shard_name(view_sql):
     # TODO: USE REAL PARSER
     e = view_sql.lower().find("from ")
-    return ApiName(
-        view_sql[e + 5 :].strip().split(".")[-1].strip("`")
-    )
+    return ApiName(view_sql[e + 5 :].strip().split(".")[-1].strip("`"))
 
 
 def gen_select(total_flake, flake):
-
-    def _gen_select(jx_path, es_path, total_tops, total_flake, source_tops, source_flake):
+    def _gen_select(
+        jx_path, es_path, total_tops, total_flake, source_tops, source_flake
+    ):
         if total_flake == source_flake and total_tops == source_tops:
             if not jx_path:  # TOP LEVEL FIELDS
-                return [quote_column(escape_name(k)) for k in total_flake.keys() if not is_text(total_tops[k])]
+                return [
+                    quote_column(escape_name(k))
+                    for k in total_flake.keys()
+                    if not is_text(total_tops[k])
+                ]
             else:
                 Log.error("should not happen")
 
@@ -538,7 +569,14 @@ def gen_select(total_flake, flake):
                             SQL_SELECT_AS_STRUCT,
                             JoinSQL(
                                 ConcatSQL((SQL_COMMA, SQL_CR)),
-                                _gen_select(jx_path, es_path + REPEATED, Null, t, Null, source_flake),
+                                _gen_select(
+                                    jx_path,
+                                    es_path + REPEATED,
+                                    Null,
+                                    t,
+                                    Null,
+                                    source_flake,
+                                ),
                             ),
                         ]
                     )
@@ -551,10 +589,15 @@ def gen_select(total_flake, flake):
                         [
                             SQL_SELECT_AS_STRUCT,
                             JoinSQL(
-                                ConcatSQL((SQL_COMMA, SQL_CR)), _gen_select([row_name], ApiName(row_name), Null, t, Null, v)
+                                ConcatSQL((SQL_COMMA, SQL_CR)),
+                                _gen_select(
+                                    [row_name], ApiName(row_name), Null, t, Null, v
+                                ),
                             ),
                             SQL_FROM,
-                            sql_call("UNNEST", [quote_column(es_path+escape_name(k))]),
+                            sql_call(
+                                "UNNEST", [quote_column(es_path + escape_name(k))]
+                            ),
                             SQL_AS,
                             SQL(row_name),
                             SQL(" WITH OFFSET AS "),
@@ -587,9 +630,23 @@ def gen_select(total_flake, flake):
                 )
             elif is_data(t):
                 if not v:
-                    selects = _gen_select(jx_path + [k], es_path + escape_name(k), k_total_tops, t, source_tops, {})
+                    selects = _gen_select(
+                        jx_path + [k],
+                        es_path + escape_name(k),
+                        k_total_tops,
+                        t,
+                        source_tops,
+                        {},
+                    )
                 elif is_data(v):
-                    selects = _gen_select(jx_path + [k], es_path + escape_name(k), k_total_tops, t, source_tops, v)
+                    selects = _gen_select(
+                        jx_path + [k],
+                        es_path + escape_name(k),
+                        k_total_tops,
+                        t,
+                        source_tops,
+                        v,
+                    )
                 else:
                     raise Log.error(
                         "Datatype mismatch on {{field}}: Can not merge {{type}} into {{main}}",
@@ -610,13 +667,7 @@ def gen_select(total_flake, flake):
                 if is_text(k_tops):
                     # THE SOURCE HAS THIS PROPERTY AS A TOP_LEVEL_FIELD
                     selection.append(
-                        ConcatSQL(
-                            (
-                                SQL(k_tops),
-                                SQL_AS,
-                                quote_column(escape_name(k)),
-                            )
-                        )
+                        ConcatSQL((SQL(k_tops), SQL_AS, quote_column(escape_name(k))))
                     )
                 elif v == t:
                     selection.append(
@@ -643,7 +694,11 @@ def gen_select(total_flake, flake):
                                     "CAST",
                                     [
                                         ConcatSQL(
-                                            (SQL_NULL, SQL_AS, SQL(json_type_to_bq_type[t]))
+                                            (
+                                                SQL_NULL,
+                                                SQL_AS,
+                                                SQL(json_type_to_bq_type[t]),
+                                            )
                                         )
                                     ],
                                 ),
@@ -656,9 +711,15 @@ def gen_select(total_flake, flake):
                 Log.error("not expected")
         return selection
 
-    output = _gen_select([], ApiName(), total_flake.top_level_fields, total_flake.schema, flake.top_level_fields, flake.schema)
+    output = _gen_select(
+        [],
+        ApiName(),
+        total_flake.top_level_fields,
+        total_flake.schema,
+        flake.top_level_fields,
+        flake.schema,
+    )
     tops = []
-    as_timestamp = first(flake.leaves(total_flake.partition.field))  # PARTITION FIELD IS A TIMESTAMP
 
     for path, name in total_flake.top_level_fields.leaves():
         source = flake.top_level_fields[path]
@@ -668,19 +729,8 @@ def gen_select(total_flake, flake):
         else:
             # PULL OUT TOP LEVEL FIELD
             column = first(flake.leaves(path))
-            if column is as_timestamp:
-                source = ConcatSQL((
-                    SQL("TIMESTAMP_MILLIS(CAST("),
-                    SQL(column.es_column),
-                    SQL("*1000 AS INT64))")
-                ))
-            else:
-                source = SQL(column.es_column)
+            source = SQL(column.es_column)
 
-        tops.append(ConcatSQL((
-            source,
-            SQL_AS,
-            quote_column(ApiName(name))
-        )))
+        tops.append(ConcatSQL((source, SQL_AS, quote_column(ApiName(name)))))
 
     return tops + output

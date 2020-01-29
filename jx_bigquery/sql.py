@@ -36,8 +36,11 @@ from mo_sql import (
     SQL_ORDERBY,
     SQL_STAR,
     SQL_LT,
-    SQL_AS)
+    SQL_AS,
+)
+from mo_times.dates import parse
 
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
 ALLOWED = string.ascii_letters + string.digits
 GUID = "_id"  # user accessible, unique value across many machines
 UID = "__id__"  # internal numeric id for single-database use
@@ -107,18 +110,21 @@ def escape_name(name):
 def unescape_name(esc_name):
     if not isinstance(esc_name, ApiName):
         Log.error("expecting an api name")
-    if len(esc_name.values)>1:
+    if len(esc_name.values) > 1:
         Log.error("do not knwo how to handle")
-    parts = text(esc_name).split("_")
-    result = parts[:1]
-    for i, (p, q) in jx.chunk(parts[1:], 2):
-        if len(p) == 0:
-            result.append("_")
-        else:
-            result.append(hex2chr(p))
-        result.append(q)
-    name = "".join(result)
-    return name
+    try:
+        parts = text(esc_name).split("_")
+        result = parts[:1]
+        for i, (p, q) in jx.chunk(parts[1:], 2):
+            if len(p) == 0:
+                result.append("_")
+            else:
+                result.append(hex2chr(p))
+            result.append(q)
+        name = "".join(result)
+        return name
+    except Exception:
+        return esc_name
 
 
 def sql_alias(value, alias):
@@ -135,7 +141,7 @@ def quote_value(value):
     if isinstance(value, (Mapping, list)):
         return SQL(".")
     elif isinstance(value, Date):
-        return SQL(text(value.unix))
+        return quote_value(value.format(TIMESTAMP_FORMAT))
     elif isinstance(value, Duration):
         return SQL(text(value.seconds))
     elif is_text(value):

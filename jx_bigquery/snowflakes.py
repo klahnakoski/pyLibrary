@@ -43,7 +43,8 @@ class Snowflake(jx_base.Snowflake):
         self.top_level_fields = top_level_fields
         self._top_level_fields = None  # dict FROM FULL-API-NAME TO TOP-LEVEL-FIELD NAME
         self._es_type_info = Data()
-        self._es_type_info[partition.field] = "TIMESTAMP"
+        if partition.field:
+            self._es_type_info[partition.field] = "TIMESTAMP"
         self.partition = partition
         self._partition = None
 
@@ -150,7 +151,7 @@ class Snowflake(jx_base.Snowflake):
         return self._columns
 
     @classmethod
-    def parse(cls, schema, es_index, top_level_fields, partition):
+    def parse(cls, big_query_schema, es_index, top_level_fields, partition):
         """
         PARSE A BIGQUERY SCHEMA
         :param schema:  BQ SCHEMA (WHICH IS A list OF SCHEMA OBJECTS
@@ -159,13 +160,13 @@ class Snowflake(jx_base.Snowflake):
         :param partition: SO WE KNOW WHICH FIELD MUST BE A TIMESTAMP
         :return:
         """
-        def parse_schema(schema, jx_path, nested_path, es_path):
+        def parse_schema(big_query_schema, jx_path, nested_path, es_path):
             output = OrderedDict()
 
-            if any(ApiName(e.name) == REPEATED for e in schema):
-                schema = [e for e in schema if ApiName(e.name) == REPEATED]
+            if any(ApiName(e.name) == REPEATED for e in big_query_schema):
+                big_query_schema = [e for e in big_query_schema if ApiName(e.name) == REPEATED]
 
-            for e in schema:
+            for e in big_query_schema:
                 json_type = bq_type_to_json_type[e.field_type]
                 name = unescape_name(ApiName(e.name))
                 full_name = jx_path + (name,)
@@ -192,15 +193,15 @@ class Snowflake(jx_base.Snowflake):
         # GRAB THE TOP-LEVEL FIELDS
         top_fields = [field for path, field in top_level_fields.leaves()]
         i = 0
-        while i<len(schema) and schema[i].name in top_fields:
+        while i<len(big_query_schema) and big_query_schema[i].name in top_fields:
             i = i + 1
 
         output.top_level_fields = top_level_fields
-        output.schema = parse_schema(schema[i:], (), (".",), ())
+        output.schema = parse_schema(big_query_schema[i:], (), (".",), ())
 
         # INSERT TOP-LEVEL FIELDS INTO THE loopkup
         schema = wrap(output.schema)
-        for column in schema[:i]:
+        for column in big_query_schema[:i]:
             path = first(
                 name
                 for name, field in top_level_fields.leaves()

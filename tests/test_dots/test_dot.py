@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import
@@ -703,15 +703,15 @@ class TestDot(FuzzyTestCase):
 
     def test_keys(self):
         a = wrap({"a.b": "c"})
-        self.assertEqual(a.keys(), {"a\\.b"})
+        self.assertEqual(a.keys(), {"a.b"})
 
     def test_items(self):
         a = wrap({"a.b": "c"})
-        self.assertEqual(a.items(), [("a\\.b", "c")])
+        self.assertEqual(a.items(), [("a.b", "c")])
 
     def test_iteritems(self):
         a = wrap({"a.b": "c"})
-        self.assertEqual(list(a.iteritems()), [("a\\.b", "c")])
+        self.assertEqual(list(a.iteritems()), [("a.b", "c")])
 
 
 class _TestMapping(object):
