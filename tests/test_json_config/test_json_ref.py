@@ -16,7 +16,7 @@ import os
 
 from mo_dots import Data
 from mo_files import File
-from mo_logs.exceptions import extract_stack
+from mo_logs.exceptions import get_stacktrace
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
 import mo_json_config
@@ -27,7 +27,7 @@ class TestRef(FuzzyTestCase):
 
     def __init__(self, *args, **kwargs):
         FuzzyTestCase.__init__(self, *args, **kwargs)
-        stack = extract_stack(0)
+        stack = get_stacktrace(0)
         this_file = stack[0]["file"]
         self.resources = "file:///"+File.new_instance(this_file, "../resources").abspath
 
@@ -114,7 +114,7 @@ class TestRef(FuzzyTestCase):
 
     def test_read_home(self):
         file = "~/___test_file.json"
-        source = File.new_instance(extract_stack(0)[0]["file"], "../resources/simple.json")
+        source = File.new_instance(get_stacktrace(0)[0]["file"], "../resources/simple.json")
         File.copy(File(source), File(file))
         content = mo_json_config.get("file:///"+file)
 
@@ -182,6 +182,5 @@ class TestRef(FuzzyTestCase):
     def test_missing_env(self):
         doc = {"a": {"$ref": "env://DOES_NOT_EXIST"}}
         doc_url = "http://example.com/"
-        result = mo_json_config.expand(doc, doc_url, {"value": {"name": "hello"}})
-        self.assertEqual(result, {"a": None})
+        self.assertRaises(Exception, mo_json_config.expand, doc, doc_url, {"value": {"name": "hello"}})
 

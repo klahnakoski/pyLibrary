@@ -25,7 +25,7 @@ from mo_dots import wrap, coalesce, unwrap, listwrap, Data, startswith_field
 from mo_future import text
 from mo_kwargs import override
 from mo_logs import Log, Except, constants
-from mo_logs.exceptions import extract_stack
+from mo_logs.exceptions import get_stacktrace
 from mo_testing.fuzzytestcase import assertAlmostEqual
 from pyLibrary import convert
 from tests import test_jx
@@ -57,7 +57,7 @@ class SQLiteUtils(object):
 
     def execute_tests(self, subtest, tjson=False, places=6):
         subtest = wrap(subtest)
-        subtest.name = extract_stack()[1]['method']
+        subtest.name = get_stacktrace()[1]['method']
 
         if subtest.disable:
             return
