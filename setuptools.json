@@ -8,7 +8,7 @@
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
     ],
     "description": "Library of Wonderful Things",
-    "include_package_data": true,
+    "include_package_data": false,
     "install_requires": ["requests"],
     "license": "MPL 2.0",
     "long_description": {
@@ -150,6 +150,5 @@
     "name": "pyLibrary",
     "packages": ["pyLibrary/aws", "pyLibrary/env", "pyLibrary"],
     "url": "https://github.com/klahnakoski/pyLibrary",
-    "version": "3.11.20029",
-    "zip_safe": false
+    "version": "3.12.20029"
 }
