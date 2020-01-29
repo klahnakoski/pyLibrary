@@ -9,10 +9,7 @@
     ],
     "description": "Library of Wonderful Things",
     "include_package_data": true,
-    "install_requires": [
-        "beautifulsoup4",           "boto",    "fastparquet",          "numpy",
-               "pymysql",       "requests",          "scipy"
-    ],
+    "install_requires": ["requests"],
     "license": "MPL 2.0",
     "long_description": {
         "$concat": [
@@ -153,6 +150,6 @@
     "name": "pyLibrary",
     "packages": ["pyLibrary/aws", "pyLibrary/env", "pyLibrary"],
     "url": "https://github.com/klahnakoski/pyLibrary",
-    "version": "3.10.20029",
+    "version": "3.11.20029",
     "zip_safe": false
 }
