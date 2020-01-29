@@ -12,8 +12,8 @@ from __future__ import unicode_literals
 
 from unittest import skip
 
+from jx_elasticsearch import elasticsearch
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from pyLibrary.env import elasticsearch
 
 
 class TestSchemas(FuzzyTestCase):

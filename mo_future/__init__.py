@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
@@ -29,7 +29,7 @@ boolean_type = type(True)
 if PY3:
     import itertools
     import collections
-    from collections import Callable
+    from collections.abc import Callable, Iterable, Mapping, Set, MutableMapping
     from functools import cmp_to_key, reduce, update_wrapper
     from configparser import ConfigParser
     from itertools import zip_longest
@@ -40,6 +40,7 @@ if PY3:
     zip_longest = itertools.zip_longest
 
     text = str
+    text_type = str
     string_types = str
     binary_type = bytes
     integer_types = (int, )
@@ -56,7 +57,8 @@ if PY3:
         type(filter(lambda x: True, [])),
         type({}.items()),
         type({}.values()),
-        type(map(lambda: 0, []))
+        type(map(lambda: 0, iter([]))),
+        type(reversed([]))
     )
     unichr = chr
 
@@ -121,7 +123,7 @@ if PY3:
 
 else:
     import collections
-    from collections import Callable
+    from collections import Callable, Iterable, Mapping, Set, MutableMapping, OrderedDict
     from functools import cmp_to_key, reduce, update_wrapper
 
     import __builtin__
@@ -134,6 +136,7 @@ else:
 
     reduce = __builtin__.reduce
     text = __builtin__.unicode
+    text_type = __builtin__.unicode
     string_types = (str, unicode)
     binary_type = str
     integer_types = (int, long)
@@ -142,7 +145,7 @@ else:
     unichr = __builtin__.unichr
 
     xrange = __builtin__.xrange
-    generator_types = (GeneratorType,)
+    generator_types = (GeneratorType, type(reversed([])))
     unichr = __builtin__.unichr
 
     round = __builtin__.round

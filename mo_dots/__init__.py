@@ -4,15 +4,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
 
 import sys
+from collections import OrderedDict
+
+from mo_future import binary_type, generator_types, is_binary, is_text, text
 
 from mo_dots.utils import CLASS, OBJ, get_logger, get_module
-from mo_future import binary_type, generator_types, is_binary, is_text, text
 
 none_type = type(None)
 ModuleType = type(sys.modules[__name__])
@@ -155,6 +157,8 @@ def startswith_field(field, prefix):
     """
     RETURN True IF field PATH STRING STARTS WITH prefix PATH STRING
     """
+    if prefix == None:
+        return False
     if prefix.startswith("."):
         return True
         # f_back = len(field) - len(field.strip("."))
@@ -233,7 +237,10 @@ def _all_default(d, default, seen=None):
 
     for k, default_value in default.items():
         default_value = unwrap(default_value)  # TWO DIFFERENT Dicts CAN SHARE id() BECAUSE THEY ARE SHORT LIVED
-        existing_value = _get_attr(d, [k])
+        if is_data(d):
+            existing_value = d.get(k)
+        else:
+            existing_value = _get_attr(d, [k])
 
         if existing_value == None:
             if default_value != None:
@@ -424,14 +431,15 @@ def _set_attr(obj_, path, value):
     # ACTUAL SETTING OF VALUE
     try:
         old_value = _get_attr(obj, [attr_name])
-        if old_value == None:
+        old_type = _get(old_value, CLASS)
+        if old_value == None or old_type in (bool, int, float, text, binary_type):
             old_value = None
             new_value = value
         elif value == None:
             new_value = None
         else:
             new_value = _get(old_value, CLASS)(value)  # TRY TO MAKE INSTANCE OF SAME CLASS
-    except Exception as e:
+    except Exception:
         old_value = None
         new_value = value
 
@@ -443,11 +451,11 @@ def _set_attr(obj_, path, value):
             obj[attr_name] = new_value
             return old_value
         except Exception as f:
-            get_logger().error(PATH_NOT_FOUND, cause=e)
+            get_logger().error(PATH_NOT_FOUND, cause=[f, e])
 
 
 def lower_match(value, candidates):
-    return [v for v in candidates if v.lower()==value.lower()]
+    return [v for v in candidates if v.lower() == value.lower()]
 
 
 def wrap(v):
@@ -459,7 +467,7 @@ def wrap(v):
 
     type_ = _get(v, CLASS)
 
-    if type_ is dict:
+    if type_ in (dict, OrderedDict):
         m = object.__new__(Data)
         _set(m, SLOT, v)
         return m

@@ -22,7 +22,6 @@ kw = {"required": 1, "optional": 2}
 
 
 class TestOverride(FuzzyTestCase):
-
     def test_basic(self):
         result = basic(required=0)
         self.assertEqual(len(result), 2)
@@ -114,7 +113,7 @@ class TestOverride(FuzzyTestCase):
 
     def test_required_w_require_and_kwargs(self):
         result = required(required=3, kwargs=kw)
-        self.assertEqual(result, {"required": 3, "optional":2, "kwargs":{}})
+        self.assertEqual(result, {"required": 3, "optional": 2, "kwargs": {}})
 
     def test_required_w_optional_and_kwargs(self):
         result = required(optional=3, kwargs=kw)
@@ -122,7 +121,7 @@ class TestOverride(FuzzyTestCase):
 
     def test_required_w_both_and_kwargs(self):
         result = required(required=3, optional=3, kwargs=kw)
-        self.assertEqual(result, {"required": 3, "optional":3, "kwargs":{}})
+        self.assertEqual(result, {"required": 3, "optional": 3, "kwargs": {}})
 
     def test_kwargs_w_nothing(self):
         result = kwargs()
@@ -151,7 +150,7 @@ class TestOverride(FuzzyTestCase):
 
     def test_kwargs_w_require_and_kwargs(self):
         result = kwargs(required=3, kwargs=kw)
-        self.assertEqual(result, {"kwargs":{"required": 3}})
+        self.assertEqual(result, {"kwargs": {"required": 3}})
 
     def test_kwargs_w_optional_and_kwargs(self):
         result = kwargs(optional=2, kwargs=kw)
@@ -168,7 +167,10 @@ class TestOverride(FuzzyTestCase):
         self.assertEqual(len(result["kwargs"]["kwargs"]), 3)
 
     def test_object_not_enough_parameters(self):
-        self.assertRaises('Expecting parameter ["required"], given ["self", "optional", "kwargs"]', lambda: TestObject({}))
+        self.assertRaises(
+            'Expecting parameter ["required"], given ["self", "optional", "kwargs"]',
+            lambda: TestObject({}),
+        )
 
     def test_object(self):
         result = TestObject(kw)
@@ -255,7 +257,7 @@ class TestOverride(FuzzyTestCase):
 
     def test_object_required_w_require_and_kwargs(self):
         result = TestObject(required=0).required_(required=3, kwargs=kw)
-        self.assertEqual(result, {"required": 3, "optional":2, "kwargs":{}})
+        self.assertEqual(result, {"required": 3, "optional": 2, "kwargs": {}})
 
     def test_object_required_w_optional_and_kwargs(self):
         result = TestObject(required=0).required_(optional=3, kwargs=kw)
@@ -263,7 +265,7 @@ class TestOverride(FuzzyTestCase):
 
     def test_object_required_w_both_and_kwargs(self):
         result = TestObject(required=0).required_(required=3, optional=3, kwargs=kw)
-        self.assertEqual(result, {"required": 3, "optional":3, "kwargs":{}})
+        self.assertEqual(result, {"required": 3, "optional": 3, "kwargs": {}})
 
     def test_object_kwargs_w_nothing(self):
         result = TestObject(required=0).kwargs_()
@@ -296,7 +298,7 @@ class TestOverride(FuzzyTestCase):
 
     def test_object_kwargs_w_require_and_kwargs(self):
         result = TestObject(required=0).kwargs_(required=3, kwargs=kw)
-        self.assertEqual(result, {"kwargs":{"required": 3}})
+        self.assertEqual(result, {"kwargs": {"required": 3}})
 
     def test_object_kwargs_w_optional_and_kwargs(self):
         result = TestObject(required=0).kwargs_(optional=2, kwargs=kw)
@@ -318,8 +320,6 @@ class TestOverride(FuzzyTestCase):
 
     def test_call_missing_self(self):
         self.assertRaises("Problem calling ", oops_self, test=1)
-
-
 
 
 @override
@@ -351,9 +351,11 @@ def kwargs(kwargs=None, **kwargs_):
 def oops(self):
     required()  # SHOULD RAISE TypeError
 
+
 @override
 def oops_self(self, kwargs):
     required()  # SHOULD RAISE TypeError
+
 
 @override
 def oops_kwargs(self, kwargs):
@@ -361,6 +363,10 @@ def oops_kwargs(self, kwargs):
 
 
 class TestObject(object):
+    @override
+    def __new__(cls):
+        self = object.__new__(cls)
+        return self
 
     @override
     def __init__(self, required, optional=3, kwargs=None):
@@ -379,4 +385,3 @@ class TestObject(object):
     @override
     def kwargs_(self, kwargs=None, **kwargs_):
         return {"kwargs_": kwargs_, "kwargs": kwargs}
-

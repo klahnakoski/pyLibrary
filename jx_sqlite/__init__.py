@@ -5,22 +5,28 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 
 from __future__ import absolute_import, division, unicode_literals
 
 from copy import copy
+from math import isnan
 
 from jx_base import DataClass
-from mo_dots import Data, concat_field, is_data, is_list, join_field, split_field
+from mo_dots import Data, concat_field, is_data, is_list, join_field, split_field, is_sequence
 from mo_future import is_text, text
 from mo_json import BOOLEAN, NESTED, NUMBER, OBJECT, STRING, json2value
+from mo_logs import Log
 from mo_math.randoms import Random
 from mo_times import Date
-from pyLibrary.sql import SQL
-from pyLibrary.sql.sqlite import quote_column
+from jx_sqlite.sqlite import quote_column
+
+
+DIGITS_TABLE = "__digits__"
+ABOUT_TABLE = "meta.about"
+
 
 GUID = "_id"  # user accessible, unique value across many machines
 UID = "__id__"  # internal numeric id for single-database use
@@ -29,7 +35,6 @@ PARENT = "__parent__"
 COLUMN = "__column"
 
 ALL_TYPES = "bns"
-
 
 
 def unique_name():
@@ -53,7 +58,10 @@ def column_key(k, v):
         return k, "number"
 
 
-def get_type(v):
+POS_INF = float("+inf")
+
+
+def get_jx_type(v):
     if v == None:
         return None
     elif isinstance(v, bool):
@@ -62,9 +70,13 @@ def get_type(v):
         return STRING
     elif is_data(v):
         return OBJECT
-    elif isinstance(v, (int, float, Date)):
+    elif isinstance(v, float):
+        if isnan(v) or abs(v) == POS_INF:
+            return None
         return NUMBER
-    elif is_list(v):
+    elif isinstance(v, (int, Date)):
+        return NUMBER
+    elif is_sequence(v):
         return NESTED
     return None
 
@@ -106,6 +118,8 @@ def is_type(value, type):
 
 
 def typed_column(name, type_):
+    if len(type_) > 1:
+        Log.error("not expected")
     if type_ == "nested":
         type_ = "object"
     return concat_field(name, "$" + type_)

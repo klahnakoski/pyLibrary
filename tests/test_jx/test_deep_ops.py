@@ -337,9 +337,9 @@ class TestDeepOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"a": {"_t": {"b.s": 1, "h.s": "a-a"}}},
-                    {"a": {"_t": {"b.s": 2, "h.s": "a-b"}}},
-                    {"a": {"_t": {"b.s": 3, "h.s": "a-c"}}}
+                    {"b.s": 1, "h.s": "a-a"},
+                    {"b.s": 2, "h.s": "a-b"},
+                    {"b.s": 3, "h.s": "a-c"}
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -702,7 +702,7 @@ class TestDeepOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    mo_math.is_hex,  # DUE TO NATURE OF THE _id AUTO-ASSIGN LOGIC IN pyLibrary.env.elasticsearch.Index, WE KNOW _id WILL BE HEX
+                    mo_math.is_hex,  # DUE TO NATURE OF THE _id AUTO-ASSIGN LOGIC IN elasticsearch.Index, WE KNOW _id WILL BE HEX
                     mo_math.is_hex,
                     mo_math.is_hex,
                     mo_math.is_hex,

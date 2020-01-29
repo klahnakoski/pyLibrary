@@ -248,7 +248,7 @@ class TestAggOps(BaseTestCase):
 
     def test_simplest_on_value(self):
         test = {
-            "data": range(30),
+            "data": list(range(30)),
             "query": {
                 "from": TEST_TABLE,
                 "select": {"aggregate": "count"}
@@ -322,7 +322,7 @@ class TestAggOps(BaseTestCase):
         }
         self.utils.execute_tests(test, tjson=True)
 
-    # @skipIf(global_settings.use == "sqlite", "sqlite does not have a median function")
+    @skipIf(global_settings.use == "sqlite", "sqlite does not have a median function")
     def test_median_on_value(self):
         test = {
             "data": [i**2 for i in range(30)],

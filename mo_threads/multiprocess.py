@@ -4,7 +4,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
 
@@ -119,20 +119,8 @@ class Process(object):
                 if line:
                     receive.add(line)
                     self.debug and Log.note("{{process}} ({{name}}): {{line}}", name=name, process=self.name, line=line)
-                    continue
-
-                # GRAB A FEW MORE LINES
-                for _ in range(100):
-                    try:
-                        line = to_text(pipe.readline().rstrip())
-                        if line:
-                            receive.add(line)
-                            self.debug and Log.note("{{process}} ({{name}}): {{line}}", name=name, process=self.name, line=line)
-                            break
-                    except Exception:
-                        break
                 else:
-                    Till(seconds=5).wait()
+                    (Till(seconds=1) | please_stop).wait()
 
             # GRAB A FEW MORE LINES
             max = 100
@@ -142,7 +130,7 @@ class Process(object):
                     if line:
                         max = 100
                         receive.add(line)
-                        self.debug and Log.note("{{process}} ({{name}}): {{line}}", name=name, process=self.name, line=line)
+                        self.debug and Log.note("{{process}} RESIDUE: ({{name}}): {{line}}", name=name, process=self.name, line=line)
                     else:
                         max -= 1
                 except Exception:
@@ -206,7 +194,7 @@ if "windows" in platform.system().lower():
         return "prompt "+PROMPT+"$g"
 
     def cmd():
-        return "%windir%\system32\cmd.exe"
+        return "%windir%\\system32\\cmd.exe"
 
     def to_text(value):
         return value.decode("latin1")
