@@ -8,7 +8,7 @@ setup(
     author=u'Kyle Lahnakoski',
     author_email=u'kyle@lahnakoski.com',
     long_description_content_type=u'text/markdown',
-    include_package_data=True,
+    include_package_data=False,
     classifiers=["Development Status :: 4 - Beta","Topic :: Software Development :: Libraries","Topic :: Software Development :: Libraries :: Python Modules","License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"],
     install_requires=["beautifulsoup4","boto","fastparquet","numpy","pymysql","requests","scipy"],
     version=u'3.10.20029',

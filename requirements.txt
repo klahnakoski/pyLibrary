@@ -1,7 +1,1 @@
-pymysql
 requests
-boto
-beautifulsoup4
-numpy
-scipy
-fastparquet
