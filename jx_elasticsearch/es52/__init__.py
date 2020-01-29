@@ -16,9 +16,11 @@ from jx_base.expressions import jx_expression
 from jx_base.language import is_op
 from jx_base.query import QueryOp
 from jx_elasticsearch.es52.aggs import es_aggsop, is_aggsop
+from jx_elasticsearch.es52.bulk_aggs import is_bulkaggsop, es_bulkaggsop
 from jx_elasticsearch.es52.deep import es_deepop, is_deepop
 from jx_elasticsearch.es52.setop import es_setop, is_setop
-from jx_elasticsearch.es52.util import aggregates
+from jx_elasticsearch.es52.stats import QueryStats
+from jx_elasticsearch.es52.util import aggregates, temper_limit
 from jx_elasticsearch.meta import ElasticsearchMetadata, Table
 from jx_python import jx
 from mo_dots import Data, coalesce, is_list, join_field, listwrap, split_field, startswith_field, unwrap, wrap
@@ -28,7 +30,8 @@ from mo_json.typed_encoder import EXISTS_TYPE
 from mo_kwargs import override
 from mo_logs import Except, Log
 from mo_times import Date
-from pyLibrary.env import elasticsearch, http
+from pyLibrary.env import http
+from jx_elasticsearch import elasticsearch
 
 
 class ES52(Container):
@@ -77,6 +80,7 @@ class ES52(Container):
 
         self._ensure_max_result_window_set(name)
         self.settings.type = self.es.settings.type
+        self.stats = QueryStats(self.es.cluster)
 
         columns = self.snowflake.columns  # ABSOLUTE COLUMNS
         is_typed = any(c.es_column == EXISTS_TYPE for c in columns)
@@ -180,6 +184,8 @@ class ES52(Container):
         try:
             query = QueryOp.wrap(_query, container=self, namespace=self.namespace)
 
+            self.stats.record(query)
+
             for s in listwrap(query.select):
                 if s.aggregate != None and not aggregates.get(s.aggregate):
                     Log.error(
@@ -194,6 +200,11 @@ class ES52(Container):
                 q2 = query.copy()
                 q2.frum = result
                 return jx.run(q2)
+
+            if is_bulkaggsop(self.es, query):
+                return es_bulkaggsop(self, frum, query)
+
+            query.limit = temper_limit(query.limit, query)
 
             if is_deepop(self.es, query):
                 return es_deepop(self.es, query)
@@ -287,5 +298,4 @@ class ES52(Container):
             return
 
         es_index.flush()
-
 

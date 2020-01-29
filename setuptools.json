@@ -149,8 +149,7 @@
     "long_description_content_type": "text/markdown",
     "name": "pyLibrary",
     "packages": [
-            "pyLibrary/aws",     "pyLibrary/env",     "pyLibrary/sql",
-        "pyLibrary/testing",  "pyLibrary/vendor",         "pyLibrary"
+            "pyLibrary/aws", "pyLibrary/env", "pyLibrary"
     ],
     "url": "https://github.com/klahnakoski/pyLibrary",
     "version": "3.9.19316",

@@ -11,7 +11,7 @@ import sys
 
 import requests
 
-from mo_dots import wrap, Data
+from mo_dots import wrap, Data, set_default
 from mo_files import URL
 from mo_json import value2json
 from mo_kwargs import override
@@ -24,12 +24,13 @@ from pyLibrary.convert import text2QRCode
 
 DEBUG = False
 
+
 class Auth0Client(object):
     @override
     def __init__(self, kwargs=None):
         # GENERATE PRIVATE KEY
         self.config = kwargs
-        self.session = None
+        self.session_id = None
         with Timer("generate {{bits}} bits rsa key", {"bits": self.config.rsa.bits}):
             Log.note("This will take a while....")
             self.public_key, self.private_key = rsa_crypto.generate_key(bits=self.config.rsa.bits)
@@ -44,15 +45,14 @@ class Auth0Client(object):
         """
         # SEND PUBLIC KEY
         now = Date.now().unix
-        self.session = requests.Session()
-        signed = rsa_crypto.sign(
+        login_session = requests.session()        signed = rsa_crypto.sign(
             Data(public_key=self.public_key, timestamp=now),
             self.private_key
         )
         DEBUG and Log.note("register (unsigned)\n{{request|json}}", request=rsa_crypto.verify(signed, self.public_key))
         DEBUG and Log.note("register (signed)\n{{request|json}}", request=signed)
         try:
-            response = self.session.request(
+            response = login_session.request(
                 "POST",
                 str(URL(self.config.service) / self.config.endpoints.register),
                 data=value2json(signed)
@@ -63,9 +63,9 @@ class Auth0Client(object):
         device = wrap(response.json())
         DEBUG and Log.note("response:\n{{response}}", response=device)
         device.interval = parse(device.interval).seconds
-        expires = Till(till=parse(device.expiry).unix)
-        cookie = self.session.cookies.get(self.config.cookie.name)
-        if not cookie:
+        expires = Till(till=parse(device.expires).unix)
+        session_id = self.session_id = device.session_id
+        if not session_id:
             Log.error("expecting a session cookie")
 
         # SHOW URL AS QR CODE
@@ -82,7 +82,7 @@ class Auth0Client(object):
                 signed = rsa_crypto.sign(
                     Data(
                         timestamp=now,
-                        session=cookie
+                        session_id=session_id
                     ),
                     self.private_key
                 )
@@ -92,7 +92,7 @@ class Auth0Client(object):
                     url=url,
                     request=rsa_crypto.verify(signed, self.public_key)
                 )
-                response = self.session.request(
+                response = login_session.request(
                     "POST",
                     url,
                     data=value2json(signed)
@@ -100,7 +100,7 @@ class Auth0Client(object):
                 ping = wrap(response.json())
                 DEBUG and Log.note("response\n{{response|json}}", response=ping)
                 if ping.status == "verified":
-                    return self.session
+                    return self
                 if not ping.try_again:
                     Log.note("Failed to login {{reason}}", reason=ping.status)
                     return
@@ -111,10 +111,12 @@ class Auth0Client(object):
                     cause=e,
                 )
             (Till(seconds=device.interval) | please_stop | expires).wait()
-        return self.session
+        return self
 
-    def request(self, method, url, *args, **kwargs):
+    def request(self, method, url, **kwargs):
         """
         ENSURE THE SESSION IS USED (SO THAT COOKIE IS ATTACHED)
         """
-        return self.session.request(method, url, *args, **kwargs)
+        set_default(kwargs, {"headers": {"Authorization": self.session_id}})
+
+        return requests.request(method, url, **kwargs)

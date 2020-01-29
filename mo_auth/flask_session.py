@@ -8,11 +8,11 @@ from mo_future import first
 from mo_json import json2value, value2json
 from mo_kwargs import override
 from mo_logs import Log
-from mo_math.randoms import Random
+from mo_math import bytes2base64URL, crypto
 from mo_threads import Till
 from mo_threads.threads import register_thread, Thread
 from mo_times import Date
-from mo_times.dates import parse, RFC1123
+from mo_times.dates import parse, RFC1123, unix2Date
 from pyLibrary.sql import SQL_WHERE, sql_list, SQL_SET, SQL_UPDATE
 from pyLibrary.sql.sqlite import (
     sql_create,
@@ -31,7 +31,7 @@ def generate_sid():
     """
     GENERATE A UNIQUE SESSION ID
     """
-    return Random.base64(40)
+    return bytes2base64URL(crypto.bytes(32))
 
 
 SINGLTON = None
@@ -64,7 +64,7 @@ class SqliteSessionInterface(FlaskSessionInterface):
             self.setup()
         Thread.run("session monitor", self.monitor)
 
-    def setup_session(self, session):
+    def create_session(self, session):
         session.session_id = generate_sid()
         session.permanent = True
         session.expires = (Date.now() + self.cookie.max_lifetime).unix
@@ -98,18 +98,10 @@ class SqliteSessionInterface(FlaskSessionInterface):
                 )
             )
 
-    def make_cookie(self, session):
-        now = Date.now()
-        expires = now + self.cookie.max_lifetime
-        session.expires = expires.unix
+    def cookie_data(self, session):
         return {
-            "name": self.cookie.name,
-            "value": session.session_id,
-            "domain": self.cookie.domain,
-            "path": self.cookie.path,
-            "secure": self.cookie.secure,
-            "httponly": self.cookie.httponly,
-            "expires": expires.format(RFC1123),
+            "session_id": session.session_id,
+            "expires": session.expires,
             "inactive_lifetime": self.cookie.inactive_lifetime.seconds,
         }
 
@@ -158,14 +150,11 @@ class SqliteSessionInterface(FlaskSessionInterface):
 
     @register_thread
     def open_session(self, app, request):
-        session_id = request.cookies.get(app.session_cookie_name)
+        session_id = request.headers.get("Authorization")
         DEBUG and Log.note("got session_id {{session|quote}}", session=session_id)
         if not session_id:
             return Data()
         return self.get_session(session_id)
-
-    def should_set_cookie(self, app, session):
-        return True
 
     @register_thread
     def save_session(self, app, session, response):
@@ -209,11 +198,6 @@ class SqliteSessionInterface(FlaskSessionInterface):
             with self.db.transaction() as t:
                 t.execute(sql_insert(self.table, new_record))
 
-            response.set_cookie(
-                app.session_cookie_name,
-                session_id,
-                expires=expires
-            )
 
 def setup_flask_session(flask_app, session_config):
     """
@@ -223,24 +207,7 @@ def setup_flask_session(flask_app, session_config):
     :return: THE SESSION MANAGER
     """
     session_config = wrap(session_config)
-    # INJECT CONFIG INTO FLASK VARIABLES
-    for name, path in SESSION_VARIABLES.items():
-        value = session_config[path]
-        if exists(value):
-            flask_app.config[name] = value
-
     output = flask_app.session_interface = SqliteSessionInterface(
         flask_app, kwargs=session_config
     )
     return output
-
-
-# SEE https://pythonhosted.org/Flask-Session/
-SESSION_VARIABLES = {
-    "SESSION_COOKIE_NAME": "cookie.name",
-    "SESSION_COOKIE_DOMAIN": "cookie.domain",
-    "SESSION_COOKIE_PATH": "cookie.path",
-    "SESSION_COOKIE_HTTPONLY": "cookie.httponly",
-    "SESSION_COOKIE_SECURE": "cookie.secure",
-    "PERMANENT SESSION_LIFETIME": "cookie.max_lifetime",
-}

@@ -11,7 +11,7 @@ setup(
     include_package_data=True,
     classifiers=["Development Status :: 4 - Beta","Topic :: Software Development :: Libraries","Topic :: Software Development :: Libraries :: Python Modules","License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"],
     install_requires=["beautifulsoup4","boto","pymysql","requests"],
-    version=str(u'2.57.19240'),
+    version=str(u'3.9.19316'),
     url=str(u'https://github.com/klahnakoski/pyLibrary'),
     zip_safe=False,
     packages=["pyLibrary/aws","pyLibrary/env","pyLibrary/sql","pyLibrary/testing","pyLibrary/vendor","pyLibrary"],
