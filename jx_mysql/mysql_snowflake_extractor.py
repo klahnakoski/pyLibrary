@@ -108,14 +108,12 @@ class MySqlSnowflakeExtractor(object):
 
         union_all_sql = SQL_UNION_ALL.join(sql)
         union_all_sql = ConcatSQL(
-            (
-                SQL_SELECT,
-                SQL_STAR,
-                SQL_FROM,
-                sql_alias(sql_iso(union_all_sql), "a"),
-                SQL_ORDERBY,
-                sql_list(sort),
-            )
+            SQL_SELECT,
+            SQL_STAR,
+            SQL_FROM,
+            sql_alias(sql_iso(union_all_sql), "a"),
+            SQL_ORDERBY,
+            sql_list(sort),
         )
         return union_all_sql
 
@@ -409,14 +407,12 @@ class MySqlSnowflakeExtractor(object):
                 # USED TO CONFIRM WE CAN ACCESS THE TABLE (WILL THROW ERROR WHEN IF IT FAILS)
                 self.db.query(
                     ConcatSQL(
-                        (
-                            SQL_SELECT,
-                            SQL_STAR,
-                            SQL_FROM,
-                            quote_column(position.schema, position.name),
-                            SQL_LIMIT,
-                            SQL_ONE,
-                        )
+                        SQL_SELECT,
+                        SQL_STAR,
+                        SQL_FROM,
+                        quote_column(position.schema, position.name),
+                        SQL_LIMIT,
+                        SQL_ONE,
                     )
                 )
 
@@ -621,8 +617,7 @@ class MySqlSnowflakeExtractor(object):
                             "constraint.name",
                         ),
                         key=lambda p: [
-                            (r.table.name, r.column.name)
-                            for r in [first(p[1])]
+                            (r.table.name, r.column.name) for r in [first(p[1])]
                         ][0],
                     )
                 )
@@ -788,36 +783,30 @@ class MySqlSnowflakeExtractor(object):
                 if i == 0:
                     sql_joins.append(
                         ConcatSQL(
-                            (
-                                SQL_FROM,
-                                sql_alias(sql_iso(get_ids), rel.referenced.table.alias),
-                            )
+                            SQL_FROM,
+                            sql_alias(sql_iso(get_ids), rel.referenced.table.alias),
                         )
                     )
                 elif curr_join.children:
                     full_name = quote_column(rel.table.schema, rel.table.name)
                     sql_joins.append(
                         ConcatSQL(
-                            (
-                                SQL_INNER_JOIN,
-                                sql_alias(full_name, rel.table.alias),
-                                SQL_ON,
-                                SQL_AND.join(
-                                    ConcatSQL(
-                                        (
-                                            quote_column(
-                                                rel.table.alias, const_col.column.name
-                                            ),
-                                            SQL_EQ,
-                                            quote_column(
-                                                rel.referenced.table.alias,
-                                                const_col.referenced.column.name,
-                                            ),
-                                        )
-                                    )
-                                    for const_col in curr_join.join_columns
-                                ),
-                            )
+                            SQL_INNER_JOIN,
+                            sql_alias(full_name, rel.table.alias),
+                            SQL_ON,
+                            SQL_AND.join(
+                                ConcatSQL(
+                                    quote_column(
+                                        rel.table.alias, const_col.column.name
+                                    ),
+                                    SQL_EQ,
+                                    quote_column(
+                                        rel.referenced.table.alias,
+                                        const_col.referenced.column.name,
+                                    ),
+                                )
+                                for const_col in curr_join.join_columns
+                            ),
                         )
                     )
                 else:
@@ -826,26 +815,22 @@ class MySqlSnowflakeExtractor(object):
                     )
                     sql_joins.append(
                         ConcatSQL(
-                            (
-                                SQL_LEFT_JOIN,
-                                sql_alias(full_name, rel.referenced.table.alias),
-                                SQL_ON,
-                                SQL_AND.join(
-                                    ConcatSQL(
-                                        (
-                                            quote_column(
-                                                rel.referenced.table.alias,
-                                                const_col.referenced.column.name,
-                                            ),
-                                            SQL_EQ,
-                                            quote_column(
-                                                rel.table.alias, const_col.column.name
-                                            ),
-                                        )
-                                    )
-                                    for const_col in curr_join.join_columns
-                                ),
-                            )
+                            SQL_LEFT_JOIN,
+                            sql_alias(full_name, rel.referenced.table.alias),
+                            SQL_ON,
+                            SQL_AND.join(
+                                ConcatSQL(
+                                    quote_column(
+                                        rel.referenced.table.alias,
+                                        const_col.referenced.column.name,
+                                    ),
+                                    SQL_EQ,
+                                    quote_column(
+                                        rel.table.alias, const_col.column.name
+                                    ),
+                                )
+                                for const_col in curr_join.join_columns
+                            ),
                         )
                     )
 
@@ -853,7 +838,10 @@ class MySqlSnowflakeExtractor(object):
             selects = []
             not_null_column_seen = False
             for c in self.columns:
-                if (c.column.table.name, c.column.column.name,) in self.settings.exclude_columns:
+                if (
+                    c.column.table.name,
+                    c.column.column.name,
+                ) in self.settings.exclude_columns:
                     selects.append(sql_alias(SQL_NULL, c.column_alias))
                 elif c.nested_path[0] == nested_path[0]:
                     s = sql_alias(
@@ -935,7 +923,9 @@ class MySqlSnowflakeExtractor(object):
 
                 # THE TOP-LEVEL next_object HAS BEEN ENCOUNTERED, EMIT THE PREVIOUS, AND COMPLETED curr_doc
                 if curr_doc == next_object:
-                    Log.error("Expecting records. Did you select the wrong schema, or select records that do not exist?")
+                    Log.error(
+                        "Expecting records. Did you select the wrong schema, or select records that do not exist?"
+                    )
 
                 if curr_doc:
                     append(curr_doc["id"])
@@ -947,7 +937,11 @@ class MySqlSnowflakeExtractor(object):
                 append(curr_doc["id"])
                 doc_count += 1
 
-        Log.note("{{doc_count}} documents ({{row_count}} db records)", doc_count=doc_count, row_count=row_count)
+        Log.note(
+            "{{doc_count}} documents ({{row_count}} db records)",
+            doc_count=doc_count,
+            row_count=row_count,
+        )
 
 
 def full_name_string(column):

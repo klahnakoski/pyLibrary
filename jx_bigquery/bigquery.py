@@ -187,12 +187,10 @@ class Dataset(Container):
     def create_view(self, view_api_name, shard_api_name):
         job = self.query_and_wait(
             ConcatSQL(
-                (
-                    SQL("CREATE VIEW\n"),
-                    quote_column(view_api_name),
-                    SQL_AS,
-                    sql_query({"from": shard_api_name}),
-                )
+                SQL("CREATE VIEW\n"),
+                quote_column(view_api_name),
+                SQL_AS,
+                sql_query({"from": shard_api_name}),
             )
         )
 
@@ -420,14 +418,10 @@ class Table(Facts):
         selects = []
         for flake, table in zip(shard_flakes, shards):
             q = ConcatSQL(
-                (
-                    SQL_SELECT,
-                    JoinSQL(
-                        ConcatSQL((SQL_COMMA, SQL_CR)), gen_select(total_flake, flake)
-                    ),
-                    SQL_FROM,
-                    quote_column(ApiName(table.dataset_id, table.table_id)),
-                )
+                SQL_SELECT,
+                JoinSQL(ConcatSQL(SQL_COMMA, SQL_CR), gen_select(total_flake, flake)),
+                SQL_FROM,
+                quote_column(ApiName(table.dataset_id, table.table_id)),
             )
             selects.append(q)
 
@@ -443,22 +437,17 @@ class Table(Facts):
         # EVERYTHING THAT IS IDENTICAL TO PRIMARY CAN BE MERGED IN A SINGLE QUERY
         if matched:
             command = ConcatSQL(
-                (
-                    SQL_INSERT,
-                    quote_column(primary_full_name),
-                    JoinSQL(
-                        SQL_UNION_ALL,
-                        (
-                            sql_query(
-                                {
-                                    "from": self.container.full_name
-                                    + ApiName(shard.table_id)
-                                }
-                            )
-                            for _, shard, _ in matched
-                        ),
+                SQL_INSERT,
+                quote_column(primary_full_name),
+                JoinSQL(
+                    SQL_UNION_ALL,
+                    (
+                        sql_query(
+                            {"from": self.container.full_name + ApiName(shard.table_id)}
+                        )
+                        for _, shard, _ in matched
                     ),
-                )
+                ),
             )
             job = self.container.query_and_wait(command)
             Log.note("job {{id}} state = {{state}}", id=job.job_id, state=job.state)
@@ -474,7 +463,7 @@ class Table(Facts):
 
         # ALL OTHER SCHEMAS MISMATCH
         for s, shard, _ in unmatched:
-            command = ConcatSQL((SQL_INSERT, quote_column(primary_full_name), s))
+            command = ConcatSQL(SQL_INSERT, quote_column(primary_full_name), s)
             job = self.container.query_and_wait(command)
             Log.note("job {{id}} state = {{state}}", id=job.job_id, state=job.state)
 
@@ -511,7 +500,7 @@ class Table(Facts):
         order_by = JoinSQL(
             SQL_COMMA,
             [
-                ConcatSQL((quote_column(c.es_field), SQL_DESC))
+                ConcatSQL(quote_column(c.es_field), SQL_DESC)
                 for f in listwrap(self.id.version)
                 for c in self.flake.leaves(f)
             ],
@@ -520,17 +509,15 @@ class Table(Facts):
 
         self.container.query_and_wait(
             ConcatSQL(
-                (
-                    SQL(
-                        "SELECT * EXCEPT (_rank) FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY "
-                    ),
-                    partition,
-                    SQL_ORDERBY,
-                    order_by,
-                    SQL(" AS _rank FROM "),
-                    quote_column(self.full_name),
-                    SQL(") a WHERE _rank=1"),
-                )
+                SQL(
+                    "SELECT * EXCEPT (_rank) FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY "
+                ),
+                partition,
+                SQL_ORDERBY,
+                order_by,
+                SQL(" AS _rank FROM "),
+                quote_column(self.full_name),
+                SQL(") a WHERE _rank=1"),
             )
         )
 
@@ -565,20 +552,13 @@ def gen_select(total_flake, flake):
                 # CONVERT INNER OBJECT TO ARRAY OF ONE STRUCT
                 inner = [
                     ConcatSQL(
-                        [
-                            SQL_SELECT_AS_STRUCT,
-                            JoinSQL(
-                                ConcatSQL((SQL_COMMA, SQL_CR)),
-                                _gen_select(
-                                    jx_path,
-                                    es_path + REPEATED,
-                                    Null,
-                                    t,
-                                    Null,
-                                    source_flake,
-                                ),
+                        SQL_SELECT_AS_STRUCT,
+                        JoinSQL(
+                            ConcatSQL(SQL_COMMA, SQL_CR),
+                            _gen_select(
+                                jx_path, es_path + REPEATED, Null, t, Null, source_flake
                             ),
-                        ]
+                        ),
                     )
                 ]
             else:
@@ -586,25 +566,21 @@ def gen_select(total_flake, flake):
                 ord_name = "ordering" + text(len(jx_path))
                 inner = [
                     ConcatSQL(
-                        [
-                            SQL_SELECT_AS_STRUCT,
-                            JoinSQL(
-                                ConcatSQL((SQL_COMMA, SQL_CR)),
-                                _gen_select(
-                                    [row_name], ApiName(row_name), Null, t, Null, v
-                                ),
+                        SQL_SELECT_AS_STRUCT,
+                        JoinSQL(
+                            ConcatSQL(SQL_COMMA, SQL_CR),
+                            _gen_select(
+                                [row_name], ApiName(row_name), Null, t, Null, v
                             ),
-                            SQL_FROM,
-                            sql_call(
-                                "UNNEST", [quote_column(es_path + escape_name(k))]
-                            ),
-                            SQL_AS,
-                            SQL(row_name),
-                            SQL(" WITH OFFSET AS "),
-                            SQL(ord_name),
-                            SQL_ORDERBY,
-                            SQL(ord_name),
-                        ]
+                        ),
+                        SQL_FROM,
+                        sql_call("UNNEST", [quote_column(es_path + escape_name(k))]),
+                        SQL_AS,
+                        SQL(row_name),
+                        SQL(" WITH OFFSET AS "),
+                        SQL(ord_name),
+                        SQL_ORDERBY,
+                        SQL(ord_name),
                     )
                 ]
 
@@ -621,11 +597,9 @@ def gen_select(total_flake, flake):
             elif t == v and k_total_tops == k_tops:
                 selection.append(
                     ConcatSQL(
-                        (
-                            quote_column(es_path + escape_name(k)),
-                            SQL_AS,
-                            quote_column(escape_name(k)),
-                        )
+                        quote_column(es_path + escape_name(k)),
+                        SQL_AS,
+                        quote_column(escape_name(k)),
                     )
                 )
             elif is_data(t):
@@ -656,10 +630,8 @@ def gen_select(total_flake, flake):
                     )
                 inner = [
                     ConcatSQL(
-                        [
-                            SQL_SELECT_AS_STRUCT,
-                            JoinSQL(ConcatSQL((SQL_COMMA, SQL_CR)), selects),
-                        ]
+                        SQL_SELECT_AS_STRUCT,
+                        JoinSQL(ConcatSQL(SQL_COMMA, SQL_CR), selects),
                     )
                 ]
                 selection.append(sql_alias(sql_call("", inner), escape_name(k)))
@@ -667,16 +639,14 @@ def gen_select(total_flake, flake):
                 if is_text(k_tops):
                     # THE SOURCE HAS THIS PROPERTY AS A TOP_LEVEL_FIELD
                     selection.append(
-                        ConcatSQL((SQL(k_tops), SQL_AS, quote_column(escape_name(k))))
+                        ConcatSQL(SQL(k_tops), SQL_AS, quote_column(escape_name(k)))
                     )
                 elif v == t:
                     selection.append(
                         ConcatSQL(
-                            (
-                                quote_column(es_path + escape_name(k)),
-                                SQL_AS,
-                                quote_column(escape_name(k)),
-                            )
+                            quote_column(es_path + escape_name(k)),
+                            SQL_AS,
+                            quote_column(escape_name(k)),
                         )
                     )
                 else:
@@ -689,22 +659,14 @@ def gen_select(total_flake, flake):
                         )
                     selection.append(
                         ConcatSQL(
-                            (
-                                sql_call(
-                                    "CAST",
-                                    [
-                                        ConcatSQL(
-                                            (
-                                                SQL_NULL,
-                                                SQL_AS,
-                                                SQL(json_type_to_bq_type[t]),
-                                            )
-                                        )
-                                    ],
+                            sql_call(
+                                "CAST",
+                                ConcatSQL(
+                                    SQL_NULL, SQL_AS, SQL(json_type_to_bq_type[t])
                                 ),
-                                SQL_AS,
-                                quote_column(escape_name(k)),
-                            )
+                            ),
+                            SQL_AS,
+                            quote_column(escape_name(k)),
                         )
                     )
             else:
@@ -731,6 +693,6 @@ def gen_select(total_flake, flake):
             column = first(flake.leaves(path))
             source = SQL(column.es_column)
 
-        tops.append(ConcatSQL((source, SQL_AS, quote_column(ApiName(name)))))
+        tops.append(ConcatSQL(source, SQL_AS, quote_column(ApiName(name))))
 
     return tops + output

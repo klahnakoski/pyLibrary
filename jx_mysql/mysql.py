@@ -646,7 +646,7 @@ def quote_sql(value, param=None):
 def sql_alias(value, alias):
     if not isinstance(value, SQL) or not is_text(alias):
         Log.error("Expecting (SQL, text) parameters")
-    return ConcatSQL((value, SQL_AS, quote_column(alias)))
+    return ConcatSQL(value, SQL_AS, quote_column(alias))
 
 
 def quote_param(param):
@@ -658,10 +658,10 @@ def quote_list(values):
 
 
 def sql_call(func_name, parameters):
-    return ConcatSQL((
+    return ConcatSQL(
         SQL(func_name),
         sql_iso(JoinSQL(SQL_COMMA, parameters))
-    ))
+    )
 
 
 def sql_eq(**item):
@@ -673,9 +673,9 @@ def sql_eq(**item):
     """
 
     return SQL_AND.join([
-        ConcatSQL((quote_column(k), SQL_EQ, quote_value(v)))
+        ConcatSQL(quote_column(k), SQL_EQ, quote_value(v))
         if v != None
-        else ConcatSQL((quote_column(k), SQL_IS_NULL))
+        else ConcatSQL(quote_column(k), SQL_IS_NULL)
         for k, v in item.items()
     ])
 
@@ -855,9 +855,9 @@ def _esfilter2sqlwhere(esfilter):
         ]))
     elif esfilter.eq:
         col, val = first(esfilter.eq.items())
-        return ConcatSQL((
+        return ConcatSQL(
             quote_column(col) , SQL_EQ , quote_value(val)
-        ))
+        )
     elif esfilter.terms:
         for col, v in esfilter.terms.items():
             if len(v) == 0:
@@ -887,11 +887,11 @@ def _esfilter2sqlwhere(esfilter):
         return sql_iso(esfilter.script)
     elif esfilter.gt:
         k, v = first(esfilter.gt.items())
-        return ConcatSQL((
+        return ConcatSQL(
             quote_column(k),
             SQL_GT,
             quote_value(v)
-        ))
+        )
     elif esfilter.range:
         name2sign = {
             "gt": SQL(">"),

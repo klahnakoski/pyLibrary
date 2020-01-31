@@ -39,9 +39,9 @@ class SqlEqOp(SqlEqOp_):
                     if l.sql[t] == None:
                         pass
                     else:
-                        acc.append(ConcatSQL((l.sql[t], SQL_IS_NULL)))
+                        acc.append(ConcatSQL(l.sql[t], SQL_IS_NULL))
                 elif l.sql[t] == None:
-                    acc.append(ConcatSQL((r.sql[t], SQL_IS_NULL)))
+                    acc.append(ConcatSQL(r.sql[t], SQL_IS_NULL))
                 else:
                     acc.append(
                         ConcatSQL(sql_iso(l.sql[t]), SQL_EQ, sql_iso(r.sql[t]))

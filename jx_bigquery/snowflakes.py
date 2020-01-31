@@ -1,4 +1,3 @@
-from collections import OrderedDict
 
 from google.cloud.bigquery import SchemaField
 
@@ -15,7 +14,7 @@ from jx_bigquery.typed_encoder import (
 )
 from jx_python import jx
 from mo_dots import join_field, startswith_field, coalesce, Data, wrap, split_field
-from mo_future import is_text, first, sort_using_key, text
+from mo_future import is_text, first, sort_using_key, text, OrderedDict
 from mo_json import NESTED, STRUCT, OBJECT, STRING, NUMBER
 from mo_logs import Log, Except
 from mo_times.dates import Date

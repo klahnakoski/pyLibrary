@@ -130,11 +130,11 @@ def unescape_name(esc_name):
 def sql_alias(value, alias):
     if not isinstance(value, SQL) or not isinstance(alias, ApiName):
         Log.error("Expecting (SQL, ApiName) parameters")
-    return ConcatSQL((value, SQL_AS, quote_column(alias)))
+    return ConcatSQL(value, SQL_AS, quote_column(alias))
 
 
 def sql_call(func_name, parameters):
-    return ConcatSQL((SQL(func_name), sql_iso(JoinSQL(SQL_COMMA, parameters))))
+    return ConcatSQL(SQL(func_name), sql_iso(JoinSQL(SQL_COMMA, parameters)))
 
 
 def quote_value(value):
@@ -169,9 +169,9 @@ def sql_eq(**item):
     """
     return SQL_AND.join(
         [
-            ConcatSQL((quote_column(k), SQL_EQ, quote_value(v)))
+            ConcatSQL(quote_column(k), SQL_EQ, quote_value(v))
             if v != None
-            else ConcatSQL((quote_column(k), SQL_IS_NULL))
+            else ConcatSQL(quote_column(k), SQL_IS_NULL)
             for k, v in item.items()
         ]
     )
@@ -185,7 +185,7 @@ def sql_lt(**item):
     :return: SQL
     """
     k, v = first(item.items())
-    return ConcatSQL((quote_column(k), SQL_LT, quote_value(v)))
+    return ConcatSQL(quote_column(k), SQL_LT, quote_value(v))
 
 
 def sql_query(command):
@@ -209,4 +209,4 @@ def sql_query(command):
     if command.orderby:
         acc.append(SQL_ORDERBY)
         acc.append(JoinSQL(SQL_COMMA, map(quote_column, listwrap(command.orderby))))
-    return ConcatSQL(acc)
+    return ConcatSQL(*acc)
