@@ -102,6 +102,9 @@ if PY3:
         except StopIteration:
             return None
 
+    def next(_iter):
+        return _iter.__next__()
+
     def is_text(t):
         return t.__class__ is str
 
@@ -188,6 +191,9 @@ else:
             return iter(values).next()
         except StopIteration:
             return None
+
+    def next(_iter):
+        return _iter.next()
 
     def is_text(t):
         return t.__class__ is unicode
