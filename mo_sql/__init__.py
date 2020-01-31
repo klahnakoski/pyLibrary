@@ -8,7 +8,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_dots import is_container, is_sequence
+from mo_dots import is_container
 from mo_future import is_text, PY2
 from mo_logs import Log
 
@@ -36,7 +36,11 @@ class SQL(object):
 
     def __add__(self, other):
         if not isinstance(other, SQL):
-            if is_text(other) and DEBUG and all(c not in other for c in ('"', "'", "`")):
+            if (
+                is_text(other)
+                and DEBUG
+                and all(c not in other for c in ('"', "'", "`"))
+            ):
                 return ConcatSQL(self, SQL(other))
             Log.error("Can only concat other SQL")
         else:
@@ -44,7 +48,11 @@ class SQL(object):
 
     def __radd__(self, other):
         if not isinstance(other, SQL):
-            if is_text(other) and DEBUG and all(c not in other for c in ('"', "'", "`")):
+            if (
+                is_text(other)
+                and DEBUG
+                and all(c not in other for c in ('"', "'", "`"))
+            ):
                 return ConcatSQL(SQL(other), self)
             Log.error("Can only concat other SQL")
         else:
@@ -57,9 +65,12 @@ class SQL(object):
         return self.sql
 
     if PY2:
+
         def __unicode__(self):
             return "".join(self)
+
     else:
+
         def __str__(self):
             return "".join(self)
 
@@ -68,6 +79,7 @@ class TextSQL(SQL):
     """
     ACTUAL SQL, DO NOT QUOTE THIS STRING
     """
+
     __slots__ = ["value"]
 
     def __init__(self, value):
@@ -116,6 +128,7 @@ class ConcatSQL(SQL):
     """
     ACTUAL SQL, DO NOT QUOTE THIS STRING
     """
+
     __slots__ = ["concat"]
 
     def __init__(self, *concat):
@@ -222,5 +235,3 @@ def sql_concat_text(list_):
 
 def sql_coalesce(list_):
     return ConcatSQL(SQL("COALESCE("), JoinSQL(SQL_COMMA, list_), SQL_CP)
-
-

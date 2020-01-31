@@ -8,14 +8,13 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
+import datetime
 import unittest
 
-import datetime
 from mo_dots import wrap
-from mo_logs.strings import quote
-
 from mo_json.typed_encoder import EXISTS_TYPE, NUMBER_TYPE, STRING_TYPE, BOOLEAN_TYPE, NESTED_TYPE, untyped
 from mo_json.typed_encoder import encode as typed_encode
+from mo_logs.strings import quote
 
 
 class TestJSON(unittest.TestCase):
