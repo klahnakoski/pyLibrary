@@ -157,7 +157,7 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
         if test == None:  # pandas dataframes reject any comparision with an exception!
             return
         else:
-            raise AssertionError(expand_template("{{test}} != NULL", locals()))
+            raise AssertionError(expand_template("{{test|json}} != NULL", locals()))
 
     if expected == None:  # None has no expectations
         return
@@ -172,7 +172,7 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
         if is_data(expected) and not expected.keys() and test == None:
             return
         if test != expected:
-            raise AssertionError(expand_template("{{test}} != {{expected}}", locals()))
+            raise AssertionError(expand_template("{{test|json}} != {{expected|json}}", locals()))
         return
     elif not is_number(test):
         try:
@@ -188,7 +188,7 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
         num_param += 1
     if delta != None:
         num_param += 1
-    if num_param>1:
+    if num_param > 1:
         raise TypeError("specify only one of digits, places or delta")
 
     if digits is not None:
@@ -197,12 +197,12 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
             if diff < digits:
                 return
 
-        standardMsg = expand_template("{{test}} != {{expected}} within {{digits}} decimal places", locals())
+        standardMsg = expand_template("{{test|json}} != {{expected|json}} within {{digits}} decimal places", locals())
     elif delta is not None:
         if abs(test - expected) <= delta:
             return
 
-        standardMsg = expand_template("{{test}} != {{expected}} within {{delta}} delta", locals())
+        standardMsg = expand_template("{{test|json}} != {{expected|json}} within {{delta}} delta", locals())
     else:
         if places is None:
             places = 15

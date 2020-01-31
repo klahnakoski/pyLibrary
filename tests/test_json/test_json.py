@@ -12,15 +12,14 @@ from __future__ import unicode_literals
 import datetime
 import unittest
 
+import mo_json
 from mo_dots import Data, wrap
 from mo_future import text
+from mo_json import json2value, value2json
+from mo_json.encoder import pretty_json, cPythonJSONEncoder, pypy_json_encode
 from mo_logs import Log
 from mo_times.dates import Date
 from pyLibrary import convert
-
-import mo_json
-from mo_json import json2value, value2json
-from mo_json.encoder import pretty_json, cPythonJSONEncoder, pypy_json_encode
 
 
 class TestJSON(unittest.TestCase):

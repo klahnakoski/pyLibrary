@@ -14,12 +14,10 @@ from __future__ import unicode_literals
 
 from io import BytesIO
 
-from mo_future import text
-
 from mo_dots import Null
-from mo_testing.fuzzytestcase import FuzzyTestCase
-
+from mo_future import text
 from mo_json import stream
+from mo_testing.fuzzytestcase import FuzzyTestCase
 
 
 class TestJsonStream(FuzzyTestCase):
@@ -330,6 +328,30 @@ class TestJsonStream(FuzzyTestCase):
         expected = [
             {"name": "AUTHORS", "value": ["mozilla.org", "Licensing"]},
             {"name": "CLOBBER", "value": ["Core", "Build Config"]}
+        ]
+        self.assertEqual(result, expected)
+
+    def test_line_delimited_objects(self):
+        json = slow_stream("""
+            {
+                "key11": "value11",
+                "key12": "value12"
+            }
+            {
+                "key21": "value21",
+                "key22": "value22"
+            }
+        """)
+        result = list(stream.parse_concatenated(json, ".", expected_vars={"."}))
+        expected = [
+            {
+                "key11": "value11",
+                "key12": "value12",
+            },
+            {
+                "key21": "value21",
+                "key22": "value22",
+            }
         ]
         self.assertEqual(result, expected)
 
