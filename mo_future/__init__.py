@@ -28,7 +28,7 @@ boolean_type = type(True)
 
 if PY3:
     import itertools
-    import collections
+    from collections import OrderedDict, UserDict
     from collections.abc import Callable, Iterable, Mapping, Set, MutableMapping
     from functools import cmp_to_key, reduce, update_wrapper
     from configparser import ConfigParser
@@ -122,10 +122,8 @@ if PY3:
         sort_keys=True   # <-- IMPORTANT!  sort_keys==True
     ).encode
 
-    UserDict = collections.UserDict
 
 else:
-    import collections
     from collections import Callable, Iterable, Mapping, Set, MutableMapping, OrderedDict
     from functools import cmp_to_key, reduce, update_wrapper
 
@@ -215,7 +213,7 @@ else:
 
 
     # COPIED FROM Python's collections.UserDict (copied July 2018)
-    class UserDict(collections.MutableMapping):
+    class UserDict(MutableMapping):
 
         # Start by filling-out the abstract methods
         def __init__(*args, **kwargs):
