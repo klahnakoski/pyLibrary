@@ -103,11 +103,13 @@ class MySQL(object):
             else:
                 self.settings.host = hp
 
-        if self.settings.ssl.ca.startswith("https://"):
+        if "localhost" not in self.settings.host:
             self.pemfile_url = self.settings.ssl.ca
             self.pemfile = File("./resources/pem")/self.settings.host
             self.pemfile.write_bytes(http.get(self.pemfile_url).content)
             self.settings.ssl.ca = self.pemfile.abspath
+        else:
+            self.settings.ssl = None
 
         try:
             self.db = connect(
