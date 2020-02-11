@@ -19,7 +19,7 @@ from pymysql import InterfaceError, connect, cursors
 from mo_json import TIME, scrub, INTEGER, STRING, NUMBER, INTERVAL
 from jx_python import jx
 from mo_dots import coalesce, is_data, listwrap, unwrap, wrap, Data
-from mo_files import File
+from mo_files import File, URL
 from mo_future import is_binary, is_text, text, transpose, utf8_json_encoder, first
 from mo_kwargs import override
 from mo_logs import Log, Except, suppress_exception, strings
@@ -109,7 +109,10 @@ class MySQL(object):
         if "localhost" not in self.settings.host:
             if self.settings.ssl and not self.settings.ssl.pem:
                 Log.error("Expecting 'pem' property in ssl")
-            ssl_context = ssl.create_default_context(cadata=get_ssl_pem_file(self.settings.ssl.pem))
+            # ssl_context = ssl.create_default_context(**get_ssl_pem_file(self.settings.ssl.pem))
+            filename = File(".pem") / URL(self.settings.ssl.pem).host
+            filename.write_bytes(http.get(self.settings.ssl.pem).content)
+            ssl_context = {"ca": filename.abspath}
         else:
             ssl_context = None
 
@@ -969,4 +972,6 @@ mysql_type_to_json_type = {
 
 @cache(duration=DAY)
 def get_ssl_pem_file(url):
-    return http.get(url).content
+    filename = File(".pem") / URL(url).host
+    filename.write_bytes(http.get(url).content)
+    return {"cafile": filename.abspath}
