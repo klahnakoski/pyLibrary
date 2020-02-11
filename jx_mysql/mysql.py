@@ -8,10 +8,12 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+import ssl
 import subprocess
 from datetime import datetime
 from urllib.parse import unquote
 
+from pyLibrary.meta import cache
 from pymysql import InterfaceError, connect, cursors
 
 from mo_json import TIME, scrub, INTEGER, STRING, NUMBER, INTERVAL
@@ -27,7 +29,7 @@ from mo_sql import SQL, SQL_AND, SQL_ASC, SQL_DESC, SQL_FROM, SQL_IS_NULL, SQL_L
     SQL_ONE, SQL_SELECT, SQL_TRUE, SQL_WHERE, sql_iso, sql_list, SQL_INSERT, SQL_VALUES, ConcatSQL, SQL_EQ, \
     SQL_UPDATE, SQL_SET, JoinSQL, SQL_DOT, SQL_AS, SQL_COMMA, SQL_STAR, SQL_ORDERBY, SQL_OR, SQL_NOT, SQL_IS_NOT_NULL, \
     SQL_GT
-from mo_times import Date
+from mo_times import Date, DAY
 from pyLibrary import convert
 from pyLibrary.env import http
 
@@ -103,13 +105,13 @@ class MySQL(object):
             else:
                 self.settings.host = hp
 
+        # SSL PEM
         if "localhost" not in self.settings.host:
-            self.pemfile_url = self.settings.ssl.ca
-            self.pemfile = File("./resources/pem")/self.settings.host
-            self.pemfile.write_bytes(http.get(self.pemfile_url).content)
-            self.settings.ssl.ca = self.pemfile.abspath
+            if self.settings.ssl and not self.settings.ssl.pem:
+                Log.error("Expecting 'pem' property in ssl")
+            ssl_context = ssl.create_default_context(cadata=get_ssl_pem_file(self.settings.ssl.pem))
         else:
-            self.settings.ssl = None
+            ssl_context = None
 
         try:
             self.db = connect(
@@ -121,7 +123,7 @@ class MySQL(object):
                 read_timeout=coalesce(self.settings.read_timeout, (EXECUTE_TIMEOUT / 1000) - 10 if EXECUTE_TIMEOUT else None, 5*60),
                 charset=u"utf8",
                 use_unicode=True,
-                ssl=coalesce(self.settings.ssl, None),
+                ssl=ssl_context,
                 cursorclass=cursors.SSCursor
             )
         except Exception as e:
@@ -714,7 +716,7 @@ def sql_query(command):
         acc.append(SQL_LIMIT)
         acc.append(JoinSQL(SQL_COMMA, map(quote_value, listwrap(command.limit))))
 
-    return ConcatSQL(acc)
+    return ConcatSQL(*acc)
 
 
 def utf8_to_unicode(v):
@@ -963,3 +965,8 @@ mysql_type_to_json_type = {
     "tinytext": STRING,
     "varchar": STRING
 }
+
+
+@cache(duration=DAY)
+def get_ssl_pem_file(url):
+    return http.get(url).content
