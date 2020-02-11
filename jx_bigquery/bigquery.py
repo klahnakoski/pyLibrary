@@ -574,7 +574,7 @@ def gen_select(total_flake, flake):
                             ),
                         ),
                         SQL_FROM,
-                        sql_call("UNNEST", [quote_column(es_path + escape_name(k))]),
+                        sql_call("UNNEST", quote_column(es_path + escape_name(k))),
                         SQL_AS,
                         SQL(row_name),
                         SQL(" WITH OFFSET AS "),
@@ -584,7 +584,7 @@ def gen_select(total_flake, flake):
                     )
                 ]
 
-            return [sql_alias(sql_call("ARRAY", inner), escape_name(k))]
+            return [sql_alias(sql_call("ARRAY", *inner), escape_name(k))]
 
         selection = []
         for k, t in jx.sort(total_flake.items(), 0):
@@ -634,7 +634,7 @@ def gen_select(total_flake, flake):
                         JoinSQL(ConcatSQL(SQL_COMMA, SQL_CR), selects),
                     )
                 ]
-                selection.append(sql_alias(sql_call("", inner), escape_name(k)))
+                selection.append(sql_alias(sql_call("", *inner), escape_name(k)))
             elif is_text(t):
                 if is_text(k_tops):
                     # THE SOURCE HAS THIS PROPERTY AS A TOP_LEVEL_FIELD

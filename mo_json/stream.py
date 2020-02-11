@@ -36,6 +36,7 @@ json_decoder = json.JSONDecoder().decode
 
 class Parser(object):
     def __init__(self, json, query_path, expected_vars=NO_VARS):
+
         if hasattr(json, "read"):
             # ASSUME IT IS A STREAM
             temp = json
