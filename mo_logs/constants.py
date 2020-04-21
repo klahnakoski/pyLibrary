@@ -70,4 +70,3 @@ def set(constants):
             from mo_logs import Log
 
             Log.error("Can not set constant {{path}}", path=full_path, cause=errors)
-

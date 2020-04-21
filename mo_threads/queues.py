@@ -1,3 +1,4 @@
+
 # encoding: utf-8
 #
 #
@@ -163,7 +164,7 @@ class Queue(object):
         (DEBUG and len(self.queue) > 1 * 1000 * 1000) and Log.warning("Queue {{name}} has over a million items")
 
         start = time()
-        stop_waiting = Till(till=start + coalesce(timeout, DEFAULT_WAIT_TIME))
+        stop_waiting = Till(till=start+coalesce(timeout, DEFAULT_WAIT_TIME))
 
         while not self.closed and len(self.queue) >= self.max:
             if stop_waiting:
@@ -176,7 +177,7 @@ class Queue(object):
                 if not stop_waiting and len(self.queue) >= self.max:
                     now = time()
                     Log.alert(
-                        "Queue by name of {{name|quote}} is full with ({{num}} items), thread(s) have been waiting {{wait_time}} sec",
+                        "Queue with name {{name|quote}} is full with ({{num}} items), thread(s) have been waiting {{wait_time}} sec",
                         name=self.name,
                         num=len(self.queue),
                         wait_time=now-start
@@ -543,3 +544,5 @@ class ThreadedQueue(Queue):
     def stop(self):
         self.add(THREAD_STOP)
         self.thread.join()
+
+
