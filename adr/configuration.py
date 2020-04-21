@@ -4,11 +4,11 @@ from pathlib import Path
 
 from appdirs import user_config_dir
 from cachy import CacheManager
-from cachy.stores import NullStore
 from loguru import logger
 from tomlkit import parse
 
 import adr
+from adr.util.cache_stores import NullStore, SeededFileStore
 
 
 def merge_to(source, dest):
@@ -67,7 +67,7 @@ class Configuration(Mapping):
         "debug_url": "https://activedata.allizom.org/tools/query.html#query_id={}",
         "fmt": "table",
         "sources": [os.getcwd(), Path(adr.__file__).parent.parent.as_posix()],
-        "url": "http://localhost:5000/query",
+        "url": "https://activedata.allizom.org/query",
         "verbose": False,
     }
     locked = False
@@ -90,6 +90,7 @@ class Configuration(Mapping):
         self._config["cache"].setdefault("stores", {"null": {"driver": "null"}})
         self.cache = CacheManager(self._config["cache"])
         self.cache.extend("null", lambda driver: NullStore())
+        self.cache.extend("seeded-file", SeededFileStore)
         self.locked = True
 
     def __len__(self):

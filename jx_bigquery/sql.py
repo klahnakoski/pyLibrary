@@ -91,6 +91,9 @@ class ApiName(object):
     def __str__(self):
         return ".".join(self.values)
 
+    def __bool__(self):
+        return bool(self.values)
+
 
 def escape_name(name):
     if isinstance(name, ApiName):

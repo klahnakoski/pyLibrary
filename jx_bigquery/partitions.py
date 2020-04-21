@@ -8,14 +8,14 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 from __future__ import absolute_import, division, unicode_literals
+
 from google.cloud import bigquery
 from google.cloud.bigquery import TimePartitioning
-
 from mo_dots import Null
 from mo_future import first
 from mo_kwargs import override
 from mo_logs import Log
-from mo_times import Duration, DAY, Date, YEAR
+from mo_times import Duration, DAY, YEAR
 
 NEVER = 10 * YEAR
 

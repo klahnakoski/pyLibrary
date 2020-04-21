@@ -1,4 +1,3 @@
-
 # encoding: utf-8
 #
 #
@@ -164,7 +163,7 @@ class Queue(object):
         (DEBUG and len(self.queue) > 1 * 1000 * 1000) and Log.warning("Queue {{name}} has over a million items")
 
         start = time()
-        stop_waiting = Till(till=start+coalesce(timeout, DEFAULT_WAIT_TIME))
+        stop_waiting = Till(till=start + coalesce(timeout, DEFAULT_WAIT_TIME))
 
         while not self.closed and len(self.queue) >= self.max:
             if stop_waiting:
@@ -177,7 +176,7 @@ class Queue(object):
                 if not stop_waiting and len(self.queue) >= self.max:
                     now = time()
                     Log.alert(
-                        "Queue with name {{name|quote}} is full with ({{num}} items), thread(s) have been waiting {{wait_time}} sec",
+                        "Queue by name of {{name|quote}} is full with ({{num}} items), thread(s) have been waiting {{wait_time}} sec",
                         name=self.name,
                         num=len(self.queue),
                         wait_time=now-start
@@ -236,7 +235,7 @@ class Queue(object):
             elif not self.queue:
                 return None
             else:
-                v =self.queue.pop()
+                v =self.queue.popleft()
                 if v is THREAD_STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                     self.closed.go()
                 return v
@@ -419,10 +418,9 @@ class ThreadedQueue(Queue):
     ):
         if period !=None and not isinstance(period, (int, float, long)):
             Log.error("Expecting a float for the period")
-
+        period = coalesce(period, 1)  # SECONDS
         batch_size = coalesce(batch_size, int(max_size / 2) if max_size else None, 900)
         max_size = coalesce(max_size, batch_size * 2)  # REASONABLE DEFAULT
-        period = coalesce(period, 1)  # SECONDS
 
         Queue.__init__(self, name=name, max=max_size, silent=silent)
 
@@ -545,5 +543,3 @@ class ThreadedQueue(Queue):
     def stop(self):
         self.add(THREAD_STOP)
         self.thread.join()
-
-

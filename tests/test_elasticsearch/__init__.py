@@ -21,15 +21,15 @@ from jx_base import container as jx_containers
 from jx_python import jx
 from mo_dots import Data, coalesce, is_list, listwrap, literal_field, unwrap, wrap, is_data
 from mo_files.url import URL
-from mo_future import is_text, text_type
+from mo_future import is_text, text
 from mo_json import json2value, value2json
 from mo_kwargs import override
 from mo_logs import Except, Log, constants
-from mo_logs.exceptions import extract_stack
+from mo_logs.exceptions import get_stacktrace
 from mo_testing.fuzzytestcase import assertAlmostEqual
 from mo_times import Date, MINUTE
-from pyLibrary.env import http
-from pyLibrary.env.elasticsearch import Cluster
+from mo_http import http
+from jx_elasticsearch.elasticsearch import Cluster
 from pyLibrary.testing import elasticsearch
 
 import jx_elasticsearch
@@ -70,7 +70,7 @@ class ESUtils(object):
         if elasticsearch.schema == None:
             Log.error("Expecting backed_es to have a schema defined")
 
-        letters = text_type(ascii_lowercase)
+        letters = text(ascii_lowercase)
         self.random_letter = letters[int(Date.now().unix / 30) % 26]
         self.elasticsearch = elasticsearch
         self.settings = kwargs
@@ -93,7 +93,7 @@ class ESUtils(object):
     def setUp(self):
         global NEXT
 
-        index_name = "testing_" + ("000" + text_type(NEXT))[-3:] + "_" + self.random_letter
+        index_name = "testing_" + ("000" + text(NEXT))[-3:] + "_" + self.random_letter
         NEXT += 1
 
         self._es_test_settings = self.elasticsearch.copy()
@@ -147,7 +147,7 @@ class ESUtils(object):
 
     def execute_tests(self, subtest, typed=True, places=6):
         subtest = wrap(subtest)
-        subtest.name = text_type(extract_stack()[1]['method'])
+        subtest.name = text(get_stacktrace()[1]['method'])
 
         self.fill_container(subtest, typed=typed)
         self.send_queries(subtest, places=places)
@@ -172,9 +172,9 @@ class ESUtils(object):
             ESUtils.indexes.append(_settings.index)
 
             # INSERT DATA
-            container.extend({"value": d} for d in subtest.data)
+            container.extend([{"value": d} for d in subtest.data])
             container.flush()
-            self._es_cluster.get_metadata(force=True)
+            self._es_cluster.get_metadata(after=Date.now())
 
             # ENSURE query POINTS TO CONTAINER
             frum = subtest.query["from"]
@@ -358,10 +358,10 @@ def sort_table(result):
     """
     SORT ROWS IN TABLE, EVEN IF ELEMENTS ARE JSON
     """
-    data = wrap([{text_type(i): v for i, v in enumerate(row) if v != None} for row in result.data])
+    data = wrap([{text(i): v for i, v in enumerate(row) if v != None} for row in result.data])
     sort_columns = jx.sort(set(jx.get_columns(data, leaves=True).name))
     data = jx.sort(data, sort_columns)
-    result.data = [tuple(row[text_type(i)] for i in range(len(result.header))) for row in data]
+    result.data = [tuple(row[text(i)] for i in range(len(result.header))) for row in data]
 
 
 def error(response):

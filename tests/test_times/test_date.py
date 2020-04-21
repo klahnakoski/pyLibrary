@@ -14,10 +14,11 @@ from __future__ import unicode_literals
 
 from datetime import datetime
 
+from mo_future import PY3
 from mo_math import MAX
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
-from mo_times.durations import MONTH, YEAR, WEEK
+from mo_times.durations import MONTH, YEAR, WEEK, Duration
 
 
 class TestDate(FuzzyTestCase):
@@ -59,3 +60,21 @@ class TestDate(FuzzyTestCase):
     def test_dow(self):
         date = Date('2018-10-01 12:42:00')
         self.assertEqual(date.dow, 0)   # MONDAY
+
+    def test_ceiling_hours(self):
+        date = Date('2018-10-01 12:42:00').ceiling(Duration("6hour"))
+        expected = Date('2018-10-01 18:00:00')
+        self.assertEqual(date, expected)
+
+    def test_ceiling_hours_unchanged(self):
+        date = Date('2018-10-01 18:00:00').ceiling(Duration("6hour"))
+        expected = Date('2018-10-01 18:00:00')
+        self.assertEqual(date, expected)
+
+    def test_create_date(self):
+        if PY3:
+            from datetime import timezone
+            test = Date(datetime(2020, 3, 21, 0, 0, 0, 0, timezone.utc))
+        else:
+            test = Date(datetime(2020, 3, 21, 0, 0, 0, 0))
+        self.assertEqual(test, 1584748800)

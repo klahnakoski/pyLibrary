@@ -9,6 +9,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from copy import copy
+
 from google.cloud.bigquery import SchemaField
 
 import jx_base
@@ -23,11 +25,14 @@ from jx_bigquery.typed_encoder import (
     json_type_to_inserter_type,
 )
 from jx_python import jx
-from mo_dots import join_field, startswith_field, coalesce, Data, wrap, split_field
+from mo_dots import join_field, startswith_field, coalesce, Data, wrap, split_field, Null
 from mo_future import is_text, first, sort_using_key, text, OrderedDict
-from mo_json import NESTED, STRUCT, OBJECT, STRING, NUMBER
+from mo_json import NESTED, STRUCT, OBJECT, STRING, NUMBER, scrub
 from mo_logs import Log, Except
 from mo_times.dates import Date
+
+
+DEBUG = True
 
 
 class Snowflake(jx_base.Snowflake):
@@ -44,10 +49,16 @@ class Snowflake(jx_base.Snowflake):
         :param top_level_fields:  REQUIRED TO MAP INNER PROPERTIES TO THE TOP LEVEL, AS REQUIRED BY BQ FOR PARTITIONS AND CLUSTERING
         :param partition:  THE partition.field MUST BE KNOWN SO IT CAN BE CONVERTED FROM UNIX TIME TO bq TIMESTAMP
         """
-        if not is_text(es_index):
-            Log.error("expecting string")
-        self.es_index = es_index
         self.schema = schema or {}
+        if DEBUG:
+            if not is_text(es_index):
+                Log.error("expecting string")
+            if any(len(split_field(k)) > 1 for k in self.schema.keys()):
+                Log.error("expecting schema to be a deep structure")
+            if any(len(split_field(k)) > 1 for k in top_level_fields.keys()):
+                Log.error("expecting top level fields to be a deep structure")
+
+        self.es_index = es_index
         self._columns = None
         self.top_level_fields = top_level_fields
         self._top_level_fields = None  # dict FROM FULL-API-NAME TO TOP-LEVEL-FIELD NAME
@@ -141,8 +152,8 @@ class Snowflake(jx_base.Snowflake):
             )
             self._columns = columns
 
-            self._top_level_fields = {}
-            for path, field in wrap(self.top_level_fields).leaves():
+            self._top_level_fields = OrderedDict()  # FORCE ORDERING
+            for path, field in jx.sort(wrap(self.top_level_fields).leaves(), 0):
                 leaves = self.leaves(path)
                 if not leaves:
                     continue
@@ -152,9 +163,8 @@ class Snowflake(jx_base.Snowflake):
                     )
                 specific_path = first(leaves).name
                 self._top_level_fields[
-                    ".".join(map(text, map(escape_name, split_field(specific_path))))
+                    ".".join(text(escape_name(step)) for step in split_field(specific_path))
                 ] = field
-
             self._partition = Partition(kwargs=self.partition, flake=self)
 
         return self._columns
@@ -307,10 +317,22 @@ def merge(schemas, es_index, top_level_fields, partition):
         if len(schemas) == 1:
             return schemas[0]
         try:
-            return OrderedDict(
-                (k, _merge(*[ss for s in schemas for ss in [s.get(k)] if ss]))
-                for k in jx.sort(set(k for s in schemas for k in s.keys()))
-            )
+            if any(NESTED_TYPE in s for s in schemas):
+                # IF THERE ARE ANY ARRAYS, THEN THE MERGE IS AN ARRAY
+                new_schemas = []
+                for schema in schemas:
+                    if NESTED_TYPE in schema:
+                        sub_schema = schema[NESTED_TYPE]
+                        residue = {k: v for k, v in schema.items() if k != NESTED_TYPE}
+                        new_schemas.append(_merge(sub_schema, residue))
+                    else:
+                        new_schemas.append(schema)
+                return {NESTED_TYPE: _merge(*new_schemas)}
+            else:
+                return OrderedDict(
+                    (k, _merge(*(ss for s in schemas for ss in [s.get(k)] if ss)))
+                    for k in jx.sort(set(k for s in schemas for k in s.keys()))
+                )
         except Exception as e:
             e = Except.wrap(e)
             if "Expecting types to match" in e:
