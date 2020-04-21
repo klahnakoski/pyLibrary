@@ -106,15 +106,15 @@ class MySQL(object):
                 self.settings.host = hp
 
         # SSL PEM
-        if "localhost" not in self.settings.host:
+        if self.settings.host in ("localhost", "mysql"):
+            ssl_context = None
+        else:
             if self.settings.ssl and not self.settings.ssl.pem:
                 Log.error("Expecting 'pem' property in ssl")
             # ssl_context = ssl.create_default_context(**get_ssl_pem_file(self.settings.ssl.pem))
             filename = File(".pem") / URL(self.settings.ssl.pem).host
             filename.write_bytes(http.get(self.settings.ssl.pem).content)
             ssl_context = {"ca": filename.abspath}
-        else:
-            ssl_context = None
 
         try:
             self.db = connect(

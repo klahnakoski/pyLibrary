@@ -22,8 +22,8 @@ from mo_kwargs import override
 from mo_logs import Log
 from mo_threads import Lock, Queue, Signal, Thread, Till
 from mo_times import Date, MINUTE, SECOND
-from pyLibrary.env import http
-from pyLibrary.sql.sqlite import Sqlite, quote_list, quote_value
+from mo_http import http
+from jx_sqlite.sqlite import Sqlite, quote_list, quote_value
 
 APP_NAME = "HG Cache"
 CONCURRENCY = 5

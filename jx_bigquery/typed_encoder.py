@@ -1,3 +1,13 @@
+# encoding: utf-8
+#
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http:# mozilla.org/MPL/2.0/.
+#
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
+from __future__ import absolute_import, division, unicode_literals
 import string
 
 from jx_bigquery.sql import escape_name, TIMESTAMP_FORMAT
@@ -12,7 +22,9 @@ from mo_json import (
     NESTED,
     python_type_to_json_type,
     INTEGER,
-    INTERVAL, TIME)
+    INTERVAL,
+    TIME,
+)
 from mo_logs import Log
 from mo_times.dates import parse
 
@@ -111,7 +123,11 @@ def _typed_encode(value, schema):
                     v = parse(v).format(TIMESTAMP_FORMAT)
                     return {text(escape_name(TIME_TYPE)): v}, update, False
                 except Exception as e:
-                    Log.warning("Failed attempt to convert {{value}} to TIMESTAMP string", value=v, cause=e)
+                    Log.warning(
+                        "Failed attempt to convert {{value}} to TIMESTAMP string",
+                        value=v,
+                        cause=e,
+                    )
 
             schema[inserter_type] = json_type
             update = {inserter_type: json_type}
@@ -122,6 +138,8 @@ def schema_type(value):
     jt = python_type_to_json_type[value.__class__]
     if jt == TIME:
         v = parse(value).format(TIMESTAMP_FORMAT)
+    elif jt == NUMBER:
+        v = float(value)
     else:
         v = value
     return v, json_type_to_inserter_type[jt], jt

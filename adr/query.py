@@ -8,7 +8,6 @@ from argparse import Namespace
 from json import JSONDecodeError
 
 import jsone
-import requests
 import yaml
 from loguru import logger
 
@@ -33,7 +32,7 @@ def query_activedata(query, url):
     :returns str: json-formatted string.
     """
     start_time = time.time()
-    response = requests.post(url, data=query, stream=True)
+    response = requests_retry_session().post(url, data=query, stream=True)
     logger.debug("Query execution time: " + "{:.3f} ms".format((time.time() - start_time) * 1000.0))
 
     if response.status_code != 200:
@@ -140,13 +139,11 @@ def run_query(name, args):
             time.sleep(2)
             i += 2
             try:
-                monitor = requests_retry_session.get(result['status']).json()
+                monitor = requests_retry_session().get(result['status']).json()
                 logger.debug(f"waiting: {json.dumps(monitor)}")
                 problem = 0
                 if monitor['status'] == 'done':
-                    big_result = requests_retry_session.get(result['url']).json()
-                    # The big response is a simple list of objects, without any metadata
-                    result = {"data": big_result, "format": "list"}
+                    result = requests_retry_session().get(result['url']).json()
                     break
                 elif monitor['status'] == 'error':
                     raise MissingDataError("Problem with query " + json.dumps(monitor['error']))
