@@ -45,7 +45,8 @@ class Auth0Client(object):
         """
         # SEND PUBLIC KEY
         now = Date.now().unix
-        login_session = requests.session()        signed = rsa_crypto.sign(
+        login_session = requests.session()
+        signed = rsa_crypto.sign(
             Data(public_key=self.public_key, timestamp=now),
             self.private_key
         )

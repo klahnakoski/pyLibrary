@@ -10,17 +10,16 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.domains import ALGEBRAIC
-from jx_base.expressions import LeavesOp, Variable, IDENTITY
+from jx_base.expressions import LeavesOp, Variable, IDENTITY, TRUE, NULL, FALSE, MissingOp
 from jx_base.language import is_op
 from jx_base.query import DEFAULT_LIMIT
 from jx_elasticsearch.es52.expressions import (
     AndOp,
     ES52,
     split_expression_by_path,
-    MATCH_ALL,
-    es_and,
-    es_or,
-)
+    EsNestedOp,
+    OrOp)
+from jx_elasticsearch.es52.expressions._utils import split_expression_by_path_for_setop
 from jx_elasticsearch.es52.painless import Painless
 from jx_elasticsearch.es52.set_format import set_formatters
 from jx_elasticsearch.es52.util import jx_sort_to_es_sort
@@ -34,15 +33,15 @@ from mo_dots import (
     listwrap,
     literal_field,
     relative_field,
-    set_default,
     split_field,
     unwrap,
     unwraplist,
-    wrap,
-)
+    dict_to_data,
+    Null,
+    to_data, list_to_data)
 from mo_future import first, text
-from mo_json import NESTED, STRUCT
-from mo_json.typed_encoder import decode_property, unnest_path, untype_path, untyped
+from mo_json import NESTED, INTERNAL
+from mo_json.typed_encoder import decode_property, unnest_path, untype_path, untyped, EXISTS_TYPE
 from mo_logs import Log
 from mo_math import AND
 from mo_times.timer import Timer
@@ -85,7 +84,7 @@ def get_selects(query):
             es_select = split_select[path] = ESSelect(path)
         return es_select
 
-    selects = wrap([unwrap(s.copy()) for s in listwrap(query.select)])
+    selects = list_to_data([unwrap(s.copy()) for s in listwrap(query.select)])
     new_select = FlatList()
     put_index = 0
     for select in selects:
@@ -262,14 +261,14 @@ def get_selects(query):
                 )
             put_index += 1
         else:
-            split_scripts = split_expression_by_path(
+            op, split_scripts = split_expression_by_path(
                 select.value, schema, lang=Painless
             )
             for p, script in split_scripts.items():
                 es_select = get_select(p)
                 es_select.scripts[select.name] = {
                     "script": text(
-                        Painless[first(script)].partial_eval().to_es_script(schema)
+                        Painless[script].partial_eval().to_es_script(schema)
                     )
                 }
                 new_select.append(
@@ -301,16 +300,15 @@ def get_selects(query):
 
 def es_setop(es, query):
     schema = query.frum.schema
-    query_path = schema.query_path[0]
 
     new_select, split_select = get_selects(query)
 
-    split_wheres = split_expression_by_path(query.where, schema, lang=ES52)
-    es_query = es_query_proto(query_path, split_select, split_wheres, schema)
+    op, split_wheres = split_expression_by_path_for_setop(query.where, schema, split_select.keys())
+    es_query = es_query_proto(split_select, op, split_wheres, schema)
     es_query.size = coalesce(query.limit, DEFAULT_LIMIT)
     es_query.sort = jx_sort_to_es_sort(query.sort, schema)
 
-    with Timer("call to ES", silent=DEBUG) as call_timer:
+    with Timer("call to ES", verbose=DEBUG) as call_timer:
         result = es.search(es_query)
 
     T = result.hits.hits
@@ -363,10 +361,11 @@ def get_pull(column):
 
 def get_pull_function(column):
     func = jx_expression_to_function(get_pull(column))
-    if column.jx_type in STRUCT:
+    if column.jx_type in INTERNAL:
         return lambda doc: untyped(func(doc))
     else:
         return func
+
 
 def get_pull_source(es_column):
     def output(row):
@@ -404,53 +403,52 @@ class ESSelect(object):
         self.scripts = {}
 
     def to_es(self):
-        return {
-            "_source": self.set_op,
-            "stored_fields": self.fields if not self.set_op else None,
-            "script_fields": self.scripts if self.scripts else None,
-        }
-
-
-def es_query_proto(path, selects, wheres, schema):
-    """
-    RETURN TEMPLATE AND PATH-TO-FILTER AS A 2-TUPLE
-    :param path: THE NESTED PATH (NOT INCLUDING TABLE NAME)
-    :param wheres: MAP FROM path TO LIST OF WHERE CONDITIONS
-    :return: (es_query, filters_map) TUPLE
-    """
-    output = None
-    last_where = MATCH_ALL
-    for p in reversed(sorted(set(wheres.keys()) | set(selects.keys()))):
-        where = wheres.get(p)
-        select = selects.get(p)
-
-        if where:
-            where = AndOp(where).partial_eval().to_esfilter(schema)
-            if output:
-                where = es_or([es_and([output, where]), where])
-        else:
-            if output:
-                if last_where is MATCH_ALL:
-                    where = es_or([output, MATCH_ALL])
-                else:
-                    where = output
-            else:
-                where = MATCH_ALL
-
-        if p == ".":
-            output = set_default(
-                {"from": 0, "size": 0, "sort": [], "query": where}, select.to_es()
-            )
-        else:
-            output = {
-                "nested": {
-                    "path": p,
-                    "inner_hits": set_default({"size": 100000}, select.to_es())
-                    if select
-                    else None,
-                    "query": where,
-                }
+        return dict_to_data(
+            {
+                "_source": self.set_op,
+                "stored_fields": self.fields if not self.set_op else None,
+                "script_fields": self.scripts if self.scripts else None,
             }
+        )
 
-        last_where = where
-    return output
+    def __data__(self):
+        return self.to_es()
+
+
+def es_query_proto(selects, op, wheres, schema):
+    """
+    RETURN AN ES QUERY
+    :param selects: MAP FROM path TO ESSelect INSTANCE
+    :param wheres: MAP FROM path TO LIST OF WHERE CONDITIONS
+    :return: es_query
+    """
+    es_query = op.zero
+    for p in reversed(sorted(set(wheres.keys()) | set(selects.keys()))):
+        # DEEPEST TO SHALLOW
+        where = wheres.get(p, TRUE)
+        select = selects.get(p, Null)
+
+        es_where = op([es_query, where])
+        es_query = EsNestedOp(Variable(p), query=es_where, select=select)
+    return es_query.partial_eval().to_esfilter(schema)
+
+
+expsected = {
+    "_source": False,
+    "from": 0,
+    "query": {"bool": {"should": [
+        {"bool": {"should": [{"exists": {"field": "a._a.v.~s~"}}]}},
+        {"nested": {
+            "inner_hits": {
+                "_source": False,
+                "size": 100000,
+                "stored_fields": ["a._a.~N~.v.~s~"]
+            },
+            "path": "a._a.~N~",
+            "query": {"match_all": {}}
+        }}
+    ]}},
+    "size": 10,
+    "sort": [],
+    "stored_fields": ["o.~n~", "a._a.v.~s~"]
+}

@@ -25,8 +25,10 @@ from mmap import mmap
 from numbers import Number
 from tempfile import TemporaryFile
 
+from mo_files import mimetype
+
 import mo_math
-from mo_dots import Data, Null, coalesce, is_list, set_default, unwrap, wrap, is_sequence
+from mo_dots import Data, Null, coalesce, is_list, set_default, unwrap, to_data, is_sequence
 from mo_files.url import URL
 from mo_future import PY2, is_text, text
 from mo_future import StringIO
@@ -125,7 +127,7 @@ def request(method, url, headers=None, data=None, json=None, zip=None, retry=Non
             _to_ascii_dict(headers)
 
             # RETRY
-            retry = wrap(retry)
+            retry = to_data(retry)
             if retry == None:
                 retry = set_default({}, DEFAULTS['retry'])
             elif isinstance(retry, Number):
@@ -313,7 +315,7 @@ class HttpResponse(Response):
 
             if self.headers.get('content-encoding') == 'gzip':
                 return ibytes2ilines(icompressed2ibytes(iterator), encoding=encoding, flexible=flexible)
-            elif self.headers.get('content-type') == 'application/zip':
+            elif self.headers.get('content-type') in [mimetype.ZIP, mimetype.GZIP]:
                 return ibytes2ilines(icompressed2ibytes(iterator), encoding=encoding, flexible=flexible)
             elif self.url.endswith('.gz'):
                 return ibytes2ilines(icompressed2ibytes(iterator), encoding=encoding, flexible=flexible)

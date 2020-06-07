@@ -11,16 +11,16 @@ from __future__ import absolute_import, division, unicode_literals
 
 import ast
 import re
-from collections import namedtuple
 from copy import deepcopy
 
 from jx_base import Column
 from jx_python import jx
 from mo_dots import Data, FlatList, Null, ROOT_PATH, SLOT, coalesce, concat_field, is_data, is_list, listwrap, \
-    literal_field, set_default, split_field, wrap, lists
+    literal_field, set_default, split_field, lists, dict_to_data, to_data, list_to_data
 from mo_files import File, mimetype
 from mo_files.url import URL
 from mo_future import binary_type, generator_types, is_binary, is_text, items, text
+from mo_http import http
 from mo_json import BOOLEAN, EXISTS, NESTED, NUMBER, OBJECT, STRING, json2value, value2json
 from mo_json.typed_encoder import BOOLEAN_TYPE, EXISTS_TYPE, NESTED_TYPE, NUMBER_TYPE, STRING_TYPE, TYPE_PREFIX, \
     json_type_to_inserter_type
@@ -30,8 +30,7 @@ from mo_logs.exceptions import Except, suppress_exception
 from mo_math import is_integer, is_number
 from mo_math.randoms import Random
 from mo_threads import Lock, ThreadedQueue, Till, THREAD_STOP, Thread, MAIN_THREAD
-from mo_times import Date, Timer, HOUR, dates, Duration
-from mo_http import http
+from mo_times import Date, Timer, HOUR, Duration
 
 DEBUG = True
 DEBUG_METADATA_UPDATE = False
@@ -176,7 +175,7 @@ class Index(object):
                     index=self.settings.index,
                     type=self.settings.type
                 )
-            return wrap({"mappings": mapping[self.settings.type]})
+            return dict_to_data({"mappings": mapping[self.settings.type]})
 
     def delete_all_but_self(self):
         """
@@ -225,6 +224,10 @@ class Index(object):
         return True
 
     def flush(self, forced=False):
+        """
+        TELL ES TO FLUSH TO DISK (DO NOT USE)
+        """
+        Log.warning("depreciated: Do not use")
         try:
             self.cluster.post("/" + self.settings.index + "/_flush", data={"wait_if_ongoing": True, "forced": forced})
         except Exception as e:
@@ -233,11 +236,21 @@ class Index(object):
             else:
                 Log.error("Problem flushing", cause=e)
 
+    @property
+    def created(self):
+        """
+        :return:
+        """
+        return Date(self.settings.index[-15:])
+
     def refresh(self):
+        """
+        TELL ES TO INDEX THE GIVEN DATA, FLUSH MAY NOT HAPPEN
+        """
         self.cluster.post("/" + self.settings.index + "/_refresh")
 
     def delete_record(self, filter):
-        filter = wrap(filter)
+        filter = to_data(filter)
 
         if self.settings.read_only:
             Log.error("Index opened in read only mode, no changes allowed")
@@ -252,7 +265,7 @@ class Index(object):
                 {"one": 1, None: None}[self.settings.consistency]
             )
             path = self.path + "/_delete_by_query"
-            DEBUG and Log.note("Delete: {{path}}\n{{query}}", path=path, query=query)
+            # DEBUG and Log.note("Delete: {{path}}\n{{query}}", path=path, query=query)
             result = self.cluster.post(
                 path,
                 json=query,
@@ -262,7 +275,7 @@ class Index(object):
 
             if result.failures:
                 Log.error("Failure to delete fom {{index}}:\n{{data|pretty}}", index=self.settings.index, data=result)
-
+            return result
         else:
             raise NotImplementedError
 
@@ -369,10 +382,25 @@ class Index(object):
             else:
                 details = {"properties": {n: set_default(details, {"type": "object", "dynamic": True})}}
 
-        self.cluster.put(
-            "/" + self.settings.index + "/_mapping/" + self.settings.type,
-            data=details
-        )
+        try:
+            self.cluster.put(
+                "/" + self.settings.index + "/_mapping/" + self.settings.type,
+                data=details,
+
+            )
+        except Exception as e:
+            if "Limit of total fields [" in e:
+                self.cluster.put(
+                    "/" + self.settings.index + "/_settings",
+                    data={"index.mapping.total_fields.limit": 2000},
+                    timeout=600
+                )
+                self.cluster.put(
+                    "/" + self.settings.index + "/_mapping/" + self.settings.type,
+                    data=details
+                )
+            else:
+               raise e
 
     def refresh(self):
         self.cluster.post("/" + self.settings.index + "/_refresh")
@@ -403,7 +431,7 @@ class Index(object):
             Log.error("Do not know how to handle ES version {{version}}", version=self.cluster.version)
 
     def search(self, query, timeout=None, retry=None, scroll=None):
-        query = wrap(query)
+        query = to_data(query)
         try:
             suffix = "/_search?scroll=" + scroll if scroll else "/_search"
             url = self.path + suffix
@@ -565,7 +593,7 @@ class Cluster(object):
             try:
                 known_index.set_refresh_interval(seconds=Duration(kwargs.refresh_interval).seconds)
             except Exception as e:
-                Log.warning("could not set refresh interval for {{index}}", index=known_index.settings.index, cause=e)
+                Log.note("Could not set refresh interval for {{index}}", index=known_index.settings.index, cause=e)
         if kwargs.refresh_interval:
             Thread.run("setting refresh interval", set_refresh, parent_thread=MAIN_THREAD).release()
         else:
@@ -582,7 +610,7 @@ class Cluster(object):
             Log.error("used `typed` parameter, not `tjson`")
         if read_only:
             # GET EXACT MATCH, OR ALIAS
-            aliases = wrap(self.get_aliases())
+            aliases = to_data(self.get_aliases())
             if index in aliases.index:
                 pass
             elif index in aliases.alias:
@@ -692,6 +720,7 @@ class Cluster(object):
         limit_replicas_warning=True,
         read_only=False,
         typed=True,
+        type=None,
         kwargs=None
     ):
         if kwargs.tjson != None:
@@ -716,11 +745,23 @@ class Cluster(object):
         elif is_text(schema):
             Log.error("Expecting a JSON schema")
         else:
-            schema = wrap(schema)
+            schema = to_data(schema)
+
+        if type != None:
+            if schema.mappings:
+                if type not in schema.mappings:
+                    Log.error(
+                        "if you declare type={{type}}, and you declare a schema, then {{type|quote}} is expected in the schema",
+                        type=type
+                    )
+            else:
+                schema.mappings = {type: {}}
+        elif not schema.mappings:
+            Log.error("Expecting a schema, even if only the name of the type")
 
         for k, m in items(schema.mappings):
             if typed:
-                m = schema.mappings[k] = wrap(add_typed_annotations(m))
+                m = schema.mappings[k] = to_data(add_typed_annotations(m))
 
             m.date_detection = False  # DISABLE DATE DETECTION
             m.dynamic_templates = (
@@ -833,7 +874,7 @@ class Cluster(object):
         self.metatdata_last_updated = now  # ONLY UPDATE AFTER WE GET A RESPONSE
 
         with self.metadata_locker:
-            self._metadata = wrap(response.metadata)
+            self._metadata = to_data(response.metadata)
             for new_index_name, new_meta in self._metadata.indices.items():
                 old_index = old_indices[literal_field(new_index_name)]
                 if not old_index:
@@ -851,7 +892,7 @@ class Cluster(object):
                 if not new_index:
                     DEBUG_METADATA_UPDATE and Log.note("Old index lost: {{index}} at {{time}}", index=old_index_name, time=now)
                     self.index_last_updated[old_index_name] = now
-        self.info = wrap(self.get("/", stream=False))
+        self.info = to_data(self.get("/", stream=False))
         self._version = self.info.version.number
         return self._metadata
 
@@ -877,7 +918,7 @@ class Cluster(object):
             Log.error("data must be utf8 encoded string")
 
         try:
-            heads = wrap(kwargs).headers
+            heads = to_data(kwargs).headers
             heads["Accept-Encoding"] = "gzip,deflate"
             heads["Content-Type"] = mimetype.JSON
 
@@ -970,7 +1011,7 @@ class Cluster(object):
     def put(self, path, **kwargs):
         url = self.settings.host + ":" + text(self.settings.port) + path
 
-        heads = wrap(kwargs).headers
+        heads = to_data(kwargs).headers
         heads[text("Accept-Encoding")] = text("gzip,deflate")
         heads[text("Content-Type")] = mimetype.JSON
 
@@ -1037,7 +1078,7 @@ def proto_name(prefix, timestamp=None):
 
 
 def sort(values):
-    return wrap(sorted(values))
+    return to_data(sorted(values))
 
 
 def scrub(r):
@@ -1046,7 +1087,7 @@ def scrub(r):
     CONVERT STRINGS OF NUMBERS TO NUMBERS
     RETURNS **COPY**, DOES NOT CHANGE ORIGINAL
     """
-    return wrap(_scrub(r))
+    return to_data(_scrub(r))
 
 
 def _scrub(r):
@@ -1153,7 +1194,7 @@ class Alias(object):
                 # TODO: MERGE THE mappings OF ALL candidates, DO NOT JUST PICK THE LAST ONE
 
                 index = "dummy value"
-                schema = wrap({"properties": {}})
+                schema = dict_to_data({"properties": {}})
                 for _, ind in jx.sort(candidates, {"value": 0, "sort": -1}):
                     mapping = ind.mappings[self.settings.type]
                     schema.properties = _merge_mapping(schema.properties, mapping.properties)
@@ -1183,48 +1224,10 @@ class Alias(object):
             mapping = self.cluster.get(self.path + "/_mapping")
             if not mapping[self.settings.type]:
                 Log.error("{{index}} does not have type {{type}}", self.settings)
-            return wrap({"mappings": mapping[self.settings.type]})
-
-    def delete(self, filter):
-        self.cluster.get_metadata()
-
-        if self.cluster.info.version.number.startswith("1."):
-            query = {"query": {"filtered": {
-                "query": {"match_all": {}},
-                "filter": filter
-            }}}
-        else:
-            raise NotImplementedError
-
-        self.debug and Log.note("Delete documents:\n{{query}}", query=query)
-
-        keep_trying = True
-        while keep_trying:
-            result = self.cluster.delete(
-                self.path + "/_query",
-                data=value2json(query),
-                timeout=60
-            )
-            keep_trying = False
-            for name, status in result._indices.items():
-                if status._shards.failed > 0:
-                    if status._shards.failures[0].reason.find("rejected execution (queue capacity ") >= 0:
-                        keep_trying = True
-                        Till(seconds=5).wait()
-                        break
-
-            if not keep_trying:
-                for name, status in result._indices.items():
-                    if status._shards.failed > 0:
-                        Log.error(
-                            "ES shard(s) report Failure to delete from {{index}}: {{message}}.  Query was {{query}}",
-                            index=name,
-                            query=query,
-                            message=status._shards.failures[0].reason
-                        )
+            return dict_to_data({"mappings": mapping[self.settings.type]})
 
     def search(self, query, timeout=None, scroll=None):
-        query = wrap(query)
+        query = to_data(query)
         try:
             suffix = "/_search?scroll=" + scroll if scroll else "/_search"
             path = self.path + suffix
@@ -1280,13 +1283,14 @@ def parse_properties(parent_index_name, parent_name, nested_path, esProperties):
             es_column='.',
             es_type="object",
             jx_type=OBJECT,
+            cardinality=1,
             last_updated=Date.now(),
             nested_path=nested_path
         ))
 
-    for name, property in esProperties.items():
+    for short_name, property in esProperties.items():
         index_name = parent_index_name
-        column_name = concat_field(parent_name, name)
+        column_name = concat_field(parent_name, short_name)
         jx_name = column_name
 
         if property.type == "nested" and property.properties:
@@ -1300,6 +1304,7 @@ def parse_properties(parent_index_name, parent_name, nested_path, esProperties):
                 es_column=column_name,
                 es_type="nested",
                 jx_type=NESTED,
+                cardinality=1,
                 multi=1001,
                 last_updated=Date.now(),
                 nested_path=nested_path
@@ -1316,6 +1321,7 @@ def parse_properties(parent_index_name, parent_name, nested_path, esProperties):
                 es_column=column_name,
                 es_type="source" if property.enabled == False else "object",
                 jx_type=OBJECT,
+                cardinality=1,
                 last_updated=Date.now(),
                 nested_path=nested_path
             ))
@@ -1325,7 +1331,7 @@ def parse_properties(parent_index_name, parent_name, nested_path, esProperties):
         if not property.type:
             continue
 
-        cardinality = 0 if not (property.store or property.enabled) and name != '_id' else None
+        cardinality = 0 if not (property.store or property.enabled) and short_name != '_id' else None
 
         if property.fields:
             child_columns = parse_properties(index_name, column_name, nested_path, property.fields)
@@ -1334,7 +1340,18 @@ def parse_properties(parent_index_name, parent_name, nested_path, esProperties):
                     cc.cardinality = None
             columns.extend(child_columns)
 
-        if property.type in es_type_to_json_type.keys():
+        if short_name == EXISTS_TYPE:
+            columns.append(Column(
+                name=jx_name,
+                es_index=index_name,
+                es_column=column_name,
+                es_type=property.type,
+                jx_type=EXISTS,
+                cardinality=1,
+                last_updated=Date.now(),
+                nested_path=nested_path
+            ))
+        elif property.type in es_type_to_json_type.keys():
             columns.append(Column(
                 name=jx_name,
                 es_index=index_name,
@@ -1345,7 +1362,7 @@ def parse_properties(parent_index_name, parent_name, nested_path, esProperties):
                 last_updated=Date.now(),
                 nested_path=nested_path
             ))
-            if property.index_name and name != property.index_name:
+            if property.index_name and short_name != property.index_name:
                 columns.append(Column(
                     name=jx_name,
                     es_index=index_name,
@@ -1425,7 +1442,7 @@ def get_encoder(id_info):
 
 
 def random_id():
-    return Random.hex(40)
+    return Random.base64(25, extra="-_")
 
 
 def _merge_mapping(a, b):
@@ -1456,7 +1473,7 @@ def retro_schema(schema):
     :param schema:
     :return:
     """
-    output = wrap({
+    output = dict_to_data({
         "mappings": {
             typename: {
                 "dynamic_templates": [
@@ -1572,7 +1589,7 @@ def diff_schema(A, B):
     return output
 
 
-DEFAULT_DYNAMIC_TEMPLATES = wrap([
+DEFAULT_DYNAMIC_TEMPLATES = list_to_data([
     {
         "default_typed_boolean": {
             "mapping": {

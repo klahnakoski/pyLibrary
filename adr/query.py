@@ -87,7 +87,7 @@ def load_query_context(name, add_contexts=[]):
         return query_contexts
 
 
-def run_query(name, args):
+def run_query(name, args, cache=True):
     """Loads and runs the specified query, yielding the result.
 
     Given name of a query, this method will first read the query
@@ -101,6 +101,7 @@ def run_query(name, args):
 
     :param str name: name of the query file to be loaded.
     :param Namespace args: namespace of ActiveData configs.
+    :param bool cache: Deafults to True. It controls if to cache the results.
     :return str: json-formatted string.
     """
     context = vars(args)
@@ -123,9 +124,9 @@ def run_query(name, args):
     query_hash = config.cache._hash(query_str)
 
     key = f"run_query.{name}.{query_hash}"
-    if config.cache.has(key):
-        logger.debug(f"Loading results from cache")
-        return config.cache.get(key)
+    result = config.cache.get(key)
+    if result is not None:
+        return result
 
     logger.trace(f"JSON representation of query:\n{query_str}")
     result = query_activedata(query_str, config.url)
@@ -162,7 +163,8 @@ def run_query(name, args):
         logger.debug("JSON Response:\n{response}", response=json.dumps(result, indent=2))
         raise MissingDataError("ActiveData didn't return any data.")
 
-    config.cache.put(key, result, config["cache"]["retention"])
+    if cache:
+        config.cache.put(key, result, config["cache"]["retention"])
     return result
 
 

@@ -5,6 +5,7 @@ from mo_logs import Log
 from pyLibrary.sql import SQL_UPDATE, SQL_SET
 from pyLibrary.sql.sqlite import sql_query, sql_create, sql_insert, quote_column, sql_eq, Sqlite
 
+
 ROOT_USER = wrap({"_id": 1})
 VERSION_TABLE = "security.version"
 GROUP_TABLE = "security.groups"
@@ -197,29 +198,48 @@ class Permissions:
 
         return Data(zip(result.header, first(result.data)))
 
-    def add_permission(self, user, resource, owner):
+    def add_permission(self, user, resource, actor):
         """
         :param user:
         :param resource:
-        :param owner:
+        :param actor:
         :return:
         """
         user = wrap(user)
         resource = wrap(resource)
-        owner = wrap(owner)
-
-        # DOES owner HAVE ACCESS TO resource?
-        if not self.verify_allowance(owner, resource):
-            Log.error("not allowed to assign resource")
 
         # DOES THIS PERMISSION EXIST ALREADY
         allowance = self.verify_allowance(user, resource)
         if allowance:
-            if any(r.owner == owner for r in allowance):
+            if any(r.owner == actor for r in allowance):
                 Log.error("already allowed via {{allowance}}", allowance=allowance)
             # ALREADY ALLOWED, BUT MULTIPLE PATHS MAY BE OK
+
+        actor = wrap(actor)
+        qualified_owners = [
+            owner
+            for owner in self.is_agent_for(actor)
+            if self.verify_allowance(owner, resource)
+        ]
+
+        if not qualified_owners:
+            Log.error("not allowed to assign resource")
+        elif actor in qualified_owners:
+            pass
+        elif len(qualified_owners) > 1:
+            Log.error("more than one owner has access to resource, who are you acting for?")
+
+        owner = qualified_owners[0]
         with self.db.transaction() as t:
             t.execute(sql_insert(PERMISSION_TABLE, {"user": user._id, "resource": resource._id, "owner": owner._id}))
+
+    def is_agent_for(self, actor):
+        """
+        AGENTS CAN ASSIGN THE RESOURCES OF OWNERS, IF GIVEN PERMISSION
+        :param actor:
+        :return: LIST OF owners TO ACT AS
+        """
+        return [actor]  # AN ACTOR CAN ACT FOR HIMSELF, AT LEAST
 
     def verify_allowance(self, user, resource):
         """
@@ -288,53 +308,3 @@ class Permissions:
         with self.db.transaction() as t:
             t.execute(sql_insert(table, records))
 
-
-def id_generator(db):
-    """
-    INSTALL AN ID GENERATOR
-    """
-    about = db.about(VERSION_TABLE)
-    if not about:
-        with db.transaction() as t:
-            t.execute(sql_create(VERSION_TABLE, {"version": "TEXT", "next_id": "LONG"}))
-            t.execute(sql_insert(VERSION_TABLE, {"version": "1.0", "next_id": 1000}))
-    else:
-        for cid, name, dtype, notnull, dfft_value, pk in about:
-            if name == "next_id":
-                break
-        else:
-            with db.transaction() as t:
-                t.execute(
-                    "ALTER TABLE "
-                    + quote_column(VERSION_TABLE)
-                    + " ADD COLUMN next_id LONG"
-                )
-                t.execute(
-                    SQL_UPDATE
-                    + quote_column(VERSION_TABLE)
-                    + SQL_SET
-                    + sql_eq(next_id=1000)
-                )
-
-    def _gen_ids():
-        while True:
-            with db.transaction() as t:
-                top_id = first(
-                    first(
-                        t.query(
-                            sql_query({"select": "next_id", "from": VERSION_TABLE})
-                        ).data
-                    )
-                )
-                max_id = top_id + 1000
-                t.execute(
-                    SQL_UPDATE
-                    + quote_column(VERSION_TABLE)
-                    + SQL_SET
-                    + sql_eq(next_id=max_id)
-                )
-            while top_id < max_id:
-                yield top_id
-                top_id += 1
-
-    return _gen_ids().__next__

@@ -51,7 +51,7 @@ class QueryTable(GroupbyTable, Facts):
         return bool(counter)
 
     def delete(self, where):
-        filter = SQLang[jx_expression(where)].to_sql(self.schema)
+        filter = SQLang[jx_expression(where)].to_sql(self.schema).sql.b
         with self.db.transaction() as t:
             t.execute(ConcatSQL(SQL_DELETE, SQL_FROM, quote_column(self.snowflake.fact_name), SQL_WHERE, filter))
 

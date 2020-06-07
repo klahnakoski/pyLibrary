@@ -29,11 +29,13 @@ from mo_sql import SQL, SQL_AND, SQL_ASC, SQL_DESC, SQL_FROM, SQL_IS_NULL, SQL_L
 from mo_times import Date, DAY
 from pyLibrary import convert
 from pyLibrary.meta import cache
-from pymysql import InterfaceError, connect, cursors
+from pymysql import connect, cursors
 
 DEBUG = False
 MAX_BATCH_SIZE = 1
 EXECUTE_TIMEOUT = 5 * 600 * 1000  # in milliseconds  SET TO ZERO (OR None) FOR HOST DEFAULT TIMEOUT
+
+MYSQL_EXECUTABLE = "mysql"
 
 all_db = []
 
@@ -352,7 +354,8 @@ class MySQL(object):
 
             return result
         except Exception as e:
-            if isinstance(e, InterfaceError) or e.message.find("InterfaceError") >= 0:
+            e = Except.wrap(e)
+            if "InterfaceError" in e:
                 Log.error("Did you close the db connection?", e)
             Log.error("Problem executing SQL:\n{{sql|indent}}", sql=sql, cause=e, stack_depth=1)
 
@@ -520,7 +523,7 @@ def execute_sql(
     # We have no way to execute an entire SQL file in bulk, so we
     # have to shell out to the commandline client.
     args = [
-        "mysql",
+        MYSQL_EXECUTABLE,
         "-h{0}".format(host),
         "-u{0}".format(username),
         "-p{0}".format(password)
@@ -551,6 +554,7 @@ def execute_sql(
             return_code=proc.returncode,
             output=output
         )
+
 
 @override
 def execute_file(

@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 from datetime import timedelta
 from time import time
 
-from mo_dots import coalesce, wrap
+from mo_dots import coalesce, to_data
 from mo_logs import Log
 from mo_times.durations import Duration
 
@@ -29,15 +29,15 @@ class Timer(object):
     """
 
     def __init__(
-            self,
-            description,  # A DESCRIPTION
-            param=None,  # description CAN HAVE PARAMETERS, PUT THEM HERE
-            silent=None,  # DO NOT LOG
-            verbose=None,  # PLEASE LOG
-            too_long=0  # ONLY LOG IF MORE THAN THIS NUMBER OF SECONDS
+        self,
+        description,  # A DESCRIPTION
+        param=None,  # description CAN HAVE PARAMETERS, PUT THEM HERE
+        silent=None,  # DO NOT LOG
+        verbose=None,  # PLEASE LOG
+        too_long=0,  # ONLY LOG IF MORE THAN THIS NUMBER OF SECONDS
     ):
         self.template = description
-        self.param = wrap(coalesce(param, {}))
+        self.param = to_data(coalesce(param, {}))
         self.verbose = coalesce(verbose, False if silent is True else True)
         self.agg = 0
         self.too_long = too_long  # ONLY SHOW TIMING FOR DURATIONS THAT ARE too_long
@@ -58,9 +58,17 @@ class Timer(object):
         self.param.duration = timedelta(seconds=self.interval)
         if self.verbose:
             if self.too_long == 0:
-                Log.note("Timer end  : " + self.template + " (took {{duration}})", default_params=self.param, stack_depth=1)
+                Log.note(
+                    "Timer end  : " + self.template + " (took {{duration}})",
+                    default_params=self.param,
+                    stack_depth=1,
+                )
             elif self.interval >= self.too_long:
-                Log.note("Time too long: " + self.template + " ({{duration}})", default_params=self.param, stack_depth=1)
+                Log.note(
+                    "Time too long: " + self.template + " ({{duration}})",
+                    default_params=self.param,
+                    stack_depth=1,
+                )
 
     @property
     def duration(self):

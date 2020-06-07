@@ -61,7 +61,7 @@ from mo_sql import (
 )
 from jx_mysql.mysql import MySQL, quote_column, sql_alias
 
-DEBUG = True
+DEBUG = False
 
 
 class MySqlSnowflakeExtractor(object):
@@ -115,6 +115,9 @@ class MySqlSnowflakeExtractor(object):
             SQL_ORDERBY,
             sql_list(sort),
         )
+        if DEBUG:
+            Log.note("{{sql}}", sql=union_all_sql)
+
         return union_all_sql
 
     def path_not_allowed(self, path):
@@ -511,6 +514,7 @@ class MySqlSnowflakeExtractor(object):
 
                         if (
                             col.is_id
+                            and len(nested_path) == 1
                             and col.table.name == fact_table.name
                             and col.table.schema == fact_table.schema
                         ):
@@ -866,6 +870,7 @@ class MySqlSnowflakeExtractor(object):
 
             if not_null_column_seen:
                 sql.append(SQL_SELECT + sql_list(selects) + SQL("").join(sql_joins))
+
         return sql
 
     def construct_docs(self, cursor, append, please_stop):
@@ -885,6 +890,9 @@ class MySqlSnowflakeExtractor(object):
         with Timer("Downloading from MySQL"):
             curr_doc = Null
             row_count = 0
+            if DEBUG:
+                cursor = list(cursor)
+                Log.note("{{data|json}}", data=cursor)
             for row in cursor:
                 row_count += 1
                 if please_stop:
@@ -905,32 +913,34 @@ class MySqlSnowflakeExtractor(object):
                         next_object = Data()
                     next_object[c.put] = value
 
-                # OBJECT HAS BEEN CONSTRUCTED, LET'S PLACE IT WHERE IT BELONGS
-                if len(nested_path) > 1:
-                    children = [curr_doc]
-                    steps = list(reversed(nested_path))
-                    parent_path = steps[0]
-                    for path in steps[1:]:
+                if len(nested_path) == 1:
+                    # TOP LEVEL DOCUMENT, EMIT THE curr_doc AND ADVANCE
+                    if curr_doc:
+                        append(curr_doc["id"])
+                        doc_count += 1
+                    curr_doc = next_object
+                    continue
+
+                # LET'S PLACE next_object AT THE CORRECT NESTED LEVEL
+                children = [curr_doc]
+                for parent_path, path in jx.pairs(reversed(nested_path)):
+                    relative_path = relative_field(path, parent_path)
+                    try:
                         parent = children[-1]
-                        relative_path = relative_field(path, parent_path)
                         children = unwrap(parent[relative_path])
                         if not children:
                             children = parent[relative_path] = []
-                        parent_path = path
+                    except Exception as e:
+                        Log.error(
+                            "Document construction error: path={{path}}\nsteps={{steps}}\ndoc={{curr_doc}}\nnext={{next_object}}",
+                            path=path,
+                            steps=nested_path,
+                            curr_doc=curr_doc,
+                            next_object=next_object,
+                            cause=e
+                        )
 
-                    children.append(next_object)
-                    continue
-
-                # THE TOP-LEVEL next_object HAS BEEN ENCOUNTERED, EMIT THE PREVIOUS, AND COMPLETED curr_doc
-                if curr_doc == next_object:
-                    Log.error(
-                        "Expecting records. Did you select the wrong schema, or select records that do not exist?"
-                    )
-
-                if curr_doc:
-                    append(curr_doc["id"])
-                    doc_count += 1
-                curr_doc = next_object
+                children.append(next_object)
 
             # DEAL WITH LAST RECORD
             if curr_doc:
