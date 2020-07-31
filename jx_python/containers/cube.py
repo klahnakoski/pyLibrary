@@ -19,6 +19,7 @@ from mo_dots import Data, FlatList, Null, is_data, is_list, listwrap, leaves_to_
     dict_to_data
 from mo_dots.lists import EMPTY
 from mo_future import is_text, transpose
+from mo_future.exports import export
 from mo_logs import Log
 from mo_math import MAX, OR
 
@@ -253,6 +254,9 @@ class Cube(Container):
     def __getattr__(self, item):
         return self.data[item]
 
+    def items(self):
+        return self.data.items()
+
     def get_columns(self):
         return self.edges + listwrap(self.select)
 
@@ -469,3 +473,6 @@ class Cube(Container):
             data={k: v.cube for k, v in self.data.items()},
             meta=self.meta
         )
+
+
+export("jx_base.container", Cube)

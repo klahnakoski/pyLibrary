@@ -8,25 +8,24 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
-
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import operators, jx_expression, _jx_expression, simplified
+from jx_base.expressions._utils import (
+    operators,
+    jx_expression,
+    _jx_expression,
+    simplified,
+)
 from jx_base.language import BaseExpression, ID, is_expression, is_op
 from mo_dots import is_data, is_sequence, is_container
 from mo_future import items as items_, text
+from mo_future.exports import expect
 from mo_json import BOOLEAN, OBJECT, value2json
 from mo_logs import Log
 
-FALSE, Literal, is_literal, MissingOp, NotOp, NULL, Variable = [None]*7
+FALSE, Literal, is_literal, MissingOp, NotOp, NULL, Variable = expect(
+    "FALSE", "Literal", "is_literal", "MissingOp", "NotOp", "NULL", "Variable"
+)
 
 
 class Expression(BaseExpression):
@@ -138,19 +137,13 @@ class Expression(BaseExpression):
         OVERRIDE THIS METHOD TO SIMPLIFY
         :return:
         """
-        return self.lang[NotOp(self.missing()).partial_eval()]
+        return self.lang[NotOp(self.missing())].partial_eval()
 
-    def is_true(self):
+    def invert(self):
         """
-        :return: True, IF THIS EXPRESSION ALWAYS RETURNS BOOLEAN true
+        :return: TRUE IF FALSE
         """
-        return FALSE  # GOOD DEFAULT ASSUMPTION
-
-    def is_false(self):
-        """
-        :return: True, IF THIS EXPRESSION ALWAYS RETURNS BOOLEAN false
-        """
-        return FALSE  # GOOD DEFAULT ASSUMPTION
+        return self.lang[NotOp(self)]
 
     @simplified
     def partial_eval(self):
@@ -180,6 +173,5 @@ class Expression(BaseExpression):
         Log.error(
             "{{type}} object has no attribute {{item}}, did you .register_ops() for {{type}}?",
             type=self.__class__.__name__,
-            item=item
+            item=item,
         )
-

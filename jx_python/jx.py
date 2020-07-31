@@ -28,6 +28,7 @@ import mo_dots
 from mo_dots import Data, FlatList, Null, coalesce, is_container, is_data, is_list, is_many, join_field, listwrap, set_default, split_field, unwrap, to_data, dict_to_data, list_to_data
 from mo_dots.objects import DataObject
 from mo_future import is_text, sort_using_cmp
+from mo_future.exports import export
 from mo_logs import Log
 import mo_math
 from mo_math import MIN, UNION
@@ -591,13 +592,45 @@ def count(values):
     return sum((1 if v != None else 0) for v in values)
 
 
+def slide(values, size):
+    """
+    RETURN A SLIDING SERIES OF WINDOWS OF size
+    """
+    if size == 2:
+        yield pairwise(values)
+        return
+
+    i = iter(values)
+
+    # FILL THE WINDOW
+    window = []
+    for _ in range(0, size):
+        try:
+            window.append(next(i))
+        except StopIteration:
+            # WINDOW IS BIGGER THAN values, EMIT EVERYTHING WE GOT
+            yield builtin_tuple(window)
+            return
+
+    # WE NOW HAVE A FULL WINDOW
+    window = builtin_tuple(window)
+    for t in i:
+        yield window
+        window = window[1:] + (t, )
+
+    yield window
+
+
 def pairwise(values):
     """
     WITH values = [a, b, c, d, ...]
     RETURN [(a, b), (b, c), (c, d), ...]
     """
     i = iter(values)
-    a = next(i)
+    try:
+        a = next(i)
+    except StopIteration:
+        return
 
     for b in i:
         yield (a, b)
@@ -1082,6 +1115,7 @@ def reverse(vals):
     # TODO: Test how to do this fastest
     if not hasattr(vals, "len"):
         vals = list(vals)
+
     l = len(vals)
     output = [None] * l
 
@@ -1098,3 +1132,6 @@ def countdown(vals):
 
 
 from jx_python.lists.aggs import is_aggs, list_aggs
+
+
+export("jx_base.container", run)

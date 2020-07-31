@@ -19,14 +19,15 @@ from jx_base.expressions import (
     simplified,
     BooleanOp)
 from jx_base.language import is_op
-from jx_elasticsearch.es52.painless import Painless
-from jx_elasticsearch.es52.expressions._utils import ES52
+from jx_elasticsearch.es52.expressions.utils import ES52
 from jx_elasticsearch.es52.expressions.not_op import NotOp
+from jx_elasticsearch.es52.painless import Painless
+from mo_future.exports import export
 from mo_json import STRING
 
 
 class FindOp(FindOp_):
-    def to_esfilter(self, schema):
+    def to_es(self, schema):
         if (
             is_op(self.value, Variable_)
             and is_literal(self.find)
@@ -43,7 +44,7 @@ class FindOp(FindOp_):
                 }
         # CONVERT TO SCRIPT, SIMPLIFY, AND THEN BACK TO FILTER
         self.simplified = False
-        return ES52[Painless[self].partial_eval()].to_esfilter(schema)
+        return ES52[Painless[self].partial_eval()].to_es(schema)
 
     @simplified
     def partial_eval(self):
@@ -61,7 +62,4 @@ class FindOp(FindOp_):
         return BooleanOp(self)
 
 
-# EXPORT
-from jx_elasticsearch.es52.expressions import boolean_op
-boolean_op.FindOp = FindOp
-del boolean_op
+export("jx_elasticsearch.es52.expressions.boolean_op", FindOp)

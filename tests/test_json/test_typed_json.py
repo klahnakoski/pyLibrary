@@ -21,7 +21,7 @@ class TestJSON(unittest.TestCase):
     def test_date(self):
         value = {"test": datetime.date(2013, 11, 13)}
         test1 = typed_encode(value)
-        expected = u'{"test":{' + quote(NUMBER_TYPE) + u':1384318800},' + quote(EXISTS_TYPE) + u':1}'
+        expected = u'{"test":{' + quote(NUMBER_TYPE) + u':1384300800},' + quote(EXISTS_TYPE) + u':1}'
         self.assertEqual(test1, expected)
 
     def test_unicode1(self):

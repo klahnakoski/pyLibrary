@@ -12,12 +12,43 @@ from __future__ import absolute_import, division, unicode_literals
 from copy import copy, deepcopy
 from decimal import Decimal
 
-from mo_dots import _getdefault, coalesce, get_logger, hash_value, listwrap, literal_field
+from mo_dots.lists import is_list, FlatList
+from mo_dots.nones import Null, NullType
 from mo_dots.utils import CLASS
-from mo_future import generator_types, iteritems, long, none_type, text, MutableMapping, OrderedDict
+from mo_dots.utils import get_logger
+from mo_future import (
+    generator_types,
+    iteritems,
+    long,
+    none_type,
+    text,
+    MutableMapping,
+    OrderedDict,
+)
+from mo_future.exports import expect
+
+(
+    _getdefault,
+    coalesce,
+    hash_value,
+    listwrap,
+    literal_field,
+    from_data,
+    to_data,
+) = expect(
+    "_getdefault",
+    "coalesce",
+    "hash_value",
+    "listwrap",
+    "literal_field",
+    "from_data",
+    "to_data",
+)
+
 
 _get = object.__getattribute__
 _set = object.__setattr__
+_new = object.__new__
 
 SLOT = str("_internal_dict")
 DEBUG = False
@@ -38,7 +69,7 @@ class Data(object):
         if DEBUG:
             d = self._internal_dict
             for k, v in kwargs.items():
-                d[literal_field(k)] = unwrap(v)
+                d[literal_field(k)] = from_data(v)
         else:
             if args:
                 args0 = args[0]
@@ -50,7 +81,7 @@ class Data(object):
                 else:
                     _set(self, SLOT, dict(args0))
             elif kwargs:
-                _set(self, SLOT, unwrap(kwargs))
+                _set(self, SLOT, from_data(kwargs))
             else:
                 _set(self, SLOT, {})
 
@@ -116,14 +147,14 @@ class Data(object):
             return Null
         if key == ".":
             # SOMETHING TERRIBLE HAPPENS WHEN value IS NOT A Mapping;
-            # HOPEFULLY THE ONLY OTHER METHOD RUN ON self IS unwrap()
-            v = unwrap(value)
+            # HOPEFULLY THE ONLY OTHER METHOD RUN ON self IS from_data()
+            v = from_data(value)
             _set(self, SLOT, v)
             return v
 
         try:
             d = self._internal_dict
-            value = unwrap(value)
+            value = from_data(value)
             if key.find(".") == -1:
                 if value is None:
                     d.pop(key, None)
@@ -139,13 +170,14 @@ class Data(object):
                     d.pop(seq[-1], None)
                 except Exception as _:
                     pass
-            elif d==None:
+            elif d == None:
                 d[literal_field(seq[-1])] = value
             else:
                 d[seq[-1]] = value
             return self
         except Exception as e:
             from mo_logs import Log
+
             Log.error("can not set key={{key}}", key=key, cause=e)
 
     def __getattr__(self, key):
@@ -155,7 +187,7 @@ class Data(object):
 
         # OPTIMIZED to_data()
         if t is dict:
-            m = object.__new__(Data)
+            m = _new(Data)
             _set(m, SLOT, v)
             return m
         elif t in (none_type, NullType):
@@ -163,13 +195,13 @@ class Data(object):
         elif t is list:
             return FlatList(v)
         elif t in generator_types:
-            return FlatList(list(unwrap(vv) for vv in v))
+            return FlatList(list(from_data(vv) for vv in v))
         else:
             return v
 
     def __setattr__(self, key, value):
         d = self._internal_dict
-        value = unwrap(value)
+        value = from_data(value)
         if value is None:
             d = self._internal_dict
             d.pop(key, None)
@@ -224,7 +256,7 @@ class Data(object):
             elif isinstance(sv, Data):
                 sv |= ov
             elif is_data(sv):
-                wv = object.__new__(Data)
+                wv = _new(Data)
                 _set(wv, SLOT, sv)
                 wv |= ov
         return self
@@ -246,7 +278,7 @@ class Data(object):
 
         if _get(other, CLASS) not in data_types:
             return False
-        e = unwrap(other)
+        e = from_data(other)
         for k, v in d.items():
             if e.get(k) != v:
                 return False
@@ -264,7 +296,11 @@ class Data(object):
 
     def items(self):
         d = self._internal_dict
-        return [(k, to_data(v)) for k, v in d.items() if v != None or _get(v, CLASS) in data_types]
+        return [
+            (k, to_data(v))
+            for k, v in d.items()
+            if v != None or _get(v, CLASS) in data_types
+        ]
 
     def leaves(self, prefix=None):
         """
@@ -348,7 +384,7 @@ class Data(object):
 
     def __repr__(self):
         try:
-            return "Data("+dict.__repr__(self._internal_dict)+")"
+            return "Data(" + dict.__repr__(self._internal_dict) + ")"
         except Exception as e:
             return "Data()"
 
@@ -372,7 +408,7 @@ def leaves(value, prefix=None):
             if _get(v, CLASS) in data_types:
                 output.extend(leaves(v, prefix=prefix + literal_field(k) + "."))
             else:
-                output.append((prefix + literal_field(k), unwrap(v)))
+                output.append((prefix + literal_field(k), from_data(v)))
         except Exception as e:
             get_logger().error("Do not know how to handle", cause=e)
     return output
@@ -390,13 +426,13 @@ def _str(value, depth):
     FOR DEBUGGING POSSIBLY RECURSIVE STRUCTURES
     """
     output = []
-    if depth >0 and _get(value, CLASS) in data_types:
+    if depth > 0 and _get(value, CLASS) in data_types:
         for k, v in value.items():
             output.append(str(k) + "=" + _str(v, depth - 1))
         return "{" + ",\n".join(output) + "}"
-    elif depth >0 and is_list(value):
+    elif depth > 0 and is_list(value):
         for v in value:
-            output.append(_str(v, depth-1))
+            output.append(_str(v, depth - 1))
         return "[" + ",\n".join(output) + "]"
     else:
         return str(type(value))
@@ -412,7 +448,7 @@ def _iadd(self, other):
 
     if not _get(other, CLASS) in data_types:
         get_logger().error("Expecting Data")
-    d = unwrap(self)
+    d = from_data(self)
     for ok, ov in other.items():
         sv = d.get(ok)
         if sv == None:
@@ -422,7 +458,7 @@ def _iadd(self, other):
                 get_logger().error(
                     "can not add {{stype}} with {{otype}",
                     stype=_get(sv, CLASS).__name__,
-                    otype=_get(ov, CLASS).__name__
+                    otype=_get(ov, CLASS).__name__,
                 )
             elif is_list(sv):
                 d[ok].append(ov)
@@ -439,14 +475,14 @@ def _iadd(self, other):
                 get_logger().error(
                     "can not add {{stype}} with {{otype}",
                     stype=_get(sv, CLASS).__name__,
-                    otype=_get(ov, CLASS).__name__
+                    otype=_get(ov, CLASS).__name__,
                 )
         else:
             if _get(sv, CLASS) in data_types:
                 get_logger().error(
                     "can not add {{stype}} with {{otype}",
                     stype=_get(sv, CLASS).__name__,
-                    otype=_get(ov, CLASS).__name__
+                    otype=_get(ov, CLASS).__name__,
                 )
             else:
                 d[ok].append(ov)
@@ -473,6 +509,3 @@ def is_data(d):
     return d.__class__ in data_types
 
 
-from mo_dots.nones import Null, NullType
-from mo_dots.lists import is_list, FlatList
-from mo_dots import unwrap, to_data

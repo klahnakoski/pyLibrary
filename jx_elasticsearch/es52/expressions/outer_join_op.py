@@ -9,30 +9,21 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import EsNestedOp as EsNestedOp_
+from jx_base.expressions import OuterJoinOp as OuterJoinOp_
 
 
-class EsNestedOp(EsNestedOp_):
+class OuterJoinOp(OuterJoinOp_):
+
     def to_esfilter(self, schema):
-        if self.path.var == ".":
-            return self.select.to_es() | {"query": self.query.to_esfilter(schema), "from": 0}
+        if self.frum.var == ".":
+            return self.select.to_es() | {"query": self.where.to_esfilter(schema), "from": 0}
         else:
             return {
                 "nested": {
-                    "path": self.path.var,
-                    "query": self.query.to_esfilter(schema),
+                    "path": self.frum.var,
+                    "query": self.where.to_esfilter(schema),
                     "inner_hits": (self.select.to_es() | {"size": 100000})
                     if self.select
                     else None,
                 }
             }
-
-
-# EXPORT
-from jx_elasticsearch.es52.expressions import and_op
-and_op.EsNestedOp = EsNestedOp
-del and_op
-
-from jx_elasticsearch.es52.expressions import or_op
-or_op.EsNestedOp = EsNestedOp
-del or_op

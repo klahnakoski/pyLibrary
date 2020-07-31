@@ -9,10 +9,11 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-import jx_base
-from jx_base import Column, Table
-from jx_base.meta_columns import META_COLUMNS_NAME, META_COLUMNS_TYPE_NAME, SIMPLE_METADATA_COLUMNS, META_COLUMNS_DESC
+from jx_base import Column
+from jx_base.table import Table
+from jx_base.container import Container
 from jx_base.schema import Schema
+from jx_base.meta_columns import META_COLUMNS_NAME, META_COLUMNS_TYPE_NAME, SIMPLE_METADATA_COLUMNS, META_COLUMNS_DESC
 from jx_python import jx
 from mo_dots import Data, Null, is_data, is_list, unwraplist, to_data, listwrap, split_field
 from mo_dots.lists import last
@@ -32,7 +33,7 @@ COLUMN_EXTRACT_PERIOD = 2 * 60
 ID = {"field": ["es_index", "es_column"], "version": "last_updated"}
 
 
-class ColumnList(Table, jx_base.Container):
+class ColumnList(Table, Container):
     """
     CENTRAL CONTAINER FOR ALL COLUMNS
     SYNCHRONIZED WITH ELASTICSEARCH
@@ -115,11 +116,10 @@ class ColumnList(Table, jx_base.Container):
             )
 
             with Timer("adding columns to structure"):
-                with self.locker:
-                    for r in result.hits.hits._source:
-                        col = doc_to_column(r)
-                        if col:
-                            self._add(col)
+                for r in result.hits.hits._source:
+                    col = doc_to_column(r)
+                    if col:
+                        self._add(col)
 
             Log.note("{{num}} columns loaded", num=result.hits.total)
             if not self.data.get(META_COLUMNS_NAME):
@@ -153,13 +153,25 @@ class ColumnList(Table, jx_base.Container):
                 delete_result = self.es_index.delete_record({"bool": {"should": [
                     {"bool": {"must": [
                         {"term": {"es_index.~s~": es_index}},
-                        {"range": {"timestamp.~n~": {"lt": after.unix}}}
+                        {"range": {"last_updated.~n~": {"lte": after.unix}}}
                     ]}}
                     for es_index, after in results
                 ]}})
-                Log.note("Num deleted = {{delete_result}}", delete_result=delete_result.deleted)
+
+                if DEBUG:
+                    query = {"query": {"terms": {"es_index.~s~": [es_index for es_index, after in results]}}}
+                    verify = self.es_index.search(query)
+                    while verify.hits.total:
+                        Log.note("wait for columns to be gone")
+                        verify = self.es_index.search(query)
+
+                    Log.note(
+                        "Deleted {{delete_result}} columns from {{table}}",
+                        table=[es_index for es_index, after in results],
+                        delete_result=delete_result.deleted
+                    )
             except Exception as cause:
-                Log.error("Problem with delete of table", cause=cause)
+                Log.warning("Problem with delete of table", cause=cause)
             Till(seconds=1).wait()
 
     def _update_from_es(self, please_stop):

@@ -10,15 +10,12 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.domains import ALGEBRAIC
-from jx_base.expressions import LeavesOp, Variable, IDENTITY, TRUE, NULL, FALSE, MissingOp
+from jx_base.expressions import LeavesOp, Variable, IDENTITY, TRUE
 from jx_base.language import is_op
 from jx_base.query import DEFAULT_LIMIT
 from jx_elasticsearch.es52.expressions import (
-    AndOp,
-    ES52,
     split_expression_by_path,
-    EsNestedOp,
-    OrOp)
+    NestedOp, ESSelectOp)
 from jx_elasticsearch.es52.expressions._utils import split_expression_by_path_for_setop
 from jx_elasticsearch.es52.painless import Painless
 from jx_elasticsearch.es52.set_format import set_formatters
@@ -36,12 +33,11 @@ from mo_dots import (
     split_field,
     unwrap,
     unwraplist,
-    dict_to_data,
     Null,
-    to_data, list_to_data)
-from mo_future import first, text
+    list_to_data)
+from mo_future import text
 from mo_json import NESTED, INTERNAL
-from mo_json.typed_encoder import decode_property, unnest_path, untype_path, untyped, EXISTS_TYPE
+from mo_json.typed_encoder import decode_property, unnest_path, untype_path, untyped
 from mo_logs import Log
 from mo_math import AND
 from mo_times.timer import Timer
@@ -76,12 +72,12 @@ def is_setop(es, query):
 
 def get_selects(query):
     schema = query.frum.schema
-    split_select = {".": ESSelect(".")}
+    split_select = {".": ESSelectOp(".")}
 
     def get_select(path):
         es_select = split_select.get(path)
         if not es_select:
-            es_select = split_select[path] = ESSelect(path)
+            es_select = split_select[path] = ESSelectOp(path)
         return es_select
 
     selects = list_to_data([unwrap(s.copy()) for s in listwrap(query.select)])
@@ -97,7 +93,7 @@ def get_selects(query):
                     select.name, relative_field(untype_path(c.name), term.var)
                 )
                 if c.jx_type == NESTED:
-                    get_select(".").set_op = True
+                    get_select(".").get_source = True
                     new_select.append(
                         {
                             "name": full_name,
@@ -130,7 +126,7 @@ def get_selects(query):
 
             if s_column == ".":
                 # PULL ALL SOURCE
-                get_select(".").set_op = True
+                get_select(".").get_source = True
                 new_select.append(
                     {
                         "name": select.name,
@@ -146,7 +142,7 @@ def get_selects(query):
             if leaves:
                 if any(c.jx_type == NESTED for c in leaves):
                     # PULL WHOLE NESTED ARRAYS
-                    get_select(".").set_op = True
+                    get_select(".").get_source = True
                     for c in leaves:
                         if (
                             len(c.nested_path) == 1
@@ -187,7 +183,7 @@ def get_selects(query):
                                     }
                                 )
                             elif c.jx_type == NESTED:
-                                get_select(".").set_op = True
+                                get_select(".").get_source = True
                                 pre_child = join_field(
                                     decode_property(n) for n in split_field(c.name)
                                 )
@@ -285,7 +281,7 @@ def get_selects(query):
         if n.pull:
             continue
         elif is_op(n.value, Variable):
-            if get_select(".").set_op:
+            if get_select(".").get_source:
                 n.pull = get_pull_source(n.value.var)
             elif n.value == "_id":
                 n.pull = jx_expression_to_function("_id")
@@ -300,11 +296,8 @@ def get_selects(query):
 
 def es_setop(es, query):
     schema = query.frum.schema
-
     new_select, split_select = get_selects(query)
-
-    op, split_wheres = split_expression_by_path_for_setop(query.where, schema, split_select.keys())
-    es_query = es_query_proto(split_select, op, split_wheres, schema)
+    es_query = split_expression_by_path_for_setop(query, split_select)
     es_query.size = coalesce(query.limit, DEFAULT_LIMIT)
     es_query.sort = jx_sort_to_es_sort(query.sort, schema)
 
@@ -391,30 +384,6 @@ def get_pull_stats():
     )
 
 
-class ESSelect(object):
-    """
-    ACCUMULATE THE FIELDS WE ARE INTERESTED IN
-    """
-
-    def __init__(self, path):
-        self.path = path
-        self.set_op = False
-        self.fields = []
-        self.scripts = {}
-
-    def to_es(self):
-        return dict_to_data(
-            {
-                "_source": self.set_op,
-                "stored_fields": self.fields if not self.set_op else None,
-                "script_fields": self.scripts if self.scripts else None,
-            }
-        )
-
-    def __data__(self):
-        return self.to_es()
-
-
 def es_query_proto(selects, op, wheres, schema):
     """
     RETURN AN ES QUERY
@@ -429,11 +398,10 @@ def es_query_proto(selects, op, wheres, schema):
         select = selects.get(p, Null)
 
         es_where = op([es_query, where])
-        es_query = EsNestedOp(Variable(p), query=es_where, select=select)
-    return es_query.partial_eval().to_esfilter(schema)
+        es_query = NestedOp(path=Variable(p), query=es_where, select=select)
+    return es_query.partial_eval().to_es(schema)
 
-
-expsected = {
+expected = {
     "_source": False,
     "from": 0,
     "query": {"bool": {"should": [

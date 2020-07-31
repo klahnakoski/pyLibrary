@@ -48,6 +48,12 @@ STALE_METADATA = HOUR
 DATA_KEY = text("data")
 
 
+def iterable(func):
+    output = object()
+    setattr(object, "__iter__", func)
+    return output
+
+
 class Index(object):
     """
     AN ElasticSearch INDEX LIFETIME MANAGEMENT TOOL
@@ -429,6 +435,46 @@ class Index(object):
                 })
         else:
             Log.error("Do not know how to handle ES version {{version}}", version=self.cluster.version)
+
+    def multisearch(self, queries, timeout=None, retry=None):
+        queries = listwrap(queries)
+        try:
+            suffix = "/_msearch"
+            url = self.path + suffix
+
+            @iterable
+            def content():
+                for q in queries:
+                    yield b"{}\n"
+                    yield value2json(q).encode("utf8")
+                    yield b"\n"
+
+            self.debug and Log.note("Query: {{url}}\n{{query|indent}}", url=url, query=queries)
+            response = http.get(
+                url,
+                headers={"Content-Type": "application/x-ndjson"},
+                data=content(),
+                timeout=coalesce(timeout, self.settings.timeout),
+                retry=retry
+            )
+            if response.status_code not in [200, 201]:
+                Log.error(
+                    "Problem with search (path={{path}}):\n{{query|indent}}",
+                    path=self.path + "/_msearch",
+                    query=queries
+                )
+            # TODO: CHECK EACH LINE FOR ERRORS
+            return [
+                value2json(line.decode('utf8'))
+                for line in response.content.splitlines()
+            ]
+        except Exception as cause:
+            Log.error(
+                "Problem with search (path={{path}}):\n{{query|indent}}",
+                path=self.path + "/_msearch",
+                query=queries,
+                cause=cause
+            )
 
     def search(self, query, timeout=None, retry=None, scroll=None):
         query = to_data(query)
@@ -869,8 +915,7 @@ class Cluster(object):
         old_indices = self._metadata.indices
         response = self.get("/_cluster/state", retry={"times": 3}, timeout=30, stream=False)
 
-        self.debug and Log.alert("Got metadata for {{cluster}}", cluster=self.url)
-
+        self.debug and Log.note("Got metadata for {{cluster}} at {{time}}", cluster=self.url, time=now)
         self.metatdata_last_updated = now  # ONLY UPDATE AFTER WE GET A RESPONSE
 
         with self.metadata_locker:
@@ -917,6 +962,8 @@ class Cluster(object):
         else:
             Log.error("data must be utf8 encoded string")
 
+        kwargs['stream'] = True
+
         try:
             heads = to_data(kwargs).headers
             heads["Accept-Encoding"] = "gzip,deflate"
@@ -934,6 +981,8 @@ class Cluster(object):
             if response.status_code not in [200, 201]:
                 Log.error(text(response.reason) + ": " + strings.limit(response.content.decode("latin1"), 1000 if self.debug else 10000))
             self.debug and Log.note("response: {{response}}", response=(response.content.decode('utf8'))[:130])
+
+            # TODO: allow streaming of response.content.hits.hits
             details = json2value(response.content.decode('utf8'))
             if details.error:
                 Log.error(quote2string(details.error))

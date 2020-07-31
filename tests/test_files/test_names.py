@@ -128,3 +128,7 @@ class TestNames(FuzzyTestCase):
         self.assertEqual(test2.filename, "tools/test.backup.json")
         self.assertEqual(test3.filename, "tools/test.-backup.json")
         self.assertEqual(test4.filename, "tools/other.json")
+
+    def test_file_file(self):
+        test1 = File(File("test"))
+        self.assertEqual(test1.filename, "test")
