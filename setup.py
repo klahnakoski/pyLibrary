@@ -15,5 +15,5 @@ setup(
     name='pyLibrary',
     packages=["pyLibrary/aws","pyLibrary/env","pyLibrary"],
     url='https://github.com/klahnakoski/pyLibrary',
-    version='3.47.20042'
+    version='3.98.20292'
 )
