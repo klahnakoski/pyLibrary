@@ -5,6 +5,10 @@ from mo_testing.fuzzytestcase import FuzzyTestCase
 
 class Tests(FuzzyTestCase):
 
+    def test_raises_w_nothing(self):
+        with self.assertRaises():
+            raise Exception("problem")
+
     def test_raises_w_string(self):
         with self.assertRaises("example1"):
             Log.error("example1")
