@@ -17,7 +17,7 @@ from mo_hg.parse import diff_to_json, diff_to_moves
 from mo_logs import constants, Log, startup
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_threads import Till
-from pyLibrary.env import http
+from mo_http import http
 
 
 class TestHg(FuzzyTestCase):

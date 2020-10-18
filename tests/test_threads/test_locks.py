@@ -13,20 +13,18 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import gc
+import objgraph
 import os
 import platform
-import threading
-from time import time
-from unittest import skip
-
-import objgraph
 import psutil
+import threading
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text, PY2, PY3
 from mo_logs import Log, machine_metadata
-from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.timer import Timer
+from time import time
+from unittest import skip
 
 import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
@@ -142,24 +140,26 @@ class TestLocks(FuzzyTestCase):
                 locker.wait()
                 Log.note("thread is expected to get here")
 
-        thread_a = Thread.run("a", loop, a_is_ready)
-        thread_b = Thread.run("b", loop, b_is_ready)
+        thread_a = Thread.run("a", loop, a_is_ready).release()
+        thread_b = Thread.run("b", loop, b_is_ready).release()
 
         a_is_ready.wait()
         b_is_ready.wait()
+        timeout = Till(seconds=1)
         with locker:
             got_signal.go()
-            locker.wait(till=Till(seconds=0.1))
-            Log.note("leaving")
-            pass
-        with locker:
-            Log.note(
-                "leaving again"
-            )  # a AND b SHOULD BE TRIGGERED OUT OF locker.wait()
-            pass
-        Log.note("wait a second")
-        Till(seconds=1).wait()
-        Log.note("verification...")
+            while not thread_a.stopped:
+                # WE MUST CONTINUE TO USE THE locker TO ENSURE THE OTHER THREADS ARE NOT ORPHANED IN THERE
+                locker.wait(till=Till(seconds=0.1))
+                Log.note("wait for a thread")
+            while not thread_b.stopped:
+                # WE MUST CONTINUE TO USE THE locker TO ENSURE THE OTHER THREADS ARE NOT ORPHANED IN THERE
+                locker.wait(till=Till(seconds=0.1))
+                Log.note("wait for b thread")
+        thread_a.join()
+        thread_b.join()
+        if timeout:
+            Log.error("Took too long")
 
         self.assertTrue(bool(thread_a.stopped), "Thread should be done by now")
         self.assertTrue(bool(thread_b.stopped), "Thread should be done by now")
@@ -174,7 +174,7 @@ class TestLocks(FuzzyTestCase):
 
         ps = Till(till=done)
         thread = Thread.run("test", loop, please_stop=ps)
-        thread.stopped.wait()
+        thread.join()
 
         self.assertGreater(
             len(tills),
@@ -200,7 +200,7 @@ class TestLocks(FuzzyTestCase):
         with please_stop.lock:
             q = please_stop.job_queue
             self.assertLessEqual(
-                0 if q is None else len(q), 1, "Expecting only one pending job on go"
+                0 if q is None else len(q), 1, "Expecting only one pending job on go, got "+text(len(q))
             )
         please_stop.go()
         Log.note("test done")

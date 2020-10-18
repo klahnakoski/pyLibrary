@@ -13,14 +13,11 @@ from jx_base.expressions import NULL, Variable as Variable_
 from jx_elasticsearch.es52.painless import first_op
 from jx_elasticsearch.es52.painless.coalesce_op import CoalesceOp
 from jx_elasticsearch.es52.painless.es_script import EsScript
-from mo_json import BOOLEAN, OBJECT, STRING
+from mo_json import OBJECT, STRING
 from mo_logs.strings import quote
 
 
 class Variable(Variable_):
-    def __init__(self, var):
-        Variable_.__init__(self, var)
-
     def to_es_script(self, schema, not_null=False, boolean=False, many=True):
         if self.var == ".":
             return EsScript(type=OBJECT, expr="_source", frum=self)
@@ -39,32 +36,24 @@ class Variable(Variable_):
                 varname = c.es_column
                 frum = Variable(c.es_column)
                 q = quote(varname)
-                if many:
-                    acc.append(
-                        EsScript(
-                            miss=frum.missing(),
-                            type=c.jx_type,
-                            expr="doc[" + q + "].values"
-                            if c.jx_type != BOOLEAN
-                            else "doc[" + q + "].value",
-                            frum=frum,
-                            schema=schema,
-                            many=c.jx_type != BOOLEAN,
-                        )
-                    )
+                if c.multi > 1:
+                    acc.append(EsScript(
+                        miss=frum.missing(),
+                        type=c.jx_type,
+                        expr="doc[" + q + "].values",
+                        frum=frum,
+                        schema=schema,
+                        many=True,
+                    ))
                 else:
-                    acc.append(
-                        EsScript(
-                            miss=frum.missing(),
-                            type=c.jx_type,
-                            expr="doc[" + q + "].value"
-                            if c.jx_type != BOOLEAN
-                            else "doc[" + q + "].value",
-                            frum=frum,
-                            schema=schema,
-                            many=True,
-                        )
-                    )
+                    acc.append(EsScript(
+                        miss=frum.missing(),
+                        type=c.jx_type,
+                        expr="doc[" + q + "].value",
+                        frum=frum,
+                        schema=schema,
+                        many=False,
+                    ))
 
             if len(acc) == 0:
                 return NULL.to_es_script(schema)
@@ -74,4 +63,4 @@ class Variable(Variable_):
                 return CoalesceOp(acc).to_es_script(schema)
 
 
-first_op.Variable=Variable
+first_op.Variable = Variable

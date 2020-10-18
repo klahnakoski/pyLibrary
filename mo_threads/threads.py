@@ -30,7 +30,6 @@ from mo_future import (
     PY3,
 )
 from mo_logs import Except, Log
-from mo_threads.lock import Lock
 from mo_threads.profiles import CProfiler, write_profiles
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till
@@ -95,8 +94,9 @@ class AllThread(object):
 class BaseThread(object):
     __slots__ = ["id", "name", "children", "child_locker", "cprofiler", "trace_func"]
 
-    def __init__(self, ident):
+    def __init__(self, ident, name=None):
         self.id = ident
+        self.name = name
         if ident != -1:
             self.name = "Unknown Thread " + text(ident)
         self.child_locker = allocate_lock()
@@ -241,11 +241,9 @@ class Thread(BaseThread):
     num_threads = 0
 
     def __init__(self, name, target, *args, **kwargs):
-        BaseThread.__init__(self, -1)
-        self.name = coalesce(name, "thread_" + text(object.__hash__(self)))
+        BaseThread.__init__(self, -1, coalesce(name, "thread_" + text(object.__hash__(self))))
         self.target = target
         self.end_of_thread = Data()
-        self.synch_lock = Lock("response synch lock")
         self.args = args
 
         # ENSURE THERE IS A SHARED please_stop SIGNAL
@@ -255,9 +253,10 @@ class Thread(BaseThread):
             self.please_stop = self.kwargs[PLEASE_STOP] = Signal(
                 "please_stop for " + self.name
             )
+        self.please_stop.then(self.start)
 
         self.thread = None
-        self.join_attempt = Signal("joining with " + self.name)
+        self.ready_to_stop = Signal("joining with " + self.name)
         self.stopped = Signal("stopped signal for " + self.name)
 
         if PARENT_THREAD in kwargs:
@@ -281,6 +280,8 @@ class Thread(BaseThread):
 
     def start(self):
         try:
+            if self.thread:
+                return
             self.thread = start_new_thread(Thread._run, (self,))
             return self
         except Exception as e:
@@ -300,9 +301,7 @@ class Thread(BaseThread):
         DEBUG and Log.note("Thread {{name|quote}} got request to stop", name=self.name)
 
     def _run(self):
-        # if self.trace_func:
-        #     sys.settrace(self.trace_func)
-        #     self.trace_func = None
+        self.please_stop.remove_go(self.start)
         self.id = get_ident()
         with RegisterThread(self):
             try:
@@ -311,8 +310,7 @@ class Thread(BaseThread):
                     self.end_of_thread.response = self.target(*a, **k)
             except Exception as e:
                 e = Except.wrap(e)
-                with self.synch_lock:
-                    self.end_of_thread.exception = e
+                self.end_of_thread.exception = e
                 with self.parent.child_locker:
                     emit_problem = self not in self.parent.children
                 if emit_problem:
@@ -360,11 +358,18 @@ class Thread(BaseThread):
                         "problem with thread {{name|quote}}", cause=e, name=self.name
                     )
                 finally:
-                    (Till(seconds=60) | self.join_attempt).wait()
-                    self.stopped.go()
-                    DEBUG and Log.note("thread {{name|quote}} is done, wait for join", name=self.name)
+                    if not self.ready_to_stop:
+                        DEBUG and Log.note("thread {{name|quote}} is done, wait for join", name=self.name)
+                        # WHERE DO WE PUT THE THREAD RESULT?
+                        # IF NO THREAD JOINS WITH THIS, THEN WHAT DO WE DO WITH THE RESULT?
+                        # HOW LONG DO WE WAIT FOR ANOTHER TO ACCEPT THE RESULT?
+                        #
+                        # WAIT 60seconds, THEN SEND RESULT TO LOGGER
+                        (Till(seconds=60) | self.ready_to_stop).wait()
 
-                    if not self.join_attempt:
+                    self.stopped.go()
+
+                    if not self.ready_to_stop:
                         if self.end_of_thread.exception:
                             # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
                             try:
@@ -388,6 +393,16 @@ class Thread(BaseThread):
     def is_alive(self):
         return not self.stopped
 
+    def release(self):
+        """
+        RELEASE THREAD TO FEND FOR ITSELF. THREAD CAN EXPECT TO NEVER
+        JOIN. WILL SEND RESULTS TO LOGS WHEN DONE.
+
+        PARENT THREAD WILL STILL ENSURE self HAS STOPPED PROPERLY
+        """
+        self.ready_to_stop.go()
+        return self
+
     def join(self, till=None):
         """
         RETURN THE RESULT {"response":r, "exception":e} OF THE THREAD EXECUTION (INCLUDING EXCEPTION, IF EXISTS)
@@ -405,7 +420,7 @@ class Thread(BaseThread):
             parent=Thread.current().name,
             child=self.name,
         )
-        self.join_attempt.go()
+        self.ready_to_stop.go()
         (self.stopped | till).wait()
         if self.stopped:
             self.parent.remove_child(self)
@@ -464,19 +479,23 @@ class RegisterThread(object):
 
     __slots__ = ["thread"]
 
-    def __init__(self, thread=None):
+    def __init__(self, thread=None, name=None):
         if thread is None:
-            thread = BaseThread(get_ident())
+            thread = BaseThread(get_ident(), name)
         self.thread = thread
 
     def __enter__(self):
         with ALL_LOCK:
             ALL[self.thread.id] = self.thread
-        self.thread.cprofiler = CProfiler()
-        self.thread.cprofiler.__enter__()
+        cprofiler = self.thread.cprofiler = CProfiler()
+        cprofiler.__enter__()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # PYTHON WILL REMOVE GLOBAL VAR BEFORE END-OF-THREAD
+        all_lock = ALL_LOCK
+        all = ALL
+
         self.thread.cprofiler.__exit__(exc_type, exc_val, exc_tb)
         with self.thread.child_locker:
             if self.thread.children:
@@ -485,8 +504,8 @@ class RegisterThread(object):
                     children=[c.name for c in self.thread.children],
                     thread=self.thread.name
                 )
-        with ALL_LOCK:
-            del ALL[self.thread.id]
+        with all_lock:
+            del all[self.thread.id]
 
 
 def register_thread(func):
@@ -503,32 +522,10 @@ def register_thread(func):
     return output
 
 
-def stop_main_thread(signum=0, frame=None):
-    MAIN_THREAD.please_stop.go()
-    if signum == 0:
-        return
-    elif signum == _signal.SIGTERM:
-        raise SystemExit()
-    else:
-        raise KeyboardInterrupt()
-
-
-_signal.signal(_signal.SIGTERM, stop_main_thread)
-_signal.signal(_signal.SIGINT, stop_main_thread)
-
-
 def _wait_for_exit(please_stop):
     """
     /dev/null PIPED TO sys.stdin SPEWS INFINITE LINES, DO NOT POLL AS OFTEN
     """
-    try:
-        import msvcrt
-
-        _wait_for_exit_on_windows(please_stop)
-        return
-    except:
-        pass
-
     cr_count = 0  # COUNT NUMBER OF BLANK LINES
 
     try:
@@ -563,23 +560,6 @@ def _wait_for_exit(please_stop):
         Log.note("done waiting for exit")
 
 
-def _wait_for_exit_on_windows(please_stop):
-    import msvcrt
-
-    line = ""
-    while not please_stop:
-        if msvcrt.kbhit():
-            chr = msvcrt.getche()
-            if ord(chr) == 13:
-                if line == "exit":
-                    Log.alert("'exit' Detected!  Stopping...")
-                    return
-            elif ord(chr) > 32:
-                line += chr
-        else:
-            sleep(1)
-
-
 def _wait_for_interrupt(please_stop):
     DEBUG and Log.note("wait for stop signal")
     try:
@@ -591,6 +571,14 @@ def _wait_for_interrupt(please_stop):
 
 
 MAIN_THREAD = MainThread()
+
+
+def stop_main_thread(signum=0, frame=None):
+    MAIN_THREAD.please_stop.go()
+
+
+_signal.signal(_signal.SIGTERM, stop_main_thread)
+_signal.signal(_signal.SIGINT, stop_main_thread)
 
 ALL_LOCK = allocate_lock()
 ALL = dict()

@@ -8,15 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-"""
-# NOTE:
-
-THE self.lang[operator] PATTERN IS CASTING NEW OPERATORS TO OWN LANGUAGE;
-KEEPING Python AS# Python, ES FILTERS AS ES FILTERS, AND Painless AS
-Painless. WE COULD COPY partial_eval(), AND OTHERS, TO THIER RESPECTIVE
-LANGUAGE, BUT WE KEEP CODE HERE SO THERE IS LESS OF IT
-
-"""
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import simplified
@@ -34,6 +25,7 @@ from jx_base.language import is_op
 from mo_future import text
 from mo_json import NUMBER
 from mo_logs import Log
+from mo_times import Date
 
 
 class NumberOp(Expression):
@@ -66,9 +58,11 @@ class NumberOp(Expression):
                 return ZERO
             elif term is TRUE:
                 return ONE
-            elif isinstance(term.value, text):
-                return Literal(float(text))
-            elif isinstance(term.value, (int, float)):
+
+            v = term.value
+            if isinstance(v, (text, Date)):
+                return self.lang[Literal(float(v))]
+            elif isinstance(v, (int, float)):
                 return term
             else:
                 Log.error("can not convert {{value|json}} to number", value=term.value)

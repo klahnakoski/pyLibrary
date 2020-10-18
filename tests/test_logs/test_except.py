@@ -13,11 +13,12 @@ from __future__ import unicode_literals
 import logging
 import sys
 import unittest
-from unittest import skip
 import zlib
+from unittest import skip, skipIf
 
 from mo_dots import listwrap, wrap, Data
 from mo_dots.objects import DataObject
+from mo_future import PY2
 from mo_json import value2json
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_threads import Till
@@ -40,7 +41,7 @@ class TestExcept(FuzzyTestCase):
             problem_a()
         except Exception as e:
             f = Except.wrap(e)
-            self.assertEqual(f.template, "expected exception")
+            self.assertEqual(f.template, "Exception: expected exception")
             for i, m in enumerate(listwrap(f.trace).method):
                 if m == "test_trace_of_simple_raises":
                     self.assertEqual(i, 2)
@@ -53,7 +54,7 @@ class TestExcept(FuzzyTestCase):
             problem_a2()
         except Exception as e:
             cause = e.cause
-            self.assertEqual(cause.template, "expected exception")
+            self.assertEqual(cause.template, "Exception: expected exception")
 
             for i, m in enumerate(listwrap(cause.trace).method):
                 if m == "test_full_trace_exists":
@@ -64,7 +65,8 @@ class TestExcept(FuzzyTestCase):
 
     def test_bad_log_params(self):
         for call in [Log.note, Log.warning, Log.error]:
-            self.assertRaises("was expecting a unicode template", call, [{}])
+            with self.assertRaises("was expecting a unicode template"):
+                call({})
 
 
     def test_full_trace_on_wrap(self):
@@ -72,7 +74,7 @@ class TestExcept(FuzzyTestCase):
             problem_b()
         except Exception as e:
             cause = Except.wrap(e)
-            self.assertEqual(cause.template, "expected exception")
+            self.assertEqual(cause.template, "Exception: expected exception")
 
             for i, m in enumerate(listwrap(cause.trace).method):
                 if m == "test_full_trace_on_wrap":
@@ -119,7 +121,7 @@ class TestExcept(FuzzyTestCase):
         params = {"a": a, "b": b}
 
         WARNING = 'WARNING: test'
-        CAUSE = '\ncaused by\n\tERROR: problem'
+        CAUSE = '\ncaused by\n\tERROR: Exception: problem'
         A = '{\n    "b": "d",\n    "c": "a"\n}'
         B = '{"c": "b"}'
         AC = 'a'
@@ -236,6 +238,7 @@ class TestExcept(FuzzyTestCase):
             Log.main_log = backup_log
 
     # NORMAL RAISING
+    @skipIf(PY2, "does not have reload")
     def test_python_raise_from(self):
         def problem_y():
             raise Exception("this is the root cause")
@@ -245,6 +248,10 @@ class TestExcept(FuzzyTestCase):
                 problem_y()
             except Exception as e:
                 raise Exception("this is a problem")
+
+        logging.shutdown()
+        from importlib import reload
+        reload(logging)
 
         try:
             problem_x()

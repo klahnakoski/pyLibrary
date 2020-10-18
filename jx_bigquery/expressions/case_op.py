@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions import CaseOp as CaseOp_
 from jx_bigquery.expressions._utils import BQLang, check
 from mo_dots import coalesce, wrap
-from mo_sql import (
+from jx_bigquery.sql import (
     SQL_CASE,
     SQL_ELSE,
     SQL_END,
@@ -35,11 +35,11 @@ class CaseOp(CaseOp_):
             acc = SQL_ELSE + els_ + SQL_END
             for w in reversed(self.whens[0:-1]):
                 acc = ConcatSQL(
-                        SQL_WHEN,
-                        BQLang[w.when].to_bq(schema, boolean=True)[0].sql.b,
-                        SQL_THEN,
-                        coalesce(BQLang[w.then].to_bq(schema)[0].sql[t], SQL_NULL),
-                        acc,
+                    SQL_WHEN,
+                    BQLang[w.when].to_bq(schema, boolean=True)[0].sql.b,
+                    SQL_THEN,
+                    coalesce(BQLang[w.then].to_bq(schema)[0].sql[t], SQL_NULL),
+                    acc,
                 )
             output[t] = SQL_CASE + acc
         return wrap([{"name": ".", "sql": output}])

@@ -856,7 +856,7 @@ class TestSimple(TestCase):
         }
         self.assertEqual(result, expected)
 
-    # @skipIf(not IS_MASTER, "Takes too long, and does not test net new features")
+    #@skipIf(not IS_MASTER, "Takes too long, and does not test net new features")
     def test_issue_103(self):
         #        0         1         2         3         4         5         6         7         8         9
         #        012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
@@ -934,4 +934,21 @@ class TestSimple(TestCase):
         expected = {"select": {"value": "@@version_comment"}}
         self.assertEqual(result, expected)
 
+    def test_date(self):
+        sql = "select DATE '2020 01 25'"
+        result = parse(sql)
+        expected = {"select": {"value": {"date": {"literal": "2020 01 25"}}}}
+        self.assertEqual(result, expected)
+
+    def test_interval(self):
+        sql = "select INTErval 30.5 monthS"
+        result = parse(sql)
+        expected = {"select": {"value": {"interval": [30.5, "month"]}}}
+        self.assertEqual(result, expected)
+
+    def test_date_less_interval(self):
+        sql = "select DATE '2020 01 25' - interval 4 seconds"
+        result = parse(sql)
+        expected = {"select": {"value": {"sub": [{"date": {"literal":"2020 01 25"}}, {"interval": [4, "second"]}]}}}
+        self.assertEqual(result, expected)
 

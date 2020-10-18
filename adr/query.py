@@ -2,13 +2,13 @@ from __future__ import absolute_import, print_function
 
 import datetime
 import json
+import multiprocessing
 import os
 import time
 from argparse import Namespace
 from json import JSONDecodeError
 
 import jsone
-import requests
 import yaml
 from loguru import logger
 
@@ -25,6 +25,9 @@ def format_date(timestamp, interval="day"):
     return datetime.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
 
 
+activedata_lock = multiprocessing.Lock()
+
+
 def query_activedata(query, url):
     """Runs the provided query against the ActiveData endpoint.
 
@@ -32,18 +35,22 @@ def query_activedata(query, url):
     :param str url: url to run query
     :returns str: json-formatted string.
     """
-    start_time = time.time()
-    response = requests.post(url, data=query, stream=True)
-    logger.debug("Query execution time: " + "{:.3f} ms".format((time.time() - start_time) * 1000.0))
+    # Ensure we only run one ActiveData query at a time, to avoid overwhelming it.
+    with activedata_lock:
+        start_time = time.time()
+        response = requests_retry_session().post(url, data=query, stream=True)
+        logger.debug(
+            "Query execution time {:.3f} ms".format((time.time() - start_time) * 1000.0)
+        )
 
-    if response.status_code != 200:
-        try:
-            print(json.dumps(response.json(), indent=2))
-        except ValueError:
-            print(response.text)
-        response.raise_for_status()
+        if response.status_code != 200:
+            try:
+                print(json.dumps(response.json(), indent=2))
+            except ValueError:
+                print(response.text)
+            response.raise_for_status()
 
-    return response.json()
+        return response.json()
 
 
 def load_query(name):
@@ -88,7 +95,7 @@ def load_query_context(name, add_contexts=[]):
         return query_contexts
 
 
-def run_query(name, args):
+def run_query(name, args, cache=True, regenerate=False):
     """Loads and runs the specified query, yielding the result.
 
     Given name of a query, this method will first read the query
@@ -102,6 +109,9 @@ def run_query(name, args):
 
     :param str name: name of the query file to be loaded.
     :param Namespace args: namespace of ActiveData configs.
+    :param bool cache: Defaults to True. It controls if to cache the results.
+    :param bool regenerate: Defaults to False. It controls whether to bypass
+                            the cache and regenerate results.
     :return str: json-formatted string.
     """
     context = vars(args)
@@ -124,9 +134,10 @@ def run_query(name, args):
     query_hash = config.cache._hash(query_str)
 
     key = f"run_query.{name}.{query_hash}"
-    if config.cache.has(key):
-        logger.debug(f"Loading results from cache")
-        return config.cache.get(key)
+    if cache and not regenerate:
+        result = config.cache.get(key)
+        if result is not None:
+            return result
 
     logger.trace(f"JSON representation of query:\n{query_str}")
     result = query_activedata(query_str, config.url)
@@ -140,13 +151,11 @@ def run_query(name, args):
             time.sleep(2)
             i += 2
             try:
-                monitor = requests_retry_session.get(result['status']).json()
+                monitor = requests_retry_session().get(result['status']).json()
                 logger.debug(f"waiting: {json.dumps(monitor)}")
                 problem = 0
                 if monitor['status'] == 'done':
-                    big_result = requests_retry_session.get(result['url']).json()
-                    # The big response is a simple list of objects, without any metadata
-                    result = {"data": big_result, "format": "list"}
+                    result = requests_retry_session().get(result['url']).json()
                     break
                 elif monitor['status'] == 'error':
                     raise MissingDataError("Problem with query " + json.dumps(monitor['error']))
@@ -165,7 +174,8 @@ def run_query(name, args):
         logger.debug("JSON Response:\n{response}", response=json.dumps(result, indent=2))
         raise MissingDataError("ActiveData didn't return any data.")
 
-    config.cache.put(key, result, config["cache"]["retention"])
+    if cache:
+        config.cache.put(key, result, config["cache"]["retention"])
     return result
 
 

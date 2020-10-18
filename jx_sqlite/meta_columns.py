@@ -14,7 +14,7 @@ from jx_base import Column, Table, jx_expression
 from jx_base.meta_columns import META_COLUMNS_DESC, META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS
 from jx_base.schema import Schema
 from jx_python import jx
-from jx_sqlite import untyped_column
+from jx_sqlite.utils import untyped_column
 from jx_sqlite.expressions._utils import sql_type_to_json_type
 from mo_dots import Data, Null, coalesce, is_data, is_list, literal_field, startswith_field, tail_field, unwraplist, \
     wrap
@@ -333,7 +333,7 @@ class ColumnList(jx_base.Table, jx_base.Container):
                 )
             snapshot = self._all_columns()
 
-        from jx_python.containers.list_usingPythonList import ListContainer
+        from jx_python.containers.list import ListContainer
 
         query.frum = ListContainer(META_COLUMNS_NAME, snapshot, self._schema)
         return jx.run(query)
@@ -396,7 +396,7 @@ class ColumnList(jx_base.Table, jx_base.Container):
                 if c.jx_type not in STRUCT  # and c.es_column != "_id"
             ]
 
-        from jx_python.containers.list_usingPythonList import ListContainer
+        from jx_python.containers.list import ListContainer
 
         return ListContainer(
             self.name,

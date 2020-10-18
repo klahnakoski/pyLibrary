@@ -18,3 +18,9 @@ class Table(object):
     def map(self, mapping):
         return self
 
+    def __data__(self):
+        return self.name
+
+    def partial_eval(self):
+        return self
+

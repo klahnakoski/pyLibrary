@@ -12,11 +12,11 @@ from __future__ import unicode_literals
 
 from unittest import skipIf
 
+from mo_dots import Data
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_threads import Till
 from mo_times import Date
 
-from mo_dots import Data
 from mo_logs import Log
 from tests.config import IS_TRAVIS
 
@@ -46,6 +46,8 @@ class TestESLogging(FuzzyTestCase):
 
     @classmethod
     def setUpClass(cls):
+        from mo_logs import log_usingElasticSearch
+        log_usingElasticSearch.PAUSE_AFTER_GOOD_INSERT = 0  # ENSURE WE TEST FAST
         from jx_elasticsearch.elasticsearch import Cluster
         cls.cluster = Cluster(TEST_CONFIG)
 
@@ -144,6 +146,7 @@ class TestESLogging(FuzzyTestCase):
                     break
                 q.slow_queue.refresh()
             else:
+                print("wait for es log content")
                 Till(seconds=1).wait()
 
         self.es_logger.stop()

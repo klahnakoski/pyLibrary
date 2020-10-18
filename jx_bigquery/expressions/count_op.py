@@ -11,8 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import CountOp as CountOp_
 from jx_bigquery.expressions._utils import BQLang, check
-from mo_dots import wrap
-from mo_sql import (
+from jx_bigquery.sql import (
     SQL,
     SQL_CASE,
     SQL_ELSE,
@@ -26,6 +25,7 @@ from mo_sql import (
     SQL_ONE,
     ConcatSQL,
 )
+from mo_dots import wrap
 
 
 class CountOp(CountOp_):
@@ -41,15 +41,15 @@ class CountOp(CountOp_):
                     if t in ["b", "s", "n"]:
                         acc.append(
                             ConcatSQL(
-                                    SQL_CASE,
-                                    SQL_WHEN,
-                                    sql_iso(v),
-                                    SQL_IS_NULL,
-                                    SQL_THEN,
-                                    SQL_ZERO,
-                                    SQL_ELSE,
-                                    SQL_ONE,
-                                    SQL_END,
+                                SQL_CASE,
+                                SQL_WHEN,
+                                sql_iso(v),
+                                SQL_IS_NULL,
+                                SQL_THEN,
+                                SQL_ZERO,
+                                SQL_ELSE,
+                                SQL_ONE,
+                                SQL_END,
                             )
                         )
                     else:

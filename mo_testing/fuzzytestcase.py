@@ -9,14 +9,14 @@
 #
 from __future__ import unicode_literals
 
+import datetime
 import types
 import unittest
-from datetime import datetime
 
 from mo_collections.unique_index import UniqueIndex
 import mo_dots
-from mo_dots import coalesce, is_container, is_list, literal_field, unwrap, wrap, is_data
-from mo_future import is_text, zip_longest
+from mo_dots import coalesce, is_container, is_list, literal_field, unwrap, to_data, is_data, is_many
+from mo_future import is_text, zip_longest, first
 from mo_logs import Except, Log, suppress_exception
 from mo_logs.strings import expand_template, quote
 import mo_math
@@ -57,10 +57,15 @@ class FuzzyTestCase(unittest.TestCase):
     def assertEqual(self, test_value, expected, msg=None, digits=None, places=None, delta=None):
         self.assertAlmostEqual(test_value, expected, msg=msg, digits=digits, places=places, delta=delta)
 
-    def assertRaises(self, problem, function, *args, **kwargs):
+    def assertRaises(self, problem=None, function=None, *args, **kwargs):
+        if function is None:
+            return RaiseContext(self, problem=problem or Exception)
+
         try:
             function(*args, **kwargs)
         except Exception as e:
+            if issubclass(problem, BaseException) and isinstance(e, problem):
+                return
             f = Except.wrap(e)
             if is_text(problem):
                 if problem in f:
@@ -78,12 +83,43 @@ class FuzzyTestCase(unittest.TestCase):
         Log.error("Expecting an exception to be raised")
 
 
+class RaiseContext(object):
+
+    def __init__(self, this, problem):
+        self.this = this
+        self.problem = problem
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not exc_val:
+            Log.error("Expecting an error")
+        f = Except.wrap(exc_val)
+
+        if isinstance(self.problem, (list, tuple)):
+            problems = self.problem
+        else:
+            problems = [self.problem]
+
+        causes = []
+        for problem in problems:
+            if isinstance(problem, object.__class__) and issubclass(problem, BaseException) and isinstance(exc_val, problem):
+                return True
+            try:
+                self.this.assertIn(problem, f)
+                return True
+            except Exception as cause:
+                causes.append(cause)
+        Log.error("problem is not raised", cause=first(causes))
+
+
 def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=None):
     show_detail = True
     test = unwrap(test)
     expected = unwrap(expected)
     try:
-        if test is None and (is_null(expected) or expected is None):
+        if test is None and (is_null_op(expected) or expected is None):
             return
         elif test is expected:
             return
@@ -93,34 +129,45 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
             if test ^ expected:
                 Log.error("Sets do not match")
         elif is_data(expected) and is_data(test):
-            for k, v2 in unwrap(expected).items():
-                v1 = test.get(k)
-                assertAlmostEqual(v1, v2, msg=coalesce(msg, "")+"key "+quote(k)+": ", digits=digits, places=places, delta=delta)
+            for k, e in unwrap(expected).items():
+                t = test.get(k)
+                assertAlmostEqual(t, e, msg=coalesce(msg, "")+"key "+quote(k)+": ", digits=digits, places=places, delta=delta)
         elif is_data(expected):
-            for k, v2 in expected.items():
-                if is_text(k):
-                    v1 = mo_dots.get_attr(test, literal_field(k))
-                else:
-                    v1 = test[k]
-                assertAlmostEqual(v1, v2, msg=msg, digits=digits, places=places, delta=delta)
+            if is_many(test):
+                test = list(test)
+                if len(test) != 1:
+                    Log.error("Expecting data, not a list")
+                test = test[0]
+            for k, e in expected.items():
+                try:
+                    t = test[k]
+                    assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
+                    continue
+                except:
+                    pass
+
+                t = mo_dots.get_attr(test, literal_field(k))
+                assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
         elif is_container(test) and isinstance(expected, set):
-            test = set(wrap(t) for t in test)
+            test = set(to_data(t) for t in test)
             if len(test) != len(expected):
                 Log.error(
                     "Sets do not match, element count different:\n{{test|json|indent}}\nexpecting{{expectedtest|json|indent}}",
                     test=test,
                     expected=expected
                 )
-
-            for e in expected:
-                for t in test:
-                    try:
-                        assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
-                        break
-                    except Exception as _:
-                        pass
-                else:
-                    Log.error("Sets do not match. {{value|json}} not found in {{test|json}}", value=e, test=test)
+            try:
+                return len(set(test)|expected) == len(expected)
+            except:
+                for e in expected:
+                    for t in test:
+                        try:
+                            assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
+                            break
+                        except Exception as _:
+                            pass
+                    else:
+                        Log.error("Sets do not match. {{value|json}} not found in {{test|json}}", value=e, test=test)
 
         elif isinstance(expected, types.FunctionType):
             return expected(test)
@@ -136,16 +183,16 @@ def assertAlmostEqual(test, expected, digits=None, places=None, msg=None, delta=
                 return
             if expected == None:
                 expected = []  # REPRESENT NOTHING
-            for a, b in zip_longest(test, expected):
-                assertAlmostEqual(a, b, msg=msg, digits=digits, places=places, delta=delta)
+            for t, e in zip_longest(test, expected):
+                assertAlmostEqual(t, e, msg=msg, digits=digits, places=places, delta=delta)
         else:
             assertAlmostEqualValue(test, expected, msg=msg, digits=digits, places=places, delta=delta)
-    except Exception as e:
+    except Exception as cause:
         Log.error(
             "{{test|json|limit(10000)}} does not match expected {{expected|json|limit(10000)}}",
             test=test if show_detail else "[can not show]",
             expected=expected if show_detail else "[can not show]",
-            cause=e
+            cause=cause
         )
 
 
@@ -153,7 +200,7 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
     """
     Snagged from unittest/case.py, then modified (Aug2014)
     """
-    if is_null(expected):
+    if is_null_op(expected):
         if test == None:  # pandas dataframes reject any comparision with an exception!
             return
         else:
@@ -164,6 +211,15 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
     if test == expected:
         # shortcut
         return
+    if isinstance(expected, (dates.Date, datetime.datetime, datetime.date)):
+        return assertAlmostEqualValue(
+            dates.Date(test).unix,
+            dates.Date(expected).unix,
+            msg=msg,
+            digits=digits,
+            places=places,
+            delta=delta
+        )
 
     if not is_number(expected):
         # SOME SPECIAL CASES, EXPECTING EMPTY CONTAINERS IS THE SAME AS EXPECTING NULL
@@ -219,5 +275,5 @@ def assertAlmostEqualValue(test, expected, digits=None, places=None, msg=None, d
     raise AssertionError(coalesce(msg, "") + ": (" + standardMsg + ")")
 
 
-def is_null(v):
+def is_null_op(v):
     return v.__class__.__name__ == "NullOp"

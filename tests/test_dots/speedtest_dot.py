@@ -13,9 +13,10 @@ from __future__ import unicode_literals
 
 import cProfile
 import pstats
+import random
 from collections import Mapping
 
-from mo_dots import Data, wrap, Null
+from mo_dots import Data, to_data, Null, split_field
 from mo_future import text
 from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -24,12 +25,11 @@ from mo_times import Timer
 
 
 class SpeedTestDot(FuzzyTestCase):
-
     def test_simple_access(self):
         """
         THIS WILL WRITE A STATS FILE TO THE PROJECT DIRECTORY
         """
-        x = wrap({"a": {"b": 42}})
+        x = to_data({"a": {"b": 42}})
 
         cprofiler = cProfile.Profile()
         cprofiler.enable()
@@ -46,8 +46,7 @@ class SpeedTestDot(FuzzyTestCase):
             1: lambda: Data(),
             2: lambda: Null,
             3: lambda: 6,
-            4: lambda: "string"
-
+            4: lambda: "string",
         }
         data = [options[Random.int(len(options))]() for _ in range(num)]
 
@@ -82,7 +81,6 @@ class SpeedTestDot(FuzzyTestCase):
             # 2: lambda: {},
             # 3: lambda: Data(),
             # 4: lambda: Null,
-
         }
         data = [options[Random.int(len(options))]() for _ in range(num)]
 

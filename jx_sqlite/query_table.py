@@ -19,7 +19,7 @@ from jx_base.expressions import TupleOp, Variable, jx_expression
 from jx_base.language import is_op
 from jx_base.query import QueryOp
 from jx_python import jx
-from jx_sqlite import GUID, sql_aggs, unique_name, untyped_column
+from jx_sqlite.utils import GUID, sql_aggs, unique_name, untyped_column
 from jx_sqlite.base_table import BaseTable
 from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.groupby_table import GroupbyTable
@@ -29,7 +29,7 @@ from mo_dots import Data, Null, coalesce, concat_field, is_list, listwrap, relat
 from mo_future import text, transpose
 from mo_json import STRING, STRUCT
 from mo_logs import Log
-from mo_sql import SQL_FROM, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list, SQL_CREATE, \
+from jx_sqlite.sqlite import SQL_FROM, SQL_ORDERBY, SQL_SELECT, SQL_WHERE, sql_count, sql_iso, sql_list, SQL_CREATE, \
     SQL_AS, SQL_DELETE, ConcatSQL, JoinSQL, SQL_COMMA, SQL
 from jx_sqlite.sqlite import quote_column, sql_alias
 
@@ -51,7 +51,7 @@ class QueryTable(GroupbyTable, Facts):
         return bool(counter)
 
     def delete(self, where):
-        filter = SQLang[jx_expression(where)].to_sql(self.schema)
+        filter = SQLang[jx_expression(where)].to_sql(self.schema).sql.b
         with self.db.transaction() as t:
             t.execute(ConcatSQL(SQL_DELETE, SQL_FROM, quote_column(self.snowflake.fact_name), SQL_WHERE, filter))
 
@@ -86,11 +86,13 @@ class QueryTable(GroupbyTable, Facts):
 
         return wrap([{c: v for c, v in zip(column_names, r)} for r in result.data])
 
-    def query(self, query):
+    def query(self, query=None):
         """
         :param query:  JSON Query Expression, SET `format="container"` TO MAKE NEW TABLE OF RESULT
         :return:
         """
+        if not query:
+            query = {}
         if not query.get('from'):
             query['from'] = self.name
         elif not startswith_field(query['from'], self.name):

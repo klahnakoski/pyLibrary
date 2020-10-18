@@ -15,7 +15,7 @@ import mo_math
 from jx_base.domains import DefaultDomain, DurationDomain, TimeDomain
 from jx_base.language import is_op
 from jx_python import jx
-from jx_sqlite import ColumnMapping, STATS, _make_column_name, get_column, sql_aggs, sql_text_array_to_set, \
+from jx_sqlite.utils import ColumnMapping, STATS, _make_column_name, get_column, sql_aggs, sql_text_array_to_set, \
     untyped_column, PARENT, UID
 from jx_sqlite.container import DIGITS_TABLE
 from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
@@ -25,7 +25,7 @@ from jx_sqlite.setop_table import SetOpTable
 from mo_dots import coalesce, concat_field, join_field, listwrap, split_field, startswith_field
 from mo_future import text, unichr
 from mo_logs import Log
-from mo_sql import SQL, SQL_AND, SQL_CASE, SQL_COMMA, SQL_DESC, SQL_ELSE, SQL_END, SQL_FROM, SQL_GROUPBY, \
+from jx_sqlite.sqlite import SQL, SQL_AND, SQL_CASE, SQL_COMMA, SQL_DESC, SQL_ELSE, SQL_END, SQL_FROM, SQL_GROUPBY, \
     SQL_INNER_JOIN, SQL_IS_NOT_NULL, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, SQL_ONE, SQL_OR, \
     SQL_ORDERBY, SQL_SELECT, SQL_STAR, SQL_THEN, SQL_TRUE, SQL_UNION_ALL, SQL_WHEN, SQL_WHERE, sql_coalesce, \
     sql_count, sql_iso, sql_list, SQL_DOT, SQL_PLUS, ConcatSQL, SQL_EQ

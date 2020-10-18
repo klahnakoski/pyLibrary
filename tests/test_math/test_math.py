@@ -10,15 +10,15 @@
 
 # from __future__ import unicode_literals
 import random
-import unittest
 from math import floor
 
+from mo_testing.fuzzytestcase import FuzzyTestCase
+
 import mo_math
+from mo_math import randoms
 
-from mo_math.randoms import Random
 
-
-class TestMath(unittest.TestCase):
+class TestMath(FuzzyTestCase):
     def test_isnumber(self):
         assert mo_math.is_number(9999999999000)
 
@@ -50,14 +50,14 @@ class TestMath(unittest.TestCase):
 
     def test_floor_mod_identity(self):
         for i in range(100):
-            x = Random.float()*200 - 100.0
+            x = randoms.float()*200 - 100.0
             m = abs(random.gauss(0, 5))
 
             self.assertAlmostEqual(mo_math.floor(x, m)+mo_math.mod(x, m), x, places=7)
 
     def test_floor_mod_identity_w_ints(self):
         for i in range(100):
-            x = Random.float()*200 - 100.0
+            x = randoms.float()*200 - 100.0
             m = floor(abs(random.gauss(0, 5)))
 
             if m == 0:
@@ -68,6 +68,7 @@ class TestMath(unittest.TestCase):
 
     def test_round(self):
         self.assertAlmostEqual(mo_math.round(3.1415, digits=0), 1)
+        self.assertAlmostEqual(mo_math.round(3.1415, digits=4), 3.142)
         self.assertAlmostEqual(mo_math.round(4, digits=0), 10)
         self.assertAlmostEqual(mo_math.round(11, digits=0), 10)
         self.assertAlmostEqual(mo_math.round(3.1415), 3)

@@ -5,14 +5,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import NULL
-from jx_base.query import DEFAULT_LIMIT
-from mo_dots import wrap
+from jx_base.expressions.query_op import DEFAULT_LIMIT
+from mo_dots import to_data, list_to_data
+from mo_json import null
 from mo_logs import Log
 from mo_times.dates import Date
 from mo_times.durations import DAY, WEEK
@@ -27,14 +28,14 @@ test_data_1 = [
     {"a": "x", "t": Date("today-3day").unix, "v": 5},
     {"a": "x", "t": Date("today-4day").unix, "v": 7},
     {"a": "x", "t": Date("today-5day").unix, "v": 11},
-    {"a": "x", "t": None, "v": 27},
+    {"a": "x", "t": null, "v": 27},
     {"a": "y", "t": Date("today-day").unix, "v": 13},
     {"a": "y", "t": Date("today-2day").unix, "v": 17},
     {"a": "y", "t": Date("today-4day").unix, "v": 19},
     {"a": "y", "t": Date("today-5day").unix, "v": 23}
 ]
 
-expected_list_1 = wrap([
+expected_list_1 = list_to_data([
     {"t": (TODAY - WEEK).unix, "v": NULL},
     {"t": (TODAY - 6 * DAY).unix, "v": NULL},
     {"t": (TODAY - 5 * DAY).unix, "v": 34},
@@ -45,7 +46,7 @@ expected_list_1 = wrap([
     {"v": 29}
 ])
 
-expected2 = wrap([
+expected2 = list_to_data([
     {"a": "x", "t": (TODAY - WEEK).unix,    "v": NULL},
     {"a": "x", "t": (TODAY - 6 * DAY).unix, "v": NULL},
     {"a": "x", "t": (TODAY - 5 * DAY).unix, "v": 11},
@@ -54,6 +55,7 @@ expected2 = wrap([
     {"a": "x", "t": (TODAY - 2 * DAY).unix, "v": 3},
     {"a": "x", "t": (TODAY - 1 * DAY).unix, "v": 2},
     {"a": "x",                              "v": 29},
+
     {"a": "y", "t": (TODAY - WEEK).unix,    "v": NULL},
     {"a": "y", "t": (TODAY - 6 * DAY).unix, "v": NULL},
     {"a": "y", "t": (TODAY - 5 * DAY).unix, "v": 23},
@@ -61,7 +63,16 @@ expected2 = wrap([
     {"a": "y", "t": (TODAY - 3 * DAY).unix, "v": NULL},
     {"a": "y", "t": (TODAY - 2 * DAY).unix, "v": 17},
     {"a": "y", "t": (TODAY - 1 * DAY).unix, "v": 13},
-    {"a": "y",                              "v": NULL}
+    {"a": "y",                              "v": NULL},
+
+    {"a": NULL, "t": (TODAY - WEEK).unix,    "v": NULL},
+    {"a": NULL, "t": (TODAY - 6 * DAY).unix, "v": NULL},
+    {"a": NULL, "t": (TODAY - 5 * DAY).unix, "v": NULL},
+    {"a": NULL, "t": (TODAY - 4 * DAY).unix, "v": NULL},
+    {"a": NULL, "t": (TODAY - 3 * DAY).unix, "v": NULL},
+    {"a": NULL, "t": (TODAY - 2 * DAY).unix, "v": NULL},
+    {"a": NULL, "t": (TODAY - 1 * DAY).unix, "v": NULL},
+    {"a": NULL,                              "v": NULL}
 ])
 
 test_data_3 = [
@@ -71,14 +82,14 @@ test_data_3 = [
     {"a": TODAY, "t": Date("today-3day").unix, "v": 5},
     {"a": TODAY, "t": Date("today-4day").unix, "v": 7},
     {"a": TODAY, "t": Date("today-5day").unix, "v": 11},
-    {"a": TODAY, "t": NULL, "v": 27},
+    {"a": TODAY, "t": null, "v": 27},
     {"a": TODAY, "t": Date("today-day").unix, "v": 13},
     {"a": TODAY, "t": Date("today-2day").unix, "v": 17},
     {"a": TODAY, "t": Date("today-4day").unix, "v": 19},
     {"a": TODAY, "t": Date("today-5day").unix, "v": 23}
 ]
 
-expected3 = wrap([
+expected3 = list_to_data([
     {"since": -7 * DAY.seconds, "v": NULL},
     {"since": -6 * DAY.seconds, "v": NULL},
     {"since": -5 * DAY.seconds, "v": 34},
@@ -238,7 +249,7 @@ class TestTime(BaseTestCase):
                 "meta": {"format": "list"},
                 "data": [
                     {"a": Date(r.a).unix, "t": Date(r.t).unix, "v":r.v, "diff": (Date(r.t) - Date(r.a)).seconds}
-                    for r in wrap(data)
+                    for r in to_data(data)
                 ]
             }
         }

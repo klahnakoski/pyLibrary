@@ -8,19 +8,16 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-import ssl
 import subprocess
 from datetime import datetime
 from urllib.parse import unquote
 
-from pyLibrary.meta import cache
-from pymysql import InterfaceError, connect, cursors
-
-from mo_json import TIME, scrub, INTEGER, STRING, NUMBER, INTERVAL
 from jx_python import jx
 from mo_dots import coalesce, is_data, listwrap, unwrap, wrap, Data
-from mo_files import File
+from mo_files import File, URL
 from mo_future import is_binary, is_text, text, transpose, utf8_json_encoder, first
+from mo_http import http
+from mo_json import TIME, scrub, INTEGER, STRING, NUMBER, INTERVAL
 from mo_kwargs import override
 from mo_logs import Log, Except, suppress_exception, strings
 from mo_logs.strings import expand_template, indent, outdent
@@ -31,11 +28,14 @@ from mo_sql import SQL, SQL_AND, SQL_ASC, SQL_DESC, SQL_FROM, SQL_IS_NULL, SQL_L
     SQL_GT
 from mo_times import Date, DAY
 from pyLibrary import convert
-from pyLibrary.env import http
+from pyLibrary.meta import cache
+from pymysql import connect, cursors
 
 DEBUG = False
 MAX_BATCH_SIZE = 1
 EXECUTE_TIMEOUT = 5 * 600 * 1000  # in milliseconds  SET TO ZERO (OR None) FOR HOST DEFAULT TIMEOUT
+
+MYSQL_EXECUTABLE = "mysql"
 
 all_db = []
 
@@ -106,12 +106,15 @@ class MySQL(object):
                 self.settings.host = hp
 
         # SSL PEM
-        if "localhost" not in self.settings.host:
+        if self.settings.host in ("localhost", "mysql", '127.0.0.1'):
+            ssl_context = None
+        else:
             if self.settings.ssl and not self.settings.ssl.pem:
                 Log.error("Expecting 'pem' property in ssl")
-            ssl_context = ssl.create_default_context(cadata=get_ssl_pem_file(self.settings.ssl.pem))
-        else:
-            ssl_context = None
+            # ssl_context = ssl.create_default_context(**get_ssl_pem_file(self.settings.ssl.pem))
+            filename = File(".pem") / URL(self.settings.ssl.pem).host
+            filename.write_bytes(http.get(self.settings.ssl.pem).content)
+            ssl_context = {"ca": filename.abspath}
 
         try:
             self.db = connect(
@@ -351,7 +354,8 @@ class MySQL(object):
 
             return result
         except Exception as e:
-            if isinstance(e, InterfaceError) or e.message.find("InterfaceError") >= 0:
+            e = Except.wrap(e)
+            if "InterfaceError" in e:
                 Log.error("Did you close the db connection?", e)
             Log.error("Problem executing SQL:\n{{sql|indent}}", sql=sql, cause=e, stack_depth=1)
 
@@ -372,7 +376,7 @@ class MySQL(object):
             self.debug and Log.note("Execute SQL:\n{{sql}}", sql=indent(sql))
             self.cursor.execute(sql)
 
-            columns = tuple([utf8_to_unicode(d[0]) for d in self.cursor.description])
+            columns = tuple([utf8_to_unicode(d[0].lower()) for d in self.cursor.description])
             for r in self.cursor:
                 num += 1
                 _execute(wrap(dict(zip(columns, [utf8_to_unicode(c) for c in r]))))
@@ -519,7 +523,7 @@ def execute_sql(
     # We have no way to execute an entire SQL file in bulk, so we
     # have to shell out to the commandline client.
     args = [
-        "mysql",
+        MYSQL_EXECUTABLE,
         "-h{0}".format(host),
         "-u{0}".format(username),
         "-p{0}".format(password)
@@ -550,6 +554,7 @@ def execute_sql(
             return_code=proc.returncode,
             output=output
         )
+
 
 @override
 def execute_file(
@@ -969,4 +974,6 @@ mysql_type_to_json_type = {
 
 @cache(duration=DAY)
 def get_ssl_pem_file(url):
-    return http.get(url).content
+    filename = File(".pem") / URL(url).host
+    filename.write_bytes(http.get(url).content)
+    return {"cafile": filename.abspath}

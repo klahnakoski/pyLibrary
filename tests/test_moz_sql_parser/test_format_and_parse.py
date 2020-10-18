@@ -209,6 +209,19 @@ from benn.college_football_players
                          'select': '*'}
         self.verify_formatting(expected_sql, expected_json)
 
+    def test_with_cte(self):
+        expected_sql = "WITH t AS (SELECT a FROM table) SELECT * FROM t"
+        expected_json = {'select': '*', 'from': 't', 'with': {'name': 
+                         't', 'value': {'select': {'value': 'a'}, 'from': 'table'}}}
+        self.verify_formatting(expected_sql, expected_json)
+
+    def test_with_cte_various(self):
+        expected_sql = "WITH t1 AS (SELECT a FROM table), t2 AS (SELECT 1) SELECT * FROM t1, t2"
+        expected_json = {'select': '*', 'from': ['t1', 't2'], 
+                         'with': [{'name': 't1', 'value': {'select': {'value': 'a'}, 'from': 'table'}}, 
+                                  {'name': 't2', 'value': {'select': {'value': 1}}}]}
+        self.verify_formatting(expected_sql, expected_json)
+
     @skip("Not sure why")
     def test_not_equal(self):
         expected_sql = "select * from task where build.product is not null and build.product!='firefox'"
@@ -1088,3 +1101,7 @@ from benn.college_football_players
             expected_json = {'select': {'value': 't1.field1'},
                              'from': ['t1', {join_keyword: 't2', 'on': {'eq': ['t1.id', 't2.id']}}]}
             self.verify_formatting(expected_sql, expected_json)
+
+    def test_193(self):
+        expected_sql = "SELECT id, CASE WHEN id < 13 THEN 'child' WHEN id < 20 THEN 'teenager' ELSE 'adult' END AS id_range FROM users"
+        self.assertEqual(expected_sql, format(parse(expected_sql)))

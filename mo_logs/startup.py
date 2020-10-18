@@ -15,10 +15,10 @@ import os
 import sys
 import tempfile
 
-import mo_json_config
-from mo_dots import coalesce, listwrap, unwrap, wrap
-from mo_files import File
+from mo_dots import coalesce, listwrap, unwrap, to_data
+
 from mo_logs import Log
+
 
 # PARAMETERS MATCH argparse.ArgumentParser.add_argument()
 # https://docs.python.org/dev/library/argparse.html#the-add-argument-method
@@ -34,8 +34,6 @@ from mo_logs import Log
 # help - A brief description of what the argument does.
 # metavar - A name for the argument in usage messages.
 # dest - The name of the attribute to be added to the object returned by parse_args().
-
-
 class _ArgParser(_argparse.ArgumentParser):
     def error(self, message):
         Log.error("argparse error: {{error}}", error=message)
@@ -52,7 +50,7 @@ def argparse(defs, complain=True):
     if unknown and complain:
         Log.warning("Ignoring arguments: {{unknown|json}}", unknown=unknown)
     output = {k: getattr(namespace, k) for k in vars(namespace)}
-    return wrap(output)
+    return to_data(output)
 
 
 def read_settings(defs=None, filename=None, default_filename=None, complain=True):
@@ -62,6 +60,9 @@ def read_settings(defs=None, filename=None, default_filename=None, complain=True
     :param default_filename: A config file from an environment variable (a fallback config file, if no other provided)
     :parma complain: Complain about args mismatch
     """
+    from mo_files import File
+    import mo_json_config
+
     # READ SETTINGS
     defs = listwrap(defs)
     defs.append({

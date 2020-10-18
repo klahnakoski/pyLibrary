@@ -18,15 +18,28 @@ PY2 = sys.version_info[0] == 2
 PYPY = False
 try:
     import __pypy__ as _
-    PYPY=True
+
+    PYPY = True
 except Exception:
-    PYPY=False
+    PYPY = False
 
 
 none_type = type(None)
 boolean_type = type(True)
 
 if PY3:
+    try:
+        STDOUT = sys.stdout.buffer
+    except Exception as e:
+        # WE HOPE WHATEVER REPLACED sys.stdout CAN HANDLE BYTES IN UTF8
+        STDOUT = sys.stdout
+
+    try:
+        STDERR = sys.stderr.buffer
+    except Exception as e:
+        # WE HOPE WHATEVER REPLACED sys.stderr CAN HANDLE BYTES IN UTF8
+        STDERR = sys.stderr
+
     import itertools
     from collections import OrderedDict, UserDict
     from collections.abc import Callable, Iterable, Mapping, Set, MutableMapping
@@ -40,7 +53,7 @@ if PY3:
     zip_longest = itertools.zip_longest
 
     text = str
-    text_type = str
+    text = str
     string_types = str
     binary_type = bytes
     integer_types = (int, )
@@ -102,6 +115,12 @@ if PY3:
         except StopIteration:
             return None
 
+    def NEXT(_iter):
+        """
+        RETURN next() FUNCTION, DO NOT CALL
+        """
+        return _iter.__next__
+
     def next(_iter):
         return _iter.__next__()
 
@@ -123,7 +142,10 @@ if PY3:
     ).encode
 
 
-else:
+else:  # PY2
+    STDOUT = sys.stdout
+    STDERR = sys.stderr
+
     from collections import Callable, Iterable, Mapping, Set, MutableMapping, OrderedDict
     from functools import cmp_to_key, reduce, update_wrapper
 
@@ -137,7 +159,7 @@ else:
 
     reduce = __builtin__.reduce
     text = __builtin__.unicode
-    text_type = __builtin__.unicode
+    text = __builtin__.unicode
     string_types = (str, unicode)
     binary_type = str
     integer_types = (int, long)
@@ -189,6 +211,12 @@ else:
             return iter(values).next()
         except StopIteration:
             return None
+
+    def NEXT(_iter):
+        """
+        RETURN next() FUNCTION, DO NOT CALL
+        """
+        return _iter.next
 
     def next(_iter):
         return _iter.next()
@@ -274,6 +302,8 @@ else:
                 d[key] = value
             return d
 
+function_type = (lambda: None).__class__
+
 
 class decorate(object):
     def __init__(self, func):
@@ -286,5 +316,7 @@ class decorate(object):
         """
         return update_wrapper(caller, self.func)
 
+
+function_type = (lambda: 0).__class__
 
 _keep_imports = (ConfigParser, zip_longest, reduce, transpose, izip, HTMLParser, urlparse, StringIO, BytesIO, allocate_lock, get_ident, start_new_thread, interrupt_main)

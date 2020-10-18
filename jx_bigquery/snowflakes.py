@@ -1,3 +1,13 @@
+# encoding: utf-8
+#
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http:# mozilla.org/MPL/2.0/.
+#
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
+from __future__ import absolute_import, division, unicode_literals
 
 from google.cloud.bigquery import SchemaField
 
@@ -19,6 +29,8 @@ from mo_json import NESTED, STRUCT, OBJECT, STRING, NUMBER
 from mo_logs import Log, Except
 from mo_times.dates import Date
 
+DEBUG = False
+
 
 class Snowflake(jx_base.Snowflake):
     """
@@ -34,10 +46,16 @@ class Snowflake(jx_base.Snowflake):
         :param top_level_fields:  REQUIRED TO MAP INNER PROPERTIES TO THE TOP LEVEL, AS REQUIRED BY BQ FOR PARTITIONS AND CLUSTERING
         :param partition:  THE partition.field MUST BE KNOWN SO IT CAN BE CONVERTED FROM UNIX TIME TO bq TIMESTAMP
         """
-        if not is_text(es_index):
-            Log.error("expecting string")
-        self.es_index = es_index
         self.schema = schema or {}
+        if DEBUG:
+            if not is_text(es_index):
+                Log.error("expecting string")
+            if any(len(split_field(k)) > 1 for k in self.schema.keys()):
+                Log.error("expecting schema to be a deep structure")
+            if any(len(split_field(k)) > 1 for k in top_level_fields.keys()):
+                Log.error("expecting top level fields to be a deep structure")
+
+        self.es_index = es_index
         self._columns = None
         self.top_level_fields = top_level_fields
         self._top_level_fields = None  # dict FROM FULL-API-NAME TO TOP-LEVEL-FIELD NAME
@@ -67,7 +85,7 @@ class Snowflake(jx_base.Snowflake):
                             "expecting {{path}} to be of type {{expected_type}} not of type {{observed_type}}",
                             path=jx_path,
                             expected_type=expected_es_type,
-                            observed_type=es_type_info
+                            observed_type=es_type_info,
                         )
                     c = jx_base.Column(
                         name=join_field(jx_path),
@@ -77,6 +95,7 @@ class Snowflake(jx_base.Snowflake):
                         jx_type=json_type,
                         nested_path=nested_path,
                         last_updated=now,
+                        multi=1,
                     )
                     columns.append(c)
                 else:
@@ -86,8 +105,10 @@ class Snowflake(jx_base.Snowflake):
                         es_index=self.es_index,
                         es_type="RECORD",
                         jx_type=OBJECT,
+                        cardinality=1,
                         nested_path=nested_path,
                         last_updated=now,
+                        multi=1,
                     )
                     columns.append(c)
                     count = len(columns)
@@ -131,8 +152,8 @@ class Snowflake(jx_base.Snowflake):
             )
             self._columns = columns
 
-            self._top_level_fields = {}
-            for path, field in wrap(self.top_level_fields).leaves():
+            self._top_level_fields = OrderedDict()  # FORCE ORDERING
+            for path, field in jx.sort(wrap(self.top_level_fields).leaves(), 0):
                 leaves = self.leaves(path)
                 if not leaves:
                     continue
@@ -142,9 +163,8 @@ class Snowflake(jx_base.Snowflake):
                     )
                 specific_path = first(leaves).name
                 self._top_level_fields[
-                    ".".join(map(text, map(escape_name, split_field(specific_path))))
+                    ".".join(text(escape_name(step)) for step in split_field(specific_path))
                 ] = field
-
             self._partition = Partition(kwargs=self.partition, flake=self)
 
         return self._columns
@@ -159,11 +179,14 @@ class Snowflake(jx_base.Snowflake):
         :param partition: SO WE KNOW WHICH FIELD MUST BE A TIMESTAMP
         :return:
         """
+
         def parse_schema(big_query_schema, jx_path, nested_path, es_path):
             output = OrderedDict()
 
             if any(ApiName(e.name) == REPEATED for e in big_query_schema):
-                big_query_schema = [e for e in big_query_schema if ApiName(e.name) == REPEATED]
+                big_query_schema = [
+                    e for e in big_query_schema if ApiName(e.name) == REPEATED
+                ]
 
             for e in big_query_schema:
                 json_type = bq_type_to_json_type[e.field_type]
@@ -192,7 +215,7 @@ class Snowflake(jx_base.Snowflake):
         # GRAB THE TOP-LEVEL FIELDS
         top_fields = [field for path, field in top_level_fields.leaves()]
         i = 0
-        while i<len(big_query_schema) and big_query_schema[i].name in top_fields:
+        while i < len(big_query_schema) and big_query_schema[i].name in top_fields:
             i = i + 1
 
         output.top_level_fields = top_level_fields
@@ -294,10 +317,22 @@ def merge(schemas, es_index, top_level_fields, partition):
         if len(schemas) == 1:
             return schemas[0]
         try:
-            return OrderedDict(
-                (k, _merge(*[ss for s in schemas for ss in [s.get(k)] if ss]))
-                for k in jx.sort(set(k for s in schemas for k in s.keys()))
-            )
+            if any(NESTED_TYPE in s for s in schemas):
+                # IF THERE ARE ANY ARRAYS, THEN THE MERGE IS AN ARRAY
+                new_schemas = []
+                for schema in schemas:
+                    if NESTED_TYPE in schema:
+                        sub_schema = schema[NESTED_TYPE]
+                        residue = {k: v for k, v in schema.items() if k != NESTED_TYPE}
+                        new_schemas.append(_merge(sub_schema, residue))
+                    else:
+                        new_schemas.append(schema)
+                return {NESTED_TYPE: _merge(*new_schemas)}
+            else:
+                return OrderedDict(
+                    (k, _merge(*(ss for s in schemas for ss in [s.get(k)] if ss)))
+                    for k in jx.sort(set(k for s in schemas for k in s.keys()))
+                )
         except Exception as e:
             e = Except.wrap(e)
             if "Expecting types to match" in e:

@@ -2,6 +2,9 @@ import requests
 from flask import request, session, Response, redirect
 from jose import jwt
 
+from mo_sql import SQL_DELETE, SQL_FROM, SQL_WHERE, ConcatSQL
+
+from jx_sqlite.sqlite import Sqlite, sql_create, sql_insert, sql_query, quote_column, sql_eq
 from mo_dots import Data, wrap, unwrap
 from mo_files import URL, mimetype
 from mo_future import decorate, first, text
@@ -11,19 +14,11 @@ from mo_logs import Log
 from mo_math import base642bytes, bytes2base64URL, rsa_crypto, crypto
 from mo_math.hashes import sha256
 from mo_threads.threads import register_thread
+from mo_http import http
 from mo_times import Date
 from mo_times.dates import parse, RFC1123
 from pyLibrary.env import http
 from pyLibrary.env.flask_wrappers import cors_wrapper, add_flask_rule, limit_body
-from pyLibrary.sql import SQL_DELETE, SQL_WHERE, SQL_FROM
-from pyLibrary.sql.sqlite import (
-    Sqlite,
-    sql_create,
-    quote_column,
-    sql_eq,
-    sql_query,
-    sql_insert,
-)
 
 DEBUG = True
 REQUEST_LIMIT = 10_000
@@ -325,13 +320,13 @@ class Authenticator(object):
 
         # REMOVE DEVICE SETUP STATE
         with self.device.db.transaction() as t:
-            t.execute(
-                SQL_DELETE
-                + SQL_FROM
-                + quote_column(self.device.table)
-                + SQL_WHERE
-                + sql_eq(state=state)
-            )
+            t.execute(ConcatSQL(
+                SQL_DELETE,
+                SQL_FROM,
+                quote_column(self.device.table),
+                SQL_WHERE,
+                sql_eq(state=state),
+            ))
         Log.note("login complete")
         return Response("Login complete. You may close this page", status=200)
 

@@ -26,7 +26,7 @@ from mo_logs.strings import expand_template
 from mo_sql import SQL, SQL_ORDERBY, SQL_LIMIT, sql_list, SQL_WHERE
 
 
-class MySQL(object):
+class MySQL_forBugzilla(object):
     """
     jx to MySQL DATABASE QUERIES
 
@@ -370,4 +370,4 @@ aggregates = {
 
 from jx_base.container import type2container
 
-type2container["mysql"] = MySQL
+type2container["mysql"] = MySQL_forBugzilla

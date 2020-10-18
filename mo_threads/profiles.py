@@ -11,10 +11,9 @@ from __future__ import absolute_import, division, unicode_literals
 
 import cProfile
 import pstats
-from datetime import datetime
 
-from mo_future import iteritems
 from mo_logs import Log
+from mo_threads.profile_utils import stats2tab
 
 FILENAME = "profile.tab"
 
@@ -82,8 +81,8 @@ def write_profiles(main_thread_profile):
     if cprofiler_stats is None:
         return
 
-    from pyLibrary import convert
     from mo_files import File
+    from mo_times import Date
 
     cprofiler_stats.add(pstats.Stats(main_thread_profile.cprofiler))
     stats = cprofiler_stats.pop_all()
@@ -93,19 +92,7 @@ def write_profiles(main_thread_profile):
     for s in stats[1:]:
         acc.add(s)
 
-    stats = [
-        {
-            "num_calls": d[1],
-            "self_time": d[2],
-            "total_time": d[3],
-            "self_time_per_call": d[2] / d[1],
-            "total_time_per_call": d[3] / d[1],
-            "file": (f[0] if f[0] != "~" else "").replace("\\", "/"),
-            "line": f[1],
-            "method": f[2].lstrip("<").rstrip(">")
-        }
-        for f, d, in iteritems(acc.stats)
-    ]
-    stats_file = File(FILENAME, suffix=convert.datetime2string(datetime.now(), "_%Y%m%d_%H%M%S"))
-    stats_file.write(convert.list2tab(stats))
+    tab = stats2tab(acc)
+
+    stats_file = File(FILENAME, suffix=Date.now().format("_%Y%m%d_%H%M%S")).write(tab)
     Log.note("profile written to {{filename}}", filename=stats_file.abspath)

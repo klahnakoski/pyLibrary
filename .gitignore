@@ -15,3 +15,4 @@ pyLibrary.egg-info
 /this is a test file.sqlite
 /*.sqlite-journal
 /*.sqlite
+/tests/test_mysql/resources
