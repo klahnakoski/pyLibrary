@@ -1,11 +1,11 @@
 # encoding: utf-8
 from operator import itemgetter
 
-from mo_future import text
-from mo_logs import Log
+from mo_future import Iterable, text, generator_types
 
-from mo_parsing.core import ParserElement, _PendingSkip
-from mo_parsing.enhancement import OneOrMore, Optional, SkipTo, Suppress, ZeroOrMore
+from mo_parsing.core import ParserElement, _PendingSkip, is_decorated
+from mo_parsing.engine import Engine
+from mo_parsing.enhancement import Optional, SkipTo, Many
 from mo_parsing.exceptions import (
     ParseBaseException,
     ParseException,
@@ -13,7 +13,7 @@ from mo_parsing.exceptions import (
 )
 from mo_parsing.results import ParseResults
 from mo_parsing.tokens import Empty
-from mo_parsing.utils import Iterable, _generatorType
+from mo_parsing.utils import empty_list, empty_tuple, is_forward
 
 
 class ParseExpression(ParserElement):
@@ -24,7 +24,7 @@ class ParseExpression(ParserElement):
     def __init__(self, exprs):
         super(ParseExpression, self).__init__()
 
-        if isinstance(exprs, _generatorType):
+        if isinstance(exprs, generator_types):
             exprs = list(exprs)
         elif not isinstance(exprs, ParserElement) and isinstance(exprs, Iterable):
             exprs = list(exprs)
@@ -32,6 +32,9 @@ class ParseExpression(ParserElement):
             exprs = [exprs]
 
         self.exprs = [engine.CURRENT.normalize(e) for e in exprs]
+        for e in self.exprs:
+            if is_forward(e):
+                e.track(self)
 
     def copy(self):
         output = ParserElement.copy(self)
@@ -47,19 +50,11 @@ class ParseExpression(ParserElement):
 
     def leaveWhitespace(self):
         """Extends ``leaveWhitespace`` defined in base class, and also invokes ``leaveWhitespace`` on
-           all contained expressions."""
-        output = self.copy()
-        output.parser_config.skipWhitespace = False
-        output.exprs = [e.leaveWhitespace() for e in self.exprs]
-        return output
-
-    def __str__(self):
-        try:
-            return super(ParseExpression, self).__str__()
-        except Exception:
-            pass
-
-        return "%s:(%s)" % (self.__class__.__name__, text(self.exprs))
+        all contained expressions."""
+        with Engine(""):
+            output = self.copy()
+            output.exprs = [e.leaveWhitespace() for e in self.exprs]
+            return output
 
     def streamline(self):
         if self.streamlined:
@@ -69,32 +64,37 @@ class ParseExpression(ParserElement):
         # collapse nested And's of the form And(And(And(a, b), c), d) to And(a, b, c, d)
         # but only if there are no parse actions or resultsNames on the nested And's
         # (likewise for Or's and MatchFirst's)
+        if not self.exprs:
+            return Empty(self.parser_name)
+
         acc = []
         for e in self.exprs:
-            e.streamline()
-            if (
-                isinstance(e, self.__class__)
-                and not e.parseAction
-                and e.token_name is None
-            ):
+            e = e.streamline()
+            if isinstance(e, self.__class__) and not is_decorated(e):
                 acc.extend(e.exprs)
             else:
                 acc.append(e)
+
         self.exprs = acc
         return self
 
-    def validate(self, validateTrace=None):
-        tmp = (validateTrace if validateTrace is not None else [])[:] + [self]
+    def validate(self, seen=empty_list):
+        tmp = seen + [self]
         for e in self.exprs:
             e.validate(tmp)
-        self.checkRecursion([])
+        self.checkRecursion()
+
+    def checkRecursion(self, seen=empty_tuple):
+        seen_more = seen + (self,)
+        for e in self.exprs:
+            e.checkRecursion(seen_more)
 
     def __call__(self, name):
         if not name:
             return self
-        for e in self.exprs:
-            if isinstance(e, ParserElement) and e.token_name:
-                Log.error("token name is already set in child, use Group() to clarify")
+        # for e in self.exprs:
+        #     if isinstance(e, ParserElement) and e.token_name:
+        #         Log.error("token name is already set in child, use Group() to clarify")
 
         return ParserElement.__call__(self, name)
 
@@ -119,9 +119,10 @@ class And(ParseExpression):
 
     class _ErrorStop(Empty):
         def __init__(self, *args, **kwargs):
-            super(And._ErrorStop, self).__init__(*args, **kwargs)
-            self.parser_name = "-"
-            self.leaveWhitespace()
+            with Engine() as engine:
+                engine.set_whitespace("")
+                super(And._ErrorStop, self).__init__(*args, **kwargs)
+                self.parser_name = "-"
 
     def __init__(self, exprs):
         if exprs and Ellipsis in exprs:
@@ -130,7 +131,7 @@ class And(ParseExpression):
                 if expr is Ellipsis:
                     if i < len(exprs) - 1:
                         skipto_arg = (Empty() + exprs[i + 1]).exprs[-1]
-                        tmp.append(SkipTo(skipto_arg)("_skipped*"))
+                        tmp.append(SkipTo(skipto_arg)("_skipped"))
                     else:
                         raise Exception(
                             "cannot construct And with sequence ending in ..."
@@ -142,69 +143,64 @@ class And(ParseExpression):
         self.parser_config.mayReturnEmpty = all(
             e.parser_config.mayReturnEmpty for e in self.exprs
         )
-        self.parser_config.skipWhitespace = self.exprs[0].parser_config.skipWhitespace
 
     def streamline(self):
         if self.streamlined:
             return self
-        ParseExpression.streamline(self)
 
         # collapse any _PendingSkip's
-        if self.exprs:
-            if any(
-                isinstance(e, ParseExpression)
-                and e.exprs
-                and isinstance(e.exprs[-1], _PendingSkip)
-                for e in self.exprs[:-1]
-            ):
-                for i, e in enumerate(self.exprs[:-1]):
-                    if e is None:
-                        continue
-                    if (
-                        isinstance(e, ParseExpression)
-                        and e.exprs
-                        and isinstance(e.exprs[-1], _PendingSkip)
-                    ):
-                        e.exprs[-1] = e.exprs[-1] + self.exprs[i + 1]
-                        self.exprs[i + 1] = None
-                self.exprs = [e for e in self.exprs if e is not None]
+        if any(
+            isinstance(e, ParseExpression)
+            and e.exprs
+            and isinstance(e.exprs[-1], _PendingSkip)
+            for e in self.exprs[:-1]
+        ):
+            for i, e in enumerate(self.exprs[:-1]):
+                if (
+                    isinstance(e, ParseExpression)
+                    and e.exprs
+                    and isinstance(e.exprs[-1], _PendingSkip)
+                ):
+                    ee = e.exprs[-1] + self.exprs[i + 1]
+                    e.exprs[-1] = ee
+                    e.streamlined = False
+                    self.exprs[i + 1] = None
+            self.exprs = [e for e in self.exprs if e is not None]
 
-        super(And, self).streamline()
-        self.parser_config.mayReturnEmpty = all(
+        output = ParseExpression.streamline(self)
+        if isinstance(output, Empty):
+            return output
+        elif len(output.exprs) == 1 and not is_decorated(output):
+            return output.exprs[0]
+        output.parser_config.mayReturnEmpty = all(
             e.parser_config.mayReturnEmpty for e in self.exprs
         )
-        return self
+        return output
 
-    def parseImpl(self, instring, loc, doActions=True):
+    def parseImpl(self, string, loc, doActions=True):
         # pass False as last arg to _parse for first element, since we already
         # pre-parsed the string as part of our And pre-parsing
         encountered_error_stop = False
         acc = []
-        for e in self.exprs:
-            if isinstance(e, And._ErrorStop):
+        for expr in self.exprs:
+            if isinstance(expr, And._ErrorStop):
                 encountered_error_stop = True
                 continue
-            if encountered_error_stop:
-                try:
-                    loc, exprtokens = e._parse(instring, loc, doActions)
-                except ParseSyntaxException:
-                    raise
-                except ParseBaseException as pe:
-                    raise ParseSyntaxException(
-                        pe.pstr, pe.loc, pe.msg, pe.parserElement
-                    )
-                except IndexError:
-                    raise ParseSyntaxException(
-                        instring, len(instring), self
-                    )
-            else:
-                loc, exprtokens = e._parse(instring, loc, doActions)
-
-            if not isinstance(exprtokens, ParseResults):
-                Log.error(
-                    "expecting {{type}} to emit parseresults", type=e.__class__.__name__
-                )
-            acc.append(exprtokens)
+            try:
+                loc, exprtokens = expr._parse(string, loc, doActions)
+                acc.append(exprtokens)
+            except ParseSyntaxException as cause:
+                raise cause
+            except ParseBaseException as pe:
+                if encountered_error_stop:
+                    raise ParseSyntaxException(pe.parserElement, pe.loc, pe.pstr)
+                else:
+                    raise pe
+            except IndexError as ie:
+                if encountered_error_stop:
+                    raise ParseSyntaxException(string, len(string), self)
+                else:
+                    raise ie
 
         return loc, ParseResults(self, acc)
 
@@ -214,8 +210,8 @@ class And(ParseExpression):
 
         return And([self, engine.CURRENT.normalize(other)]).streamline()
 
-    def checkRecursion(self, parseElementList):
-        subRecCheckList = parseElementList[:] + [self]
+    def checkRecursion(self, seen=empty_tuple):
+        subRecCheckList = seen + (self,)
         for e in self.exprs:
             e.checkRecursion(subRecCheckList)
             if not e.parser_config.mayReturnEmpty:
@@ -225,7 +221,7 @@ class And(ParseExpression):
         if self.parser_name:
             return self.parser_name
 
-        return "{" + " ".join(text(e) for e in self.exprs) + "}"
+        return "{" + " + ".join(text(e) for e in self.exprs) + "}"
 
 
 class Or(ParseExpression):
@@ -255,24 +251,22 @@ class Or(ParseExpression):
         else:
             self.parser_config.mayReturnEmpty = True
 
-    def parseImpl(self, instring, loc, doActions=True):
+    def parseImpl(self, string, loc, doActions=True):
         maxExcLoc = -1
         maxException = None
         matches = []
         for e in self.exprs:
             try:
-                loc2 = e.tryParse(instring, loc)
+                loc2 = e.tryParse(string, loc)
             except ParseException as err:
                 err.__traceback__ = None
                 if err.loc > maxExcLoc:
                     maxException = err
                     maxExcLoc = err.loc
             except IndexError:
-                if len(instring) > maxExcLoc:
-                    maxException = ParseException(
-                        instring, len(instring), self
-                    )
-                    maxExcLoc = len(instring)
+                if len(string) > maxExcLoc:
+                    maxException = ParseException(string, len(string), self)
+                    maxExcLoc = len(string)
             else:
                 # save match among all matches, to retry longest to shortest
                 matches.append((loc2, e))
@@ -286,7 +280,7 @@ class Or(ParseExpression):
                 # no further conditions or parse actions to change the selection of
                 # alternative, so the first match will be the best match
                 _, best_expr = matches[0]
-                loc, best_results = best_expr._parse(instring, loc, doActions)
+                loc, best_results = best_expr._parse(string, loc, doActions)
                 return loc, ParseResults(self, [best_results])
 
             longest = -1, None
@@ -296,7 +290,7 @@ class Or(ParseExpression):
                     return longest
 
                 try:
-                    loc2, toks = expr1._parse(instring, loc, doActions)
+                    loc2, toks = expr1._parse(string, loc, doActions)
                 except ParseException as err:
                     err.__traceback__ = None
                     if err.loc > maxExcLoc:
@@ -313,23 +307,16 @@ class Or(ParseExpression):
                 return longest
 
         if maxException is not None:
-            maxException.msg = "expecting " + text(self)
+            maxException.msg = "Expecting " + text(self)
             raise maxException
         else:
-            raise ParseException(
-                instring, loc, "no defined alternatives to match", self
-            )
+            raise ParseException(string, loc, "no defined alternatives to match", self)
 
     def __str__(self):
         if self.parser_name:
             return self.parser_name
 
         return "{" + " ^ ".join(text(e) for e in self.exprs) + "}"
-
-    def checkRecursion(self, parseElementList):
-        subRecCheckList = parseElementList[:] + [self]
-        for e in self.exprs:
-            e.checkRecursion(subRecCheckList)
 
 
 class MatchFirst(ParseExpression):
@@ -359,33 +346,29 @@ class MatchFirst(ParseExpression):
         else:
             self.parser_config.mayReturnEmpty = True
 
-    def parseImpl(self, instring, loc, doActions=True):
+    def parseImpl(self, string, loc, doActions=True):
         maxExcLoc = -1
         maxException = None
         for e in self.exprs:
             try:
-                loc, ret = e._parse(instring, loc, doActions)
+                loc, ret = e._parse(string, loc, doActions)
                 return loc, ParseResults(self, [ret])
             except ParseException as err:
                 if err.loc > maxExcLoc:
                     maxException = err
                     maxExcLoc = err.loc
             except IndexError:
-                if len(instring) > maxExcLoc:
-                    maxException = ParseException(
-                        instring, len(instring), self
-                    )
-                    maxExcLoc = len(instring)
+                if len(string) > maxExcLoc:
+                    maxException = ParseException(string, len(string), self)
+                    maxExcLoc = len(string)
 
         # only got here if no expression matched, raise exception for match that made it the furthest
         else:
             if maxException is not None:
-                maxException.msg = "Expecting "+text(self)
+                maxException.msg = "Expecting " + text(self)
                 raise maxException
             else:
-                raise ParseException(
-                    instring, loc, self
-                )
+                raise ParseException(self, loc, string)
 
     def __or__(self, other):
         if other is Ellipsis:
@@ -402,76 +385,31 @@ class MatchFirst(ParseExpression):
 
         return " | ".join("{" + text(e) + "}" for e in self.exprs)
 
-    def checkRecursion(self, parseElementList):
-        subRecCheckList = parseElementList[:] + [self]
-        for e in self.exprs:
-            e.checkRecursion(subRecCheckList)
-
 
 class Each(ParseExpression):
-    """Requires all given :class:`ParseExpression` s to be found, but in
+    """
+    Requires all given :class:`ParseExpression` s to be found, but in
     any order. Expressions may be separated by whitespace.
 
     May be constructed using the ``'&'`` operator.
-
-    Example::
-
-        color = oneOf("RED ORANGE YELLOW GREEN BLUE PURPLE BLACK WHITE BROWN")
-        shape_type = oneOf("SQUARE CIRCLE TRIANGLE STAR HEXAGON OCTAGON")
-        integer = Word(nums)
-        shape_attr = "shape:" + shape_type("shape")
-        posn_attr = "posn:" + Group(integer("x") + ',' + integer("y"))("posn")
-        color_attr = "color:" + color("color")
-        size_attr = "size:" + integer("size")
-
-        # use Each (using operator '&') to accept attributes in any order
-        # (shape and posn are required, color and size are optional)
-        shape_spec = shape_attr & posn_attr & Optional(color_attr) & Optional(size_attr)
-
-        test.runTests(shape_spec, '''
-            shape: SQUARE color: BLACK posn: 100, 120
-            shape: CIRCLE size: 50 color: BLUE posn: 50,80
-            color:GREEN size:20 shape:TRIANGLE posn:20,40
-            '''
-            )
-
-    prints::
-
-        shape: SQUARE color: BLACK posn: 100, 120
-        ['shape:', 'SQUARE', 'color:', 'BLACK', 'posn:', ['100', ',', '120']]
-        - color: BLACK
-        - posn: ['100', ',', '120']
-          - x: 100
-          - y: 120
-        - shape: SQUARE
-
-
-        shape: CIRCLE size: 50 color: BLUE posn: 50,80
-        ['shape:', 'CIRCLE', 'size:', '50', 'color:', 'BLUE', 'posn:', ['50', ',', '80']]
-        - color: BLUE
-        - posn: ['50', ',', '80']
-          - x: 50
-          - y: 80
-        - shape: CIRCLE
-        - size: 50
-
-
-        color: GREEN size: 20 shape: TRIANGLE posn: 20,40
-        ['color:', 'GREEN', 'size:', '20', 'shape:', 'TRIANGLE', 'posn:', ['20', ',', '40']]
-        - color: GREEN
-        - posn: ['20', ',', '40']
-          - x: 20
-          - y: 40
-        - shape: TRIANGLE
-        - size: 20
     """
 
     def __init__(self, exprs):
+        """
+        :param exprs: The expressions to be matched
+        :param mins: list of integers indincating any minimums
+        """
         super(Each, self).__init__(exprs)
+        self.parser_config.min_match = [
+            e.min_match if isinstance(e, Many) else 1 for e in exprs
+        ]
+        self.parser_config.max_match = [
+            e.max_match if isinstance(e, Many) else 1 for e in exprs
+        ]
+
         self.parser_config.mayReturnEmpty = all(
             e.parser_config.mayReturnEmpty for e in self.exprs
         )
-        self.parser_config.skipWhitespace = True
         self.initExprGroups = True
 
     def streamline(self):
@@ -484,83 +422,71 @@ class Each(ParseExpression):
         )
         return self
 
-    def parseImpl(self, instring, loc, doActions=True):
-        if self.initExprGroups:
-            self.opt1map = dict(
-                (id(e.expr), e) for e in self.exprs if isinstance(e, Optional)
-            )
-            opt1 = [e.expr for e in self.exprs if isinstance(e, Optional)]
-            opt2 = [
-                e
-                for e in self.exprs
-                if e.parser_config.mayReturnEmpty and not isinstance(e, Optional)
-            ]
-            self.optionals = opt1 + opt2
-            self.multioptionals = [
-                e.expr for e in self.exprs if isinstance(e, ZeroOrMore)
-            ]
-            self.multirequired = [
-                e.expr for e in self.exprs if isinstance(e, OneOrMore)
-            ]
-            self.required = [
-                e
-                for e in self.exprs
-                if not isinstance(e, (Optional, ZeroOrMore, OneOrMore))
-            ]
-            self.required += self.multirequired
-            self.initExprGroups = False
-        tmpLoc = loc
-        tmpReqd = self.required[:]
-        tmpOpt = self.optionals[:]
+    def parseImpl(self, string, loc, doActions=True):
+        end_loc = loc
         matchOrder = []
+        todo = list(zip(
+            self.exprs, self.parser_config.min_match, self.parser_config.max_match
+        ))
+        count = [0] * len(self.exprs)
 
-        keepMatching = True
-        while keepMatching:
-            tmpExprs = tmpReqd + tmpOpt + self.multioptionals + self.multirequired
-            failed = []
-            for e in tmpExprs:
+        while todo:
+            for i, (c, (e, mi, ma)) in enumerate(zip(count, todo)):
                 try:
-                    tmpLoc = e.tryParse(instring, tmpLoc)
-                except ParseException:
-                    failed.append(e)
-                else:
-                    matchOrder.append(self.opt1map.get(id(e), e))
-                    if e in tmpReqd:
-                        tmpReqd.remove(e)
-                    elif e in tmpOpt:
-                        tmpOpt.remove(e)
-            if len(failed) == len(tmpExprs):
-                keepMatching = False
+                    temp_loc = e.tryParse(string, end_loc)
+                    if temp_loc == end_loc:
+                        continue
+                    end_loc = temp_loc
+                    c2 = count[i] = c + 1
+                    if c2 >= ma:
+                        del todo[i]
+                        del count[i]
+                    matchOrder.append(e)
+                    break
+                except ParseException as pe:
+                    continue
+            else:
+                break
 
-        if tmpReqd:
-            missing = ", ".join(text(e) for e in tmpReqd)
+        for c, (e, mi, ma) in zip(count, todo):
+            if c < mi:
+                raise ParseException(
+                    string,
+                    loc,
+                    "Missing minimum (%i) more required elements (%s)" % (mi, e),
+                )
+
+        found = set(id(m) for m in matchOrder)
+        missing = [
+            e
+            for e, mi in zip(self.exprs, self.parser_config.min_matches)
+            if id(e) not in found and not e.parser_config.mayReturnEmpty and mi > 0
+        ]
+        if missing:
+            missing = ", ".join(text(e) for e in missing)
             raise ParseException(
-                instring, loc, "Missing one or more required elements (%s)" % missing
+                string, loc, "Missing one or more required elements (%s)" % missing
             )
 
         # add any unmatched Optionals, in case they have default values defined
         matchOrder += [
-            e for e in self.exprs if isinstance(e, Optional) and e.expr in tmpOpt
+            e
+            for e in self.exprs
+            if id(e) not in found and e.parser_config.mayReturnEmpty
         ]
 
-        resultlist = []
+        results = []
         for e in matchOrder:
-            loc, results = e._parse(instring, loc, doActions)
-            resultlist.append(results)
+            loc, result = e._parse(string, loc, doActions)
+            results.append(result)
 
-        finalResults = ParseResults(self, resultlist)
-        return loc, finalResults
+        return loc, ParseResults(self, results)
 
     def __str__(self):
         if self.parser_name:
             return self.parser_name
 
         return "{" + " & ".join(text(e) for e in self.exprs) + "}"
-
-    def checkRecursion(self, parseElementList):
-        subRecCheckList = parseElementList[:] + [self]
-        for e in self.exprs:
-            e.checkRecursion(subRecCheckList)
 
 
 # export
@@ -573,5 +499,6 @@ core.MatchFirst = MatchFirst
 
 from mo_parsing import helpers
 
-helpers.MatchFirst = MatchFirst
 helpers.And = And
+helpers.Or = Or
+helpers.MatchFirst = MatchFirst

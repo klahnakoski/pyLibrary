@@ -10,6 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base import Column
+from jx_base.schema import Schema as BaseSchema
 from jx_base.table import Table
 from jx_base.container import Container
 from jx_base.schema import Schema
@@ -453,7 +454,7 @@ class ColumnList(Table, Container):
                 )
             snapshot = self._all_columns()
 
-        from jx_python.containers.list_usingPythonList import ListContainer
+        from jx_python.containers.list import ListContainer
 
         query.frum = ListContainer(META_COLUMNS_NAME, snapshot, self._schema)
         return jx.run(query)
@@ -516,12 +517,12 @@ class ColumnList(Table, Container):
                 if c.jx_type not in INTERNAL  # and c.es_column != "_id"
             ]
 
-        from jx_python.containers.list_usingPythonList import ListContainer
+        from jx_python.containers.list import ListContainer
 
         return ListContainer(
             self.name,
             data=output,
-            schema=jx_base.Schema(META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS),
+            schema=BaseSchema(META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS),
         )
 
 
@@ -544,7 +545,10 @@ def doc_to_column(doc):
                 Log.warning("{{doc}} has no es_type", doc=doc)
 
         # FIX
-        doc.multi = 1001 if doc.es_type == "nested" else doc.multi
+        if doc.es_type == "nested":
+            doc.multi = 1001
+        if doc.multi == None:
+            doc.multi = 1
 
         # FIX
         if doc.es_column.endswith("."+NESTED_TYPE):

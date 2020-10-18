@@ -1,2 +1,3 @@
 pyLibrary
-mo_testing
+mo-testing
+mo-threads

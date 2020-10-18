@@ -5,20 +5,22 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
 from __future__ import absolute_import, division, unicode_literals
 
 from unittest import skip, skipIf
 
-from jx_base.expressions import NULL
-from jx_base.query import DEFAULT_LIMIT, MAX_LIMIT
-from mo_dots import wrap
+from mo_future import first
+
 import mo_math
+from jx_base.expressions import NULL
+from jx_base.expressions.query_op import DEFAULT_LIMIT, MAX_LIMIT
+from mo_dots import to_data, dict_to_data, list_to_data
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
-lots_of_data = wrap([{"a": i} for i in range(30)])
+lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 
 class TestSetOps(BaseTestCase):
@@ -33,7 +35,7 @@ class TestSetOps(BaseTestCase):
            "expecting_list": {
                "meta": {"format": "list"}, "data": [{"a": 1}]
            }
-       }
+        }
         self.utils.execute_tests(test)
 
     def test_simplest(self):
@@ -615,11 +617,11 @@ class TestSetOps(BaseTestCase):
                 }
             }
         }
-        self.utils.execute_tests(test, tjson=False)
+        self.utils.execute_tests(test, typed=False)
 
     @skipIf(global_settings.use == "sqlite", "no need for limit when using own resources")
     def test_max_limit(self):
-        test = wrap({
+        test = dict_to_data({
             "data": lots_of_data,
             "query": {
                 "from": TEST_TABLE,
@@ -630,10 +632,10 @@ class TestSetOps(BaseTestCase):
 
         self.utils.fill_container(test)
         result = self.utils.execute_query(test.query)
-        self.assertEqual(result.meta.es_query.size, MAX_LIMIT)
+        self.assertEqual(first(result.meta.es_query.size), MAX_LIMIT)
 
     def test_default_limit(self):
-        test = wrap({
+        test = dict_to_data({
             "data": lots_of_data,
             "query": {
                 "from": TEST_TABLE,
@@ -655,7 +657,7 @@ class TestSetOps(BaseTestCase):
         self.assertEqual(len(result.data.value), DEFAULT_LIMIT)
 
     def test_specific_limit(self):
-        test = wrap({
+        test = dict_to_data({
             "data": lots_of_data,
             "query": {
                 "from": TEST_TABLE,
@@ -678,7 +680,7 @@ class TestSetOps(BaseTestCase):
         self.assertEqual(len(result.data.value), 5)
 
     def test_negative_limit(self):
-        test = wrap({
+        test = dict_to_data({
             "data": lots_of_data,
             "query": {
                 "from": TEST_TABLE,
@@ -754,10 +756,10 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"}, "data": [
-                    {"a.b": 0, "a.c": 0},
-                    {"a.b": 0, "a.c": 1},
-                    {"a.b": 1, "a.c": 0},
-                    {"a.b": 1, "a.c": 1}
+                    {"a": {"b": 0, "c": 0}},
+                    {"a": {"b": 0, "c": 1}},
+                    {"a": {"b": 1, "c": 0}},
+                    {"a": {"b": 1, "c": 1}},
             ]},
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -905,9 +907,9 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"a.b": "x", "a.v": 2},
-                    {"a.b": "x", "a.v": 5},
-                    {"a.b": "x", "a.v": 7},
+                    {"a": {"b": "x", "v": 2}},
+                    {"a": {"b": "x", "v": 5}},
+                    {"a": {"b": "x", "v": 7}},
                     {}
                 ]
             },
@@ -1070,9 +1072,9 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    {"o": 3, "a.b": "x", "a.v": 2},
-                    {"o": 1, "a.b": "x", "a.v": 5},
-                    {"o": 2, "a.b": "x", "a.v": 7},
+                    {"o": 3, "a": {"b": "x", "v": 2}},
+                    {"o": 1, "a": {"b": "x", "v": 5}},
+                    {"o": 2, "a": {"b": "x", "v": 7}},
                     {"o": 4}
                 ]
             },
@@ -1295,3 +1297,113 @@ class TestSetOps(BaseTestCase):
             }
         }
         self.utils.execute_tests(test)
+
+    def test_eq_1_list(self):
+        test = {
+            "data": [
+                {"a": 1},
+                {"a": 2},
+                {"a": 3},
+                {"a": None},
+                {},
+            ],
+            "query": {
+                "select": [
+                    "a",
+                    {"name": "eq1", "value": {"eq": {"a": 1}}}
+                ],
+                "from": TEST_TABLE,
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": 1, "eq1": True},
+                    {"a": 2, "eq1": False},
+                    {"a": 3, "eq1": False},
+                    {"a": NULL, "eq1": False},
+                    {"a": NULL, "eq1": False},
+                ]
+            },
+            "expecting_table": {
+                "header": ["a", "eq1"],
+                "data": [
+                    [1, True],
+                    [2, False],
+                    [3, False],
+                    [NULL, False],
+                    [NULL, False]
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_bad_select(self):
+        subtest = {
+            "data": [
+                {"a": 1},
+                {"a": 2},
+                {"a": 3},
+                {"a": None},
+                {},
+            ],
+            "query": {
+                "select": {"between": "a"},
+                "from": TEST_TABLE,
+            },
+            "expecting_error": "Expecting `value` or `aggregate` in select "
+        }
+        subtest = to_data(subtest)
+
+        self.utils.fill_container(subtest)
+        self.utils.send_queries(subtest)
+
+    def test_prefix_in_deep_where_clause(self):
+        test = {
+            "data": [
+                {"a": "test1"},
+                {"a": "test2"},
+                {"a": "test3"},
+                {"a": {"b": 3}},
+                {},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"prefix": {"a": "test"}}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "test1"},
+                    {"a": "test2"},
+                    {"a": "test3"},
+                ]
+            },
+        }
+        self.utils.execute_tests(test)
+
+    def test_exists_in_where_clause(self):
+        test = {
+            "data": [
+                {"a": "test1"},
+                {"a": 0},
+                {"a": False},
+                {"a": {"b": 3}},
+                {},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"exists": "a"}
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "test1"},
+                    {"a": 0},
+                    {"a": False},
+                    {"a": {"b": 3}},
+                ]
+            },
+        }
+        self.utils.execute_tests(test)
+
+

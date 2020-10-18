@@ -13,19 +13,18 @@ from mo_json import json2value
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from pyLibrary import convert
 
-from mo_math import aes_crypto
-from mo_math.randoms import Random
+from mo_math import aes_crypto, randoms
 
 
 class TestCrypto(FuzzyTestCase):
     def test_aes(self):
         aes_crypto.DEBUG = True
 
-        aes_crypto.encrypt("this is a test", Random.bytes(32))
-        aes_crypto.encrypt("this is a longer test with more than 16bytes", Random.bytes(32))
-        aes_crypto.encrypt("", Random.bytes(32))
-        aes_crypto.encrypt("testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ", Random.bytes(32))
-        aes_crypto.encrypt("testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ", Random.bytes(32))
+        aes_crypto.encrypt("this is a test", randoms.bytes(32))
+        aes_crypto.encrypt("this is a longer test with more than 16bytes", randoms.bytes(32))
+        aes_crypto.encrypt("", randoms.bytes(32))
+        aes_crypto.encrypt("testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ", randoms.bytes(32))
+        aes_crypto.encrypt("testing accented char àáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ", randoms.bytes(32))
 
     def test_aes_nothing(self):
         key = convert.base642bytearray(u'nm5/wK20R45AUtetHJwHTdOigvGTxP7NcH/41YE8AZo=')

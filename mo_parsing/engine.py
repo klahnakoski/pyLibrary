@@ -4,10 +4,12 @@ from collections import namedtuple
 
 from mo_dots import Null
 from mo_future import is_text, text
-from mo_logs import Log
+from mo_logs import strings
+
+from mo_parsing.utils import Log
 
 from mo_parsing.exceptions import ParseException
-from mo_parsing.utils import lineno, col, alphanums
+from mo_parsing.utils import lineno, col, alphanums, stack_depth
 
 ParserElement, Literal, Token = [None] * 3
 
@@ -16,7 +18,6 @@ CURRENT = None
 
 class Engine:
     def __init__(self, white=" \n\r\t"):
-        global CURRENT
         self.literal = Literal
         self.keyword_chars = alphanums + "_$"
         self.ignore_list = []
@@ -25,14 +26,30 @@ class Engine:
         self.content = None
         self.skips = {}
         self.set_whitespace(white)
-        CURRENT = self
+        self.previous = None  # WE MAINTAIN A STACK OF ENGINES
 
-    def release(self):
+    def __enter__(self):
+        global CURRENT
+        self.previous = CURRENT  # WE MAINTAIN A STACK OF ENGINES
+        CURRENT = self
+        return self
+
+    use = __enter__
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
         """
         ENSURE self IS NOT CURRENT
         :return:
         """
-        Engine()
+        global CURRENT
+        if not self.previous:
+            Log.error("expecting engine to be released just once")
+
+        CURRENT = self.previous
+        self.previous = None
+
+    def release(self):
+        self.__exit__(None, None, None)
 
     def normalize(self, expr):
         if expr == None:
@@ -45,12 +62,13 @@ class Engine:
         if not isinstance(expr, ParserElement):
             Log.error("expecting string, or ParserElemenet")
 
-        if expr.engine is not self:
-            return expr.copy()
-        else:
-            return expr
+        # curr_engine = expr.engine
+        # if curr_engine != self and not expr.parser_config.lock_engine:
+        #     # UPDATE ENGINE IF NOT LOCKED
+        #     expr = expr.copy()
+        return expr
 
-    def record_exception(self, instring, loc, expr, exc):
+    def record_exception(self, string, loc, expr, exc):
         es = self.all_exceptions.setdefault(loc, [])
         es.append(exc)
 
@@ -88,54 +106,76 @@ class Engine:
         self.ignore_list.append(ignore_expr)
         return self
 
-    def skip(self, instring, start):
-        if instring is self.content:
+    def skip(self, string, start):
+        if string is self.content:
             end = self.skips.get(start)
             if end is not None:
                 return end
         else:
             self.skips = {}
-            self.content = instring
+            self.content = string
         end = self.skips[start] = start  # TO AVOID RECURSIVE LOOP
+        wt = self.white_chars
+        instrlen = len(string)
 
         more = True  # ENSURE ALTERNATING WHITESPACE AND IGNORABLES ARE SKIPPED
         while more:
             more = False
+            while end < instrlen and string[end] in wt:
+                more = True
+                end += 1
+
             for i in self.ignore_list:
                 try:
-                    next_end, _ = i.parseImpl(instring, end)
+                    next_end, _ = i.parseImpl(string, end)
                     if next_end > end:
                         more = True
                         end = next_end
                 except ParseException as e:
                     pass
 
-            wt = self.white_chars
-            instrlen = len(instring)
-            while end < instrlen and instring[end] in wt:
-                more = True
-                end += 1
-
         self.skips[start] = end  # THE REAL VALUE
         return end
 
+    def __str__(self):
+        output = ["{"]
+        for k, v in self.__dict__.items():
+            value = str(v)
+            output.append(strings.indent(strings.quote(k) + ":" + value))
+        output.append("}")
+        return "\n".join(output)
 
-def _defaultStartDebugAction(instring, loc, expr):
+
+def _defaultStartDebugAction(expr, loc, string):
     print(
-        "Match "
-        + text(expr)
+        "  Attempt "
+        + strings.quote(string[loc : loc + 10] + "...")
         + " at loc "
         + text(loc)
-        + "(%d,%d)" % (lineno(loc, instring), col(loc, instring))
+        + "(%d,%d)" % (lineno(loc, string), col(loc, string))
+        + " for "
+        + " " * stack_depth()
+        + text(expr)
     )
 
 
-def _defaultSuccessDebugAction(instring, startloc, endloc, expr, toks):
-    print("Matched " + text(expr) + " -> " + str(toks))
+def _defaultSuccessDebugAction(expr, start, end, string, tokens):
+    print(
+        "> Matched "
+        + strings.quote(string[start:end])
+        + " at loc "
+        + text(start)
+        + "(%d,%d)" % (lineno(start, string), col(start, string))
+        + " for "
+        + " " * stack_depth()
+        + text(expr)
+        + " -> "
+        + str(tokens)
+    )
 
 
-def _defaultExceptionDebugAction(instring, loc, expr, exc):
-    print("Exception raised:" + text(exc))
+def _defaultExceptionDebugAction(expr, loc, string, cause):
+    print("  Except  " + strings.quote(text(cause)))
 
 
 def noop(*args):
@@ -144,5 +184,5 @@ def noop(*args):
 
 DebugActions = namedtuple("DebugActions", ["TRY", "MATCH", "FAIL"])
 
-
-Engine()
+PLAIN_ENGINE = Engine("").use()
+Engine().use()

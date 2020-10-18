@@ -11,13 +11,13 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import TupleOp
 from jx_base.language import is_op
-from jx_base.query import canonical_aggregates
+from jx_base.expressions.query_op import canonical_aggregates
 from jx_python.containers.cube import Cube
 from mo_collections.matrix import Matrix
 from mo_dots import Data, coalesce, is_list, split_field, to_data
 from mo_files import mimetype
 from mo_future import sort_using_key, next
-from mo_future.exports import expect
+from mo_imports import expect
 from mo_json import value2json
 from mo_logs import Log
 from mo_logs.strings import quote
@@ -74,16 +74,10 @@ def format_cube(aggs, es_query, query, decoders, all_selects):
 
 
 def _value_drill(agg):
-    while True:
-        deeper = agg.get("_nested")
-        if deeper:
-            agg = deeper
-            continue
-        deeper = agg.get("_filter")
-        if deeper:
-            agg = deeper
-            continue
-        return agg
+    for k, deeper in agg.items():
+        if k.startswith("_filter") or k.startswith("_nested"):
+            return _value_drill(deeper)
+    return agg
 
 
 def format_table(aggs, es_query, query, decoders, all_selects):

@@ -5,87 +5,104 @@ import inspect
 import string
 import sys
 import warnings
+from types import FunctionType
 
-from mo_future import text
-from mo_logs import Log, Except
-
-
-try:
-    # Python 3
-    from itertools import filterfalse
-except ImportError:
-    from itertools import ifilterfalse as filterfalse
+from mo_future import unichr, text, generator_types
 
 try:
-    from _thread import RLock
-except ImportError:
-    from threading import RLock
+    from mo_parsing.utils import Log
+except Exception:
 
-try:
-    # Python 3
-    from collections.abc import Iterable
-    from collections.abc import MutableMapping, Mapping
-    from collection import deque
-except ImportError:
-    # Python 2.7
-    from collections import Iterable
-    from collections import MutableMapping, Mapping, deque
+    class Log(object):
+        @classmethod
+        def note(cls, template, cause=None, **params):
+            pass
 
-system_version = tuple(sys.version_info)[:3]
-PY_3 = system_version[0] == 3
-if PY_3:
-    _MAX_INT = sys.maxsize
-    basestring = str
-    unichr = chr
-    unicode = str
+        @classmethod
+        def warning(cls, template, cause=None, **params):
+            pass
 
-    # build list of single arg builtins, that can be used as parse actions
-    singleArgBuiltins = [
-        sum,
-        len,
-        sorted,
-        reversed,
-        list,
-        tuple,
-        set,
-        any,
-        all,
-        min,
-        max,
-    ]
-
-    builtin_lookup = {"".join.__name__: ("iterable",)}
-
-    def get_function_arguments(func):
-        try:
-            return func.__code__.co_varnames[: func.__code__.co_argcount]
-        except Exception as e:
-            return builtin_lookup.get(func.__name__, ("unknown",))
+        @classmethod
+        def error(cls, template, cause=None, **params):
+            raise Exception(template) from cause
 
 
-else:
-    from __builtin__ import unicode
-
-    _MAX_INT = sys.maxint
-    range = xrange
-    basestring = basestring
-    unichr = unichr
-
-    # build list of single arg builtins, tolerant of Python version, that can be used as parse actions
-    singleArgBuiltins = []
-    import __builtin__
-
-    for fname in "sum len sorted reversed list tuple set any all min max".split():
-        try:
-            singleArgBuiltins.append(getattr(__builtin__, fname))
-        except AttributeError:
-            continue
-
-    def get_function_arguments(func):
-        return func.func_code.co_varnames[: func.func_code.co_argcount]
+_MAX_INT = sys.maxsize
+empty_list = []
+empty_tuple = tuple()
+many_types = (list, tuple, set) + generator_types
 
 
-_generatorType = type((y for y in range(1)))
+def listwrap(value):
+    """
+    PERFORMS THE FOLLOWING TRANSLATION
+    None -> []
+    value -> [value]
+    [...] -> [...]  (unchanged list)
+    """
+    if value == None:
+        return []
+    elif isinstance(value, many_types):
+        return value
+    else:
+        return [value]
+
+
+def coalesce(*args):
+    # pick the first not null value
+    # http://en.wikipedia.org/wiki/Null_coalescing_operator
+    for a in args:
+        if a != None:
+            return a
+    return None
+
+
+# build list of single arg builtins, that can be used as parse actions
+singleArgBuiltins = [
+    sum,
+    len,
+    sorted,
+    reversed,
+    list,
+    tuple,
+    set,
+    any,
+    all,
+    min,
+    max,
+]
+
+builtin_lookup = {"".join.__name__: ("iterable",)}
+
+
+def is_forward(expr):
+    return expr.__class__.__name__ == "Forward"
+
+
+def forward_type(expr):
+    """
+    :param expr:
+    :return:  Effective type of this Forward
+    """
+    while is_forward(expr.type):
+        expr = expr.tokens[0]
+    return expr.type
+
+
+def stack_depth():
+    count = 0
+    f = sys._getframe()
+    while f:
+        f = f.f_back
+        count += 1
+    return count
+
+
+def get_function_arguments(func):
+    try:
+        return func.__code__.co_varnames[: func.__code__.co_argcount]
+    except Exception as e:
+        return builtin_lookup.get(func.__name__, ("unknown",))
 
 
 class __config_flags:
@@ -98,14 +115,9 @@ class __config_flags:
     @classmethod
     def _set(cls, dname, value):
         if dname in cls._fixed_names:
-            warnings.warn(
-                "{}.{} {} is {} and cannot be overridden".format(
-                    cls.__name__,
-                    dname,
-                    cls._type_desc,
-                    str(getattr(cls, dname)).upper(),
-                )
-            )
+            warnings.warn("{}.{} {} is {} and cannot be overridden".format(
+                cls.__name__, dname, cls._type_desc, str(getattr(cls, dname)).upper(),
+            ))
             return
         if dname in cls._all_names:
             setattr(cls, dname, value)
@@ -116,7 +128,6 @@ class __config_flags:
     disable = classmethod(lambda cls, name: cls._set(name, False))
 
 
-
 alphas = string.ascii_uppercase + string.ascii_lowercase
 nums = "0123456789"
 hexnums = nums + "ABCDEFabcdef"
@@ -125,22 +136,22 @@ _bslash = chr(92)
 printables = "".join(c for c in string.printable if c not in string.whitespace)
 
 
-def col(loc, strg):
+def col(loc, string):
     """Returns current column within a string, counting newlines as line separators.
-   The first column is number 1.
+    The first column is number 1.
 
-   Note: the default parsing behavior is to expand tabs in the input string
-   before starting the parsing process.  See
-   :class:`ParserElement.parseString` for more
-   information on parsing strings containing ``<TAB>`` s, and suggested
-   methods to maintain a consistent view of the parsed string, the parse
-   location, and line and column positions within the parsed string.
-   """
-    s = strg
+    Note: the default parsing behavior is to expand tabs in the input string
+    before starting the parsing process.  See
+    :class:`ParserElement.parseString` for more
+    information on parsing strings containing ``<TAB>`` s, and suggested
+    methods to maintain a consistent view of the parsed string, the parse
+    location, and line and column positions within the parsed string.
+    """
+    s = string
     return 1 if 0 < loc < len(s) and s[loc - 1] == "\n" else loc - s.rfind("\n", 0, loc)
 
 
-def lineno(loc, strg):
+def lineno(loc, string):
     """Returns current line number within a string, counting newlines as line separators.
     The first line is number 1.
 
@@ -150,83 +161,67 @@ def lineno(loc, strg):
     suggested methods to maintain a consistent view of the parsed string, the
     parse location, and line and column positions within the parsed string.
     """
-    return strg.count("\n", 0, loc) + 1
+    return string.count("\n", 0, loc) + 1
 
 
-def line(loc, strg):
-    """Returns the line of text containing loc within a string, counting newlines as line separators.
-       """
-    lastCR = strg.rfind("\n", 0, loc)
-    nextCR = strg.find("\n", loc)
+def line(loc, string):
+    """Returns the line of text containing loc within a string, counting newlines as line separators."""
+    lastCR = string.rfind("\n", 0, loc)
+    nextCR = string.find("\n", loc)
     if nextCR >= 0:
-        return strg[lastCR + 1 : nextCR]
+        return string[lastCR + 1 : nextCR]
     else:
-        return strg[lastCR + 1 :]
+        return string[lastCR + 1 :]
 
 
 "decorator to trim function calls to match the arity of the target"
 
 
-def _trim_arity(func):
+def wrap_parse_action(func):
+    from mo_parsing.exceptions import ParseException
+    from mo_parsing.results import ParseResults
+
     if func in singleArgBuiltins:
-        return lambda s, l, t: func(t)
-
-    try:
-        if func.__class__.__name__ == "staticmethod":
-            func = func.__func__
-            spec = inspect.getfullargspec(func)
-
-            self_arg = 1 if spec.args and spec.args[0] in ("self", "cls") else 0
-            if spec.varargs:
-                start = 0
-            else:
-                start = 3 + self_arg - len(spec.args)
-        elif isinstance(func, type):
-            # use __init__., assume the self is already bound
-            spec = inspect.getfullargspec(func.__init__)
-            if spec.varargs:
-                start = 0
-            else:
-                start = 4 - len(spec.args)
-        else:
-            spec = inspect.getfullargspec(func)
-
-            self_arg = 1 if spec.args and spec.args[0] in ("self", "cls") else 0
-            if spec.varargs:
-                start = 0
-            else:
-                start = 3 + self_arg - len(spec.args)
-    except Exception as e:
-        e = Except.wrap(e)
-        func = func.__call__
         spec = inspect.getfullargspec(func)
-        self_arg = 1 if spec.args and spec.args[0] == "self" else 0
-        if spec.varargs:
-            start = 0
-        else:
-            start = 3 + self_arg - len(spec.args)
+    elif func.__class__.__name__ == "staticmethod":
+        func = func.__func__
+        spec = inspect.getfullargspec(func)
+    elif func.__class__.__name__ == "builtin_function_or_method":
+        spec = inspect.getfullargspec(func)
+    elif isinstance(func, type):
+        spec = inspect.getfullargspec(func.__init__)
+        func = func.__call__
+    elif isinstance(func, FunctionType):
+        spec = inspect.getfullargspec(func)
+    elif hasattr(func, "__call__"):
+        spec = inspect.getfullargspec(func)
+
+    if spec.varargs:
+        num_args = 3
+    elif spec.args and spec.args[0] in ["cls", "self"]:
+        num_args = len(spec.args) - 1
+    else:
+        num_args = len(spec.args)
 
     def wrapper(*args):
         try:
-            ret = func(*args[start:])
-            if ret is None:
-                s, i, t = args
-                return t
-            return ret
-        except Exception as e:
-            if (
-                isinstance(e, TypeError)
-                and spec.args[0] == "self"
-                and "required positional argument" in e.args[0]
-            ):
-                Log.error(
-                    "Did you provide a `self` argument to a static function?", cause=e
-                )
-            # Log.warning("function failure", cause=e)
-            from mo_parsing.exceptions import ParseException
+            token, index, string = args
+            result = func(*args[:num_args])
+            if result is None:
+                return token
+            elif isinstance(result, ParseResults):
+                return result
 
+            if isinstance(result, (list, tuple)):
+                return ParseResults(token.type, result)
+            else:
+                return ParseResults(token.type, [result])
+        except ParseException as pe:
+            raise pe
+        except Exception as cause:
+            Log.warning("parse action should not raise exception", cause=cause)
             f = ParseException(*args)
-            f.__cause__ = e
+            f.__cause__ = cause
             raise f
 
     # copy func name to wrapper for sensible debug output
@@ -250,7 +245,6 @@ def _xml_escape(data):
     return data
 
 
-
 def traceParseAction(f):
     """Decorator for debugging parse actions.
 
@@ -267,7 +261,7 @@ def traceParseAction(f):
         def remove_duplicate_chars(tokens):
             return ''.join(sorted(set(''.join(tokens))))
 
-        wds = OneOrMore(wd).setParseAction(remove_duplicate_chars)
+        wds = OneOrMore(wd).addParseAction(remove_duplicate_chars)
         print(wds.parseString("slkdjs sld sldd sdlf sdljf"))
 
     prints::
@@ -276,11 +270,11 @@ def traceParseAction(f):
         <<leaving remove_duplicate_chars (ret: 'dfjkls')
         ['dfjkls']
     """
-    f = _trim_arity(f)
+    f = wrap_parse_action(f)
 
     def z(*paArgs):
         thisFunc = f.__name__
-        s, l, t = paArgs[-3:]
+        t, l, s = paArgs[-3:]
         if len(paArgs) > 3:
             thisFunc = paArgs[0].__class__.__name__ + "." + thisFunc
         sys.stderr.write(
@@ -351,17 +345,19 @@ class unicode_set(object):
     @_lazyclassproperty
     def printables(cls):
         "all non-whitespace characters in this range"
-        return "".join(filterfalse(unicode.isspace, cls._get_chars_for_ranges()))
+        return "".join(sorted(filter(
+            lambda c: not c.isspace(), cls._get_chars_for_ranges()
+        )))
 
     @_lazyclassproperty
     def alphas(cls):
         "all alphabetic characters in this range"
-        return "".join(filter(unicode.isalpha, cls._get_chars_for_ranges()))
+        return "".join(filter(text.isalpha, cls._get_chars_for_ranges()))
 
     @_lazyclassproperty
     def nums(cls):
         "all numeric digit characters in this range"
-        return "".join(filter(unicode.isdigit, cls._get_chars_for_ranges()))
+        return "".join(filter(text.isdigit, cls._get_chars_for_ranges()))
 
     @_lazyclassproperty
     def alphanums(cls):
@@ -499,18 +495,15 @@ parsing_unicode.Japanese._ranges = (
 )
 
 # define ranges in language character sets
-if PY_3:
-    setattr(parsing_unicode, "العربية", parsing_unicode.Arabic)
-    setattr(parsing_unicode, "中文", parsing_unicode.Chinese)
-    setattr(parsing_unicode, "кириллица", parsing_unicode.Cyrillic)
-    setattr(parsing_unicode, "Ελληνικά", parsing_unicode.Greek)
-    setattr(parsing_unicode, "עִברִית", parsing_unicode.Hebrew)
-    setattr(parsing_unicode, "日本語", parsing_unicode.Japanese)
-    setattr(parsing_unicode.Japanese, "漢字", parsing_unicode.Japanese.Kanji)
-    setattr(parsing_unicode.Japanese, "カタカナ", parsing_unicode.Japanese.Katakana)
-    setattr(parsing_unicode.Japanese, "ひらがな", parsing_unicode.Japanese.Hiragana)
-    setattr(parsing_unicode, "한국어", parsing_unicode.Korean)
-    setattr(parsing_unicode, "ไทย", parsing_unicode.Thai)
-    setattr(parsing_unicode, "देवनागरी", parsing_unicode.Devanagari)
-
-
+setattr(parsing_unicode, "العربية", parsing_unicode.Arabic)
+setattr(parsing_unicode, "中文", parsing_unicode.Chinese)
+setattr(parsing_unicode, "кириллица", parsing_unicode.Cyrillic)
+setattr(parsing_unicode, "Ελληνικά", parsing_unicode.Greek)
+setattr(parsing_unicode, "עִברִית", parsing_unicode.Hebrew)
+setattr(parsing_unicode, "日本語", parsing_unicode.Japanese)
+setattr(parsing_unicode.Japanese, "漢字", parsing_unicode.Japanese.Kanji)
+setattr(parsing_unicode.Japanese, "カタカナ", parsing_unicode.Japanese.Katakana)
+setattr(parsing_unicode.Japanese, "ひらがな", parsing_unicode.Japanese.Hiragana)
+setattr(parsing_unicode, "한국어", parsing_unicode.Korean)
+setattr(parsing_unicode, "ไทย", parsing_unicode.Thai)
+setattr(parsing_unicode, "देवनागरी", parsing_unicode.Devanagari)

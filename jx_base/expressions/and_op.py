@@ -18,7 +18,7 @@ from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
 from mo_dots import is_many
 from mo_future import zip_longest
-from mo_future.exports import expect
+from mo_imports import expect
 from mo_json import BOOLEAN
 
 NotOp, OrOp = expect("NotOp", "OrOp")
@@ -62,20 +62,10 @@ class AndOp(Expression):
 
     @simplified
     def partial_eval(self):
-
         # MERGE IDENTICAL NESTED QUERIES
-
         # NEST DEEP NESTED QUERIES
-
-
-
         or_terms = [[]]  # LIST OF TUPLES FOR or-ing and and-ing
         for i, t in enumerate(self.terms):
-            try:
-                if t.terms[1].frum is NULL:
-                    pass
-            except Exception as cause:
-                pass
             simple = self.lang[BooleanOp(t)].partial_eval()
             if simple.type != BOOLEAN:
                 simple = simple.exists()
@@ -103,11 +93,11 @@ class AndOp(Expression):
                 ]
                 continue
             for and_terms in list(or_terms):
-                if self.lang[NotOp(simple)].partial_eval() in and_terms:
+                inv = self.lang[NotOp(simple)].partial_eval()
+                if inv in and_terms:
                     or_terms.remove(and_terms)
                 elif simple not in and_terms:
                     and_terms.append(simple)
-
         if len(or_terms) == 0:
             return FALSE
         elif len(or_terms) == 1:

@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 from copy import copy, deepcopy
 from decimal import Decimal
 
-from mo_dots.lists import is_list, FlatList
+from mo_dots.lists import is_list, FlatList, is_sequence
 from mo_dots.nones import Null, NullType
 from mo_dots.utils import CLASS
 from mo_dots.utils import get_logger
@@ -25,7 +25,7 @@ from mo_future import (
     MutableMapping,
     OrderedDict,
 )
-from mo_future.exports import expect
+from mo_imports import expect
 
 (
     _getdefault,
@@ -172,6 +172,9 @@ class Data(object):
                     pass
             elif d == None:
                 d[literal_field(seq[-1])] = value
+            elif is_sequence(d):
+                for dd in d:
+                    from_data(dd)[seq[-1]] = value
             else:
                 d[seq[-1]] = value
             return self

@@ -13,10 +13,10 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions._utils import simplified, TRUE
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from mo_future.exports import expect
+from mo_imports import expect
 from mo_json import BOOLEAN
 
-NotOp, = expect("NotOp")
+NotOp = expect("NotOp")
 
 
 class ExistsOp(Expression):

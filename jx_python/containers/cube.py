@@ -11,15 +11,14 @@ from __future__ import absolute_import, division, unicode_literals
 
 import mo_dots as dot
 from jx_base.container import Container
-from jx_base.query import _normalize_edge
+from jx_base.expressions.query_op import _normalize_edge
 from jx_python.cubes.aggs import cube_aggs
 from jx_python.lists.aggs import is_aggs
 from mo_collections.matrix import Matrix
 from mo_dots import Data, FlatList, Null, is_data, is_list, listwrap, leaves_to_data, to_data, list_to_data, \
     dict_to_data
-from mo_dots.lists import EMPTY
 from mo_future import is_text, transpose
-from mo_future.exports import export
+from mo_imports import export
 from mo_logs import Log
 from mo_math import MAX, OR
 
@@ -27,7 +26,7 @@ from mo_math import MAX, OR
 class Cube(Container):
     """
     A CUBE IS LIKE A NUMPY ARRAY, ONLY WITH THE DIMENSIONS TYPED AND NAMED.
-    CUBES ARE BETTER THAN PANDAS BECAUSE THEY DEAL WITH NULLS GRACEFULLY
+    CUBES ARE EASIER TO WORK WITH THAN PANDAS BECAUSE THEY DEAL WITH NULLS GRACEFULLY
     """
 
     def __init__(self, select, edges, data, frum=None):
@@ -55,14 +54,14 @@ class Cube(Container):
                     Log.error("not expecting a list of records")
 
                 data = {select.name: Matrix.ZERO}
-                self.edges = EMPTY
+                self.edges = Null
             elif is_data(data):
                 # EXPECTING NO MORE THAN ONE rownum EDGE IN THE DATA
                 length = MAX([len(v) for v in data.values()])
                 if length >= 1:
                     self.edges = list_to_data([{"name": "rownum", "domain": {"type": "rownum"}}])
                 else:
-                    self.edges = EMPTY
+                    self.edges = Null
             elif is_list(data):
                 if is_list(select):
                     Log.error("not expecting a list of records")
@@ -79,7 +78,7 @@ class Cube(Container):
                     Log.error("not expecting a list of records")
 
                 data = {select.name: Matrix(value=data)}
-                self.edges = EMPTY
+                self.edges = Null
         else:
             self.edges = to_data(edges)
 
@@ -118,7 +117,7 @@ class Cube(Container):
         columns = dot.dict_to_data({s.name: s for s in self.select + self.edges})
 
         # DEFER TO ListContainer
-        from jx_python.containers.list_usingPythonList import ListContainer
+        from jx_python.containers.list import ListContainer
 
         frum = ListContainer(name="", data=frum.values(), schema=columns)
         return frum.query(q)

@@ -11,11 +11,12 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.dimensions import Dimension
 from jx_base.domains import DefaultDomain, PARTITION, SimpleSetDomain
-from jx_base.expressions import FirstOp, GtOp, GteOp, LeavesOp, LtOp, LteOp, MissingOp, TupleOp, Variable
+from jx_base.expressions import FirstOp, GtOp, GteOp, LeavesOp, LtOp, LteOp, MissingOp, TupleOp, Variable, TRUE
+from jx_base.expressions.query_op import DEFAULT_LIMIT
 from jx_base.language import is_op
-from jx_base.query import DEFAULT_LIMIT
 from jx_elasticsearch.es52.es_query import Aggs, FilterAggs, FiltersAggs, NestedAggs, RangeAggs, TermsAggs
-from jx_elasticsearch.es52.expressions import AndOp, InOp, Literal, NotOp, split_expression_by_path
+from jx_elasticsearch.es52.expressions import AndOp, InOp, Literal, NotOp
+from jx_elasticsearch.es52.expressions.utils import split_expression
 from jx_elasticsearch.es52.painless import LIST_TO_PIPE, Painless
 from jx_elasticsearch.es52.util import pull_functions, temper_limit
 from jx_elasticsearch.meta import KNOWN_MULTITYPES
@@ -177,14 +178,12 @@ class SetDecoder(AggsDecoder):
     def append_query(self, query_path, es_query):
         domain = self.domain
         domain_key = domain.key
-        value = Painless[self.edge.value]
+        value = self.edge.value
         cnv = pull_functions[value.type]
         include = tuple(cnv(p[domain_key]) for p in domain.partitions)
 
         schema = self.schema
-        exists = Painless[AndOp([
-            InOp([value, Literal(include)])
-        ])].partial_eval()
+        exists = InOp([value, Literal(include)]).partial_eval()
 
         limit = coalesce(self.limit, len(domain.partitions))
 
@@ -203,7 +202,7 @@ class SetDecoder(AggsDecoder):
             match = TermsAggs(
                 "_match",
                 {
-                    "script": text(value.to_es_script(schema)),
+                    "script": text(Painless[value].to_es_script(schema)),
                     "size": limit
                 },
                 self
@@ -213,12 +212,14 @@ class SetDecoder(AggsDecoder):
         if self.edge.allowNulls:
             # IF ALL NESTED COLUMNS ARE NULL, DOES THE FILTER PASS?
             # MISSING AT THE QUERY DEPTH
-            op, split = split_expression_by_path(NotOp(exists), schema)
-            for i, p in enumerate(reversed(sorted(split.keys()))):
-                e = split.get(p)
-                if e:
-                    not_match = NestedAggs(p).add(FilterAggs("_missing"+text(i), e, self).add(es_query))
-                    output.add(not_match)
+            # columns = schema[value.var]
+            concat_inner = split_expression(NotOp(exists), self.query)
+            for i, term in enumerate(concat_inner.terms):
+                acc = es_query
+                for nest in term.nests:
+                    if nest.where is not TRUE:
+                        acc = NestedAggs(nest.path.var).add(FilterAggs("_missing" + text(i), nest.where, self).add(acc))
+                output.add(acc)
         return output
 
     def get_value(self, index):

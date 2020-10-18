@@ -4,8 +4,9 @@ import sys
 
 from mo_dots import coalesce
 from mo_future import text
+from mo_parsing.utils import Log
 
-from mo_parsing.utils import _trim_arity, col, line, lineno
+from mo_parsing.utils import wrap_parse_action, col, line, lineno
 
 
 class ParseBaseException(Exception):
@@ -13,18 +14,29 @@ class ParseBaseException(Exception):
 
     # Performance tuning: we construct a *lot* of these, so keep this
     # constructor as small and fast as possible
-    def __init__(self, pstr, loc, elem):
-        self.pstr = pstr
+    def __init__(self, tokens, loc, string):
+        if not isinstance(string, str):
+            Log.error("expecting string")
+        self.pstr = string
         self.loc = loc
-        self.parserElement = elem
-        self.msg = "Expecting " + text(elem)
-        self.args = (pstr, loc, self.msg)
+        self.parserElement = tokens
+        self._msg = ""
+
+    @property
+    def msg(self):
+        if not self._msg:
+            self._msg = "Expecting " + text(self.parserElement)
+        return self._msg
+
+    @msg.setter
+    def msg(self, value):
+        self._msg = value
 
     def __getattr__(self, aname):
         """supported attributes by name are:
-           - lineno - returns the line number of the exception text
-           - col - returns the column number of the exception text
-           - line - returns the line containing the exception text
+        - lineno - returns the line number of the exception text
+        - col - returns the column number of the exception text
+        - line - returns the line containing the exception text
         """
         if aname == "lineno":
             return lineno(self.loc, self.pstr)
@@ -58,14 +70,16 @@ class ParseBaseException(Exception):
 
     def markInputline(self, markerString=">!<"):
         """Extracts the exception line from the input string, and marks
-           the location of the exception with a special symbol.
+        the location of the exception with a special symbol.
         """
         line_str = self.line
         line_column = self.column - 1
         if markerString:
-            line_str = "".join(
-                (line_str[:line_column], markerString, line_str[line_column:])
-            )
+            line_str = "".join((
+                line_str[:line_column],
+                markerString,
+                line_str[line_column:],
+            ))
         return line_str.strip()
 
     def __dir__(self):
@@ -145,16 +159,14 @@ class ParseException(ParseBaseException):
                     seen.add(f_self)
 
                     self_type = type(f_self)
-                    ret.append(
-                        "{0}.{1} - {2}".format(
-                            self_type.__module__, self_type.__name__, f_self
-                        )
-                    )
+                    ret.append("{0}.{1} - {2}".format(
+                        self_type.__module__, self_type.__name__, f_self
+                    ))
                 elif f_self is not None:
                     self_type = type(f_self)
-                    ret.append(
-                        "{0}.{1}".format(self_type.__module__, self_type.__name__)
-                    )
+                    ret.append("{0}.{1}".format(
+                        self_type.__module__, self_type.__name__
+                    ))
                 else:
                     code = frm.f_code
                     if code.co_name in ("wrapper", "<module>"):
@@ -171,7 +183,7 @@ class ParseException(ParseBaseException):
 
 class ParseFatalException(ParseBaseException):
     """user-throwable exception thrown when inconsistent parse content
-       is found; stops all parsing immediately"""
+    is found; stops all parsing immediately"""
 
     pass
 
@@ -213,19 +225,18 @@ class RecursiveGrammarException(Exception):
 
 
 class OnlyOnce(object):
-    """Wrapper for parse actions, to ensure they are only called once.
-    """
+    """Wrapper for parse actions, to ensure they are only called once."""
 
     def __init__(self, methodCall):
-        self.callable = _trim_arity(methodCall)
+        self.callable = wrap_parse_action(methodCall)
         self.called = False
 
-    def __call__(self, s, l, t):
+    def __call__(self, t, l, s):
         if not self.called:
-            results = self.callable(s, l, t)
+            results = self.callable(t, l, s)
             self.called = True
             return results
-        raise ParseException(s, l, "")
+        raise ParseException("", l, s)
 
     def reset(self):
         self.called = False
@@ -234,11 +245,11 @@ class OnlyOnce(object):
 def conditionAsParseAction(fn, message=None, fatal=False):
     msg = coalesce(message, "failed user-defined condition")
     exc_type = ParseFatalException if fatal else ParseException
-    fn = _trim_arity(fn)
+    fn = wrap_parse_action(fn)
 
     @wraps(fn)
-    def pa(s, l, t):
-        if not bool(fn(s, l, t)):
+    def pa(t, l, s):
+        if not bool(fn(t, l, s)[0]):
             raise exc_type(s, l, msg)
         return t
 

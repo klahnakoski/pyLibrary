@@ -176,6 +176,15 @@ class S3Store(Store):
             self._create_client()
             return op()
 
+    def _forget(self, key):
+        self.client.delete_object(Bucket=self._bucket, Key=self._key(key))
+        # Should return False if the item was not present in the cache, but we
+        # don't care.
+        return True
+
+    def forget(self, key):
+        return self._retry_if_expired(lambda: self._forget(key))
+
     def _get(self, key):
         # Copy the object onto itself to extend its expiration.
         try:
@@ -198,7 +207,13 @@ class S3Store(Store):
             raise
 
         response = self.client.get_object(Bucket=self._bucket, Key=self._key(key))
-        return self.unserialize(response["Body"].read())
+        data = response["Body"].read()
+        try:
+            return self.unserialize(data)
+        except Exception:
+            # The object is broken, let's delete it.
+            self.forget(key)
+            return None
 
     def get(self, key):
         return self._retry_if_expired(lambda: self._get(key))

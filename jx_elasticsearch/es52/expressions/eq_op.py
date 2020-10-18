@@ -20,7 +20,8 @@ from jx_base.expressions import (
     simplified,
 )
 from jx_base.language import is_op
-from jx_elasticsearch.es52.expressions import BasicEqOp
+from jx_elasticsearch.es52.expressions.basic_eq_op import BasicEqOp
+from jx_elasticsearch.es52.expressions.literal import Literal
 from jx_elasticsearch.es52.expressions.utils import ES52
 from jx_elasticsearch.es52.expressions.case_op import CaseOp
 from jx_elasticsearch.es52.expressions.or_op import OrOp
@@ -29,12 +30,12 @@ from jx_elasticsearch.es52.util import pull_functions
 from jx_python.jx import value_compare
 from mo_dots import Data, is_container
 from mo_future import first
-from mo_future.exports import expect
-from mo_json import BOOLEAN, python_type_to_json_type, NUMBER_TYPES
+from mo_imports import expect
+from mo_json import BOOLEAN, python_type_to_json_type, NUMBER_TYPES, same_json_type, OBJECT
 from mo_logs import Log
+from pyLibrary.convert import string2boolean
 
-
-NestedOp, = expect("NestedOp")
+NestedOp = expect("NestedOp")
 
 
 class EqOp(EqOp_):
@@ -49,13 +50,19 @@ class EqOp(EqOp_):
             else:
                 lhs, rhs = rhs, lhs  # FLIP SO WE CAN USE TERMS FILTER
 
-        if lhs.type != rhs.type and (lhs.type not in NUMBER_TYPES or rhs.type not in NUMBER_TYPES):
+        if is_literal(rhs) and same_json_type(lhs.type, BOOLEAN):
+            # SPECIAL CASE true == "T"
+            rhs = string2boolean(rhs.value)
+            if rhs is None:
+                return FALSE
+            rhs = Literal(rhs)
+            return EqOp([lhs, rhs])
+        if lhs.type != OBJECT and rhs.type != OBJECT and not same_json_type(lhs.type, rhs.type):
+            # OBJECT MEANS WE REALLY DO NOT KNOW THE TYPE
             return FALSE
-
         if is_op(lhs, NestedOp):
             return self.lang[NestedOp(
-                path=lhs.frum,
-                where=AndOp([lhs.where, EqOp([lhs.select, rhs])])
+                path=lhs.frum, where=AndOp([lhs.where, EqOp([lhs.select, rhs])])
             )]
 
         return EqOp([lhs, rhs])
@@ -82,17 +89,14 @@ class EqOp(EqOp_):
                     if len(types) == 1:
                         jx_type, values = first(types.items())
                         for c in cols:
-                            if jx_type == c.jx_type or (jx_type in NUMBER_TYPES and c.jx_type in NUMBER_TYPES):
+                            if same_json_type(jx_type, c.jx_type):
                                 return {"terms": {c.es_column: values}}
                         return FALSE.to_es(schema)
                     else:
                         return (
-                            OrOp(
-                                [
-                                    EqOp([self.lhs, values])
-                                    for t, values in types.items()
-                                ]
-                            )
+                            OrOp([
+                                EqOp([self.lhs, values]) for t, values in types.items()
+                            ])
                             .partial_eval()
                             .to_es(schema)
                         )
@@ -101,20 +105,16 @@ class EqOp(EqOp_):
                 if c.jx_type == BOOLEAN:
                     rhs = pull_functions[c.jx_type](rhs)
                 rhs_type = python_type_to_json_type[rhs.__class__]
-                if rhs_type == c.jx_type or (rhs_type in NUMBER_TYPES and c.jx_type in NUMBER_TYPES):
+                if rhs_type == c.jx_type or (
+                    rhs_type in NUMBER_TYPES and c.jx_type in NUMBER_TYPES
+                ):
                     return {"term": {c.es_column: rhs}}
             return FALSE.to_es(schema)
         else:
-            return (
-                ES52[
-                    CaseOp(
-                        [
-                            WhenOp(self.lhs.missing(), **{"then": self.rhs.missing()}),
-                            WhenOp(self.rhs.missing(), **{"then": FALSE}),
-                            BasicEqOp([self.lhs, self.rhs]),
-                        ]
-                    )
-                    .partial_eval()
-                ]
-                .to_es(schema)
-            )
+            return ES52[
+                CaseOp([
+                    WhenOp(self.lhs.missing(), **{"then": self.rhs.missing()}),
+                    WhenOp(self.rhs.missing(), **{"then": FALSE}),
+                    BasicEqOp([self.lhs, self.rhs]),
+                ]).partial_eval()
+            ].to_es(schema)

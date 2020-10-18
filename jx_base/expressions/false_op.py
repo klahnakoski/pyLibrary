@@ -11,10 +11,10 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.literal import Literal
-from mo_future.exports import export, expect
+from mo_imports import export, expect
 from mo_json import BOOLEAN
 
-TRUE, = expect("TRUE")
+TRUE = expect("TRUE")
 
 
 class FalseOp(Literal):
@@ -63,8 +63,12 @@ class FalseOp(Literal):
     def __bool__(self):
         return False
 
+    def __nonzero__(self):
+        return False
+
 
 FALSE = FalseOp()
 
+export("jx_base.expressions._utils", FALSE)
 export("jx_base.expressions.expression", FALSE)
 export("jx_base.expressions.literal", FALSE)

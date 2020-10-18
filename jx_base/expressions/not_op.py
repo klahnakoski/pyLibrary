@@ -13,7 +13,7 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.language import is_op
-from mo_future.exports import export
+from mo_imports import export
 from mo_json import BOOLEAN
 
 
@@ -39,14 +39,14 @@ class NotOp(Expression):
         return self.lang[NotOp(self.term.map(map_))]
 
     def missing(self):
-        return self.term.missing()
+        return self.lang[self.term].missing()
 
     def invert(self):
         return self.lang[self.term].partial_eval()
 
     @simplified
     def partial_eval(self):
-        return self.term.invert()
+        return self.lang[self.term].invert()
 
 
 export("jx_base.expressions.and_op", NotOp)

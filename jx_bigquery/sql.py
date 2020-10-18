@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 import string
 from collections import Mapping
 
-from jx_base.query import _normalize_sort, _normalize_select
+from jx_base.expressions.query_op import _normalize_sort, _normalize_select
 from jx_python import jx
 from mo_dots import wrap, split_field
 from mo_files.url import hex2chr

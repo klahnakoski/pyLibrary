@@ -30,8 +30,7 @@ from mo_dots import (
 from mo_json import INTEGER
 from mo_kwargs import override
 from mo_logs import Except
-from mo_math import ceiling
-from mo_math.randoms import Random
+from mo_math import ceiling, randoms
 from mo_threads import Till, Lock, Queue
 from mo_times import MINUTE, Timer
 
@@ -187,7 +186,7 @@ class Dataset(BaseContainer):
             Log.error("Can not create a table for read-only use")
 
         if sharded:
-            shard_name = escape_name(table + "_" + "".join(Random.sample(ALLOWED, 20)))
+            shard_name = escape_name(table + "_" + "".join(randoms.sample(ALLOWED, 20)))
             shard_api_name = self.full_name + shard_name
             _shard = bigquery.Table(text(shard_api_name), schema=flake.to_bq_schema())
             _shard.time_partitioning = unwrap(flake._partition.bq_time_partitioning)
@@ -397,7 +396,7 @@ class Table(BaseFacts):
 
     def _create_new_shard(self):
         primary_shard = self.container.create_table(
-            table=self.short_name + "_" + "".join(Random.sample(ALLOWED, 20)),
+            table=self.short_name + "_" + "".join(randoms.sample(ALLOWED, 20)),
             sharded=False,
             schema=self._flake.schema,
             kwargs=self.config,
@@ -569,7 +568,7 @@ class Table(BaseFacts):
                     del shard_flakes[i]
                     break
         else:
-            name = self.short_name + "_" + "".join(Random.sample(ALLOWED, 20))
+            name = self.short_name + "_" + "".join(randoms.sample(ALLOWED, 20))
             primary_shard_name = escape_name(name)
             self.container.create_table(
                 table=name,
