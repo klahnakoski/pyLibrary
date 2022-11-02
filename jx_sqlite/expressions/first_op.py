@@ -11,15 +11,15 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import FirstOp as FirstOp_
 from jx_sqlite.expressions._utils import SQLang, check
+from mo_json import base_type, T_ARRAY
 from mo_logs import Log
 
 
 class FirstOp(FirstOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.term].to_sql(schema, not_null=True)
-        for c in value:
-            for t, v in c.sql.items():
-                if t == "j":
-                    Log.error("can not handle")
+    def to_sql(self, schema):
+        value = self.term.partial_eval(SQLang).to_sql(schema)
+        type = base_type(value._data_type)
+        if type == T_ARRAY:
+            Log.error("not handled yet")
         return value

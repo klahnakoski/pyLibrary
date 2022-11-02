@@ -17,7 +17,7 @@ from boto.s3.connection import Location
 from bs4 import BeautifulSoup
 
 import mo_files
-from mo_dots import Data, Null, coalesce, unwrap, to_data, is_many, list_to_data
+from mo_dots import Data, Null, coalesce, from_data, to_data, is_many, list_to_data
 from mo_files import mimetype
 from mo_files.url import value2url_param
 from mo_future import StringIO, is_binary, text
@@ -84,14 +84,14 @@ class Connection(object):
         try:
             if not kwargs.region:
                 self.connection = boto.connect_s3(
-                    aws_access_key_id=unwrap(self.settings.aws_access_key_id),
-                    aws_secret_access_key=unwrap(self.settings.aws_secret_access_key),
+                    aws_access_key_id=from_data(self.settings.aws_access_key_id),
+                    aws_secret_access_key=from_data(self.settings.aws_secret_access_key),
                 )
             else:
                 self.connection = boto.s3.connect_to_region(
                     self.settings.region,
-                    aws_access_key_id=unwrap(self.settings.aws_access_key_id),
-                    aws_secret_access_key=unwrap(self.settings.aws_secret_access_key),
+                    aws_access_key_id=from_data(self.settings.aws_access_key_id),
+                    aws_secret_access_key=from_data(self.settings.aws_secret_access_key),
                 )
         except Exception as e:
             Log.error("Problem connecting to S3", e)
@@ -190,7 +190,7 @@ class Bucket(object):
         """
         try:
             metas = list(self.bucket.list(prefix=str(key)))
-            metas = list_to_data([m for m in metas if text(m.name).find(".json") != -1])
+            metas = list_to_data([m for m in metas if ".json" in text(m.name)])
 
             perfect = Null
             favorite = Null

@@ -12,19 +12,28 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
+from jx_base.expressions.literal import is_literal
+from jx_base.expressions.null_op import NULL
 from mo_json import OBJECT
+from mo_logs import Log
 
 
 class LeavesOp(Expression):
     date_type = OBJECT
 
-    def __init__(self, term, prefix=None):
+    def __init__(self, *term, prefix=None):
+
+        if prefix == None or prefix is NULL:
+            prefix = NULL
+        elif not is_literal(prefix):
+            Log.error("expecting literal prefix")
+
         Expression.__init__(self, term)
         self.term = term
         self.prefix = prefix
 
     def __data__(self):
-        if self.prefix:
+        if self.prefix is not NULL:
             return {"leaves": self.term.__data__(), "prefix": self.prefix}
         else:
             return {"leaves": self.term.__data__()}
@@ -33,7 +42,7 @@ class LeavesOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return self.lang[LeavesOp(self.term.map(map_))]
+        return LeavesOp(self.term.map(map_))
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE

@@ -10,6 +10,8 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from unittest import skip
+
 from jx_base.expressions import NULL
 from jx_base.expressions.query_op import DEFAULT_LIMIT
 from mo_dots import to_data, list_to_data

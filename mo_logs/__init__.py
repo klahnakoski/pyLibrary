@@ -10,38 +10,66 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import os
-import platform
 import sys
 from datetime import datetime
 
-from mo_dots import Data, FlatList, coalesce, is_list, listwrap, unwraplist, dict_to_data, is_data
-from mo_future import PY3, is_text, text, STDOUT
+from mo_dots import Data, coalesce, listwrap, unwraplist, dict_to_data, is_data, to_data
+from mo_future import is_text, text, STDOUT
 from mo_imports import delay_import
 from mo_kwargs import override
 
 from mo_logs import constants as _constants, exceptions, strings
-from mo_logs.exceptions import Except, LogItem, suppress_exception
-from mo_logs.log_usingFile import StructuredLogger_usingFile
-from mo_logs.log_usingMulti import StructuredLogger_usingMulti
+from mo_logs.exceptions import (
+    Except,
+    LogItem,
+    suppress_exception,
+    format_trace,
+    WARNING,
+)
 from mo_logs.log_usingStream import StructuredLogger_usingStream
 from mo_logs.strings import CR, indent
 
-_Thread = None
+STACKTRACE = "\n{{trace_text|indent}}\n{{cause_text}}"
+
+
+StructuredLogger_usingMulti = delay_import(
+    "mo_logs.log_usingMulti.StructuredLogger_usingMulti"
+)
+StructuredLogger_usingThread = delay_import(
+    "mo_logs.log_usingThread.StructuredLogger_usingThread"
+)
+
+
+
+
+_Thread = delay_import("mo_threads.Thread")
+startup_read_settings = delay_import("mo_logs.startup.read_settings")
 
 
 class Log(object):
     """
     FOR STRUCTURED LOGGING AND EXCEPTION CHAINING
     """
+
     trace = False
-    main_log = None
+    main_log = StructuredLogger_usingStream(STDOUT)
     logging_multi = None
-    profiler = None   # simple pypy-friendly profiler
+    profiler = None  # simple pypy-friendly profiler
     error_mode = False  # prevent error loops
+    extra = {}
 
     @classmethod
     @override("settings")
-    def start(cls, trace=False, cprofile=False, constants=None, logs=None, app_name=None, settings=None):
+    def start(
+        cls,
+        trace=False,
+        cprofile=False,
+        constants=None,
+        logs=None,
+        extra=None,
+        app_name=None,
+        settings=None,
+    ):
         """
         RUN ME FIRST TO SETUP THE THREADED LOGGING
         https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
@@ -55,7 +83,6 @@ class Log(object):
         :param settings: ALL THE ABOVE PARAMTERS
         :return:
         """
-        global _Thread  # REQUIRED FOR trace
         if app_name:
             return LoggingContext(app_name)
 
@@ -63,9 +90,6 @@ class Log(object):
 
         cls.settings = settings
         cls.trace = trace
-        if trace:
-            from mo_threads import Thread as _Thread
-            _ = _Thread
 
         # ENABLE CPROFILE
         if cprofile is False:
@@ -74,6 +98,7 @@ class Log(object):
             cprofile = settings.cprofile = Data(enabled=True, filename="cprofile.tab")
         if is_data(cprofile) and cprofile.enabled:
             from mo_threads import profiles
+
             profiles.enable_profilers(settings.cprofile.filename)
 
         if constants:
@@ -86,8 +111,13 @@ class Log(object):
                 Log._add_log(Log.new_instance(log))
 
             from mo_logs.log_usingThread import StructuredLogger_usingThread
-            old_log, cls.main_log = cls.main_log, StructuredLogger_usingThread(cls.logging_multi)
+
+            old_log, cls.main_log = (
+                cls.main_log,
+                StructuredLogger_usingThread(cls.logging_multi),
+            )
             old_log.stop()
+        cls.extra = extra or {}
 
     @classmethod
     def stop(cls):
@@ -98,53 +128,21 @@ class Log(object):
         """
         old_log, cls.main_log = cls.main_log, StructuredLogger_usingStream(STDOUT)
         old_log.stop()
+        cls.trace = False
+        cls.cprofile = False
 
     @classmethod
     @override("settings")
     def new_instance(cls, log_type=None, settings=None):
         if settings["class"]:
-            if settings["class"].startswith("logging.handlers."):
-                from mo_logs.log_usingThread import StructuredLogger_usingThread
-                from mo_logs.log_usingHandler import StructuredLogger_usingHandler
+            from mo_logs.log_usingHandler import StructuredLogger_usingHandler
 
-                return StructuredLogger_usingThread(StructuredLogger_usingHandler(settings))
-            else:
-                with suppress_exception:
-                    from mo_logs.log_usingLogger import make_log_from_settings
+            return StructuredLogger_usingHandler(settings)
 
-                    return make_log_from_settings(settings)
-                # OH WELL :(
-
-        if log_type == "logger":
-            from mo_logs.log_usingLogger import StructuredLogger_usingLogger
-            return StructuredLogger_usingLogger(settings)
-        if log_type == "file" or settings.file:
-            return StructuredLogger_usingFile(settings.file)
-        if log_type == "file" or settings.filename:
-            return StructuredLogger_usingFile(settings.filename)
-        if log_type == "console":
-            from mo_logs.log_usingThread import StructuredLogger_usingThread
-            return StructuredLogger_usingThread(StructuredLogger_usingStream(STDOUT))
-        if log_type == "mozlog":
-            from mo_logs.log_usingMozLog import StructuredLogger_usingMozLog
-            return StructuredLogger_usingMozLog(STDOUT, coalesce(settings.app_name, settings.appname))
-        if log_type == "stream" or settings.stream:
-            from mo_logs.log_usingThread import StructuredLogger_usingThread
-            return StructuredLogger_usingThread(StructuredLogger_usingStream(settings.stream))
-        if log_type == "elasticsearch" or settings.stream:
-            from mo_logs.log_usingElasticSearch import StructuredLogger_usingElasticSearch
-            return StructuredLogger_usingElasticSearch(settings)
-        if log_type == "email":
-            from mo_logs.log_usingEmail import StructuredLogger_usingEmail
-            return StructuredLogger_usingEmail(settings)
-        if log_type == "ses":
-            from mo_logs.log_usingSES import StructuredLogger_usingSES
-            return StructuredLogger_usingSES(settings)
-        if log_type.lower() in ["nothing", "none", "null"]:
-            from mo_logs.log_usingNothing import StructuredLogger
-            return StructuredLogger()
-
-        Log.error("Log type of {{config|json}} is not recognized", config=settings)
+        clazz = _known_loggers.get(log_type.lower())
+        if clazz:
+            return clazz(settings)
+        logger.error("Log type of {{config|json}} is not recognized", config=settings)
 
     @classmethod
     def _add_log(cls, log):
@@ -156,110 +154,93 @@ class Log(object):
             cls.logging_multi.add_log(logger)
         else:
             from mo_logs.log_usingThread import StructuredLogger_usingThread
+
             old_log, cls.main_log = cls.main_log, StructuredLogger_usingThread(logger)
             old_log.stop()
 
     @classmethod
-    def note(
-        cls,
-        template,
-        default_params={},
-        stack_depth=0,
-        log_context=None,
-        **more_params
-    ):
+    def note(cls, template, default_params={}, stack_depth=0, **more_params):
         """
         :param template: *string* human readable string with placeholders for parameters
         :param default_params: *dict* parameters to fill in template
         :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
-        :param log_context: *dict* extra key:value pairs for your convenience
         :param more_params: *any more parameters (which will overwrite default_params)
         :return:
         """
         timestamp = datetime.utcnow()
         if not is_text(template):
-            Log.error("Log.note was expecting a unicode template")
+            logger.error("logger.info was expecting a string template")
 
         Log._annotate(
             LogItem(
-                context=exceptions.NOTE,
-                format=template,
+                severity=exceptions.NOTE,
                 template=template,
-                params=dict(default_params, **more_params)
+                params=dict(default_params, **more_params),
+                timestamp=timestamp,
             ),
-            timestamp,
-            stack_depth+1
+            stack_depth + 1,
         )
+
+    info = note
 
     @classmethod
     def unexpected(
-        cls,
-        template,
-        default_params={},
-        cause=None,
-        stack_depth=0,
-        log_context=None,
-        **more_params
+        cls, template, default_params={}, cause=None, stack_depth=0, **more_params
     ):
         """
         :param template: *string* human readable string with placeholders for parameters
         :param default_params: *dict* parameters to fill in template
         :param cause: *Exception* for chaining
         :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
-        :param log_context: *dict* extra key:value pairs for your convenience
         :param more_params: *any more parameters (which will overwrite default_params)
         :return:
         """
         timestamp = datetime.utcnow()
         if not is_text(template):
-            Log.error("Log.warning was expecting a unicode template")
+            logger.error("logger.warning was expecting a string template")
 
         if isinstance(default_params, BaseException):
             cause = default_params
             default_params = {}
 
         if "values" in more_params.keys():
-            Log.error("Can not handle a logging parameter by name `values`")
+            logger.error("Can not handle a logging parameter by name `values`")
 
-        params = Data(dict(default_params, **more_params))
+        params = to_data(dict(default_params, **more_params))
         cause = unwraplist([Except.wrap(c) for c in listwrap(cause)])
         trace = exceptions.get_stacktrace(stack_depth + 1)
 
-        e = Except(exceptions.UNEXPECTED, template=template, params=params, cause=cause, trace=trace)
-        Log._annotate(
-            e,
-            timestamp,
-            stack_depth+1
+        e = Except(
+            exceptions.UNEXPECTED,
+            template=template,
+            params=params,
+            timestamp=timestamp,
+            cause=cause,
+            trace=trace,
         )
+        Log._annotate(e, stack_depth + 1)
 
     @classmethod
-    def alarm(
-        cls,
-        template,
-        default_params={},
-        stack_depth=0,
-        log_context=None,
-        **more_params
-    ):
+    def alarm(cls, template, default_params={}, stack_depth=0, **more_params):
         """
         :param template: *string* human readable string with placeholders for parameters
         :param default_params: *dict* parameters to fill in template
         :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
-        :param log_context: *dict* extra key:value pairs for your convenience
         :param more_params: more parameters (which will overwrite default_params)
         :return:
         """
         timestamp = datetime.utcnow()
-        format = ("*" * 80) + CR + indent(template, prefix="** ").strip() + CR + ("*" * 80)
+        template = (
+            ("*" * 80) + CR + indent(template, prefix="** ").strip() + CR + ("*" * 80)
+        )
         Log._annotate(
             LogItem(
-                context=exceptions.ALARM,
-                format=format,
+                severity=exceptions.ALARM,
                 template=template,
-                params=dict(default_params, **more_params)
+                params=dict(default_params, **more_params),
+                timestamp=timestamp,
             ),
-            timestamp,
-            stack_depth + 1
+            stack_depth + 1,
         )
 
     alert = alarm
@@ -267,43 +248,36 @@ class Log(object):
     @classmethod
     def warning(
         cls,
-        template,
-        default_params={},
-        cause=None,
-        stack_depth=0,
-        log_context=None,
-        **more_params
+        template: str,  # human readable string with placeholders for parameters
+        default_params={},  # parameters to fill in template
+        cause=None,  # for chaining
+        stack_depth=0,  # how many calls you want popped off the stack to report the *true* caller
+        log_severity=WARNING,  # set the logging severity
+        **more_params  # any more parameters (which will overwrite default_params)
     ):
-        """
-        :param template: *string* human readable string with placeholders for parameters
-        :param default_params: *dict* parameters to fill in template
-        :param cause: *Exception* for chaining
-        :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
-        :param log_context: *dict* extra key:value pairs for your convenience
-        :param more_params: *any more parameters (which will overwrite default_params)
-        :return:
-        """
-        timestamp = datetime.utcnow()
         if not is_text(template):
-            Log.error("Log.warning was expecting a unicode template")
+            logger.error("logger.warning was expecting a string template")
+        if "values" in more_params.keys():
+            logger.error("Can not handle a logging parameter by name `values`")
 
         if isinstance(default_params, BaseException):
             cause = default_params
             default_params = {}
 
-        if "values" in more_params.keys():
-            Log.error("Can not handle a logging parameter by name `values`")
-
-        params = Data(dict(default_params, **more_params))
-        cause = unwraplist([Except.wrap(c) for c in listwrap(cause)])
+        params = to_data(dict(default_params, **more_params))
+        cause = unwraplist([Except.wrap(c, stack_depth=2) for c in listwrap(cause)])
         trace = exceptions.get_stacktrace(stack_depth + 1)
 
-        e = Except(exceptions.WARNING, template=template, params=params, cause=cause, trace=trace)
-        Log._annotate(
-            e,
-            timestamp,
-            stack_depth+1
+        e = Except(
+            severity=log_severity,
+            template=template,
+            params=params,
+            cause=cause,
+            trace=trace,
         )
+        Log._annotate(e, stack_depth + 1)
+
+    warn = warning
 
     @classmethod
     def error(
@@ -321,101 +295,109 @@ class Log(object):
         :param default_params: *dict* parameters to fill in template
         :param cause: *Exception* for chaining
         :param stack_depth:  *int* how many calls you want popped off the stack to report the *true* caller
-        :param log_context: *dict* extra key:value pairs for your convenience
         :param more_params: *any more parameters (which will overwrite default_params)
         :return:
         """
         if not is_text(template):
-            sys.stderr.write(str("Log.error was expecting a unicode template"))
-            Log.error("Log.error was expecting a unicode template")
+            # sys.stderr.write(str("logger.error was expecting a string template"))
+            logger.error("logger.error was expecting a string template")
+        if "values" in more_params.keys():
+            logger.error("Can not handle a logging parameter by name `values`")
 
-        if default_params and isinstance(listwrap(default_params)[0], BaseException):
+        if isinstance(default_params, BaseException):
             cause = default_params
             default_params = {}
 
-        params = Data(dict(default_params, **more_params))
-
-        add_to_trace = False
-        if cause == None:
-            causes = None
-        elif is_list(cause):
-            causes = []
-            for c in listwrap(cause):  # CAN NOT USE LIST-COMPREHENSION IN PYTHON3 (EXTRA STACK DEPTH FROM THE IN-LINED GENERATOR)
-                causes.append(Except.wrap(c, stack_depth=1))
-            causes = FlatList(causes)
-        elif isinstance(cause, BaseException):
-            causes = Except.wrap(cause, stack_depth=1)
-        else:
-            causes = None
-            Log.error("can only accept Exception, or list of exceptions")
-
+        params = to_data(dict(default_params, **more_params))
+        cause = unwraplist([Except.wrap(c, stack_depth=2) for c in listwrap(cause)])
         trace = exceptions.get_stacktrace(stack_depth + 1)
 
-        if add_to_trace:
-            cause[0].trace.extend(trace[1:])
-
-        e = Except(context=exceptions.ERROR, template=template, params=params, cause=causes, trace=trace)
+        e = Except(
+            severity=exceptions.ERROR,
+            template=template,
+            params=params,
+            cause=cause,
+            trace=trace,
+        )
         raise_from_none(e)
 
     @classmethod
-    def _annotate(
-        cls,
-        item,
-        timestamp,
-        stack_depth
-    ):
+    def _annotate(cls, item, stack_depth):
         """
         :param item:  A LogItem THE TYPE OF MESSAGE
         :param stack_depth: FOR TRACKING WHAT LINE THIS CAME FROM
         :return:
         """
-        item.timestamp = timestamp
-        item.machine = machine_metadata
-        item.template = strings.limit(item.template, 10000)
+        template = item.template
+        template = strings.limit(template, 10000)
+        template = template.replace("{{", "{{params.")
 
-        item.format = strings.limit(item.format, 10000)
-        if item.format == None:
-            format = text(item)
+        if isinstance(item, Except):
+            template = "{{severity}}: " + template + STACKTRACE
+            temp = item.__data__()
+            temp.trace_text = item.trace_text
+            temp.cause_text = item.cause_text
+            item = temp
         else:
-            format = item.format.replace("{{", "{{params.")
-        if not format.startswith(CR) and format.find(CR) > -1:
-            format = CR + format
+            item = item.__data__()
+
+        if not template.startswith(CR) and CR in template:
+            template = CR + template
 
         if cls.trace:
-            log_format = item.format = "{{machine.name}} (pid {{machine.pid}}) - {{timestamp|datetime}} - {{thread.name}} - \"{{location.file}}:{{location.line}}\" - ({{location.method}}) - " + format
+            item.machine = machine_metadata()
+            log_format = item.template = (
+                "{{machine.name}} (pid {{machine.pid}}) - {{timestamp|datetime}} -"
+                ' {{thread.name}} - "{{location.file}}:{{location.line}}" -'
+                " ({{location.method}}) - "
+                + template
+            )
             f = sys._getframe(stack_depth + 1)
             item.location = {
                 "line": f.f_lineno,
                 "file": text(f.f_code.co_filename),
-                "method": text(f.f_code.co_name)
+                "method": text(f.f_code.co_name),
             }
             thread = _Thread.current()
             item.thread = {"name": thread.name, "id": thread.id}
         else:
-            log_format = item.format = "{{timestamp|datetime}} - " + format
+            log_format = template
+            # log_format = item.template = "{{timestamp|datetime}} - " + template
 
-        cls.main_log.write(log_format, item.__data__())
+        item.params = {**cls.extra, **item.params}
+        cls.main_log.write(log_format, item)
 
     def write(self):
         raise NotImplementedError
 
 
-class LoggingContext:
+logger = Log
 
-    def __init__(self, app_name):
+
+def getLogger(*args, **kwargs):
+    return logger
+
+
+class LoggingContext:
+    def __init__(self, app_name=None):
         self.app_name = app_name
         self.config = None
 
     def __enter__(self):
-        self.config = config = startup.read_settings()
+        self.config = config = startup_read_settings()
         from mo_logs import constants
+
         constants.set(config.constants)
         Log.start(config.debug)
         return config
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_val:
-            Log.warning("Problem with {{name}}! Shutting down.", name=self.app_name, cause=exc_val)
+            logger.warning(
+                "Problem with {{name}}! Shutting down.",
+                name=self.app_name,
+                cause=exc_val,
+            )
         Log.stop()
 
 
@@ -424,27 +406,91 @@ def _same_frame(frameA, frameB):
 
 
 # GET THE MACHINE METADATA
-machine_metadata = dict_to_data({
-    "pid":  os.getpid(),
-    "python": text(platform.python_implementation()),
-    "os": text(platform.system() + platform.release()).strip(),
-    "name": text(platform.node())
-})
+_machine_metadata = None
+
+
+def machine_metadata():
+    global _machine_metadata
+    if _machine_metadata:
+        return _machine_metadata
+
+    import platform
+
+    _machine_metadata = dict_to_data({
+        "pid": os.getpid(),
+        "python": text(platform.python_implementation()),
+        "os": text(platform.system() + platform.release()).strip(),
+        "name": text(platform.node()),
+    })
+    return _machine_metadata
 
 
 def raise_from_none(e):
-    raise e
+    raise e from None
 
 
-if PY3:
-    exec("def raise_from_none(e):\n    raise e from None\n", globals(), locals())
+def _using_logger(config):
+    from mo_logs.log_usingLogger import StructuredLogger_usingLogger
 
-StructuredLogger_usingFile = delay_import("mo_logs.log_usingFile.StructuredLogger_usingFile")
-StructuredLogger_usingMulti = delay_import("mo_logs.log_usingMulti.StructuredLogger_usingMulti")
-StructuredLogger_usingThread = delay_import("mo_logs.log_usingThread.StructuredLogger_usingThread")
-startup = delay_import("mo_logs.startup")
+    return StructuredLogger_usingLogger(config)
 
-if not Log.main_log:
-    Log.main_log = StructuredLogger_usingStream(STDOUT)
+def _using_file(config):
+    from mo_logs.log_usingFile import StructuredLogger_usingFile
+    if config.file:
+        return StructuredLogger_usingFile(config.file)
+    if config.filename:
+        return StructuredLogger_usingFile(config.filename)
+
+def _using_console(config):
+    from mo_logs.log_usingThread import StructuredLogger_usingThread
+
+    return StructuredLogger_usingThread(StructuredLogger_usingStream(STDOUT))
+
+def _using_mozlog(config):
+    from mo_logs.log_usingMozLog import StructuredLogger_usingMozLog
+
+    return StructuredLogger_usingMozLog(
+        STDOUT, coalesce(config.app_name, config.appname)
+    )
+def _using_stream(config):
+    from mo_logs.log_usingThread import StructuredLogger_usingThread
+
+    return StructuredLogger_usingThread(StructuredLogger_usingStream(config.stream))
+
+def _using_elasticsearch(config):
+    from jx_elasticsearch.log_usingElasticSearch import StructuredLogger_usingElasticSearch
+
+    return StructuredLogger_usingElasticSearch(config)
+
+def _using_email(config):
+    from mo_logs.log_usingEmail import StructuredLogger_usingEmail
+
+    return StructuredLogger_usingEmail(config)
+
+def _using_ses(config):
+    from mo_logs.log_usingSES import StructuredLogger_usingSES
+
+    return StructuredLogger_usingSES(config)
+
+def _using_nothing(config):
+    from mo_logs.log_usingNothing import StructuredLogger
+
+    return StructuredLogger()
 
 
+_known_loggers = {
+    "logger": _using_logger,
+    "nothing": _using_nothing,
+    "none": _using_nothing,
+    "null": _using_nothing,
+    "file": _using_file,
+    "console": _using_console,
+    "mozlog": _using_mozlog,
+    "stream": _using_stream,
+    "elasticsearch": _using_elasticsearch,
+    "email": _using_email,
+    "ses": _using_ses,
+}
+
+def register_logger(name, factory):
+    _known_loggers[name]=factory

@@ -97,6 +97,9 @@ def request(method, url, headers=None, data=None, json=None, zip=None, retry=Non
         ))
     _warning_sent = True
 
+    if kwargs.header:
+        Log.error("'header' is not an acceptable argument")
+
     if is_list(url):
         # TRY MANY URLS
         failures = []
@@ -126,7 +129,7 @@ def request(method, url, headers=None, data=None, json=None, zip=None, retry=Non
             set_default(kwargs, DEFAULTS)
 
             # HEADERS
-            headers = unwrap(set_default(headers, session.headers, default_headers))
+            headers = unwrap(set_default(headers, default_headers, {'Accept-Encoding': 'compress, gzip'}))
             _to_ascii_dict(headers)
 
             # RETRY
@@ -144,7 +147,6 @@ def request(method, url, headers=None, data=None, json=None, zip=None, retry=Non
 
             # ZIP
             zip = coalesce(zip, DEFAULTS['zip'])
-            set_default(headers, {'Accept-Encoding': 'compress, gzip'})
 
             if zip:
                 if is_sequence(data):
@@ -254,8 +256,11 @@ def post_json(url, **kwargs):
         kwargs['data'] = value2json(kwargs['data']).encode('utf8')
     else:
         Log.error(u"Expecting `json` parameter")
+
+    kwargs.setdefault("headers", {})['Content-Type'] = mimetype.JSON
     response = post(url, **kwargs)
-    details = json2value(response.content.decode('utf8'))
+    content = response.content.decode('utf8')
+    details = json2value(content)
     if response.status_code not in [200, 201, 202]:
 
         if "template" in details:

@@ -15,8 +15,7 @@ from mo_dots import Data
 
 class Table(jx_base.Table):
 
-    __slots__ = ['header', 'data', 'meta']
-
+    __slots__ = ["header", "data", "meta"]
 
     def __init__(self, header=None, data=None):
         self.header = header
@@ -26,5 +25,3 @@ class Table(jx_base.Table):
 
     def groupby(self, keys):
         pass
-
-

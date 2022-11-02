@@ -10,33 +10,26 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import AndOp as AndOp_
-from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import wrap
+from jx_sqlite.expressions._utils import SQLang, check, SqlScript
+from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.sqlite import SQL_AND, SQL_FALSE, SQL_TRUE, sql_iso
+from mo_json.types import T_BOOLEAN
 
 
 class AndOp(AndOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         if not self.terms:
-            return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
+            return SqlScript(data_type=T_BOOLEAN, expr=SQL_TRUE, frum=self)
         elif all(self.terms):
-            return wrap(
-                [
-                    {
-                        "name": ".",
-                        "sql": {
-                            "b": SQL_AND.join(
-                                [
-                                    sql_iso(
-                                        SQLang[t].to_sql(schema, boolean=True)[0].sql.b
-                                    )
-                                    for t in self.terms
-                                ]
-                            )
-                        },
-                    }
-                ]
+            return SqlScript(
+                data_type=T_BOOLEAN,
+                expr=SQL_AND.join([
+                    sql_iso(ToBooleanOp(t).partial_eval(SQLang).to_sql(schema))
+                    for t in self.terms
+                ]),
+                frum=self,
+                schema=schema
             )
         else:
-            return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
+            return SqlScript(data_type=T_BOOLEAN, expr=SQL_FALSE, frum=self, schema=schema)

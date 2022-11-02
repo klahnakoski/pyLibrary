@@ -15,6 +15,4 @@ from jx_python.expressions._utils import Python
 
 class CoalesceOp(CoalesceOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "coalesce(" + (", ".join(Python[t].to_python() for t in self.terms)) + ")"
-        )
+        return "coalesce(" + ", ".join((t).to_python() for t in self.terms) + ")"

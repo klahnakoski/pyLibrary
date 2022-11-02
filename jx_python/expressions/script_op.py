@@ -17,4 +17,5 @@ class ScriptOp(ScriptOp_):
     def to_python(self, not_null=False, boolean=False, many=False):
         return self.script
 
+
 _utils.ScriptOp = ScriptOp

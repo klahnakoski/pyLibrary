@@ -9,95 +9,95 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import ConcatOp as ConcatOp_, TrueOp, ZERO, is_literal
+from jx_base.expressions.null_op import NULL
+
+from jx_base.expressions.literal import Literal
+
+from jx_base.expressions import (
+    ConcatOp as ConcatOp_,
+    TrueOp,
+    is_literal,
+    ToTextOp,
+    AddOp,
+    AndOp,
+    MissingOp,
+    ONE,
+)
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.length_op import LengthOp
-from jx_sqlite.expressions.sql_script import SQLScript
-from jx_sqlite.sqlite import quote_value, sql_call
-from mo_dots import coalesce
-from mo_json import STRING
+from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import (
-    SQL,
     SQL_CASE,
     SQL_ELSE,
     SQL_EMPTY_STRING,
     SQL_END,
-    SQL_NULL,
     SQL_THEN,
     SQL_WHEN,
     sql_iso,
-    sql_list,
     sql_concat_text,
-    ConcatSQL, SQL_PLUS, SQL_ONE, SQL_ZERO)
+    ConcatSQL,
+)
+from jx_sqlite.sqlite import sql_call
+from mo_json import T_TEXT
 
 
 class ConcatOp(ConcatOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         default = self.default.to_sql(schema)
         if len(self.terms) == 0:
             return default
-        len_sep = LengthOp(self.separator).partial_eval()
-        no_sep = is_literal(len_sep) and len_sep.value==0
-        sep = SQLang[self.separator].to_sql(schema)[0].sql.s
+        len_sep = LengthOp(self.separator).partial_eval(SQLang)
+        no_sep = len_sep is NULL
+        if no_sep:
+            sep = None
+        else:
+            sep = self.separator.partial_eval(SQLang).to_sql(schema).frum
 
         acc = []
         for t in self.terms:
-            t = SQLang[t]
-            missing = t.missing().partial_eval()
+            t = ToTextOp(t).partial_eval(SQLang)
+            missing = t.missing(SQLang).partial_eval(SQLang)
 
-            term = t.to_sql(schema, not_null=True)[0].sql
-            if term.s:
-                term_sql = term.s
-            elif term.n:
-                term_sql = "cast(" + term.n + " as text)"
-            else:
-                term_sql = (
-                    SQL_CASE
-                    + SQL_WHEN
-                    + term.b
-                    + SQL_THEN
-                    + quote_value("true")
-                    + SQL_ELSE
-                    + quote_value("false")
-                    + SQL_END
-                )
+            term = t.to_sql(schema).frum
 
             if no_sep:
-                sep_term = term_sql
+                sep_term = term
             else:
-                sep_term = sql_iso(sql_concat_text([sep, term_sql]))
+                sep_term = sql_iso(sql_concat_text([sep, term]))
 
             if isinstance(missing, TrueOp):
                 acc.append(SQL_EMPTY_STRING)
             elif missing:
-                acc.append(
-                    SQL_CASE
-                    + SQL_WHEN
-                    + sql_iso(missing.to_sql(schema, boolean=True)[0].sql.b)
-                    + SQL_THEN
-                    + SQL_EMPTY_STRING
-                    + SQL_ELSE
-                    + sep_term
-                    + SQL_END
-                )
+                acc.append(ConcatSQL(
+                    SQL_CASE,
+                    SQL_WHEN,
+                    missing.to_sql(schema).frum,
+                    SQL_THEN,
+                    SQL_EMPTY_STRING,
+                    SQL_ELSE,
+                    sep_term,
+                    SQL_END,
+                ))
             else:
                 acc.append(sep_term)
 
         if no_sep:
-            expr_ = sql_concat_text(acc)
+            sql = sql_concat_text(acc)
         else:
-            expr_ = sql_call(
+            sql = sql_call(
                 "SUBSTR",
                 sql_concat_text(acc),
-                ConcatSQL(LengthOp(self.separator).to_sql(schema)[0].sql.n, SQL_PLUS, SQL_ONE)
+                AddOp([ONE, LengthOp(self.separator)])
+                .partial_eval(SQLang)
+                .to_sql(schema)
+                .frum,
             )
 
-        return SQLScript(
-            expr=expr_,
-            data_type=STRING,
+        return SqlScript(
+            data_type=T_TEXT,
+            expr=sql,
             frum=self,
-            miss=self.missing(),
-            many=False,
+            miss=AndOp([MissingOp(t) for t in self.terms]),
             schema=schema,
         )

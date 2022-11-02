@@ -10,7 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_python import jx
-from mo_dots import Data, Null, is_list, unwrap, to_data, dict_to_data, list_to_data
+from mo_dots import Data, Null, is_list, from_data, to_data, dict_to_data, list_to_data
 from mo_files import File
 import mo_json
 from mo_kwargs import override
@@ -70,7 +70,7 @@ class FakeES():
         f = jx.get(query.query.filtered.filter)
         filtered = list_to_data([{"_id": i, "_source": d} for i, d in self.data.items() if f(d)])
         if query.fields:
-            return dict_to_data({"hits": {"total": len(filtered), "hits": [{"_id": d._id, "fields": unwrap(jx.select([unwrap(d._source)], query.fields)[0])} for d in filtered]}})
+            return dict_to_data({"hits": {"total": len(filtered), "hits": [{"_id": d._id, "fields": from_data(jx.select([from_data(d._source)], query.fields)[0])} for d in filtered]}})
         else:
             return dict_to_data({"hits": {"total": len(filtered), "hits": filtered}})
 
@@ -88,7 +88,7 @@ class FakeES():
             except Exception:
                 pass
 
-        unwrap(self.data).update(records)
+        from_data(self.data).update(records)
         self.refresh()
         Log.note("{{num}} documents added", num=len(records))
 

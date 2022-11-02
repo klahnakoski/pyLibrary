@@ -2,15 +2,33 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import inspect
+import json
+import re
 import string
 import sys
 import warnings
+from collections import namedtuple
+from math import isnan
 from types import FunctionType
 
-from mo_future import unichr, text, generator_types
+from mo_dots import is_null, Null
+from mo_future import unichr, text, generator_types, get_function_name
+from mo_imports import expect
+
+ParseResults, ParseException, Many = expect("ParseResults", "ParseException", "Many")
+
+
+def append_config(base, *slots):
+    dups = set(slots) & set(base.Config._fields)
+    if dups:
+        Log.error("Duplicate config fields: {{dups}}", dups=dups)
+
+    fields = base.Config._fields + slots
+    return namedtuple("Config", fields)
+
 
 try:
-    from mo_parsing.utils import Log
+    from mo_logs import Log, Except
 except Exception:
 
     class Log(object):
@@ -20,17 +38,162 @@ except Exception:
 
         @classmethod
         def warning(cls, template, cause=None, **params):
-            pass
+            print(f"WARNING: {template}")
+
+        @classmethod
+        def alert(cls, template, cause=None, **params):
+            print()
 
         @classmethod
         def error(cls, template, cause=None, **params):
-            raise Exception(template) from cause
+            raise ParseException(Null, -1, "", msg=template, cause=cause)
 
 
-_MAX_INT = sys.maxsize
+MAX_INT = sys.maxsize
 empty_list = []
 empty_tuple = tuple()
 many_types = (list, tuple, set) + generator_types
+
+
+def register_type(t):
+    global many_types
+    many_types = many_types + (t,)
+
+
+def extend(cls):
+    """
+    DECORATOR TO ADD METHODS TO CLASSES
+    :param cls: THE CLASS TO ADD THE METHOD TO
+    :return:
+    """
+
+    def extender(func):
+        setattr(cls, get_function_name(func), func)
+        return func
+
+    return extender
+
+
+_prec = {"|": 0, "+": 1, "*": 2}
+
+
+def regex_compile(pattern):
+    """REGEX COMPILE WITHOUT THE ON-A-SINGLE-LINE ASSUMPTION"""
+    try:
+        return re.compile(pattern, re.DOTALL)
+    except Exception as cause:
+        Log.error("could not compile {{pattern}}", pattern=pattern, cause=cause)
+
+
+regex_type = type(regex_compile("[A-Z]"))
+
+
+def regex_iso(curr_prec, expr, new_prec):
+    """
+    RETURN NON-CAPTURING GROUP (TO ENSURE ORDER OF OPERATIONS)
+    """
+    if _prec[curr_prec] < _prec[new_prec]:
+        return f"(?:{expr})"
+    else:
+        return expr
+
+
+def regex_caseless(literal):
+    """
+    RETURN REGEX FOR CASELESS VERSION OF GIVEN LITERAL (SO WE DO NOT NEED CASELESS MODE)
+    """
+    lower = literal.lower()
+    upper = literal.upper()
+    return "".join(
+        f"[{re.escape(l)}{re.escape(u)}]" if l != u else re.escape(u)
+        for l, u in zip(lower, upper)
+    )
+
+
+_escapes = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
+_escapes.update({c: "\\" + c for c in r".^$*?+-{}[]\|()"})
+
+
+def regex_range(s, exclude=False):
+    def esc(s):
+        return _escapes.get(s, s)
+
+    if not s:
+        return ""
+    if len(s) == 1:
+        if exclude:
+            return f"[^{esc(s)}]"
+        else:
+            return esc(s)
+
+    start = None
+    prev = None
+    acc = ["[^"] if exclude else ["["]
+    for c in list(sorted(set(s))) + ["\a"]:
+        if prev and ord(prev) == ord(c) - 1:
+            if not start:
+                start = prev
+        elif start:
+            if start == prev:
+                acc.append(esc(prev))
+            else:
+                acc.append(esc(start))
+                acc.append("-")
+                acc.append(esc(prev))
+            start = None
+        elif prev:
+            acc.append(esc(prev))
+        prev = c
+    acc.append("]")
+
+    return "".join(acc)
+
+
+def indent(value, prefix="\t", indent=None):
+    """
+    indent given string, using prefix * indent as prefix for each line
+    :param value:
+    :param prefix:
+    :param indent:
+    :return:
+    """
+    if indent != None:
+        prefix = prefix * indent
+
+    value = text(value)
+    try:
+        content = value.rstrip()
+        suffix = value[len(content) :]
+        lines = content.splitlines()
+        return prefix + ("\n" + prefix).join(lines) + suffix
+    except Exception as e:
+        raise Exception(
+            "Problem with indent of value (" + e.message + ")\n" + text(value)
+        ) from None
+
+
+def quote(value):
+    """
+    return JSON-quoted value
+    :param value:
+    :return:
+    """
+    if is_null(value):
+        output = ""
+    else:
+        output = json.dumps(value)
+    return output
+
+
+def is_number(s):
+    if s is True or s is False or is_null(s):
+        return False
+
+    try:
+        s = float(s)
+        return not isnan(s)
+    except Exception:
+        return False
 
 
 def listwrap(value):
@@ -40,7 +203,7 @@ def listwrap(value):
     value -> [value]
     [...] -> [...]  (unchanged list)
     """
-    if value == None:
+    if is_null(value):
         return []
     elif isinstance(value, many_types):
         return value
@@ -72,6 +235,15 @@ singleArgBuiltins = [
     max,
 ]
 
+singleArgTypes = [
+    int,
+    float,
+    str,
+    bool,
+    complex,
+    dict,
+]
+
 builtin_lookup = {"".join.__name__: ("iterable",)}
 
 
@@ -79,14 +251,14 @@ def is_forward(expr):
     return expr.__class__.__name__ == "Forward"
 
 
-def forward_type(expr):
+def is_backtracking(expr):
     """
-    :param expr:
-    :return:  Effective type of this Forward
+    RETURN true IF THIS CAN BE EXPENSIVE BACKTRACKER
     """
-    while is_forward(expr.type):
-        expr = expr.tokens[0]
-    return expr.type
+    return (
+        isinstance(expr, Many)
+        and expr.parser_config.max_match - expr.parser_config.min_match > 3
+    )
 
 
 def stack_depth():
@@ -105,34 +277,10 @@ def get_function_arguments(func):
         return builtin_lookup.get(func.__name__, ("unknown",))
 
 
-class __config_flags:
-    """Internal class for defining compatibility and debugging flags"""
-
-    _all_names = []
-    _fixed_names = []
-    _type_desc = "configuration"
-
-    @classmethod
-    def _set(cls, dname, value):
-        if dname in cls._fixed_names:
-            warnings.warn("{}.{} {} is {} and cannot be overridden".format(
-                cls.__name__, dname, cls._type_desc, str(getattr(cls, dname)).upper(),
-            ))
-            return
-        if dname in cls._all_names:
-            setattr(cls, dname, value)
-        else:
-            raise ValueError("no such {} {!r}".format(cls._type_desc, dname))
-
-    enable = classmethod(lambda cls, name: cls._set(name, True))
-    disable = classmethod(lambda cls, name: cls._set(name, False))
-
-
 alphas = string.ascii_uppercase + string.ascii_lowercase
 nums = "0123456789"
 hexnums = nums + "ABCDEFabcdef"
 alphanums = alphas + nums
-_bslash = chr(92)
 printables = "".join(c for c in string.printable if c not in string.whitespace)
 
 
@@ -142,7 +290,7 @@ def col(loc, string):
 
     Note: the default parsing behavior is to expand tabs in the input string
     before starting the parsing process.  See
-    :class:`ParserElement.parseString` for more
+    `ParserElement.parse_string` for more
     information on parsing strings containing ``<TAB>`` s, and suggested
     methods to maintain a consistent view of the parsed string, the parse
     location, and line and column positions within the parsed string.
@@ -156,7 +304,7 @@ def lineno(loc, string):
     The first line is number 1.
 
     Note - the default parsing behavior is to expand tabs in the input string
-    before starting the parsing process.  See :class:`ParserElement.parseString`
+    before starting the parsing process.  See `ParserElement.parse_string`
     for more information on parsing strings containing ``<TAB>`` s, and
     suggested methods to maintain a consistent view of the parsed string, the
     parse location, and line and column positions within the parsed string.
@@ -178,9 +326,6 @@ def line(loc, string):
 
 
 def wrap_parse_action(func):
-    from mo_parsing.exceptions import ParseException
-    from mo_parsing.results import ParseResults
-
     if func in singleArgBuiltins:
         spec = inspect.getfullargspec(func)
     elif func.__class__.__name__ == "staticmethod":
@@ -188,6 +333,8 @@ def wrap_parse_action(func):
         spec = inspect.getfullargspec(func)
     elif func.__class__.__name__ == "builtin_function_or_method":
         spec = inspect.getfullargspec(func)
+    elif func in singleArgTypes:
+        spec = inspect.FullArgSpec(["value"], None, None, None, [], None, {})
     elif isinstance(func, type):
         spec = inspect.getfullargspec(func.__init__)
         func = func.__call__
@@ -203,26 +350,30 @@ def wrap_parse_action(func):
     else:
         num_args = len(spec.args)
 
-    def wrapper(*args):
+    def wrapper(token, index, string):
         try:
-            token, index, string = args
+            args = token, index, string
             result = func(*args[:num_args])
             if result is None:
                 return token
             elif isinstance(result, ParseResults):
+                if (result.start < token.start) or (token.end < result.end):
+                    Log.error("Tokens must be ordered")
+                result.failures.extend(token.failures)
                 return result
 
             if isinstance(result, (list, tuple)):
-                return ParseResults(token.type, result)
+                return ParseResults(
+                    token.type, token.start, token.end, result, token.failures
+                )
             else:
-                return ParseResults(token.type, [result])
+                return ParseResults(
+                    token.type, token.start, token.end, [result], token.failures
+                )
         except ParseException as pe:
-            raise pe
+            raise
         except Exception as cause:
-            Log.warning("parse action should not raise exception", cause=cause)
-            f = ParseException(*args)
-            f.__cause__ = cause
-            raise f
+            Log.error("parse action should not raise exception", cause=cause)
 
     # copy func name to wrapper for sensible debug output
     try:
@@ -243,56 +394,6 @@ def _xml_escape(data):
     for from_, to_ in zip(from_symbols, to_symbols):
         data = data.replace(from_, to_)
     return data
-
-
-def traceParseAction(f):
-    """Decorator for debugging parse actions.
-
-    When the parse action is called, this decorator will print
-    ``">> entering method-name(line:<current_source_line>, <parse_location>, <matched_tokens>)"``.
-    When the parse action completes, the decorator will print
-    ``"<<"`` followed by the returned value, or any exception that the parse action raised.
-
-    Example::
-
-        wd = Word(alphas)
-
-        @traceParseAction
-        def remove_duplicate_chars(tokens):
-            return ''.join(sorted(set(''.join(tokens))))
-
-        wds = OneOrMore(wd).addParseAction(remove_duplicate_chars)
-        print(wds.parseString("slkdjs sld sldd sdlf sdljf"))
-
-    prints::
-
-        >>entering remove_duplicate_chars(line: 'slkdjs sld sldd sdlf sdljf', 0, (['slkdjs', 'sld', 'sldd', 'sdlf', 'sdljf'], {}))
-        <<leaving remove_duplicate_chars (ret: 'dfjkls')
-        ['dfjkls']
-    """
-    f = wrap_parse_action(f)
-
-    def z(*paArgs):
-        thisFunc = f.__name__
-        t, l, s = paArgs[-3:]
-        if len(paArgs) > 3:
-            thisFunc = paArgs[0].__class__.__name__ + "." + thisFunc
-        sys.stderr.write(
-            ">>entering %s(line: '%s', %d, %r)\n" % (thisFunc, line(l, s), l, t)
-        )
-        try:
-            ret = f(*paArgs)
-        except Exception as exc:
-            sys.stderr.write("<<leaving %s (exception: %s)\n" % (thisFunc, exc))
-            raise
-        sys.stderr.write("<<leaving %s (ret: %r)\n" % (thisFunc, ret))
-        return ret
-
-    try:
-        z.__name__ = f.__name__
-    except AttributeError:
-        pass
-    return z
 
 
 class _lazyclassproperty(object):

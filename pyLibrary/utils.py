@@ -9,47 +9,77 @@
 from __future__ import division, unicode_literals
 
 import datetime
+import re
 
-from mo_dots import DataObject, Null, unwrap
-from mo_future import text, zip_longest
+from jx_python.jx import chunk
+from mo_dots import DataObject, Null, from_data
+from mo_future import zip_longest
+from mo_logs import Log
 
 
 class Version(object):
+    __slots__ = ["prefix", "version"]
 
-    __slots__ = ["version"]
-
-    def __new__(cls, version):
+    def __new__(cls, version, prefix=""):
         if version == None:
             return Null
         else:
             return object.__new__(cls)
 
-    def __init__(self, version):
-        version = unwrap(version)
+    def __init__(self, version, prefix=""):
+        version = from_data(version)
 
         if isinstance(version, tuple):
             self.version = version
-        elif isinstance(version, DataObject):
-            self.version = [0, 0, 0]
+            self.prefix = ("", ".", ".", ".", ".", ".", ".")[:len(self.version)]
+        elif not version or isinstance(version, DataObject):
+            self.prefix = ('',)
+            self.version = (0,)
         elif isinstance(version, Version):
+            self.prefix = version.prefix
             self.version = version.version
         else:
             try:
-                self.version = tuple(map(int, version.split('.')))
-            except Exception as e:
-                self.version = [0, 0, 0]
+                self.prefix, version = split(version)
+            except Exception as cause:
+                raise cause
+
+            def scrub(v):
+                try:
+                    return int(v)
+                except Exception:
+                    return v
+
+            self.version = tuple(map(scrub, version))
+        if len(self.prefix)!=len(self.version):
+            Log.error("not expected")
 
     def __gt__(self, other):
         other = Version(other)
         for s, o in zip_longest(self.version, other.version):
             if s is None and o is not None:
                 return False
-            elif s is not None and o is None:
+            if s is not None and o is None:
                 return True
-            elif s < o:
-                return False
-            elif s > o:
-                return True
+
+            if isinstance(s, str):
+                if isinstance(o, str):
+                    if s == o:
+                        continue
+                    return s > o
+                else:
+                    if int(s) == o:
+                        continue
+                    return int(s) >= o
+            else:
+                if isinstance(o, str):
+                    if s == int(o):
+                        continue
+                    return s > int(o)
+                else:
+                    if s == o:
+                        continue
+                    return s > o
 
         return False
 
@@ -71,13 +101,18 @@ class Version(object):
         return self.version != other.version
 
     def __str__(self):
-        return text(".").join(map(text, self.version))
+        return "".join(p + str(v) for p, v in zip(self.prefix, self.version))
+
+    def __hash__(self):
+        return self.__str__().__hash__()
 
     def __add__(self, other):
         major, minor, mini = self.version
         minor += other
         mini = datetime.datetime.utcnow().strftime("%y%j")
-        return Version((major, minor, mini))
+        return Version((major, minor, mini), prefix=self.prefix)
+
+    __data__ = __str__
 
     @property
     def major(self):
@@ -90,3 +125,17 @@ class Version(object):
     @property
     def mini(self):
         return self.version[2]
+
+
+def triple(version):
+    return (tuple(version) + (0, 0, 0))[:3]
+
+
+def split(version):
+    result = re.split(r"(\.|(?<=\d)(?=[a-zA-Z])|(?<=[a-zA-Z])(?=\d)|^(?=\d))", version)
+    if len(result) > 2 and not result[1]:
+        result.pop(1)
+    return zip(*(r for g, r in chunk(result, 2)))
+
+
+split('v1.10.20029')

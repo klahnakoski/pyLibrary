@@ -10,7 +10,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import mo_math
-from jx_base.expressions import NULL
+from jx_base.expressions import NULL, Variable
 from jx_elasticsearch.es52.es_query import CountAggs, ExprAggs, NestedAggs
 from jx_elasticsearch.es52.set_op import get_pull_stats
 from jx_elasticsearch.es52.util import aggregates
@@ -32,24 +32,19 @@ def agg_field(acc, new_select, query_path, schema):
             columns = schema.values(s.value.var)
 
         if s.aggregate == "count":
-            canonical_names = []
             for column in columns:
                 es_name = column.es_column + "_count"
                 if column.jx_type == EXISTS:
                     if column.nested_path[0] == query_path:
-                        canonical_names.append("doc_count")
+                        s.pull = jx_expression_to_function("value")
                         acc.add(NestedAggs(column.nested_path[0]).add(
-                            CountAggs(s)
+                            ExprAggs(es_name, {"value_count": {"field": column.es_column}}, s)
                         ))
                 else:
-                    canonical_names.append("value")
+                    s.pull = jx_expression_to_function("value")
                     acc.add(NestedAggs(column.nested_path[0]).add(
                         ExprAggs(es_name, {"value_count": {"field": column.es_column}}, s)
                     ))
-            if len(canonical_names) == 1:
-                s.pull = jx_expression_to_function(canonical_names[0])
-            else:
-                s.pull = jx_expression_to_function({"add": canonical_names})
         elif s.aggregate == "median":
             columns = [c for c in columns if c.jx_type in NUMBER_TYPES]
             if len(columns) != 1:
@@ -141,15 +136,15 @@ def agg_field(acc, new_select, query_path, schema):
                         column.es_column) + '].values) params._agg.terms.put(v, Optional.ofNullable(params._agg.terms.get(v)).orElse(0)+1);',
                     'combine_script': 'return params._agg.terms',
                     'reduce_script': '''
-                        HashMap output = new HashMap(); 
+                        HashMap output = new HashMap();
                         for (agg in params._aggs) {
                             if (agg!=null){
                                 for (e in agg.entrySet()) {
                                     String key = String.valueOf(e.getKey());
                                     output.put(key, e.getValue() + Optional.ofNullable(output.get(key)).orElse(0));
-                                } 
+                                }
                             }
-                        } 
+                        }
                         return output;
                     '''
                 }}

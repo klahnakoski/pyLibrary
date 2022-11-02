@@ -12,8 +12,19 @@ from __future__ import absolute_import, division, unicode_literals
 
 import os
 
-from mo_dots import is_data, is_list, set_default, unwrap, to_data, is_sequence, coalesce, get_attr, listwrap, unwraplist, \
-    dict_to_data
+from mo_dots import (
+    is_data,
+    is_list,
+    set_default,
+    from_data,
+    to_data,
+    is_sequence,
+    coalesce,
+    get_attr,
+    listwrap,
+    unwraplist,
+    dict_to_data,
+)
 from mo_files import File
 from mo_files.url import URL
 from mo_future import is_text
@@ -27,10 +38,7 @@ DEBUG = False
 
 def get_file(file):
     file = File(file)
-    if os.sep == "\\":
-        return get("file:///" + file.abspath)
-    else:
-        return get("file://" + file.abspath)
+    return get("file://" + file.abspath)
 
 
 def get(url):
@@ -38,19 +46,19 @@ def get(url):
     USE json.net CONVENTIONS TO LINK TO INLINE OTHER JSON
     """
     url = text(url)
-    if url.find("://") == -1:
+    if "://" not in url:
         Log.error("{{url}} must have a prototcol (eg http://) declared", url=url)
 
     base = URL("")
     if url.startswith("file://") and url[7] != "/":
-        if os.sep=="\\":
+        if os.sep == "\\":
             base = URL("file:///" + os.getcwd().replace(os.sep, "/").rstrip("/") + "/.")
         else:
             base = URL("file://" + os.getcwd().rstrip("/") + "/.")
-    elif url[url.find("://") + 3] != "/":
-        Log.error("{{url}} must be absolute", url=url)
 
-    phase1 = _replace_ref(dict_to_data({"$ref": url}), base)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
+    phase1 = _replace_ref(
+        dict_to_data({"$ref": url}), base
+    )  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
     try:
         phase2 = _replace_locals(phase1, [phase1])
         return to_data(phase2)
@@ -70,7 +78,7 @@ def expand(doc, doc_url="param://", params=None):
     :param params: EXTRA PARAMETERS NOT FOUND IN THE doc_url PARAMETERS (WILL SUPERSEDE PARAMETERS FROM doc_url)
     :return: EXPANDED JSON-SERIALIZABLE STRUCTURE
     """
-    if doc_url.find("://") == -1:
+    if "://" not in doc_url:
         Log.error("{{url}} must have a prototcol (eg http://) declared", url=doc_url)
 
     url = URL(doc_url)
@@ -125,7 +133,9 @@ def _replace_ref(node, url):
             if ref.fragment:
                 new_value = get_attr(new_value, ref.fragment)
 
-            DEBUG and Log.note("Replace {{ref}} with {{new_value}}", ref=ref, new_value=new_value)
+            DEBUG and Log.note(
+                "Replace {{ref}} with {{new_value}}", ref=ref, new_value=new_value
+            )
 
             if not output:
                 output = new_value
@@ -175,9 +185,12 @@ def _replace_locals(node, doc_path):
             # RELATIVE
             for i, p in enumerate(frag):
                 if p != ".":
-                    if i>len(doc_path):
-                        Log.error("{{frag|quote}} reaches up past the root document",  frag=frag)
-                    new_value = get_attr(doc_path[i-1], frag[i::])
+                    if i > len(doc_path):
+                        Log.error(
+                            "{{frag|quote}} reaches up past the root document",
+                            frag=frag,
+                        )
+                    new_value = get_attr(doc_path[i - 1], frag[i::])
                     break
             else:
                 new_value = doc_path[len(frag) - 1]
@@ -190,7 +203,7 @@ def _replace_locals(node, doc_path):
         if not output:
             return new_value  # OPTIMIZATION FOR CASE WHEN node IS {}
         else:
-            return unwrap(set_default(output, new_value))
+            return from_data(set_default(output, new_value))
 
     elif is_list(node):
         candidate = [_replace_locals(n, [n] + doc_path) for n in node]
@@ -204,6 +217,7 @@ def _replace_locals(node, doc_path):
 ###############################################################################
 ## SCHEME LOADERS ARE BELOW THIS LINE
 ###############################################################################
+
 
 def _get_file(ref, url):
 
@@ -253,7 +267,7 @@ def get_http(ref, url):
     import requests
 
     params = url.query
-    new_value = json2value(requests.get(ref), params=params, flexible=True, leaves=True)
+    new_value = json2value(requests.get(str(ref)).json(), params=params, flexible=True, leaves=True)
     return new_value
 
 
@@ -271,6 +285,35 @@ def _get_env(ref, url):
     return new_value
 
 
+def _get_keyring(ref, url):
+    try:
+        import keyring
+    except Exception:
+        Log.error("Missing keyring: `pip install keyring` to use this feature")
+
+    # GET PASSWORD FROM KEYRING
+    service_name = ref.host
+    if "@" in service_name:
+        username, service_name = service_name.split("@")
+    else:
+        username = ref.query.username
+
+    raw_value = keyring.get_password(service_name, username)
+    if not raw_value:
+        Log.error(
+            "expecting password in the keyring for service_name={{service_name}} and"
+            " username={{username}}",
+            service_name=service_name,
+            username=username,
+        )
+
+    try:
+        new_value = json2value(raw_value)
+    except Exception as e:
+        new_value = raw_value
+    return new_value
+
+
 def _get_param(ref, url):
     # GET PARAMETERS FROM url
     param = url.query
@@ -280,8 +323,9 @@ def _get_param(ref, url):
 
 scheme_loaders = {
     "http": get_http,
+    "https": get_http,
     "file": _get_file,
     "env": _get_env,
-    "param": _get_param
+    "param": _get_param,
+    "keyring": _get_keyring,
 }
-

@@ -15,8 +15,9 @@ from jx_base.expressions.literal import ZERO
 from jx_base.expressions.literal import is_literal
 from jx_base.expressions.null_op import NULL
 from jx_base.expressions.variable import Variable
-from jx_base.language import is_op
-from mo_json import INTEGER
+from jx_base.language import is_op, JX
+from mo_json import T_INTEGER
+from mo_dots import is_missing
 
 
 class FindOp(Expression):
@@ -25,13 +26,13 @@ class FindOp(Expression):
     """
 
     has_simple_form = True
-    data_type = INTEGER
+    _data_type = T_INTEGER
 
-    def __init__(self, term, **kwargs):
-        Expression.__init__(self, term)
-        self.value, self.find = term
+    def __init__(self, value, find, **kwargs):
+        Expression.__init__(self, value, find)
+        self.value, self.find = value, find
         self.default = kwargs.get("default", NULL)
-        self.start = kwargs.get("start", ZERO).partial_eval()
+        self.start = kwargs.get("start", ZERO).partial_eval(JX)
         if self.start is NULL:
             self.start = ZERO
 
@@ -50,6 +51,20 @@ class FindOp(Expression):
             output["default"] = self.default.__data__()
         return output
 
+    def __call__(self, row, rownum=None, rows=None):
+        value = self.value(row, rownum, rows)
+        if is_missing(value):
+            return None
+        find = self.find(row, rownum, rows)
+        if is_missing(find):
+            return None
+        start = self.start(row, rownum, rows)
+
+        i = value.find(find, start)
+        if i == -1:
+            return self.default(row, rownum, rows)
+        return i
+
     def vars(self):
         return (
             self.value.vars()
@@ -64,3 +79,6 @@ class FindOp(Expression):
             start=self.start.map(map_),
             default=self.default.map(map_),
         )
+
+    def invert(self, lang):
+        return lang.MissingOp(self)

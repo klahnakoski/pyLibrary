@@ -14,7 +14,7 @@ from boto.sqs.message import Message
 
 import mo_json
 import mo_math
-from mo_dots import unwrap, to_data
+from mo_dots import from_data, to_data
 from mo_json import value2json
 from mo_kwargs import override
 from mo_logs import Log
@@ -40,9 +40,9 @@ class Queue(object):
             Log.error("Can not find region {{region}} in {{regions}}", region=kwargs.region, regions=[r.name for r in sqs.regions()])
 
         conn = sqs.connect_to_region(
-            region_name=unwrap(kwargs.region),
-            aws_access_key_id=unwrap(kwargs.aws_access_key_id),
-            aws_secret_access_key=unwrap(kwargs.aws_secret_access_key),
+            region_name=from_data(kwargs.region),
+            aws_access_key_id=from_data(kwargs.aws_access_key_id),
+            aws_secret_access_key=from_data(kwargs.aws_secret_access_key),
         )
         self.queue = conn.get_queue(name)
         if self.queue == None:

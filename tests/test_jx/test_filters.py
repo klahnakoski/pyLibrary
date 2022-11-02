@@ -10,9 +10,12 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from unittest import skipIf
+
 from jx_base.expressions import NULL
 from mo_dots import list_to_data
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
+from tests import STRING_TYPED_COLUMN
 
 lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
@@ -118,20 +121,18 @@ class TestFilters(BaseTestCase):
                 "where": {"regex": {"a": ".*b.*"}},
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [
-                {"a": "abba"},
-                {"a": "aaba"},
-                {"a": "aba"},
-                {"a": "ab"},
-                {"a": "ba"},
-                {"a": "b"}
-            ]}
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "abba"},
+                    {"a": "aaba"},
+                    {"a": "aba"},
+                    {"a": "ab"},
+                    {"a": "ba"},
+                    {"a": "b"}
+                ]
+            }
         }
         self.utils.execute_tests(test)
-        # No regexp() user function is defined by default and so use of the
-        #REGEXP operator will normally result in an error message.
-        #If an application-defined SQL function named "regexp" is added at run-time,
-        #then the "X REGEXP Y" operator will be implemented
 
     def test_empty_or(self):
         test = {
@@ -443,10 +444,11 @@ class TestFilters(BaseTestCase):
             "query": {
                 "from": TEST_TABLE,
                 "select": "a",
-                "where": {"in": ["a", [{"literal": "4"}, {"literal": "2"}]]}
+                "where": {"in": ["a", [{"literal": "4"}, {"literal": "2"}]]},
+                "sort": "a"
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": ["4", "2"]
+                "meta": {"format": "list"}, "data": ["2", "4"]
             }
         }
         self.utils.execute_tests(test)
@@ -462,15 +464,17 @@ class TestFilters(BaseTestCase):
             "query": {
                 "from": TEST_TABLE,
                 "select": "a",
-                "where": {"eq": ["a", [{"literal": "4"}, {"literal": "2"}]]}
+                "where": {"eq": ["a", [{"literal": "4"}, {"literal": "2"}]]},
+                "sort": "a"
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": ["4", "2"]
+                "meta": {"format": "list"}, "data": ["2", "4"]
             }
         }
         self.utils.execute_tests(test)
 
-    def test_find_uses_regex(self):
+    @skipIf(not global_settings.elasticsearch.version, "only for ES")
+    def test_find_uses_regex_es(self):
         test = {
             "data": [
                 {"v": "this-is-a-test"},
@@ -488,10 +492,32 @@ class TestFilters(BaseTestCase):
                     "format": "list",
                     "es_query": {
                         "from": 0,
-                        "query": {"regexp": {"v.~s~": ".*test.*"}},
+                        "query": {"regexp": {"v."+STRING_TYPED_COLUMN: ".*test.*"}},
                         "size": 10
                     },
                 },
+                "data": [
+                    {"v": "this-is-a-test"},
+                    {"v": "test"},
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    def test_find(self):
+        test = {
+            "data": [
+                {"v": "this-is-a-test"},
+                {"v": "this-is-a-vest"},
+                {"v": "test"},
+                {"v": ""},
+                {"v": None}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "where": {"find": {"v": "test"}}
+            },
+            "expecting_list": {
                 "data": [
                     {"v": "this-is-a-test"},
                     {"v": "test"},

@@ -10,13 +10,13 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified, builtin_ops
+from jx_base.expressions._utils import builtin_ops
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal
 from jx_base.expressions.null_op import NULL
 from jx_base.language import is_op
-from mo_json import NUMBER
+from mo_json.types import T_NUMBER
 
 
 class BasicMultiOp(Expression):
@@ -24,10 +24,10 @@ class BasicMultiOp(Expression):
     PLACEHOLDER FOR BASIC OPERATOR (CAN NOT DEAL WITH NULLS)
     """
 
-    data_type = NUMBER
+    _data_type = T_NUMBER
     op = None
 
-    def __init__(self, terms):
+    def __init__(self, *terms):
         Expression.__init__(self, terms)
         self.terms = terms
 
@@ -43,15 +43,14 @@ class BasicMultiOp(Expression):
     def __data__(self):
         return {self.op: [t.__data__() for t in self.terms]}
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
-    @simplified
-    def partial_eval(self):
+    def partial_eval(self, lang):
         acc = None
         terms = []
         for t in self.terms:
-            simple = t.partial_eval()
+            simple = t.partial_eval(lang)
             if simple is NULL:
                 pass
             elif is_op(simple, Literal):
@@ -63,7 +62,7 @@ class BasicMultiOp(Expression):
                 terms.append(simple)
         if len(terms) == 0:
             if acc == None:
-                return self.default.partial_eval()
+                return self.default.partial_eval(lang)
             else:
                 return Literal(acc)
         else:

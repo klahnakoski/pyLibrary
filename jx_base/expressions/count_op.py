@@ -10,36 +10,38 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.expression import Expression
+from jx_base.expressions.literal import ZERO
+from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.true_op import TrueOp
 from jx_base.expressions.tuple_op import TupleOp
 from mo_dots import is_many
-from mo_json import INTEGER
+from mo_json.types import T_INTEGER
 
 
 class CountOp(Expression):
     has_simple_form = False
-    data_type = INTEGER
+    _data_type = T_INTEGER
 
-    def __init__(self, terms, **clauses):
+    def __init__(self, terms, default=ZERO, **clauses):
         Expression.__init__(self, terms)
         if is_many(terms):
             # SHORTCUT: ASSUME AN ARRAY OF IS A TUPLE
-            self.terms = self.lang[TupleOp(terms)]
+            self.terms = TupleOp(terms)
         else:
             self.terms = terms
+        self.default = default
 
     def __data__(self):
-        return {"count": self.terms.__data__()}
+        return {"count": self.terms.__data__(), "default": self.default.__data__()}
 
     def vars(self):
         return self.terms.vars()
 
     def map(self, map_):
-        return self.lang[CountOp(self.terms.map(map_))]
+        return CountOp(self.terms.map(map_))
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
     def exists(self):

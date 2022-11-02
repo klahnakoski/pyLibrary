@@ -10,22 +10,34 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import itertools
-from copy import copy
 
-from jx_base.container import Container
+from jx_base import Column
+from jx_base.models.container import Container
 from jx_base.expressions import TRUE, Variable
 from jx_base.language import is_expression, is_op
 from jx_base.meta_columns import get_schema_from_list
-from jx_base.namespace import Namespace
-from jx_base.schema import Schema
-from jx_base.table import Table
+from jx_base.models.namespace import Namespace
+from jx_base.models.schema import Schema
+from jx_base.models.table import Table
 from jx_python.convert import list2cube, list2table
 from jx_python.expressions import jx_expression_to_function
 from jx_python.lists.aggs import is_aggs, list_aggs
 from mo_collections import UniqueIndex
-from mo_dots import Data, Null, is_data, is_list, listwrap, unwrap, unwraplist, to_data, coalesce, dict_to_data
+from mo_dots import (
+    Data,
+    Null,
+    is_data,
+    is_list,
+    listwrap,
+    from_data,
+    unwraplist,
+    to_data,
+    coalesce,
+    dict_to_data,
+)
 from mo_future import first, sort_using_key
 from mo_imports import export, expect
+from mo_json import ARRAY
 from mo_logs import Log
 from mo_threads import Lock
 
@@ -36,9 +48,10 @@ class ListContainer(Container, Namespace, Table):
     """
     A CONTAINER WITH ONLY ONE TABLE
     """
+
     def __init__(self, name, data, schema=None):
         # TODO: STORE THIS LIKE A CUBE FOR FASTER ACCESS AND TRANSFORMATION
-        data = list(unwrap(data))
+        data = list(from_data(data))
         Container.__init__(self)
         if schema == None:
             self._schema = get_schema_from_list(name, data)
@@ -69,7 +82,7 @@ class ListContainer(Container, Namespace, Table):
         else:
             return Null
 
-    def query(self, q):
+    def query(self, q, group_by):
         q = to_data(q)
         output = self
         if is_aggs(q):
@@ -93,25 +106,24 @@ class ListContainer(Container, Namespace, Table):
                 return Data(data=output.data, meta={"format": "list"})
             elif q.format == "table":
                 head = [c.name for c in output.schema.columns]
-                data = [
-                    [r if h == "." else r[h] for h in head]
-                    for r in output.data
-                ]
+                data = [[r if h == "." else r[h] for h in head] for r in output.data]
                 return Data(header=head, data=data, meta={"format": "table"})
             elif q.format == "cube":
                 head = [c.name for c in output.schema.columns]
-                rows = [
-                    [r[h] for h in head]
-                    for r in output.data
-                ]
+                rows = [[r[h] for h in head] for r in output.data]
                 data = {h: c for h, c in zip(head, zip(*rows))}
                 return Data(
                     data=data,
                     meta={"format": "cube"},
                     edges=[{
                         "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": len(rows), "interval": 1}
-                    }]
+                        "domain": {
+                            "type": "rownum",
+                            "min": 0,
+                            "max": len(rows),
+                            "interval": 1,
+                        },
+                    }],
                 )
             else:
                 Log.error("unknown format {{format}}", format=q.format)
@@ -147,10 +159,14 @@ class ListContainer(Container, Namespace, Table):
         else:
             temp = where
 
-        return ListContainer("from "+self.name, filter(temp, self.data), self.schema)
+        return ListContainer("from " + self.name, filter(temp, self.data), self.schema)
 
     def sort(self, sort):
-        return ListContainer("sorted "+self.name, jx.sort(self.data, sort, already_normalized=True), self.schema)
+        return ListContainer(
+            "sorted " + self.name,
+            jx.sort(self.data, sort, already_normalized=True),
+            self.schema,
+        )
 
     def get(self, select):
         """
@@ -165,7 +181,11 @@ class ListContainer(Container, Namespace, Table):
     def select(self, select):
         selects = listwrap(select)
 
-        if len(selects) == 1 and is_op(selects[0].value, Variable) and selects[0].value.var == ".":
+        if (
+            len(selects) == 1
+            and is_op(selects[0].value, Variable)
+            and selects[0].value.var == "."
+        ):
             new_schema = self.schema
             if selects[0].name == ".":
                 return self
@@ -173,30 +193,42 @@ class ListContainer(Container, Namespace, Table):
             new_schema = None
 
         if is_list(select):
-            if all(
-                is_op(s.value, Variable) and s.name == s.value.var
-                for s in select
-            ):
+            if all(is_op(s.value, Variable) and s.name == s.value.var for s in select):
                 names = set(s.value.var for s in select)
-                new_schema = Schema(".", [c for c in self.schema.columns if c.name in names])
+                new_schema = Schema(
+                    ".", [c for c in self.schema.columns if c.name in names]
+                )
 
-            push_and_pull = [(s.name, jx_expression_to_function(s.value)) for s in selects]
+            push_and_pull = [
+                (s.name, jx_expression_to_function(s.value)) for s in selects
+            ]
+
             def selector(d):
                 output = Data()
                 for n, p in push_and_pull:
                     output[n] = unwraplist(p(to_data(d)))
-                return unwrap(output)
+                return from_data(output)
 
             new_data = list(map(selector, self.data))
         else:
             select_value = jx_expression_to_function(select.value)
             new_data = list(map(select_value, self.data))
             if is_op(select.value, Variable):
-                column = copy(first(c for c in self.schema.columns if c.name == select.value.var))
-                column.name = '.'
-                new_schema = Schema("from " + self.name, [column])
+                column = dict(
+                    **first(
+                        c for c in self.schema.columns if c.name == select.value.var
+                    )
+                )
+                column.update({
+                    "name": ".",
+                    "json_type": ARRAY,
+                    "es_type": "nested",
+                    "multi": 1001,
+                    "cardinality": 1,
+                })
+                new_schema = Schema("from " + self.name, [Column(**column)])
 
-        return ListContainer("from "+self.name, data=new_data, schema=new_schema)
+        return ListContainer("from " + self.name, data=new_data, schema=new_schema)
 
     def window(self, window):
         # _ = window
@@ -238,15 +270,14 @@ class ListContainer(Container, Namespace, Table):
         self.data.extend(documents)
 
     def __data__(self):
-        if first(self.schema.columns).name=='.':
-            return dict_to_data({
-                "meta": {"format": "list"},
-                "data": self.data
-            })
+        if first(self.schema.columns).name == ".":
+            return dict_to_data({"meta": {"format": "list"}, "data": self.data})
         else:
             return dict_to_data({
                 "meta": {"format": "list"},
-                "data": [{k: unwraplist(v) for k, v in row.items()} for row in self.data]
+                "data": [
+                    {k: unwraplist(v) for k, v in row.items()} for row in self.data
+                ],
             })
 
     def get_columns(self, table_name=None):
@@ -294,8 +325,8 @@ def _exec(code):
 DUAL = ListContainer(
     name="dual",
     data=[{}],
-    schema=Schema(table_name="dual", columns=UniqueIndex(keys=("name",)))
+    schema=Schema(table_name="dual", columns=UniqueIndex(keys=("name",))),
 )
 
 
-export("jx_base.container", ListContainer)
+export("jx_base.models.container", ListContainer)

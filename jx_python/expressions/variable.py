@@ -35,6 +35,7 @@ class Variable(Variable_):
             else:
                 Log.error("do not know what {{var}} of `rows` is", var=path[1])
 
+        agg = f"({agg} or EMPTY_DICT)"
         for p in path[:-1]:
             if not_null:
                 agg = agg + ".get(" + strings.quote(p) + ")"

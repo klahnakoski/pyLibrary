@@ -10,28 +10,35 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import NULL, SqlSubstrOp as SqlSubstrOp_
-from jx_sqlite.expressions._utils import check, SQLang
+from jx_sqlite.expressions._utils import check, SQLang, OrOp
 from jx_sqlite.expressions.literal import Literal
+from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import sql_call
-from mo_dots import wrap
+from mo_json import T_TEXT
 
 
 class SqlSubstrOp(SqlSubstrOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.value].to_sql(schema, not_null=True)[0].sql.s
-        start = SQLang[self.start].to_sql(schema, not_null=True)[0].sql.n
+    def to_sql(self, schema):
+        value = self.value.partial_eval(SQLang).to_sql(schema)
+        start = self.start.partial_eval(SQLang).to_sql(schema)
         if self.length is NULL:
             sql = sql_call("SUBSTR", value, start)
         else:
-            length = SQLang[self.length].to_sql(schema, not_null=True)[0].sql.n
+            length = self.length.partial_eval(SQLang).to_sql(schema)
             sql = sql_call("SUBSTR", value, start, length)
-        return wrap([{"name": ".", "sql": {"s": sql}}])
+        return SqlScript(
+            data_type=T_TEXT,
+            expr=sql,
+            frum=self,
+            miss=OrOp([value.miss, start.miss]),
+            schema=schema,
+        )
 
-    def partial_eval(self):
-        value = SQLang[self.value].partial_eval()
-        start = SQLang[self.start].partial_eval()
-        length = SQLang[self.length].partial_eval()
+    def partial_eval(self, lang):
+        value = self.value.partial_eval(SQLang)
+        start = self.start.partial_eval(SQLang)
+        length = self.length.partial_eval(SQLang)
         if isinstance(start, Literal) and start.value == 1:
             if length is NULL:
                 return value

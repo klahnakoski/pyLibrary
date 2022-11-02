@@ -9,28 +9,16 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import NotOp as NotOp_
+from jx_base.expressions import NotOp as NotOp_, BasicNotOp
 from jx_base.language import is_op
-from jx_sqlite.expressions._utils import check
-from jx_sqlite.expressions.boolean_op import BooleanOp
-from mo_dots import wrap
-from jx_sqlite.sqlite import sql_iso
+from jx_sqlite.expressions._utils import check, SQLang, OrOp
 
 
 class NotOp(NotOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        not_expr = NotOp(BooleanOp(self.term)).partial_eval()
-        if is_op(not_expr, NotOp):
-            return wrap(
-                [
-                    {
-                        "name": ".",
-                        "sql": {
-                            "b": "NOT " + sql_iso(not_expr.term.to_sql(schema)[0].sql.b)
-                        },
-                    }
-                ]
-            )
+    def to_sql(self, schema):
+        term = self.partial_eval(SQLang)
+        if is_op(term, NotOp):
+            return OrOp([term.term.missing(SQLang), BasicNotOp(term.term)]).partial_eval(SQLang).to_sql(schema)
         else:
-            return not_expr.to_sql(schema)
+            return term.to_sql(schema)

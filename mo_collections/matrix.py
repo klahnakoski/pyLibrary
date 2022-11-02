@@ -100,7 +100,10 @@ class Matrix(object):
             m = self.cube
             for k in key[0:last:]:
                 m = m[k]
-            m[key[last]] = value
+            try:
+                m[key[last]] = value
+            except Exception as cause:
+                raise Log.error("problem", cause=cause)
         except Exception as e:
             Log.error("can not set item", e)
 

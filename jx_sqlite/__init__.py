@@ -9,7 +9,7 @@
 #
 
 
-__all__ = ["Container"]
+__all__ = ["Container", "jx_base"]
 
-from jx_sqlite.container import Container
-
+import jx_base
+from jx_sqlite.models.container import Container

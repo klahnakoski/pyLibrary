@@ -14,22 +14,13 @@ import re
 
 from mo_dots import get_module, dict_to_data
 from mo_future import is_text, text
+from mo_imports import delay_import, expect
 from mo_math import MIN, is_nan, is_number, abs, floor, round
+
 from mo_times.vendor.dateutil.relativedelta import relativedelta
 
-_Date = None
-_Log = None
-
-
-def _delayed_import():
-    global _Date
-    global _Log
-
-    from mo_times.dates import Date as _Date
-    from mo_logs import Log as _Log
-
-    _ = _Date
-    _ = _Log
+Date = delay_import("mo_times.Date")
+Log = delay_import("mo_logs.Log")
 
 
 class Duration(object):
@@ -64,9 +55,7 @@ class Duration(object):
     @staticmethod
     def range(start, stop, step):
         if not step:
-            if not _Log:
-                _delayed_import()
-            _Log.error("Expecting a non-zero duration for interval")
+            Log.error("Expecting a non-zero duration for interval")
         output = []
         c = start
         while c < stop:
@@ -74,7 +63,18 @@ class Duration(object):
             c += step
         return output
 
+    def __eq__(self, other):
+        if other == None:
+            return False
+        other = Duration(other)
+        return self.milli == other.milli and self.month == other.month
 
+    def __hash__(self):
+        return hash((self.milli, self.month))
+
+    def __req__(self, other):
+        other = Duration(other)
+        return self.milli == other.milli and self.month == other.month
 
     def __add__(self, other):
         output = Duration(0)
@@ -83,14 +83,11 @@ class Duration(object):
         return output
 
     def __radd__(self, other):
-        if not _Date:
-            _delayed_import()
-
         if other == None:
             return None
         if isinstance(other, datetime.datetime):
-            return _Date(other).add(self)
-        elif isinstance(other, _Date):
+            return Date(other).add(self)
+        elif isinstance(other, Date):
             return other.add(self)
         return self + other
 
@@ -144,9 +141,7 @@ class Duration(object):
             output.month = self.month / amount
             return output
         else:
-            if not _Log:
-                _delayed_import()
-            _Log.error("Do not know how to divide by {{type}}", type=type(amount).__name__)
+            Log.error("Do not know how to divide by {{type}}", type=type(amount).__name__)
 
     def __truediv__(self, other):
         return self.__div__(other)

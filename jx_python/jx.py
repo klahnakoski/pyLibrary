@@ -12,10 +12,11 @@ from __future__ import absolute_import, division, unicode_literals
 
 import mo_dots
 import mo_math
-from jx_base.container import Container
+from jx_base.models.container import Container
 from jx_base.expressions import FALSE, TRUE
 from jx_base.expressions import QueryOp
-from jx_base.expressions.query_op import _normalize_selects, _normalize_sort
+from jx_base.expressions.query_op import _normalize_sort
+from jx_base.expressions.select_op import _normalize_selects
 from jx_base.language import is_op, value_compare
 from jx_python import expressions as _expressions, flat_list, group_by
 from jx_python.containers.cube import Cube
@@ -27,8 +28,24 @@ from jx_python.expressions import jx_expression_to_function as get
 from jx_python.flat_list import PartFlatList
 from mo_collections.index import Index
 from mo_collections.unique_index import UniqueIndex
-from mo_dots import Data, FlatList, Null, coalesce, is_container, is_data, is_list, is_many, join_field, listwrap, \
-    set_default, split_field, unwrap, to_data, dict_to_data, list_to_data
+from mo_dots import (
+    Data,
+    FlatList,
+    Null,
+    coalesce,
+    is_container,
+    is_data,
+    is_list,
+    is_many,
+    join_field,
+    listwrap,
+    set_default,
+    split_field,
+    to_data,
+    dict_to_data,
+    list_to_data,
+    from_data
+)
 from mo_dots import _getdefault
 from mo_dots.objects import DataObject
 from mo_future import is_text, sort_using_cmp
@@ -57,7 +74,9 @@ def run(query, container=Null):
         container = to_data(query)["from"]
         query_op = QueryOp.wrap(query, container=container, namespace=container.schema)
     else:
-        query_op = QueryOp.wrap(query, container=container, namespace=container.namespace)
+        query_op = QueryOp.wrap(
+            query, container=container, namespace=container.namespace
+        )
 
     if container == None:
         from jx_python.containers.list import DUAL
@@ -153,7 +172,8 @@ def unique_index(data, keys=None, fail_on_dup=True):
         except Exception as e:
             o.add(d)
             Log.error(
-                "index {{index}} is not unique {{key}} maps to both {{value1}} and {{value2}}",
+                "index {{index}} is not unique {{key}} maps to both {{value1}} and"
+                " {{value2}}",
                 index=keys,
                 key=select([d], keys)[0],
                 value1=o[d],
@@ -230,7 +250,7 @@ def tuple(data, field_name):
     elif is_list(field_name):
         paths = [_select_a_field(f) for f in field_name]
         output = FlatList()
-        _tuple((), unwrap(data), paths, 0, output)
+        _tuple((), from_data(data), paths, 0, output)
         return output
     else:
         paths = [_select_a_field(field_name)]
@@ -281,15 +301,13 @@ def select(data, field_name):
     return list with values from field_name
     """
     if isinstance(data, Cube):
-        return data._select(_normalize_selects(field_name))
+        return data._select(_normalize_selects(data, field_name))
 
     if isinstance(data, PartFlatList):
         return data.select(field_name)
 
     if isinstance(data, UniqueIndex):
-        data = (
-            data._data.values()
-        )  # THE SELECT ROUTINE REQUIRES dicts, NOT Data WHILE ITERATING
+        data = data._data.values()  # THE SELECT ROUTINE REQUIRES dicts, NOT Data WHILE ITERATING
 
     if is_data(field_name):
         field_name = to_data(field_name)
@@ -311,10 +329,10 @@ def select(data, field_name):
             return output
     elif is_list(field_name):
         keys = [_select_a_field(to_data(f)) for f in field_name]
-        return _select(Data(), unwrap(data), keys, 0)
+        return _select(Data(), from_data(data), keys, 0)
     else:
         keys = [_select_a_field(field_name)]
-        return _select(Data(), unwrap(data), keys, 0)
+        return _select(Data(), from_data(data), keys, 0)
 
 
 def _select_a_field(field):
@@ -470,12 +488,10 @@ def get_columns(data, leaves=False):
     if not leaves:
         return list_to_data([{"name": n} for n in UNION(set(d.keys()) for d in data)])
     else:
-        return to_data(
-            [
-                {"name": leaf}
-                for leaf in set(leaf for row in data for leaf, _ in row.leaves())
-            ]
-        )
+        return to_data([
+            {"name": leaf}
+            for leaf in set(leaf for row in data for leaf, _ in row.leaves())
+        ])
 
 
 _ = """
@@ -515,8 +531,8 @@ def _deeper_iterator(columns, nested_path, path, data):
             c = columns.get(leaf)
             if not c:
                 c = columns[leaf] = _Column(name=leaf, type=type_to_name[v.__class__], table=None, es_column=leaf)
-            c.jx_type = _merge_type[c.jx_type][type_to_name[v.__class__]]
-            if c.jx_type == "nested" and not nested_path[0].startswith(leaf + "."):
+            c.json_type = _merge_type[c.json_type][type_to_name[v.__class__]]
+            if c.json_type == "nested" and not nested_path[0].startswith(leaf + "."):
                 if leaf.startswith(nested_path[0] + ".") or leaf == nested_path[0] or not nested_path[0]:
                     nested_path[0] = leaf
                 else:
@@ -531,7 +547,7 @@ def _deeper_iterator(columns, nested_path, path, data):
                 for o in _deeper_iterator(columns, nested_path, leaf, [v]):
                     set_default(output, o)
             else:
-                if c.jx_type not in ["object", "nested"]:
+                if c.json_type not in ["object", "nested"]:
                     output[leaf] = v
 
         if deep_leaf:
@@ -545,8 +561,12 @@ def _deeper_iterator(columns, nested_path, path, data):
 
 def sort(data, fieldnames=None, already_normalized=False):
     """
-    PASS A FIELD NAME, OR LIST OF FIELD NAMES, OR LIST OF STRUCTS WITH {"field":field_name, "sort":direction}
+    :param data: THE DATA TO SORT
+    :param fieldnames: A FIELDNAME, LIST OF FIELD NAMES
+    :param already_normalized: True IF fieldnames IS SORT STRUCTURE:  {"field":field_name, "sort":direction}
+    :return: A NEW LIST OF DATA, BUT SORTED
     """
+
     try:
         if data == None:
             return Null
@@ -556,12 +576,7 @@ def sort(data, fieldnames=None, already_normalized=False):
         else:
             if not fieldnames:
                 return to_data(sort_using_cmp(data, value_compare))
-
-            if already_normalized:
-                formal = fieldnames
-            else:
-                formal = _normalize_sort(fieldnames)
-
+            formal = fieldnames if already_normalized else _normalize_sort(fieldnames)
             funcs = [(get(f.value), f.sort) for f in formal]
 
         def comparer(left, right):
@@ -570,21 +585,18 @@ def sort(data, fieldnames=None, already_normalized=False):
                     result = value_compare(func(left), func(right), sort_)
                     if result != 0:
                         return result
-                except Exception as e:
-                    Log.error("problem with compare", e)
+                except Exception as cause:
+                    Log.error("problem with compare", cause)
             return 0
 
-        if is_list(data):
-            output = FlatList([unwrap(d) for d in sort_using_cmp(data, cmp=comparer)])
-        elif is_text(data):
-            Log.error("Do not know how to handle")
-        elif hasattr(data, "__iter__"):
-            output = FlatList(
-                [unwrap(d) for d in sort_using_cmp(list(data), cmp=comparer)]
-            )
+        if is_text(data):
+            raise Log.error("Do not know how to handle")
+        elif is_many(data):
+            output = list_to_data([
+                d for d in sort_using_cmp((from_data(d) for d in data), cmp=comparer)
+            ])
         else:
-            Log.error("Do not know how to handle")
-            output = None
+            raise Log.error("Do not know how to handle")
 
         return output
     except Exception as e:
@@ -619,7 +631,7 @@ def slide(values, size):
     window = builtin_tuple(window)
     for t in i:
         yield window
-        window = window[1:] + (t, )
+        window = window[1:] + (t,)
 
     yield window
 
@@ -656,7 +668,9 @@ def filter(data, where):
     if is_container(data):
         temp = get(where)
         dd = to_data(data)
-        return list_to_data([unwrap(d) for i, d in enumerate(data) if temp(to_data(d), i, dd)])
+        return list_to_data([
+            from_data(d) for i, d in enumerate(data) if temp(to_data(d), i, dd)
+        ])
     else:
         Log.error(
             "Do not know how to handle type {{type}}", type=data.__class__.__name__
@@ -666,9 +680,9 @@ def filter(data, where):
         return drill_filter(where, data)
     except Exception as _:
         # WOW!  THIS IS INEFFICIENT!
-        return to_data(
-            [unwrap(d) for d in drill_filter(where, [DataObject(d) for d in data])]
-        )
+        return to_data([
+            from_data(d) for d in drill_filter(where, [DataObject(d) for d in data])
+        ])
 
 
 def drill(data, path):
@@ -678,6 +692,7 @@ def drill(data, path):
     :param path: DOT-DELIMITED PATH TO REACH INTO
     :return:
     """
+
     def _drill(d, p):
         if p:
             if is_many(d):
@@ -703,12 +718,10 @@ def drill_filter(esfilter, data):
 
     TODO:  FIX THIS MONUMENTALLY BAD IDEA
     """
-    esfilter = unwrap(esfilter)
+    esfilter = from_data(esfilter)
     primary_nested = []  # track if nested, changes if not
     primary_column = []  # only one path allowed
-    primary_branch = (
-        []
-    )  # CONTAINS LISTS OF RECORDS TO ITERATE: constantly changing as we dfs the tree
+    primary_branch = []  # CONTAINS LISTS OF RECORDS TO ITERATE: constantly changing as we dfs the tree
 
     def parse_field(fieldname, data, depth):
         """
@@ -967,7 +980,7 @@ def drill_filter(esfilter, data):
 
     if not max:
         # SIMPLE LIST AS RESULT
-        return list_to_data([unwrap(u[0]) for u in uniform_output])
+        return list_to_data([from_data(u[0]) for u in uniform_output])
 
     return PartFlatList(primary_column[0:max], uniform_output)
 
@@ -1011,13 +1024,9 @@ def window(data, param):
     edges = param.edges  # columns to gourp by
     where = param.where  # DO NOT CONSIDER THESE VALUES
     sortColumns = param.sort  # columns to sort by
-    calc_value = get(
-        param.value
-    )  # function that takes a record and returns a value (for aggregation)
+    calc_value = get(param.value)  # function that takes a record and returns a value (for aggregation)
     aggregate = param.aggregate  # WindowFunction to apply
-    _range = (
-        param.range
-    )  # of form {"min":-10, "max":0} to specify the size and relative position of window
+    _range = param.range  # of form {"min":-10, "max":0} to specify the size and relative position of window
 
     data = filter(data, where)
 
@@ -1122,7 +1131,7 @@ def reverse(vals):
     l = len(vals)
     output = [None] * l
 
-    for v in unwrap(vals):
+    for v in from_data(vals):
         l -= 1
         output[l] = v
 
@@ -1137,5 +1146,5 @@ def countdown(vals):
 from jx_python.lists.aggs import is_aggs, list_aggs
 
 
-export("jx_base.container", run)
+export("jx_base.models.container", run)
 export("jx_python.containers.list", "jx")

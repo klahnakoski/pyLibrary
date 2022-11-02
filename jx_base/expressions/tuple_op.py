@@ -10,20 +10,19 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal
 from jx_base.expressions.literal import is_literal
 from mo_dots import is_many
 from mo_imports import export
-from mo_json import OBJECT
+from mo_json import value_to_json_type, union_type, T_ARRAY, array_type
 
 
 class TupleOp(Expression):
-    date_type = OBJECT
+    date_type = T_ARRAY
 
-    def __init__(self, terms):
+    def __init__(self, *terms):
         Expression.__init__(self, terms)
         if terms == None:
             self.terms = []
@@ -38,6 +37,10 @@ class TupleOp(Expression):
     def __data__(self):
         return {"tuple": [t.__data__() for t in self.terms]}
 
+    @property
+    def type(self):
+        return array_type(union_type(*(t.type for t in self.terms)))
+
     def vars(self):
         output = set()
         for t in self.terms:
@@ -45,18 +48,17 @@ class TupleOp(Expression):
         return output
 
     def map(self, map_):
-        return self.lang[TupleOp([t.map(map_) for t in self.terms])]
+        return TupleOp([t.map(map_) for t in self.terms])
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
     def __call__(self):
         return tuple(t() for t in self.terms)
 
-    @simplified
-    def partial_eval(self):
+    def partial_eval(self, lang):
         if all(is_literal(t) for t in self.terms):
-            return self.lang[Literal([t.value for t in self.terms])]
+            return Literal([t.value for t in self.terms])
 
         return self
 

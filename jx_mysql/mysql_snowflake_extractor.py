@@ -14,50 +14,18 @@ from __future__ import unicode_literals
 
 from copy import deepcopy, copy
 
-from jx_mysql.mysql import MySQL, quote_column, sql_alias
-from jx_python import jx
+from jx_mysql.mysql import *
 from mo_collections import UniqueIndex
 from mo_dots import (
-    coalesce,
-    Data,
-    wrap,
-    Null,
-    FlatList,
-    unwrap,
     join_field,
-    split_field,
     relative_field,
-    concat_field,
     literal_field,
     set_default,
     startswith_field,
-    listwrap,
 )
-from mo_future import text, sort_using_key, first
-from mo_kwargs import override
-from mo_logs import Log, strings
+from mo_future import sort_using_key
 from mo_logs.exceptions import Explanation
-from mo_math.randoms import Random
-from mo_sql import (
-    SQL_SELECT,
-    sql_list,
-    SQL_NULL,
-    sql_iso,
-    SQL_FROM,
-    SQL_INNER_JOIN,
-    SQL_LEFT_JOIN,
-    SQL_ON,
-    SQL_UNION_ALL,
-    SQL_ORDERBY,
-    SQL_STAR,
-    SQL_IS_NOT_NULL,
-    SQL,
-    SQL_AND,
-    SQL_EQ,
-    ConcatSQL,
-    SQL_LIMIT,
-    SQL_ONE,
-)
+from mo_math import randoms
 from mo_times import Timer
 
 DEBUG = False
@@ -72,9 +40,9 @@ class MySqlSnowflakeExtractor(object):
         self.settings.exclude_columns = set(
             p for e in excludes for p in [tuple(split_field(e))] if len(p) > 1
         )
-        self.settings.exclude_path = list(
-            map(split_field, listwrap(self.settings.exclude_path))
-        )
+        self.settings.exclude_path = list(map(
+            split_field, listwrap(self.settings.exclude_path)
+        ))
         self.settings.show_foreign_keys = coalesce(
             self.settings.show_foreign_keys, True
         )
@@ -85,7 +53,7 @@ class MySqlSnowflakeExtractor(object):
         self.columns = None
 
         with Explanation("scan database", debug=DEBUG):
-            self.db = MySQL(**kwargs.database)
+            self.db = MySql(**kwargs.database)
             self.settings.database.schema = self.db.settings.schema
             with self.db.transaction():
                 self._scan_database()
@@ -152,7 +120,7 @@ class MySqlSnowflakeExtractor(object):
             WHERE
                 referenced_column_name IS NOT NULL
             """,
-            param=self.settings.database,
+            format="list",
         )
 
         if not raw_relations:
@@ -182,7 +150,7 @@ class MySqlSnowflakeExtractor(object):
                     Log.note("Relation {{relation}} already exists", relation=r)
                     continue
 
-                to_add.constraint_name = Random.hex(20)
+                to_add.constraint_name = randoms.hex(20)
                 raw_relations.append(to_add)
             except Exception as e:
                 Log.error("Could not parse {{line|quote}}", line=r, cause=e)
@@ -262,13 +230,11 @@ class MySqlSnowflakeExtractor(object):
                     is_referenced = ref
                     best_index = w
 
-            tables.add(
-                {
-                    "name": t.table_name,
-                    "schema": t.table_schema,
-                    "id": [b.column_name for b in best_index],
-                }
-            )
+            tables.add({
+                "name": t.table_name,
+                "schema": t.table_schema,
+                "id": [b.column_name for b in best_index],
+            })
 
         fact_table = tables[self.settings.fact_table, self.settings.database.schema]
         ids_table = {
@@ -278,15 +244,13 @@ class MySqlSnowflakeExtractor(object):
             "id": fact_table.id,
         }
         relations.extend(
-            wrap(
-                {
-                    "constraint": {"name": "__link_ids_to_fact_table__"},
-                    "table": ids_table,
-                    "column": {"name": c},
-                    "referenced": {"table": fact_table, "column": {"name": c}},
-                    "ordinal_position": i,
-                }
-            )
+            wrap({
+                "constraint": {"name": "__link_ids_to_fact_table__"},
+                "table": ids_table,
+                "column": {"name": c},
+                "referenced": {"table": fact_table, "column": {"name": c}},
+                "ordinal_position": i,
+            })
             for i, c in enumerate(fact_table.id)
         )
         tables.add(ids_table)
@@ -415,16 +379,14 @@ class MySqlSnowflakeExtractor(object):
                 Log.note("Trace {{path}}", path=path)
             if position.name != "__ids__":
                 # USED TO CONFIRM WE CAN ACCESS THE TABLE (WILL THROW ERROR WHEN IF IT FAILS)
-                self.db.query(
-                    ConcatSQL(
-                        SQL_SELECT,
-                        SQL_STAR,
-                        SQL_FROM,
-                        quote_column(position.schema, position.name),
-                        SQL_LIMIT,
-                        SQL_ONE,
-                    )
-                )
+                self.db.query(ConcatSQL(
+                    SQL_SELECT,
+                    SQL_STAR,
+                    SQL_FROM,
+                    quote_column(position.schema, position.name),
+                    SQL_LIMIT,
+                    SQL_ZERO,
+                ))
 
             if position.name in reference_all_tables:
                 no_nested_docs = True
@@ -435,23 +397,19 @@ class MySqlSnowflakeExtractor(object):
             ###############################################################################
             # INNER OBJECTS
             ###############################################################################
-            referenced_tables = list(
-                sort_using_key(
-                    jx.groupby(
-                        jx.filter(
-                            relations,
-                            {
-                                "eq": {
-                                    "table.name": position.name,
-                                    "table.schema": position.schema,
-                                }
-                            },
-                        ),
-                        "constraint.name",
+            referenced_tables = list(sort_using_key(
+                jx.groupby(
+                    jx.filter(
+                        relations,
+                        {"eq": {
+                            "table.name": position.name,
+                            "table.schema": position.schema,
+                        }},
                     ),
-                    key=lambda p: first(p[1]).column.name,
-                )
-            )
+                    "constraint.name",
+                ),
+                key=lambda p: first(p[1]).column.name,
+            ))
             for g, constraint_columns in referenced_tables:
                 g = unwrap(g)
                 constraint_columns = deepcopy(constraint_columns)
@@ -473,13 +431,11 @@ class MySqlSnowflakeExtractor(object):
                 for c in constraint_columns:
                     c.referenced.table.alias = alias
                     c.table = position
-                many_to_one_joins.append(
-                    {
-                        "join_columns": constraint_columns,
-                        "path": path,
-                        "nested_path": nested_path,
-                    }
-                )
+                many_to_one_joins.append({
+                    "join_columns": constraint_columns,
+                    "path": path,
+                    "nested_path": nested_path,
+                })
 
                 # HANDLE THE COMMON *id SUFFIX
                 name = []
@@ -527,111 +483,95 @@ class MySqlSnowflakeExtractor(object):
                         ):
                             # ALWAYS SHOW THE ID OF THE FACT
                             c_index = len(output_columns)
-                            output_columns.append(
-                                {
-                                    "table_alias": alias,
-                                    "column_alias": "c" + text(c_index),
-                                    "column": col,
-                                    "sort": True,
-                                    "path": referenced_column_path,
-                                    "nested_path": nested_path,
-                                    "put": col_full_name,
-                                }
-                            )
+                            output_columns.append({
+                                "table_alias": alias,
+                                "column_alias": "c" + text(c_index),
+                                "column": col,
+                                "sort": True,
+                                "path": referenced_column_path,
+                                "nested_path": nested_path,
+                                "put": col_full_name,
+                            })
                         elif col.column.name == constraint_columns[0].column.name:
                             c_index = len(output_columns)
-                            output_columns.append(
-                                {
-                                    "table_alias": alias,
-                                    "column_alias": "c" + text(c_index),
-                                    "column": col,
-                                    "sort": False,
-                                    "path": referenced_column_path,
-                                    "nested_path": nested_path,
-                                    "put": col_full_name
-                                    if self.settings.show_foreign_keys
-                                    else None,
-                                }
-                            )
+                            output_columns.append({
+                                "table_alias": alias,
+                                "column_alias": "c" + text(c_index),
+                                "column": col,
+                                "sort": False,
+                                "path": referenced_column_path,
+                                "nested_path": nested_path,
+                                "put": col_full_name
+                                if self.settings.show_foreign_keys
+                                else None,
+                            })
                         elif col.is_id:
                             c_index = len(output_columns)
-                            output_columns.append(
-                                {
-                                    "table_alias": alias,
-                                    "column_alias": "c" + text(c_index),
-                                    "column": col,
-                                    "sort": False,
-                                    "path": referenced_column_path,
-                                    "nested_path": nested_path,
-                                    "put": col_full_name
-                                    if self.settings.show_foreign_keys
-                                    else None,
-                                }
-                            )
+                            output_columns.append({
+                                "table_alias": alias,
+                                "column_alias": "c" + text(c_index),
+                                "column": col,
+                                "sort": False,
+                                "path": referenced_column_path,
+                                "nested_path": nested_path,
+                                "put": col_full_name
+                                if self.settings.show_foreign_keys
+                                else None,
+                            })
                         elif col.reference:
                             c_index = len(output_columns)
-                            output_columns.append(
-                                {
-                                    "table_alias": alias,
-                                    "column_alias": "c" + text(c_index),
-                                    "column": col,
-                                    "sort": False,
-                                    "path": referenced_column_path,
-                                    "nested_path": nested_path,
-                                    "put": col_pointer_name
-                                    if not self.settings.show_foreign_keys
-                                    else col_full_name,  # REFERENCE FIELDS CAN REPLACE THE WHOLE OBJECT BEING REFERENCED
-                                }
-                            )
+                            output_columns.append({
+                                "table_alias": alias,
+                                "column_alias": "c" + text(c_index),
+                                "column": col,
+                                "sort": False,
+                                "path": referenced_column_path,
+                                "nested_path": nested_path,
+                                "put": col_pointer_name
+                                if not self.settings.show_foreign_keys
+                                else col_full_name,  # REFERENCE FIELDS CAN REPLACE THE WHOLE OBJECT BEING REFERENCED
+                            })
                         elif col.include:
                             c_index = len(output_columns)
-                            output_columns.append(
-                                {
-                                    "table_alias": alias,
-                                    "column_alias": "c" + text(c_index),
-                                    "column": col,
-                                    "sort": False,
-                                    "path": referenced_column_path,
-                                    "nested_path": nested_path,
-                                    "put": col_full_name,
-                                }
-                            )
+                            output_columns.append({
+                                "table_alias": alias,
+                                "column_alias": "c" + text(c_index),
+                                "column": col,
+                                "sort": False,
+                                "path": referenced_column_path,
+                                "nested_path": nested_path,
+                                "put": col_full_name,
+                            })
 
                 if position.name in reference_only_tables:
                     continue
 
-                todo.append(
-                    Data(
-                        position=copy(constraint_columns[0].referenced.table),
-                        path=referenced_column_path,
-                        nested_path=nested_path,
-                        done_relations=copy(done_relations),
-                        no_nested_docs=no_nested_docs,
-                    )
-                )
+                todo.append(Data(
+                    position=copy(constraint_columns[0].referenced.table),
+                    path=referenced_column_path,
+                    nested_path=nested_path,
+                    done_relations=copy(done_relations),
+                    no_nested_docs=no_nested_docs,
+                ))
             ###############################################################################
             # NESTED OBJECTS
             ###############################################################################
             if not no_nested_docs:
-                nesting_tables = list(
-                    sort_using_key(
-                        jx.groupby(
-                            jx.filter(
-                                relations,
-                                {
-                                    "eq": {
-                                        "referenced.table.name": position.name,
-                                        "referenced.table.schema": position.schema,
-                                    }
-                                },
-                            ),
-                            "constraint.name",
+                nesting_tables = list(sort_using_key(
+                    jx.groupby(
+                        jx.filter(
+                            relations,
+                            {"eq": {
+                                "referenced.table.name": position.name,
+                                "referenced.table.schema": position.schema,
+                            }},
                         ),
-                        key=lambda p: [
-                            (r.table.name, r.column.name) for r in [first(p[1])]
-                        ][0],
-                    )
-                )
+                        "constraint.name",
+                    ),
+                    key=lambda p: [
+                        (r.table.name, r.column.name) for r in [first(p[1])]
+                    ][0],
+                ))
 
                 for g, constraint_columns in nesting_tables:
                     g = unwrap(g)
@@ -658,114 +598,97 @@ class MySqlSnowflakeExtractor(object):
 
                     if referenced_column_path in nested_path_to_join:
                         Log.error(
-                            "{{path}} already exists, try adding entry to name_relations",
+                            "{{path}} already exists, try adding entry to"
+                            " name_relations",
                             path=referenced_column_path,
                         )
-                    one_to_many_joins = nested_path_to_join[
-                        referenced_column_path
-                    ] = copy(curr_join_list)
+                    one_to_many_joins = nested_path_to_join[referenced_column_path] = copy(curr_join_list)
                     index = len(one_to_many_joins)
                     alias = "t" + text(index)
                     for c in constraint_columns:
                         c.table.alias = alias
                         c.referenced.table = position
-                    one_to_many_joins.append(
-                        set_default(
-                            {},
-                            g,
-                            {
-                                "children": True,
-                                "join_columns": constraint_columns,
-                                "path": path,
-                                "nested_path": nested_path,
-                            },
-                        )
-                    )
+                    one_to_many_joins.append(set_default(
+                        {},
+                        g,
+                        {
+                            "children": True,
+                            "join_columns": constraint_columns,
+                            "path": path,
+                            "nested_path": nested_path,
+                        },
+                    ))
                     for col in columns:
                         if (
                             col.table.name == constraint_columns[0].table.name
                             and col.table.schema == constraint_columns[0].table.schema
                         ):
                             col_full_name = join_field(
-                                split_field(referenced_column_path)[
-                                    len(split_field(new_nested_path[0])) :
-                                ]
+                                split_field(referenced_column_path)[len(split_field(new_nested_path[0])) :]
                                 + [literal_field(col.column.name)]
                             )
 
                             if col.column.name == constraint_columns[0].column.name:
                                 c_index = len(output_columns)
-                                output_columns.append(
-                                    {
-                                        "table_alias": alias,
-                                        "column_alias": "c" + text(c_index),
-                                        "column": col,
-                                        "sort": col.is_id,
-                                        "path": referenced_column_path,
-                                        "nested_path": new_nested_path,
-                                        "put": col_full_name
-                                        if self.settings.show_foreign_keys
-                                        else None,
-                                    }
-                                )
+                                output_columns.append({
+                                    "table_alias": alias,
+                                    "column_alias": "c" + text(c_index),
+                                    "column": col,
+                                    "sort": col.is_id,
+                                    "path": referenced_column_path,
+                                    "nested_path": new_nested_path,
+                                    "put": col_full_name
+                                    if self.settings.show_foreign_keys
+                                    else None,
+                                })
                             elif col.is_id:
                                 c_index = len(output_columns)
-                                output_columns.append(
-                                    {
-                                        "table_alias": alias,
-                                        "column_alias": "c" + text(c_index),
-                                        "column": col,
-                                        "sort": col.is_id,
-                                        "path": referenced_column_path,
-                                        "nested_path": new_nested_path,
-                                        "put": col_full_name
-                                        if self.settings.show_foreign_keys
-                                        else None,
-                                    }
-                                )
+                                output_columns.append({
+                                    "table_alias": alias,
+                                    "column_alias": "c" + text(c_index),
+                                    "column": col,
+                                    "sort": col.is_id,
+                                    "path": referenced_column_path,
+                                    "nested_path": new_nested_path,
+                                    "put": col_full_name
+                                    if self.settings.show_foreign_keys
+                                    else None,
+                                })
                             else:
                                 c_index = len(output_columns)
-                                output_columns.append(
-                                    {
-                                        "table_alias": alias,
-                                        "column_alias": "c" + text(c_index),
-                                        "column": col,
-                                        "sort": col.is_id,
-                                        "path": referenced_column_path,
-                                        "nested_path": new_nested_path,
-                                        "put": col_full_name if col.include else None,
-                                    }
-                                )
+                                output_columns.append({
+                                    "table_alias": alias,
+                                    "column_alias": "c" + text(c_index),
+                                    "column": col,
+                                    "sort": col.is_id,
+                                    "path": referenced_column_path,
+                                    "nested_path": new_nested_path,
+                                    "put": col_full_name if col.include else None,
+                                })
 
-                    todo.append(
-                        Data(
-                            position=constraint_columns[0].table,
-                            path=referenced_column_path,
-                            nested_path=new_nested_path,
-                            done_relations=copy(done_relations),
-                            no_nested_docs=no_nested_docs,
-                        )
-                    )
+                    todo.append(Data(
+                        position=constraint_columns[0].table,
+                        path=referenced_column_path,
+                        nested_path=new_nested_path,
+                        done_relations=copy(done_relations),
+                        no_nested_docs=no_nested_docs,
+                    ))
 
         path = "."
         nested_path = [path]
-        nested_path_to_join["."] = [
-            {
-                "path": path,
-                "join_columns": [{"referenced": {"table": ids_table}}],
-                "nested_path": nested_path,
-            }
-        ]
+        nested_path_to_join["."] = [{
+            "path": path,
+            "join_columns": [{"referenced": {"table": ids_table}}],
+            "nested_path": nested_path,
+        }]
 
-        todo.append(
-            Data(
-                position=ids_table,
-                path=path,
-                nested_path=nested_path,
-                done_relations=set(),
-                no_nested_docs=False,
-            )
-        )
+        todo.append(Data(
+            position=ids_table,
+            path=path,
+            nested_path=nested_path,
+            done_relations=set(),
+            no_nested_docs=False,
+        ))
 
         while todo:
             item = todo.pop(0)
@@ -792,58 +715,48 @@ class MySqlSnowflakeExtractor(object):
                 curr_join = wrap(curr_join)
                 rel = curr_join.join_columns[0]
                 if i == 0:
-                    sql_joins.append(
-                        ConcatSQL(
-                            SQL_FROM,
-                            sql_alias(sql_iso(get_ids), rel.referenced.table.alias),
-                        )
-                    )
+                    sql_joins.append(ConcatSQL(
+                        SQL_FROM,
+                        sql_alias(sql_iso(get_ids), rel.referenced.table.alias),
+                    ))
                 elif curr_join.children:
                     full_name = quote_column(rel.table.schema, rel.table.name)
-                    sql_joins.append(
-                        ConcatSQL(
-                            SQL_INNER_JOIN,
-                            sql_alias(full_name, rel.table.alias),
-                            SQL_ON,
-                            SQL_AND.join(
-                                ConcatSQL(
-                                    quote_column(
-                                        rel.table.alias, const_col.column.name
-                                    ),
-                                    SQL_EQ,
-                                    quote_column(
-                                        rel.referenced.table.alias,
-                                        const_col.referenced.column.name,
-                                    ),
-                                )
-                                for const_col in curr_join.join_columns
-                            ),
-                        )
-                    )
+                    sql_joins.append(ConcatSQL(
+                        SQL_INNER_JOIN,
+                        sql_alias(full_name, rel.table.alias),
+                        SQL_ON,
+                        SQL_AND.join(
+                            ConcatSQL(
+                                quote_column(rel.table.alias, const_col.column.name),
+                                SQL_EQ,
+                                quote_column(
+                                    rel.referenced.table.alias,
+                                    const_col.referenced.column.name,
+                                ),
+                            )
+                            for const_col in curr_join.join_columns
+                        ),
+                    ))
                 else:
                     full_name = quote_column(
                         rel.referenced.table.schema, rel.referenced.table.name
                     )
-                    sql_joins.append(
-                        ConcatSQL(
-                            SQL_LEFT_JOIN,
-                            sql_alias(full_name, rel.referenced.table.alias),
-                            SQL_ON,
-                            SQL_AND.join(
-                                ConcatSQL(
-                                    quote_column(
-                                        rel.referenced.table.alias,
-                                        const_col.referenced.column.name,
-                                    ),
-                                    SQL_EQ,
-                                    quote_column(
-                                        rel.table.alias, const_col.column.name
-                                    ),
-                                )
-                                for const_col in curr_join.join_columns
-                            ),
-                        )
-                    )
+                    sql_joins.append(ConcatSQL(
+                        SQL_LEFT_JOIN,
+                        sql_alias(full_name, rel.referenced.table.alias),
+                        SQL_ON,
+                        SQL_AND.join(
+                            ConcatSQL(
+                                quote_column(
+                                    rel.referenced.table.alias,
+                                    const_col.referenced.column.name,
+                                ),
+                                SQL_EQ,
+                                quote_column(rel.table.alias, const_col.column.name),
+                            )
+                            for const_col in curr_join.join_columns
+                        ),
+                    ))
 
             # ONLY SELECT WHAT WE NEED, NULL THE REST
             selects = []
@@ -893,8 +806,8 @@ class MySqlSnowflakeExtractor(object):
 
         doc_count = 0
 
-        columns = tuple(wrap(c) for c in self.columns)
-        with Timer("Downloading from MySQL", verbose=DEBUG):
+        columns = tuple(to_data(c) for c in self.columns)
+        with Timer("Downloading from MySql", verbose=DEBUG):
             curr_doc = Null
             row_count = 0
             if DEBUG:
@@ -939,12 +852,13 @@ class MySqlSnowflakeExtractor(object):
                             children = parent[relative_path] = []
                     except Exception as e:
                         Log.error(
-                            "Document construction error: path={{path}}\nsteps={{steps}}\ndoc={{curr_doc}}\nnext={{next_object}}",
+                            "Document construction error:"
+                            " path={{path}}\nsteps={{steps}}\ndoc={{curr_doc}}\nnext={{next_object}}",
                             path=path,
                             steps=nested_path,
                             curr_doc=curr_doc,
                             next_object=next_object,
-                            cause=e
+                            cause=e,
                         )
 
                 children.append(next_object)
@@ -962,9 +876,10 @@ class MySqlSnowflakeExtractor(object):
 
 
 def full_name_string(column):
-    return join_field(
-        [literal_field(column.table.name), literal_field(column.column.name)]
-    )
+    return join_field([
+        literal_field(column.table.name),
+        literal_field(column.column.name),
+    ])
 
 
 def one_to_many_string(constraint):

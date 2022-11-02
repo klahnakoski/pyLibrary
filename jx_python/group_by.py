@@ -12,11 +12,11 @@ from __future__ import absolute_import, division, unicode_literals
 
 import math
 
-from jx_base.container import Container
+from jx_base.models.container import Container
 from jx_base.expressions import jx_expression
 from jx_base.language import is_expression
 from mo_dots import Data, FlatList, Null, listwrap
-from mo_dots.lists import sequence_types, list_types
+from mo_dots.lists import list_types
 from mo_future import binary_type, text
 from mo_logs import Log
 from mo_logs.exceptions import Except
@@ -43,9 +43,10 @@ def groupby(data, keys=None, contiguous=False):
         keys = listwrap(keys)
         if not contiguous:
             from jx_python import jx
+
             data = jx.sort(data, keys)
 
-        if len(keys) == 0 or len(keys) == 1 and keys[0] == '.':
+        if len(keys) == 0 or len(keys) == 1 and keys[0] == ".":
             return _groupby_value(data)
 
         if any(is_expression(k) for k in keys):
@@ -106,10 +107,11 @@ def groupby_multiset(data, min_size, max_size):
             g = [k]
 
         if total >= max_size:
-            Log.error("({{min}}, {{max}}) range is too strict given step of {{increment}}",
+            Log.error(
+                "({{min}}, {{max}}) range is too strict given step of {{increment}}",
                 min=min_size,
                 max=max_size,
-                increment=c
+                increment=c,
             )
 
     if g:
@@ -125,12 +127,13 @@ def chunk(data, size=0):
         def _iter():
             num = int(math.ceil(len(data) / size))
             for i in range(num):
-                output = (i, data[i * size:i * size + size:])
+                output = (i, data[i * size : i * size + size :])
                 yield output
 
         return _iter()
 
     elif hasattr(data, "__iter__"):
+
         def _iter():
             g = 0
             out = []
@@ -153,4 +156,3 @@ def chunk(data, size=0):
         return _iter()
     else:
         Log.error("not supported")
-

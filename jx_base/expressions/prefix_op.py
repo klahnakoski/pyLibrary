@@ -10,7 +10,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified, jx_expression
+from jx_base.expressions._utils import jx_expression
 from jx_base.expressions.basic_starts_with_op import BasicStartsWithOp
 from jx_base.expressions.case_op import CaseOp
 from jx_base.expressions.expression import Expression
@@ -21,43 +21,54 @@ from jx_base.expressions.true_op import TRUE
 from jx_base.expressions.variable import Variable
 from jx_base.expressions.when_op import WhenOp
 from jx_base.language import is_op
-from mo_dots import is_data
+from mo_dots import is_data, is_missing
 from mo_future import first
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
 
 class PrefixOp(Expression):
     has_simple_form = True
-    data_type = BOOLEAN
+    _data_type = T_BOOLEAN
 
     def __init__(self, expr, prefix):
-        Expression.__init__(self, (expr, prefix))
+        Expression.__init__(self, expr, prefix)
         self.expr = expr
         self.prefix = prefix
 
-    _patterns = [
-        {"prefix": {"expr": "prefix"}},
-        {"prefix": ["expr", "prefix"]}
-    ]
+    _patterns = [{"prefix": {"expr": "prefix"}}, {"prefix": ["expr", "prefix"]}]
+
     @classmethod
     def define(cls, expr):
-        term = expr.get('prefix')
+        term = expr.get("prefix")
         if not term:
             return PrefixOp(NULL, NULL)
         elif is_data(term):
-            expr, const = first(term.items())
-            return PrefixOp(Variable(expr), Literal(const))
+            kv_pair = first(term.items())
+            if kv_pair:
+                expr, const = first(term.items())
+                return PrefixOp(Variable(expr), Literal(const))
+            else:
+                return TRUE
         else:
             expr, const = term
             return PrefixOp(jx_expression(expr), jx_expression(const))
 
     def __data__(self):
-        if not self.expr:
+        if self.expr == None:
             return {"prefix": {}}
         elif is_op(self.expr, Variable) and is_literal(self.prefix):
             return {"prefix": {self.expr.var: self.prefix.value}}
         else:
             return {"prefix": [self.expr.__data__(), self.prefix.__data__()]}
+
+    def __call__(self, row, rownum=None, rows=None):
+        expr = self.expr(row, rownum, rows)
+        if is_missing(expr):
+            return None
+        prefix=self.prefix(row, rownum, rows)
+        if is_missing(prefix):
+            return None
+        return expr.startswith(prefix)
 
     def vars(self):
         if self.expr is NULL:
@@ -65,27 +76,22 @@ class PrefixOp(Expression):
         return self.expr.vars() | self.prefix.vars()
 
     def map(self, map_):
-        if not self.expr:
+        if self.expr is NULL:
             return self
         else:
-            return self.lang[PrefixOp(self.expr.map(map_), self.prefix.map(map_))]
+            return PrefixOp(self.expr.map(map_), self.prefix.map(map_))
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
-    @simplified
-    def partial_eval(self):
-        return self.lang[
-            CaseOp(
-                [
-                    WhenOp(self.prefix.missing(), then=TRUE),
-                    WhenOp(self.expr.missing(), then=FALSE),
-                    BasicStartsWithOp([self.expr, self.prefix]),
-                ]
-            )
-        ].partial_eval()
+    def partial_eval(self, lang):
+        return CaseOp([
+            WhenOp(self.prefix.missing(lang), then=TRUE),
+            WhenOp(self.expr.missing(lang), then=FALSE),
+            BasicStartsWithOp([self.expr, self.prefix]),
+        ]).partial_eval(lang)
 
     def __eq__(self, other):
         if not is_op(other, PrefixOp):
             return False
-        return self.expr == other.expr and self.prefix == other.prefix
+        return self.expr == other.frum and self.prefix == other.prefix

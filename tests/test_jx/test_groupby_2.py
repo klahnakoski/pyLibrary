@@ -10,11 +10,14 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from unittest import skip
+
 from jx_base.expressions import NULL
 from mo_json import null
 from tests.test_jx import BaseTestCase, TEST_TABLE
 
 
+@skip("not ready")
 class TestGroupBy2(BaseTestCase):
     def test_count_rows(self):
         test = {

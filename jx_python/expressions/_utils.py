@@ -1,3 +1,4 @@
+
 # encoding: utf-8
 #
 #
@@ -21,9 +22,9 @@ from jx_base.expressions import (
 from jx_base.language import Language, is_expression, is_op
 from mo_dots import is_data, is_list, Null
 from mo_future import is_text
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
-NumberOp, OrOp, PythonScript, ScriptOp, WhenOp = [None]*5
+ToNumberOp, OrOp, PythonScript, ScriptOp, WhenOp = [None] * 5
 
 
 def jx_expression_to_function(expr):
@@ -38,18 +39,14 @@ def jx_expression_to_function(expr):
         if is_op(expr, ScriptOp) and not is_text(expr.script):
             return expr.script
         else:
-            func = compile_expression(Python[expr].to_python())
+            func = compile_expression((expr).to_python())
             return JXExpression(func, expr.__data__())
-    if (
-        not is_data(expr)
-        and not is_list(expr)
-        and hasattr(expr, "__call__")
-    ):
+    if not is_data(expr) and not is_list(expr) and hasattr(expr, "__call__"):
         # THIS APPEARS TO BE A FUNCTION ALREADY
         return expr
 
     expr = jx_expression(expr)
-    func = compile_expression(Python[expr].to_python())
+    func = compile_expression((expr).to_python())
     return JXExpression(func, expr)
 
 
@@ -72,37 +69,40 @@ class JXExpression(object):
 
 
 @extend(NullOp)
-def to_python(self, not_null=False, boolean=False, many=False):
+def to_python(self, many=False):
     return "None"
 
 
-def _inequality_to_python(self, not_null=False, boolean=False, many=True):
+def _inequality_to_python(self, not_null=False, boolean=False):
     op, identity = _python_operators[self.op]
-    lhs = NumberOp(self.lhs).partial_eval().to_python(not_null=True)
-    rhs = NumberOp(self.rhs).partial_eval().to_python(not_null=True)
+    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python(not_null=True)
+    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python(not_null=True)
     script = "(" + lhs + ") " + op + " (" + rhs + ")"
 
     output = (
         WhenOp(
-            OrOp([self.lhs.missing(), self.rhs.missing()]),
+            OrOp(self.lhs.missing(Python), self.rhs.missing(Python)),
             **{
                 "then": FALSE,
-                "else": PythonScript(type=BOOLEAN, expr=script, frum=self),
+                "else": PythonScript(type=T_BOOLEAN, expr=script, frum=self),
             }
         )
-        .partial_eval()
+        .partial_eval(Python)
         .to_python()
     )
     return output
 
 
-def _binaryop_to_python(self, not_null=False, boolean=False, many=True):
+def _binaryop_to_python(self, not_null=False, boolean=False):
     op, identity = _python_operators[self.op]
 
-    lhs = NumberOp(self.lhs).partial_eval().to_python(not_null=True)
-    rhs = NumberOp(self.rhs).partial_eval().to_python(not_null=True)
+    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python(not_null=True)
+    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python(not_null=True)
     script = "(" + lhs + ") " + op + " (" + rhs + ")"
-    missing = OrOp([self.lhs.missing(), self.rhs.missing()]).partial_eval()
+    missing = OrOp([
+        self.lhs.missing(Python),
+        self.rhs.missing(Python),
+    ]).partial_eval(Python)
     if missing is FALSE:
         return script
     else:
@@ -112,17 +112,17 @@ def _binaryop_to_python(self, not_null=False, boolean=False, many=True):
 def multiop_to_python(self, not_null=False, boolean=False, many=False):
     sign, zero = _python_operators[self.op]
     if len(self.terms) == 0:
-        return Python[self.default].to_python()
+        return (self.default).to_python()
     elif self.default is NULL:
         return sign.join(
-            "coalesce(" + Python[t].to_python() + ", " + zero + ")" for t in self.terms
+            "coalesce(" + t.to_python() + ", " + zero + ")" for t in self.terms
         )
     else:
         return (
             "coalesce("
-            + sign.join("(" + Python[t].to_python() + ")" for t in self.terms)
+            + sign.join("(" + t.to_python() + ")" for t in self.terms)
             + ", "
-            + Python[self.default].to_python()
+            + self.default.to_python()
             + ")"
         )
 

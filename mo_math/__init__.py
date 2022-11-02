@@ -150,6 +150,20 @@ def is_integer(s):
         return False
 
 
+def to_integer(s):
+    if s is True:
+        return 1
+    if s is False:
+        return 0
+
+    try:
+        if float(s) == round(float(s), 0):
+            return int(s)
+        return Null
+    except Exception:
+        return Null
+
+
 def round(value, decimal=0, digits=None):
     """
     ROUND TO GIVEN NUMBER OF DIGITS, OR GIVEN NUMBER OF DECIMAL PLACES
@@ -201,14 +215,9 @@ def mod(value, mod=1):
     RETURN NON-NEGATIVE MODULO
     RETURN None WHEN GIVEN INVALID ARGUMENTS
     """
-    if value == None:
+    if value == None or mod <= 0:
         return None
-    elif mod <= 0:
-        return None
-    elif value < 0:
-        return (value % mod + mod) % mod
-    else:
-        return value % mod
+    return value % mod
 
 
 # RETURN A VALUE CLOSE TO value, BUT WITH SHORTER len(text(value))<len(text(value)):
@@ -379,7 +388,7 @@ def UNION(values, *others):
 
     output = set()
     for v in values:
-        if values == None:
+        if v == None:
             continue
         if is_container(v):
             output.update(v)

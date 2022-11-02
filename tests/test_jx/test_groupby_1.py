@@ -14,7 +14,8 @@ from unittest import skip, skipIf
 
 from jx_base.expressions import NULL
 from mo_dots import set_default, to_data
-from mo_future import text
+from mo_future import text, first
+from mo_math import to_integer
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 
@@ -424,7 +425,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    @skipIf(int(global_settings.elasticsearch.version.split(".")[0]) <= 4, "version 4 and below do not implement")
+    @skip("requires subqueries")
     def test_count_values(self):
         # THIS IS NOT PART OF THE JX SPEC, IT IS AN INTERMEDIATE FORM FOR DEBUGGING
         test = {
@@ -449,7 +450,6 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    # @skipIf(int(global_settings.elasticsearch.version.split(".")[0]) <= 5, "version 5 and below do not implement")
     @skip("for coverage")
     def test_groupby_multivalue_nested(self):
         test = {
@@ -533,7 +533,7 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    def test_groupby_object_star(self):
+    def test_groupby_star(self):
         test = {
             "data": [
                 {"g": {"a": "c", "v": 1}},
@@ -546,7 +546,7 @@ class TestgroupBy1(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE,
-                "groupby": ["g.*"]
+                "groupby": ["*"]
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -571,6 +571,45 @@ class TestgroupBy1(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
+    def test_groupby_object_star(self):
+        test = {
+            "data": [
+                {"g": {"a": "c", "v": 1}},
+                {"g": {"a": "b", "v": 1}},
+                {"g": {"a": "b", "v": 1}},
+                {"g": {          "v": 2}},
+                {"g": {"a": "b"        }},
+                {"g": {"a": "c", "v": 2}},
+                {"g": {"a": "c", "v": 2}}
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "groupby": ["g.*"]
+            },
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a": "b", "v": 1, "count": 2},
+                    {"a": "b"        , "count": 1},
+                    {"a": "c", "v": 2, "count": 2},
+                    {"a": "c", "v": 1, "count": 1},
+                    {          "v": 2, "count": 1}
+                ]
+            },
+            "expecting_table": {
+                "header": ["a", "v", "count"],
+                "data": [
+                    ["b", 1, 2],
+                    ["b", NULL, 1],
+                    ["c", 2, 2],
+                    ["c", 1, 1],
+                    [NULL, 2, 1]
+                ]
+            }
+        }
+        self.utils.execute_tests(test)
+
+    @skip("requires groupby sets")
     def test_groupby_multivalue_naive(self):
         test = {
             "data": [

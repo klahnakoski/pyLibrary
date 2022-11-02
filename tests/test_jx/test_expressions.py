@@ -15,7 +15,7 @@ from jx_base.expressions import FALSE, TRUE, jx_expression
 from jx_base.language import JX
 from jx_base.queries import is_variable_name
 from jx_python.expressions import Python
-from mo_json import INTEGER, NESTED
+from mo_json import INTEGER, ARRAY
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times import Date, MONTH
 
@@ -89,7 +89,7 @@ class TestExpressions(FuzzyTestCase):
             es_column="es_column.~N~",
             es_index="es_index",
             es_type="nested",
-            jx_type=NESTED,
+            jx_type=ARRAY,
             cardinality=1,
             multi=2,
             nested_path=".",
@@ -141,7 +141,7 @@ class TestExpressions(FuzzyTestCase):
             es_column="es_column.~N~",
             es_index="es_index",
             es_type="nested",
-            jx_type=NESTED,
+            jx_type=ARRAY,
             multi=1001,
             cardinality=1,
             nested_path=["."],

@@ -18,14 +18,13 @@ from jx_base.expressions import (
     ZERO,
     Expression,
 )
-from jx_python.expressions import _utils
-from mo_dots import coalesce
-from mo_future import PY2, text
+from jx_base.utils import coalesce
+from jx_python.expressions import _utils, Python
 from mo_logs import Log
 
 
 class PythonScript(PythonScript_):
-    __slots__ = ("miss", "data_type", "expr", "frum", "many")
+    __slots__ = ("miss", "_data_type", "expr", "frum", "many")
 
     def __init__(self, type, expr, frum, miss=None, many=False):
         Expression.__init__(self, None)
@@ -33,40 +32,37 @@ class PythonScript(PythonScript_):
             if frum.lang != miss.lang:
                 Log.error("logic error")
 
-        self.miss = coalesce(
-            miss, FALSE
-        )  # Expression that will return true/false to indicate missing result
-        self.data_type = type
+        self.miss = coalesce(miss, FALSE)
+        self._data_type = type
         self.expr = expr
         self.many = many  # True if script returns multi-value
         self.frum = frum  # THE ORIGINAL EXPRESSION THAT MADE expr
 
-    @property
-    def type(self):
-        return self.data_type
-
     def __str__(self):
-        missing = self.miss.partial_eval()
+        missing = self.miss.partial_eval(Python)
         if missing is FALSE:
-            return self.partial_eval().to_python().expr
+            return self.partial_eval(Python).to_python().expr
         elif missing is TRUE:
             return "None"
 
         return "None if (" + missing.to_python().expr + ") else (" + self.expr + ")"
 
     def __add__(self, other):
-        return text(self) + text(other)
+        return str(self) + str(other)
 
     def __radd__(self, other):
-        return text(other) + text(self)
+        try:
+            a = str(other)
+            b = str(self)
+            return a + b
+        except Exception as cause:
+            b = str(self)
+            return ""
 
-    if PY2:
-        __unicode__ = __str__
-
-    def to_python(self, not_null=False, boolean=False, many=True):
+    def to_python(self, not_null=False, boolean=False):
         return self
 
-    def missing(self):
+    def missing(self, lang):
         return self.miss
 
     def __data__(self):
@@ -75,9 +71,10 @@ class PythonScript(PythonScript_):
     def __eq__(self, other):
         if not isinstance(other, PythonScript_):
             return False
-        elif self.expr == other.expr:
+        elif self.expr == other.frum:
             return True
         else:
             return False
+
 
 _utils.PythonScript = PythonScript

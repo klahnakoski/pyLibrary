@@ -9,6 +9,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 import re
 
+from mo_dots import is_list, is_many
 from mo_future import is_text
 from mo_logs import Log
 
@@ -54,3 +55,23 @@ def get_property_name(s):
         return s
     else:
         return s.lstrip(".")
+
+
+def coalesce(*args):
+    # pick the first not null value
+    # http://en.wikipedia.org/wiki/Null_coalescing_operator
+    for a in args:
+        if a != None:
+            return a
+    return None
+
+
+def listwrap(value):
+    if value == None:
+        return []
+    elif is_list(value):
+        return value
+    elif is_many(value):
+        return list(value)
+    else:
+        return [value]

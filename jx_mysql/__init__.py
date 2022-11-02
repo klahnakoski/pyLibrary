@@ -14,7 +14,14 @@ from __future__ import unicode_literals
 from collections import Mapping
 
 import mo_json
-from jx_mysql.mysql import int_list_packer, quote_column, quote_value, quote_list, sql_alias, _esfilter2sqlwhere
+from jx_mysql.mysql import (
+    int_list_packer,
+    quote_column,
+    quote_value,
+    quote_list,
+    sql_alias,
+    _esfilter2sqlwhere,
+)
 from mo_collections.matrix import Matrix
 from mo_dots import listwrap, unwrap
 from mo_dots.lists import FlatList
@@ -26,9 +33,9 @@ from mo_logs.strings import expand_template
 from mo_sql import SQL, SQL_ORDERBY, SQL_LIMIT, sql_list, SQL_WHERE
 
 
-class MySQL_forBugzilla(object):
+class MySql_forBugzilla(object):
     """
-    jx to MySQL DATABASE QUERIES
+    jx to MySql DATABASE QUERIES
 
     NEW CODE SHOULD NOT USE THIS: SUBSUMED BY THE REST OF THE LIBRARY
     """
@@ -44,12 +51,12 @@ class MySQL_forBugzilla(object):
         schema=None,
         preamble=None,
         readonly=False,
-        kwargs=None
+        kwargs=None,
     ):
-        from jx_mysql.mysql import MySQL
+        from jx_mysql.mysql import MySql
 
         self.settings = kwargs
-        self._db = MySQL(kwargs)
+        self._db = MySql(kwargs)
 
     def __data__(self):
         settings = self.settings.copy()
@@ -69,15 +76,20 @@ class MySQL_forBugzilla(object):
         return query.data
 
     def update(self, query):
-        self.db.execute("""
+        self.db.execute(
+            """
             UPDATE {{table_name}}
             SET {{assignment}}
             {{where}}
-        """, {
-            "table_name": query["from"],
-            "assignment": ",".join(quote_column(k) + "=" + quote_value(v) for k, v in query.set),
-            "where": self._where2sql(query.where)
-        })
+        """,
+            {
+                "table_name": query["from"],
+                "assignment": ",".join(
+                    quote_column(k) + "=" + quote_value(v) for k, v in query.set
+                ),
+                "where": self._where2sql(query.where),
+            },
+        )
 
     def _subquery(self, query, isolate=True, stacked=False):
         """
@@ -113,21 +125,29 @@ class MySQL_forBugzilla(object):
         # RETURN SINGLE OBJECT WITH AGGREGATES
         for s in select:
             if s.aggregate not in aggregates:
-                Log.error("Expecting all columns to have an aggregate: {{select}}", select=s)
+                Log.error(
+                    "Expecting all columns to have an aggregate: {{select}}", select=s
+                )
 
         selects = FlatList()
         groups = FlatList()
         edges = query.edges
         for e in edges:
             if e.domain.type != "default":
-                Log.error("domain of type {{type}} not supported, yet", type=e.domain.type)
+                Log.error(
+                    "domain of type {{type}} not supported, yet", type=e.domain.type
+                )
             groups.append(e.value)
             selects.append(sql_alias(e.value, quote_column(e.name)))
 
         for s in select:
-            selects.append(sql_alias(aggregates[s.aggregate].replace("{{code}}", s.value), quote_column(s.name)))
+            selects.append(sql_alias(
+                aggregates[s.aggregate].replace("{{code}}", s.value),
+                quote_column(s.name),
+            ))
 
-        sql = expand_template("""
+        sql = expand_template(
+            """
             SELECT
                 {{selects}}
             FROM
@@ -135,12 +155,14 @@ class MySQL_forBugzilla(object):
             {{where}}
             GROUP BY
                 {{groups}}
-        """, {
-            "selects": SQL(",\n".join(selects)),
-            "groups": SQL(",\n".join(groups)),
-            "table": self._subquery(query["from"])[0],
-            "where": self._where2sql(query.where)
-        })
+        """,
+            {
+                "selects": SQL(",\n".join(selects)),
+                "groups": SQL(",\n".join(groups)),
+                "table": self._subquery(query["from"])[0],
+                "where": self._where2sql(query.where),
+            },
+        )
 
         def post_stacked(sql):
             # RETURN IN THE USUAL DATABASE RESULT SET FORMAT
@@ -155,7 +177,9 @@ class MySQL_forBugzilla(object):
                 if domain.type == "default":
                     domain.type = "set"
                     parts = set(result[e])
-                    domain.partitions = [{"index": i, "value": p} for i, p in enumerate(parts)]
+                    domain.partitions = [
+                        {"index": i, "value": p} for i, p in enumerate(parts)
+                    ]
                     domain.map = {p: i for i, p in enumerate(parts)}
                 else:
                     Log.error("Do not know what to do here, yet")
@@ -164,7 +188,12 @@ class MySQL_forBugzilla(object):
             maps = [(unwrap(e.domain.map), result[i]) for i, e in enumerate(edges)]
             cubes = FlatList()
             for c, s in enumerate(select):
-                data = Matrix(*[len(e.domain.partitions) + (1 if e.allow_nulls else 0) for e in edges])
+                data = Matrix(
+                    *[
+                        len(e.domain.partitions) + (1 if e.allow_nulls else 0)
+                        for e in edges
+                    ]
+                )
                 for rownum, value in enumerate(result[c + num_edges]):
                     coord = [m[r[rownum]] for m, r in maps]
                     data[coord] = value
@@ -185,44 +214,64 @@ class MySQL_forBugzilla(object):
             # RETURN SINGLE OBJECT WITH AGGREGATES
             for s in query.select:
                 if s.aggregate not in aggregates:
-                    Log.error("Expecting all columns to have an aggregate: {{select}}", select=s)
+                    Log.error(
+                        "Expecting all columns to have an aggregate: {{select}}",
+                        select=s,
+                    )
 
             selects = FlatList()
             for s in query.select:
-                selects.append(sql_alias(aggregates[s.aggregate].replace("{{code}}", s.value),quote_column(s.name)))
+                selects.append(sql_alias(
+                    aggregates[s.aggregate].replace("{{code}}", s.value),
+                    quote_column(s.name),
+                ))
 
-            sql = expand_template("""
+            sql = expand_template(
+                """
                 SELECT
                     {{selects}}
                 FROM
                     {{table}}
                 {{where}}
-            """, {
-                "selects": SQL(",\n".join(selects)),
-                "table": self._subquery(query["from"])[0],
-                "where": self._where2sql(query.filter)
-            })
+            """,
+                {
+                    "selects": SQL(",\n".join(selects)),
+                    "table": self._subquery(query["from"])[0],
+                    "where": self._where2sql(query.filter),
+                },
+            )
 
-            return sql, lambda sql: self.db.column(sql)[0]  # RETURNING SINGLE OBJECT WITH AGGREGATE VALUES
+            return (
+                sql,
+                lambda sql: self.db.column(sql)[0],
+            )  # RETURNING SINGLE OBJECT WITH AGGREGATE VALUES
         else:
             # RETURN SINGLE VALUE
             s0 = query.select
             if s0.aggregate not in aggregates:
-                Log.error("Expecting all columns to have an aggregate: {{select}}", select=s0)
+                Log.error(
+                    "Expecting all columns to have an aggregate: {{select}}", select=s0
+                )
 
-            select = sql_alias(aggregates[s0.aggregate].replace("{{code}}", s0.value) , quote_column(s0.name))
+            select = sql_alias(
+                aggregates[s0.aggregate].replace("{{code}}", s0.value),
+                quote_column(s0.name),
+            )
 
-            sql = expand_template("""
+            sql = expand_template(
+                """
                 SELECT
                     {{selects}}
                 FROM
                     {{table}}
                 {{where}}
-            """, {
-                "selects": SQL(select),
-                "table": self._subquery(query["from"])[0],
-                "where": self._where2sql(query.where)
-            })
+            """,
+                {
+                    "selects": SQL(select),
+                    "table": self._subquery(query["from"])[0],
+                    "where": self._where2sql(query.where),
+                },
+            )
 
             def post(sql):
                 result = self.db.column_query(sql)
@@ -243,11 +292,14 @@ class MySQL_forBugzilla(object):
                         selects.append(sql_alias(v, quote_column(s.name + "." + k)))
                 if isinstance(s.value, list):
                     for i, ss in enumerate(s.value):
-                        selects.append(sql_alias(s.value, quote_column(s.name + "," + str(i))))
+                        selects.append(sql_alias(
+                            s.value, quote_column(s.name + "," + str(i))
+                        ))
                 else:
                     selects.append(sql_alias(s.value, quote_column(s.name)))
 
-            sql = expand_template("""
+            sql = expand_template(
+                """
                 SELECT
                     {{selects}}
                 FROM
@@ -255,13 +307,15 @@ class MySQL_forBugzilla(object):
                 {{where}}
                 {{sort}}
                 {{limit}}
-            """, {
-                "selects": SQL(",\n".join(selects)),
-                "table": self._subquery(query["from"])[0],
-                "where": self._where2sql(query.where),
-                "limit": self._limit2sql(query.limit),
-                "sort": self._sort2sql(query.sort)
-            })
+            """,
+                {
+                    "selects": SQL(",\n".join(selects)),
+                    "table": self._subquery(query["from"])[0],
+                    "where": self._where2sql(query.where),
+                    "limit": self._limit2sql(query.limit),
+                    "sort": self._sort2sql(query.sort),
+                },
+            )
 
             def post_process(sql):
                 result = self.db.query(sql)
@@ -276,7 +330,9 @@ class MySQL_forBugzilla(object):
                     if isinstance(s.value, list):
                         # REWRITE AS TUPLE
                         for r in result:
-                            r[s.name] = tuple(r[s.name + "," + str(i)] for i, ss in enumerate(s.value))
+                            r[s.name] = tuple(
+                                r[s.name + "," + str(i)] for i, ss in enumerate(s.value)
+                            )
                             for i, ss in enumerate(s.value):
                                 r[s.name + "," + str(i)] = None
 
@@ -292,7 +348,8 @@ class MySQL_forBugzilla(object):
                 name = query.select.name
                 select = sql_alias(query.select.value, quote_column(name))
 
-            sql = expand_template("""
+            sql = expand_template(
+                """
                 SELECT
                     {{selects}}
                 FROM
@@ -300,15 +357,18 @@ class MySQL_forBugzilla(object):
                 {{where}}
                 {{sort}}
                 {{limit}}
-            """, {
-                "selects": SQL(select),
-                "table": self._subquery(query["from"])[0],
-                "where": self._where2sql(query.where),
-                "limit": self._limit2sql(query.limit),
-                "sort": self._sort2sql(query.sort)
-            })
+            """,
+                {
+                    "selects": SQL(select),
+                    "table": self._subquery(query["from"])[0],
+                    "where": self._where2sql(query.where),
+                    "limit": self._limit2sql(query.limit),
+                    "sort": self._sort2sql(query.sort),
+                },
+            )
 
             if query.select.value == ".":
+
                 def post(sql):
                     result = self.db.query(sql)
                     expand_json(result)
@@ -316,7 +376,10 @@ class MySQL_forBugzilla(object):
 
                 return sql, post
             else:
-                return sql, lambda sql: [r[name] for r in self.db.query(sql)]  # RETURNING LIST OF VALUES
+                return (
+                    sql,
+                    lambda sql: [r[name] for r in self.db.query(sql)],
+                )  # RETURNING LIST OF VALUES
 
     def _sort2sql(self, sort):
         """
@@ -324,7 +387,9 @@ class MySQL_forBugzilla(object):
         """
         if not sort:
             return ""
-        return SQL_ORDERBY + sql_list([quote_column(o.field) + (" DESC" if o.sort == -1 else "") for o in sort])
+        return SQL_ORDERBY + sql_list([
+            quote_column(o.field) + (" DESC" if o.sort == -1 else "") for o in sort
+        ])
 
     def _limit2sql(self, limit):
         return SQL("" if not limit else SQL_LIMIT + str(limit))
@@ -365,9 +430,9 @@ aggregates = {
     "std": "STDDEV({{code}})",
     "stddev": "STDDEV({{code}})",
     "var": "POWER(STDDEV({{code}}), 2)",
-    "variance": "POWER(STDDEV({{code}}), 2)"
+    "variance": "POWER(STDDEV({{code}}), 2)",
 }
 
-from jx_base.container import type2container
+from jx_base.models.container import type2container
 
-type2container["mysql"] = MySQL_forBugzilla
+type2container["mysql"] = MySql_forBugzilla

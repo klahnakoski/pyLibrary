@@ -10,16 +10,15 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.language import is_op
-from mo_json import NUMBER
+from mo_json.types import T_NUMBER
 
 
 class AbsOp(Expression):
-    data_type = NUMBER
+    _data_type = T_NUMBER
 
-    def __init__(self, term):
+    def __init__(self, *term):
         Expression.__init__(self, term)
         self.term = term
 
@@ -35,11 +34,10 @@ class AbsOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return self.lang[AbsOp(self.term.map(map_))]
+        return AbsOp(self.term.map(map_))
 
-    def missing(self):
-        return self.term.missing()
+    def missing(self, lang):
+        return self.term.missing(lang)
 
-    @simplified
-    def partial_eval(self):
-        return AbsOp(self.term.partial_eval())
+    def partial_eval(self, lang):
+        return AbsOp(self.term.partial_eval(lang))

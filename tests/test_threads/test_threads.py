@@ -18,16 +18,17 @@ from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
 from mo_times.durations import SECOND
 
-from mo_threads import Lock, Thread, Signal, Till, till
+from mo_threads import Lock, Thread, Signal, Till, till, threads, start_main_thread
+from mo_threads.threads import wait_for_shutdown_signal, stop_main_thread
+from tests import StructuredLogger_usingList
 
 
 class TestThreads(FuzzyTestCase):
-    @classmethod
-    def setUpClass(cls):
-        Log.start()
+    def setUp(self):
+        old_log, Log.main_log = Log.main_log, StructuredLogger_usingList()
+        old_log.stop()
 
-    @classmethod
-    def tearDownClass(cls):
+    def tearDown(self):
         Log.stop()
 
     def test_lock_wait_timeout(self):
@@ -123,7 +124,8 @@ class TestThreads(FuzzyTestCase):
         self.assertGreater(
             num,
             9,
-            "Expecting some reasonable number of entries to prove there was looping, not "
+            "Expecting some reasonable number of entries to prove there was looping,"
+            " not "
             + text(num),
         )
 
@@ -180,3 +182,42 @@ class TestThreads(FuzzyTestCase):
         t = Till(seconds=10000000)  # ALL NEW TIMING SIGNALS ARE A go()!
         t.wait()
         till.enabled.go()
+
+    def test_start_stopped_thread(self):
+        """
+        We often spawn threads to do work; ensure the thread is at least started,
+        let the thread decide how to balance please_stop and the work to be done
+        """
+        done = []
+
+        def worker(please_stop):
+            done.append("started")
+
+        please_stop = Signal()
+        please_stop.go()
+        thread = Thread.run("work", worker, please_stop=please_stop)
+        thread.stopped.wait()
+        self.assertIn("started", done)
+
+    def test_failure_during_wait_for_shutdown(self):
+        threads.DEBUG = True
+        stop_main_thread()
+
+        start_main_thread()
+        list_log = StructuredLogger_usingList()
+        old_log, Log.main_log = Log.main_log, list_log
+        old_log.stop()
+
+        Thread.run("test_failure_during_wait_for_shutdown", bad_worker)
+
+        with self.assertRaises("bad worker failure"):
+            wait_for_shutdown_signal(None, False, False)
+
+        self.assertGreater(len(list_log.lines), 1)
+        self.assertIn("logger stopped", list_log.lines)
+        self.assertIn("ERROR", list_log.lines[-2])
+        self.assertEqual(bool(threads.MAIN_THREAD.timers.stopped), True)
+
+
+def bad_worker(please_stop):
+    raise Exception("bad worker failure")

@@ -972,7 +972,7 @@ class _rrulestr(object):
                          cache=False,
                          ignoretz=False,
                          tzinfos=None):
-        if line.find(':') != -1:
+        if ':' in line:
             name, value = line.split(':')
             if name != "RRULE":
                 raise ValueError("unknown parameter name")
@@ -1023,7 +1023,7 @@ class _rrulestr(object):
         else:
             lines = s.split()
         if (not forceset and len(lines) == 1 and
-            (s.find(':') == -1 or s.startswith('RRULE:'))):
+            (':' not in s or s.startswith('RRULE:'))):
             return self._parse_rfc_rrule(lines[0], cache=cache,
                                          dtstart=dtstart, ignoretz=ignoretz,
                                          tzinfos=tzinfos)
@@ -1035,7 +1035,7 @@ class _rrulestr(object):
             for line in lines:
                 if not line:
                     continue
-                if line.find(':') == -1:
+                if ':' not in line:
                     name = "RRULE"
                     value = line
                 else:

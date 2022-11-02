@@ -28,13 +28,11 @@ def list2cube(rows, column_names=None):
     data = {k: [] for k in keys}
     output = dict_to_data({
         "meta": {"format": "cube"},
-        "edges": [
-            {
-                "name": "rownum",
-                "domain": {"type": "rownum", "min": 0, "max": len(rows), "interval": 1}
-            }
-        ],
-        "data": data
+        "edges": [{
+            "name": "rownum",
+            "domain": {"type": "rownum", "min": 0, "max": len(rows), "interval": 1},
+        }],
+        "data": data,
     })
 
     for r in rows:
@@ -55,18 +53,17 @@ def list2table(rows, column_names=None):
 
     output = [[unwraplist(r.get(k)) for k in keys] for r in rows]
 
-    return dict_to_data({
-        "meta": {"format": "table"},
-        "header": keys,
-        "data": output
-    })
+    return dict_to_data({"meta": {"format": "table"}, "header": keys, "data": output})
+
 
 def table2csv(table_data):
     """
     :param table_data: expecting a list of tuples
     :return: text in nice formatted csv
     """
-    text_data = [tuple(value2json(vals, pretty=True) for vals in rows) for rows in table_data]
+    text_data = [
+        tuple(value2json(vals, pretty=True) for vals in rows) for rows in table_data
+    ]
 
     col_widths = [max(len(t) for t in cols) for cols in zip(*text_data)]
     template = ", ".join(

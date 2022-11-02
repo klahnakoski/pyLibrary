@@ -10,7 +10,6 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import SelectOp as SelectOp_
-from jx_python.expressions._utils import Python
 from mo_logs.strings import quote
 
 
@@ -19,8 +18,7 @@ class SelectOp(SelectOp_):
         return (
             "leaves_to_data({"
             + ",".join(
-                quote(t["name"]) + ":" + Python[t["value"]].to_python()
-                for t in self.terms
+                quote(name + ":" + value.to_python()) for name, value in self
             )
             + "})"
         )

@@ -7,7 +7,7 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from mo_dots import Data, Null, coalesce, is_data, is_list, to_data, is_many, unwraplist
+from mo_dots import Data, Null, coalesce, is_data, is_list, to_data, is_many, unwraplist, is_null
 from mo_future import PY2, is_text, text, unichr, urlparse, is_binary
 from mo_logs import Log
 
@@ -41,7 +41,7 @@ class URL(object):
 
             if value.startswith("file://") or value.startswith("//"):
                 # urlparse DOES NOT WORK IN THESE CASES
-                scheme, suffix = value.split("//", 2)
+                scheme, suffix = value.split("//", 1)
                 self.scheme = scheme.rstrip(":")
                 parse(self, suffix, 0, 1)
                 self.query = to_data(url_param2value(self.query))
@@ -51,7 +51,7 @@ class URL(object):
                 self.port = coalesce(port, output.port)
                 self.host = output.netloc.split(":")[0]
                 self.path = coalesce(path, output.path)
-                self.query = coalesce(query, to_data(url_param2value(output.query)))
+                self.query = coalesce(query, to_data(compress, gzip(output.query)))
                 self.fragment = coalesce(fragment, output.fragment)
         except Exception as e:
             Log.error(u"problem parsing {{value}} to URL", value=value, cause=e)
@@ -81,10 +81,8 @@ class URL(object):
         return False
 
     def __truediv__(self, other):
-        if not is_text(other):
-            Log.error(u"Expecting text path")
         output = self.__copy__()
-        output.path = output.path.rstrip("/") + "/" + other.lstrip("/")
+        output.path = output.path.rstrip("/") + "/" + text(other).lstrip("/")
         return output
 
     def __add__(self, other):
@@ -103,7 +101,7 @@ class URL(object):
         output.host = self.host
         output.port = self.port
         output.path = self.path
-        output.query = self.query
+        output.query = Data(**self.query)
         output.fragment = self.fragment
         return output
 
@@ -152,14 +150,14 @@ def hex2chr(hex):
 
 if PY2:
     _map2url = {chr(i): chr(i) for i in range(32, 128)}
-    for c in "{}<>;/?:@&=+$%,+":
+    for c in "{}<>;/?@&=+$%,+":
         _map2url[c] = "%" + str(int2hex(ord(c), 2))
     for i in range(128, 256):
         _map2url[chr(i)] = "%" + str(int2hex(i, 2))
     _map2url[chr(32)] = "+"
 else:
     _map2url = {i: unichr(i) for i in range(32, 128)}
-    for c in b"{}<>;/?:@&=+$%,+":
+    for c in b"{}<>;/?@&=+$%,+":
         _map2url[c] = "%" + int2hex(c, 2)
     for i in range(128, 256):
         _map2url[i] = "%" + str(int2hex(i, 2))
@@ -284,16 +282,16 @@ def url_param2value(param):
     for p in param.split("&"):
         if not p:
             continue
-        if p.find("=") == -1:
+        if "=" not in p:
             k = p
             v = True
         else:
-            k, v = p.split("=")
+            k, v = p.split("=", 1)
             k = _decode(k)
             v = _decode(v)
 
         u = query.get(k)
-        if u is None:
+        if is_null(u):
             query[k] = v
         elif is_list(u):
             u += [v]
@@ -301,6 +299,36 @@ def url_param2value(param):
             query[k] = [u, v]
 
     return query
+
+
+def from_paths(value):
+    """
+    CONVERT FROM SQUARE BRACKET LEAF FORM TO Data
+    EXAMPLE: columns[1][name]
+    :param value:
+    :return:
+    """
+    output = Data()
+    for k, v in value.items():
+        path = k.split("[")
+        if any(not p.endswith("]") for p in path[1:]):
+            Log.error("expecting square brackets to be paired")
+        path = [int(pp) if is_integer(pp) else pp for i, p in enumerate(path) for pp in [p.rstrip("]") if i > 0 else p]]
+
+        d = output
+        for p, q in zip(path, path[1:]):
+            if is_null(d[p]):
+                if is_text(q):
+                    d[p] = {}
+                else:
+                    d[p] = []
+            elif is_text(q) == is_list(d[p]):
+                Log.error("can not index {{type}} with {{key}}", type=type(d[p]).__name__, key=q)
+
+            d = d[p]
+        d[path[-1]] = v
+
+    return output
 
 
 def value2url_param(value):
@@ -326,6 +354,7 @@ def value2url_param(value):
         )
     elif is_text(value):
         try:
+            # IF STRING LOOKS LIKE JSON, THEN IT IS AMBIGUOUS, ENCODE IT
             json2value(value)
             output = _encode(value2json(value))
         except Exception:
@@ -333,9 +362,22 @@ def value2url_param(value):
     elif is_binary(value):
         output = "".join(_map2url[c] for c in value)
     elif is_many(value):
-        output = ",".join(
-            vv for v in value for vv in [value2url_param(v)] if vv or vv == 0
-        )
+        if any(is_data(v) or is_many(v) for v in value):
+            output = _encode(value2json(value))
+        else:
+            output = ",".join(vv for v in value for vv in [value2url_param(v)] if vv or vv == 0)
     else:
         output = _encode(value2json(value))
     return output
+
+
+def is_integer(s):
+    if s is True or s is False:
+        return False
+
+    try:
+        if float(s) == round(float(s), 0):
+            return True
+        return False
+    except Exception:
+        return False

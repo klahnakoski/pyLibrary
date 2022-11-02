@@ -9,66 +9,47 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import Variable as Variable_, NULL
-from jx_base.queries import get_property_name
-from jx_sqlite.expressions._utils import json_type_to_sql_type, check
+from jx_base.expressions import NULL, Variable as Variable_, SelectOp, FALSE
+from jx_sqlite.expressions._utils import check, SqlScript
 from jx_sqlite.sqlite import quote_column
-from jx_sqlite.utils import GUID, quoted_GUID
-from mo_dots import ROOT_PATH, relative_field, wrap
-from mo_json import BOOLEAN, OBJECT
-from jx_sqlite.sqlite import SQL_IS_NOT_NULL, SQL_TRUE
+from jx_sqlite.utils import GUID
+from mo_dots import concat_field
+from mo_json.types import to_jx_type, T_INTEGER
 
 
 class Variable(Variable_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False, many=True):
+    def to_sql(self, schema):
         var_name = self.var
         if var_name == GUID:
-            return wrap(
-                [{"name": ".", "sql": {"s": quoted_GUID}, "nested_path": ROOT_PATH}]
+            output = SqlScript(
+                data_type=T_INTEGER,
+                expr=quote_column(GUID),
+                frum=self,
+                miss=FALSE,
+                schema=schema,
             )
-        cols = schema.leaves(var_name)
-        if not cols:
-            return self.lang[NULL].to_sql(schema)
-        acc = {}
-        if boolean:
-            for col in cols:
-                cname = relative_field(col.name, var_name)
-                nested_path = col.nested_path[0]
-                if col.type == OBJECT:
-                    value = SQL_TRUE
-                elif col.type == BOOLEAN:
-                    value = quote_column(col.es_column)
-                else:
-                    value = quote_column(col.es_column) + SQL_IS_NOT_NULL
-                tempa = acc.setdefault(nested_path, {})
-                tempb = tempa.setdefault(get_property_name(cname), {})
-                tempb["b"] = value
-        else:
-            for col in cols:
-                cname = relative_field(col.name, var_name)
-                if col.jx_type == OBJECT:
-                    prefix = self.var + "."
-                    for cn, cs in schema.items():
-                        if cn.startswith(prefix):
-                            for child_col in cs:
-                                tempa = acc.setdefault(child_col.nested_path[0], {})
-                                tempb = tempa.setdefault(get_property_name(cname), {})
-                                tempb[json_type_to_sql_type[col.type]] = quote_column(
-                                    child_col.es_column
-                                )
-                else:
-                    nested_path = col.nested_path[0]
-                    tempa = acc.setdefault(nested_path, {})
-                    tempb = tempa.setdefault(get_property_name(cname), {})
-                    tempb[json_type_to_sql_type[col.jx_type]] = quote_column(
-                        col.es_column
-                    )
+            return output
+        cols = list(schema.leaves(var_name))
+        select = []
+        for rel_name, col in cols:
+            select.append({
+                "name": concat_field(var_name, rel_name),
+                "value": Variable(col.es_column, to_jx_type(col.json_type)),
+                "aggregate": NULL
+            })
 
-        return wrap(
-            [
-                {"name": cname, "sql": types, "nested_path": nested_path}
-                for nested_path, pairs in acc.items()
-                for cname, types in pairs.items()
-            ]
-        )
+        if len(select) == 0:
+            return NULL.to_sql(schema)
+        elif len(select) == 1:
+            rel_name0, col0 = cols[0]
+            type0 = concat_field(col0.name, rel_name0) + to_jx_type(col0.json_type)
+            output = SqlScript(
+                data_type=type0,
+                expr=quote_column(col0.es_column),
+                frum=Variable(self.var, type0),
+                schema=schema,
+            )
+            return output
+        else:
+            return SelectOp(schema, *select).to_sql(schema)

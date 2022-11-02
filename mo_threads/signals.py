@@ -13,20 +13,39 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-import random
 from weakref import ref
 
-from mo_future import allocate_lock as _allocate_lock, text
-from mo_logs import Log
+from mo_dots import is_null
+from mo_future import allocate_lock as _allocate_lock
+from mo_logs import Log, Except
+from mo_logs.exceptions import get_stacktrace
 
 DEBUG = False
-DEBUG_SIGNAL = False
-SEED = random.Random()
+TRACE_THEN = False  # GRAB STACK TRACE OF then() CALL FOR BLAME
+
+
+def standard_warning(cause):
+    Log.warning(
+        "Trigger on Signal.go() failed, and no error function provided!",
+        cause=cause,
+        stack_depth=1,
+    )
+
+
+def debug_warning(stacktrace):
+    def warning(cause):
+        Log.warning(
+            "Trigger on Signal.go() failed, and no error function provided!",
+            cause=[cause, Except(template="attached at", trace=stacktrace)],
+            stack_depth=1,
+        )
+
+    return warning
 
 
 class Signal(object):
     """
-    SINGLE-USE THREAD SAFE SIGNAL
+    SINGLE-USE THREAD SAFE SIGNAL (aka EVENT)
 
     go() - ACTIVATE SIGNAL (DOES NOTHING IF SIGNAL IS ALREADY ACTIVATED)
     wait() - PUT THREAD IN WAIT STATE UNTIL SIGNAL IS ACTIVATED
@@ -36,15 +55,12 @@ class Signal(object):
     __slots__ = ["_name", "lock", "_go", "job_queue", "waiting_threads", "__weakref__"]
 
     def __init__(self, name=None):
-        (DEBUG and name) and Log.note("New signal {{name|quote}}", name=name)
+        DEBUG and name and Log.note("New signal {{name|quote}}", name=name)
         self._name = name
         self.lock = _allocate_lock()
         self._go = False
         self.job_queue = None
         self.waiting_threads = None
-
-    def __str__(self):
-        return str(self._go)
 
     def __bool__(self):
         return self._go
@@ -52,10 +68,15 @@ class Signal(object):
     def __nonzero__(self):
         return self._go
 
-    def wait(self):
+    def wait(self, till=None):
         """
         PUT THREAD IN WAIT STATE UNTIL SIGNAL IS ACTIVATED
         """
+        if till is not None:
+            # a.wait(till=b) IS AN ALTERNATE FORM FOR (a | b).wait()
+            (self | till).wait()
+            return True
+
         if self._go:
             return True
 
@@ -81,11 +102,11 @@ class Signal(object):
         DEBUG and self._name and Log.note("GO! {{name|quote}}", name=self.name)
 
         if self._go:
-            return
+            return self
 
         with self.lock:
             if self._go:
-                return
+                return self
             self._go = True
 
         DEBUG and self._name and Log.note("internal GO! {{name|quote}}", name=self.name)
@@ -93,47 +114,60 @@ class Signal(object):
         threads, self.waiting_threads = self.waiting_threads, None
 
         if threads:
-            DEBUG and self._name and Log.note("Release {{num}} threads", num=len(threads))
+            DEBUG and self._name and Log.note(
+                "Release {{num}} threads", num=len(threads)
+            )
             for t in threads:
                 t.release()
 
         if jobs:
-            for j in jobs:
+            for j, e in jobs:
                 try:
                     j()
-                except Exception as e:
-                    Log.warning("Trigger on Signal.go() failed!", cause=e)
+                except Exception as cause:
+                    e(cause)
+        return self
 
-    def then(self, target):
+    def then(self, target, error=standard_warning):
         """
         RUN target WHEN SIGNALED
         """
-        if not target:
-            Log.error("expecting target")
+        if DEBUG:
+            if not target:
+                Log.error("expecting target")
+            if isinstance(target, Signal):
+                Log.error("expecting a function, not a signal")
 
         with self.lock:
             if not self._go:
-                DEBUG and self._name and Log.note("Adding target to signal {{name|quote}}", name=self.name)
+                if TRACE_THEN:
+                    error = debug_warning(get_stacktrace(1))
 
                 if not self.job_queue:
-                    self.job_queue = [target]
+                    self.job_queue = [(target, error)]
                 else:
-                    self.job_queue.append(target)
-                return
+                    self.job_queue.append((target, error))
+                return self
 
-        (DEBUG_SIGNAL) and Log.note("Signal {{name|quote}} already triggered, running job immediately", name=self.name)
-        target()
+        try:
+            target()
+        except Exception as cause:
+            error(cause)
+        return self
 
-    def remove_go(self, target):
+    def remove_then(self, target):
         """
         FOR SAVING MEMORY
         """
+        if self._go:
+            return
+
         with self.lock:
-            if not self._go:
-                try:
-                    self.job_queue.remove(target)
-                except ValueError:
-                    pass
+            if not self._go and self.job_queue:
+                for i, (j, e) in enumerate(self.job_queue):
+                    if j == target:
+                        del self.job_queue[i]
+                        break
 
     @property
     def name(self):
@@ -143,10 +177,10 @@ class Signal(object):
             return self._name
 
     def __str__(self):
-        return self.name.decode(text)
+        return f"{self._go} ({self.name})"
 
     def __repr__(self):
-        return text(repr(self._go))
+        return repr(self._go)
 
     def __or__(self, other):
         if other == None:
@@ -156,23 +190,21 @@ class Signal(object):
         if self or other:
             return DONE
 
-        output = Signal(self.name + " | " + other.name)
-        OrSignal(output, (self, other))
-        return output
+        return or_signal(self, other)
 
     def __ror__(self, other):
         return self.__or__(other)
 
     def __and__(self, other):
-        if other == None or other:
+        if is_null(other) or other:
             return self
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")
 
         if DEBUG and self._name:
-            output = Signal(self.name + " and " + other.name)
+            output = Signal(self.name + " & " + other.name)
         else:
-            output = Signal(self.name + " and " + other.name)
+            output = Signal(self.name + " & " + other.name)
 
         gen = AndSignals(output, 2)
         self.then(gen.done)
@@ -204,11 +236,18 @@ class AndSignals(object):
             self.signal.go()
 
 
+def or_signal(*dependencies):
+    output = Signal(" | ".join(d.name for d in dependencies))
+    OrSignal(output, dependencies)
+    return output
+
+
 class OrSignal(object):
     """
     A SELF-REFERENTIAL CLUSTER OF SIGNALING METHODS TO IMPLEMENT __or__()
     MANAGE SELF-REMOVAL UPON NOT NEEDING THE signal OBJECT ANY LONGER
     """
+
     __slots__ = ["signal", "dependencies"]
 
     def __init__(self, signal, dependencies):
@@ -218,16 +257,21 @@ class OrSignal(object):
             d.then(self)
         signal.then(self.cleanup)
 
-    def cleanup(self, r=None):
-        for d in self.dependencies:
-            d.remove_go(self)
-        self.dependencies = []
+    def cleanup(self, _=None):
+        self.dependencies, dependencies = [], self.dependencies
+        for d in dependencies:
+            d.remove_then(self)
 
-    def __call__(self, *args, **kwargs):
-        s = self.signal()
-        if s is not None:
-            s.go()
+    def __call__(self):
+        signal = self.signal()
+        if signal is not None:
+            signal.go()
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        return id(self) == id(other)
 
 
-DONE = Signal()
-DONE.go()
+DONE = Signal().go()

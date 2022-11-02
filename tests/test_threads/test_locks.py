@@ -13,22 +13,24 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import gc
-import objgraph
 import os
 import platform
-import psutil
 import threading
+from time import time
+
+import objgraph
+import psutil
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text, PY2, PY3
 from mo_logs import Log, machine_metadata
+from mo_math import randoms
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.timer import Timer
-from time import time
-from unittest import skip
 
 import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
+from tests import StructuredLogger_usingList
 
 USE_PYTHON_THREADS = False
 DEBUG_SHOW_BACKREFS = False
@@ -42,6 +44,12 @@ class TestLocks(FuzzyTestCase):
     @classmethod
     def tearDownClass(cls):
         Log.stop()
+
+    def setUp(self):
+        self.old, Log.main_log = Log.main_log, StructuredLogger_usingList()
+
+    def tearDown(self):
+        self.logs, Log.main_log = Log.main_log, self.old
 
     def test_signal_is_not_null(self):
         a = Signal()
@@ -70,7 +78,7 @@ class TestLocks(FuzzyTestCase):
                 locks[i].release()
 
     def test_queue_speed(self):
-        if "PyPy" in machine_metadata.python:
+        if "PyPy" in machine_metadata().python:
             # PyPy requires some warmup time
             self._test_queue_speed()
             self._test_queue_speed()
@@ -200,7 +208,9 @@ class TestLocks(FuzzyTestCase):
         with please_stop.lock:
             q = please_stop.job_queue
             self.assertLessEqual(
-                0 if q is None else len(q), 1, "Expecting only one pending job on go, got "+text(len(q))
+                0 if q is None else len(q),
+                1,
+                "Expecting only one pending job on go, got " + text(len(q)),
             )
         please_stop.go()
         Log.note("test done")
@@ -249,12 +259,12 @@ class TestLocks(FuzzyTestCase):
                 ]
                 Log.note("Object count\n{{current}}", current=current)
 
-                # NUMBER OF OBJECTS CLEANED UP SHOULD MATCH NUMBER OF OBJECTS CREATED
-                for (_, _, cd), (_, _, gd) in zip(current, growth):
-                    self.assertAlmostEqual(-cd, gd, places=2)
+                # NUMBER OF OBJECTS CLEANED UP SHOULD BE SAME, OR BIGGER THAN NUMBER OF OBJECTS CREATED
+                for (_, _, cd), (_, gt, gd) in zip(current, growth):
+                    self.assertGreater(-cd, gd)
                 return
-            except Exception as e:
-                pass
+            except Exception as cause:
+                Log.note("problem: {{cause}}",  cause=cause)
         Log.error("object counts did not go down")
 
     def test_job_queue_in_signal(self):
@@ -281,7 +291,11 @@ class TestLocks(FuzzyTestCase):
             end_mem, (start_mem + mid_mem) / 2, "end memory should be closer to start"
         )
 
-    @skip("takes too long")
+    def test_relase_lock_failure(self):
+        lock = _allocate_lock()
+        with self.assertRaises(RuntimeError):
+            lock.release()
+
     def test_memory_cleanup_with_signal(self):
         """
         LOOKING FOR A MEMORY LEAK THAT HAPPENS ONLY DURING THREADING
@@ -299,7 +313,7 @@ class TestLocks(FuzzyTestCase):
         def _consumer(please_stop):
             while not please_stop:
                 v = queue.pop(till=please_stop)
-                if Random.int(1000) == 0:
+                if randoms.int(1000) == 0:
                     Log.note("got " + v)
 
         def _producer(t, please_stop=None):

@@ -10,23 +10,19 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-import cgi
 import json as _json
 import math
 import re
 import string
 from datetime import date, datetime as builtin_datetime, timedelta
-from json.encoder import encode_basestring
 
 from mo_dots import (
     Data,
     coalesce,
-    get_module,
     is_data,
     is_list,
     to_data,
     is_sequence,
-    NullType,
     is_many,
 )
 from mo_future import (
@@ -40,6 +36,7 @@ from mo_future import (
     zip_longest,
     binary_type,
 )
+from mo_imports import delay_import
 from mo_logs.convert import (
     datetime2string,
     datetime2unix,
@@ -48,35 +45,14 @@ from mo_logs.convert import (
     value2json,
 )
 
+Log = delay_import("mo_logs.Log")
+json_encoder = delay_import("mo_json.encoder.json_encoder")
+Except = delay_import("mo_logs.exceptions.Except")
+Duration = delay_import("mo_times.durations.Duration")
+
+
 FORMATTERS = {}
 CR = text("\n")
-
-_json_encoder, _Log, _Except, _Duration = [None] * 4  # EXPECTED IMPORT
-
-
-def _late_import():
-    global _json_encoder
-    global _Log
-    global _Except
-    global _Duration
-
-    try:
-        _json_encoder = get_module("mo_json.encoder").json_encoder
-    except Exception:
-        _json_encoder = lambda value, pretty: _json.dumps(value)
-    from mo_logs import Log as _Log
-    from mo_logs.exceptions import Except as _Except
-
-    try:
-        from mo_times.durations import Duration as _Duration
-    except Exception as e:
-        _Duration = NullType
-        _Log.warning("It would be nice to pip install mo-times", cause=e)
-
-    _ = _json_encoder
-    _ = _Log
-    _ = _Except
-    _ = _Duration
 
 
 def formatter(func):
@@ -158,6 +134,8 @@ def html(value):
     """
     convert FROM unicode TO HTML OF THE SAME
     """
+    import cgi
+
     return cgi.escape(value)
 
 
@@ -208,9 +186,7 @@ def json(value, pretty=True):
     :param pretty:
     :return:
     """
-    if _Duration is None:
-        _late_import()
-    return _json_encoder(value, pretty=pretty)
+    return json_encoder(value, pretty=pretty)
 
 
 @formatter
@@ -228,7 +204,7 @@ def tab(value):
 
 
 @formatter
-def indent(value, prefix=u"\t", indent=None):
+def indent(value, prefix="\t", indent=None):
     """
     indent given string, using prefix * indent as prefix for each line
     :param value:
@@ -247,7 +223,7 @@ def indent(value, prefix=u"\t", indent=None):
         return prefix + (CR + prefix).join(lines) + suffix
     except Exception as e:
         raise Exception(
-            u"Problem with indent of value (" + e.message + u")\n" + text(toString(value))
+            "Problem with indent of value (" + e.message + ")\n" + text(toString(value))
         )
 
 
@@ -267,10 +243,7 @@ def outdent(value):
                 num = min(num, len(l) - len(l.lstrip()))
         return CR.join([l[num:] for l in lines])
     except Exception as e:
-        if not _Log:
-            _late_import()
-
-        _Log.error("can not outdent value", e)
+        Log.error("can not outdent value", e)
 
 
 @formatter
@@ -413,9 +386,9 @@ def between(value, prefix=None, suffix=None, start=0):
         if e == -1:
             return None
 
-    s = value.rfind(prefix, start, e) + len(
-        prefix
-    )  # WE KNOW THIS EXISTS, BUT THERE MAY BE A RIGHT-MORE ONE
+    s = value.rfind(
+        prefix, start, e
+    ) + len(prefix)  # WE KNOW THIS EXISTS, BUT THERE MAY BE A RIGHT-MORE ONE
 
     return value[s:e]
 
@@ -429,7 +402,7 @@ def right(value, len):
     :return:
     """
     if len <= 0:
-        return u""
+        return ""
     return value[-len:]
 
 
@@ -441,7 +414,7 @@ def right_align(value, length):
     :return:
     """
     if length <= 0:
-        return u""
+        return ""
 
     value = text(value)
 
@@ -454,7 +427,7 @@ def right_align(value, length):
 @formatter
 def left_align(value, length):
     if length <= 0:
-        return u""
+        return ""
 
     value = text(value)
 
@@ -473,7 +446,7 @@ def left(value, len):
     :return:
     """
     if len <= 0:
-        return u""
+        return ""
     return value[0:len]
 
 
@@ -501,11 +474,8 @@ def quote(value):
     :return:
     """
     if value == None:
-        output = ""
-    elif is_text(value):
-        output = encode_basestring(value)
-    else:
-        output = _json.dumps(value)
+        return ""
+    output = _json.dumps(value)
     return output
 
 
@@ -539,9 +509,7 @@ def limit(value, length):
             rhs = length - len(_SNIP) - lhs
             return value[:lhs] + _SNIP + value[-rhs:]
     except Exception as e:
-        if _Duration is None:
-            _late_import()
-        _Log.error("Not expected", cause=e)
+        Log.error("Not expected", cause=e)
 
 
 @formatter
@@ -560,7 +528,7 @@ def split(value, sep=CR):
 
 
 """
-THE REST OF THIS FILE IS TEMPLATE EXPANSION CODE USED BY mo-logs 
+THE REST OF THIS FILE IS TEMPLATE EXPANSION CODE USED BY mo-logs
 """
 
 
@@ -610,7 +578,9 @@ if PY3:
     delchars = "".join(c for c in map(chr, range(256)) if not c.isalnum())
 else:
     delchars = "".join(
-        c.decode("latin1") for c in map(chr, range(256)) if not c.decode("latin1").isalnum()
+        c.decode("latin1")
+        for c in map(chr, range(256))
+        if not c.decode("latin1").isalnum()
     )
 
 
@@ -655,10 +625,7 @@ def _expand(template, seq):
     elif is_list(template):
         return "".join(_expand(t, seq) for t in template)
     else:
-        if not _Log:
-            _late_import()
-
-        _Log.error("can not handle")
+        Log.error("can not handle")
 
 
 def _simple_expand(template, seq):
@@ -681,47 +648,45 @@ def _simple_expand(template, seq):
                 else:
                     val = val[var]
             for func_name in ops[1:]:
-                parts = func_name.split('(')
+                parts = func_name.split("(")
                 if len(parts) > 1:
-                    val = eval(parts[0] + "(val, " + ("(".join(parts[1::])))
+                    val = eval(parts[0] + "(val, " + "(".join(parts[1::]))
                 else:
                     val = FORMATTERS[func_name](val)
             val = toString(val)
             return val
-        except Exception as e:
+        except Exception as cause:
             from mo_logs import Except
 
-            e = Except.wrap(e)
+            cause = Except.wrap(cause)
             try:
-                if e.message.find("is not JSON serializable"):
+                if cause.message.find("is not JSON serializable"):
                     # WORK HARDER
                     val = toString(val)
                     return val
             except Exception as f:
-                if not _Log:
-                    _late_import()
-
-                _Log.warning(
-                    "Can not expand " + "|".join(ops) + " in template: {{template_|json}}",
+                Log.warning(
+                    "Can not expand "
+                    + "|".join(ops)
+                    + " in template: {{template_|json}}",
                     template_=template,
-                    cause=e,
+                    cause=cause,
                 )
-            return "[template expansion error: (" + str(e.message) + ")]"
+            return "[template expansion error: (" + str(cause.message) + ")]"
 
     return _variable_pattern.sub(replacer, template)
 
 
 def toString(val):
-    if _Duration is None:
-        _late_import()
-
     if val == None:
         return ""
     elif is_data(val) or is_many(val):
-        return _json_encoder(val, pretty=True)
+        return json_encoder(val, pretty=True)
+    elif hasattr(val, "__data__"):
+        return json_encoder(val.__data__(), pretty=True)
     elif hasattr(val, "__json__"):
         return val.__json__()
-    elif isinstance(val, _Duration):
+    elif isinstance(val, Duration):
         return text(round(val.seconds, places=4)) + " seconds"
     elif isinstance(val, timedelta):
         duration = val.total_seconds()
@@ -730,25 +695,23 @@ def toString(val):
         return val
     elif isinstance(val, binary_type):
         try:
-            return val.decode('utf8')
+            return val.decode("utf8")
         except Exception as _:
             pass
 
         try:
-            return val.decode('latin1')
+            return val.decode("latin1")
         except Exception as e:
-            if not _Log:
-                _late_import()
-
-            _Log.error(text(type(val)) + " type can not be converted to unicode", cause=e)
+            Log.error(
+                text(type(val)) + " type can not be converted to unicode", cause=e
+            )
     else:
         try:
             return text(val)
         except Exception as e:
-            if not _Log:
-                _late_import()
-
-            _Log.error(text(type(val)) + " type can not be converted to unicode", cause=e)
+            Log.error(
+                text(type(val)) + " type can not be converted to unicode", cause=e
+            )
 
 
 def edit_distance(s1, s2):
@@ -809,20 +772,21 @@ def apply_diff(text, diff, reverse=False, verify=True):
     hunks = [
         (new_diff[start_hunk], new_diff[start_hunk + 1 : end_hunk])
         for new_diff in [
-            [d.lstrip() for d in diff if d.lstrip() and d != "\\ No newline at end of file"]
+            [
+                d.lstrip()
+                for d in diff
+                if d.lstrip() and d != "\\ No newline at end of file"
+            ]
             + ["@@"]
         ]  # ANOTHER REPAIR
         for start_hunk, end_hunk in pairwise(
-            i for i, l in enumerate(new_diff) if l.startswith('@@')
+            i for i, l in enumerate(new_diff) if l.startswith("@@")
         )
     ]
     for header, hunk_body in reversed(hunks) if reverse else hunks:
         matches = DIFF_PREFIX.match(header.strip())
         if not matches:
-            if not _Log:
-                _late_import()
-
-            _Log.error("Can not handle \n---\n{{diff}}\n---\n", diff=diff)
+            Log.error("Can not handle \n---\n{{diff}}\n---\n", diff=diff)
 
         removes = tuple(
             int(i.strip()) for i in matches.group(1).split(",")
@@ -845,17 +809,21 @@ def apply_diff(text, diff, reverse=False, verify=True):
             # DETECT THIS PROBLEM FOR THIS HUNK AND FIX THE DIFF
             if reverse:
                 last_lines = [
-                    o for b, o in zip(reversed(hunk_body), reversed(output)) if b != "+" + o
+                    o
+                    for b, o in zip(reversed(hunk_body), reversed(output))
+                    if b != "+" + o
                 ]
                 if not last_lines:
                     return hunk_body
 
                 last_line = last_lines[0]
                 for problem_index, problem_line in enumerate(hunk_body):
-                    if problem_line.startswith('-') and problem_line.endswith('+' + last_line):
+                    if problem_line.startswith("-") and problem_line.endswith(
+                        "+" + last_line
+                    ):
                         split_point = len(problem_line) - (len(last_line) + 1)
                         break
-                    elif problem_line.startswith('+' + last_line + "-"):
+                    elif problem_line.startswith("+" + last_line + "-"):
                         split_point = len(last_line) + 1
                         break
                 else:
@@ -865,10 +833,12 @@ def apply_diff(text, diff, reverse=False, verify=True):
                     return hunk_body
                 last_line = output[-1]
                 for problem_index, problem_line in enumerate(hunk_body):
-                    if problem_line.startswith('+') and problem_line.endswith('-' + last_line):
+                    if problem_line.startswith("+") and problem_line.endswith(
+                        "-" + last_line
+                    ):
                         split_point = len(problem_line) - (len(last_line) + 1)
                         break
-                    elif problem_line.startswith('-' + last_line + "+"):
+                    elif problem_line.startswith("-" + last_line + "+"):
                         split_point = len(last_line) + 1
                         break
                 else:
@@ -886,13 +856,13 @@ def apply_diff(text, diff, reverse=False, verify=True):
         if reverse:
             new_output = (
                 output[: add.start - 1]
-                + [d[1:] for d in hunk_body if d and d[0] == '-']
+                + [d[1:] for d in hunk_body if d and d[0] == "-"]
                 + output[add.start + add.length - 1 :]
             )
         else:
             new_output = (
                 output[: add.start - 1]
-                + [d[1:] for d in hunk_body if d and d[0] == '+']
+                + [d[1:] for d in hunk_body if d and d[0] == "+"]
                 + output[add.start + remove.length - 1 :]
             )
         output = new_output
@@ -902,12 +872,10 @@ def apply_diff(text, diff, reverse=False, verify=True):
         if set(text) != set(original):  # bugzilla-etl diffs are a jumble
 
             for t, o in zip_longest(text, original):
-                if t in ['reports: https://goo.gl/70o6w6\r']:
+                if t in ["reports: https://goo.gl/70o6w6\r"]:
                     break  # KNOWN INCONSISTENCIES
                 if t != o:
-                    if not _Log:
-                        _late_import()
-                    _Log.error("logical verification check failed")
+                    Log.error("logical verification check failed")
                     break
 
     return output

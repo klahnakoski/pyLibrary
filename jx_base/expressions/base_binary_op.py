@@ -10,27 +10,27 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import builtin_ops, simplified
+from jx_base.expressions._utils import builtin_ops
 from jx_base.expressions.expression import Expression
-from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.literal import Literal
-from jx_base.expressions.literal import is_literal
 from jx_base.expressions.null_op import NULL
-from jx_base.expressions.or_op import OrOp
-from jx_base.expressions.variable import Variable
+from jx_base.expressions.literal import is_literal, Literal
 from jx_base.language import is_op
-from mo_json import NUMBER
+from mo_imports import expect
+from mo_json.types import T_NUMBER
+from mo_dots import coalesce
+
+OrOp, Variable = expect("OrOp", "Variable")
 
 
 class BaseBinaryOp(Expression):
     has_simple_form = True
-    data_type = NUMBER
+    _data_type = T_NUMBER
     op = None
 
-    def __init__(self, terms, default=NULL):
+    def __init__(self, *terms, default=None):
         Expression.__init__(self, terms)
         self.lhs, self.rhs = terms
-        self.default = default
+        self.default = coalesce(default, NULL)
 
     @property
     def name(self):
@@ -53,17 +53,18 @@ class BaseBinaryOp(Expression):
             [self.lhs.map(map_), self.rhs.map(map_)], default=self.default.map(map_)
         )
 
-    def missing(self):
+    def missing(self, lang):
         if self.default.exists():
             return FALSE
         else:
-            return self.lang[OrOp([self.lhs.missing(), self.rhs.missing()])]
+            return OrOp([self.lhs.missing(lang), self.rhs.missing(lang)])
 
-    @simplified
-    def partial_eval(self):
-        lhs = self.lhs.partial_eval()
-        rhs = self.rhs.partial_eval()
-        default = self.default.partial_eval()
+    def partial_eval(self, lang):
+        lhs = self.lhs.partial_eval(lang)
+        rhs = self.rhs.partial_eval(lang)
+        default = self.default.partial_eval(lang)
         if is_literal(lhs) and is_literal(rhs):
+            if lhs is NULL or rhs is NULL:
+                return NULL
             return Literal(builtin_ops[self.op](lhs.value, rhs.value))
         return self.__class__([lhs, rhs], default=default)

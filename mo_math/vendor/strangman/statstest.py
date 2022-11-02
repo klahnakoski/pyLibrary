@@ -11,10 +11,10 @@ except ImportError:
 l = range(1,21)
 lf = range(1,21)
 lf[2] = 3.0
-a = N.array(l)
-af = N.array(lf)
+a = N.frum(l)
+af = N.frum(lf)
 ll = [l]*5
-aa = N.array(ll)
+aa = N.frum(ll)
 
 print('\nCENTRAL TENDENCY')
 print('geometricmean:',stats.geometricmean(l), stats.geometricmean(lf), stats.geometricmean(a), stats.geometricmean(af))
@@ -58,9 +58,9 @@ print(stats.relfreq(af))
 print('\nVARIATION')
 print('obrientransform:')
 l = range(1,21)
-a = N.array(l)
+a = N.frum(l)
 ll = [l]*5
-aa = N.array(ll)
+aa = N.frum(ll)
 
 print(stats.obrientransform(l,l,l,l,l))
 print(stats.obrientransform(a,a,a,a,a))
@@ -89,16 +89,16 @@ print('\nCORRELATION')
 # execfile('testpairedstats.py')
 
 l = range(1,21)
-a = N.array(l)
+a = N.frum(l)
 ll = [l]*5
-aa = N.array(ll)
+aa = N.frum(ll)
 
 m = range(4,24)
 m[10] = 34
-b = N.array(m)
+b = N.frum(m)
 
 pb = [0]*9 + [1]*11
-apb = N.array(pb)
+apb = N.frum(pb)
 
 print('paired:')
 # stats.paired(l,m)
@@ -153,13 +153,13 @@ print('friedmanchisquare:')
 print(stats.friedmanchisquare(l,m,l))
 print(stats.friedmanchisquare(a,b,a))
 l = range(1,21)
-a = N.array(l)
+a = N.frum(l)
 ll = [l]*5
-aa = N.array(ll)
+aa = N.frum(ll)
 
 m = range(4,24)
 m[10] = 34
-b = N.array(m)
+b = N.frum(m)
 
 print('\n\nF_oneway:')
 print(stats.F_oneway(l,m))

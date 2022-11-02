@@ -9,42 +9,28 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import LeavesOp as LeavesOp_
+from jx_base.expressions import LeavesOp as LeavesOp_, NULL
+from jx_base.expressions.select_op import SelectOp
 from jx_base.language import is_op
-from jx_sqlite.expressions._utils import check
+from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.variable import Variable
-from mo_dots import join_field, split_field, startswith_field, wrap
-from mo_json import EXISTS, NESTED, OBJECT
+from mo_dots import literal_field
 from mo_logs import Log
 
 
 class LeavesOp(LeavesOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         if not is_op(self.term, Variable):
             Log.error("Can only handle Variable")
-        term = self.term.var
-        prefix_length = len(split_field(term))
-        output = wrap(
-            [
-                {
-                    "name": join_field(
-                        split_field(schema.get_column_name(c))[prefix_length:]
-                    ),
-                    "sql": Variable(schema.get_column_name(c)).to_sql(schema)[0].sql,
-                }
-                for c in schema.columns
-                if startswith_field(c.name, term)
-                and (
-                    (
-                        c.jx_type not in (EXISTS, OBJECT, NESTED)
-                        and startswith_field(schema.nested_path[0], c.nested_path[0])
-                    )
-                    or (
-                        c.jx_type not in (EXISTS, OBJECT)
-                        and schema.nested_path[0] == c.nested_path[0]
-                    )
-                )
-            ]
-        )
-        return output
+
+        flat = SelectOp(schema, *[
+            {
+                "name": literal_field(r),
+                "value": Variable(c.es_column),
+                "aggregate": NULL
+            }
+            for r, c in schema.leaves(self.term.var)
+        ])
+
+        return flat.partial_eval(SQLang).to_sql(schema)

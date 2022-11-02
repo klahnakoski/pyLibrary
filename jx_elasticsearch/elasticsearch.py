@@ -204,16 +204,17 @@ class Alias(object):
             )
             if response.status_code not in [200, 201]:
                 Log.error(
-                    "Problem with search (url={{url}}):\n{{query|indent}}",
+                    "Problem with search (url={{url}}):\n{{details}}\n{{query|indent}}",
                     url=url,
-                    query=queries
+                    query=queries,
+                    details=response.all_content
                 )
 
             responses = json2value(response.content.decode('utf8')).responses
 
             for details in responses:
                 if details.error:
-                    Log.error(quote2string(details.error))
+                    Log.error("{{error|json}}", error=details.error)
                     if details._shards.failed > 0:
                         Log.error(
                             "{{num}} orf {{total}} shard failures {{failures|indent}}",
@@ -1318,7 +1319,19 @@ def parse_properties(parent_index_name, parent_name, nested_path, esProperties):
     columns = FlatList()
 
     if parent_name == '.':
-        # ROOT PROPERTY IS THE ELASTICSEARCH DOCUMENT (AN OBJECT)
+        # ROOT PROPERTY IS THE ELASTICSEARCH INDEX (A NESTED ARRAY OF OBJECTS)
+        columns.append(Column(
+            name='.',
+            es_index=parent_index_name,
+            es_column='.',
+            es_type="nested",
+            jx_type=NESTED,
+            cardinality=1,
+            last_updated=Date.now(),
+            nested_path=nested_path,
+            multi=1001
+        ))
+        # WE CAN ALSO BE REFERING TO SINGLE DOCUMENTS (DEPENDS ON CONTEXT)
         columns.append(Column(
             name='.',
             es_index=parent_index_name,
@@ -1351,6 +1364,17 @@ def parse_properties(parent_index_name, parent_name, nested_path, esProperties):
                 multi=1001,
                 last_updated=Date.now(),
                 nested_path=nested_path
+            ))
+            columns.append(Column(
+                name=jx_name,
+                es_index=index_name,
+                es_column=column_name,
+                es_type="object",
+                jx_type=OBJECT,
+                cardinality=1,
+                multi=1,
+                last_updated=Date.now(),
+                nested_path=[column_name] + nested_path
             ))
 
             continue
@@ -1830,22 +1854,24 @@ class IterableBytes(object):
 
     def __iter__(self):
         for r in self.records:
-            if '_id' in r or 'value' not in r:  # I MAKE THIS MISTAKE SO OFTEN, I NEED A CHECK
-                Log.error('Expecting {"id":id, "value":document} form.  Not expecting _id')
-            id, version, json_text = self.encode(r)
+            try:
+                if '_id' in r or 'value' not in r:  # I MAKE THIS MISTAKE SO OFTEN, I NEED A CHECK
+                    Log.error('Expecting {"id":id, "value":document} form.  Not expecting _id')
+                id, version, json_text = self.encode(r)
 
-            if DEBUG and not json_text.startswith('{'):
-                self.encode(r)
-                Log.error("string {{doc}} will not be accepted as a document", doc=json_text)
+                if DEBUG and not json_text.startswith('{'):
+                    self.encode(r)
+                    Log.error("string {{doc}} will not be accepted as a document", doc=json_text)
 
-            if version:
-                yield value2json({"index": {"_id": id, "version": int(version), "version_type": "external_gte"}}).encode('utf8')
-            else:
-                yield ('{"index":{"_id": ' + value2json(id) + '}}').encode('utf8')
-            yield LF
-            yield json_text.encode('utf8')
-            yield LF
-
+                if version:
+                    yield value2json({"index": {"_id": id, "version": int(version), "version_type": "external_gte"}}).encode('utf8')
+                else:
+                    yield ('{"index":{"_id": ' + value2json(id) + '}}').encode('utf8')
+                yield LF
+                yield json_text.encode('utf8')
+                yield LF
+            except Exception as cause:
+                Log.error("Can not encode {{record|json}}", record=r, cause=cause)
 
 lists.sequence_types = lists.sequence_types + (IterableBytes,)
 

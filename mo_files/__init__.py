@@ -21,7 +21,7 @@ from tempfile import NamedTemporaryFile, mkdtemp
 from mo_dots import Null, coalesce, get_module, is_list
 from mo_files import mimetype
 from mo_files.url import URL
-from mo_future import PY3, text, is_text
+from mo_future import text, is_text
 from mo_logs import Except, Log
 from mo_logs.exceptions import get_stacktrace
 from mo_math import randoms
@@ -40,7 +40,7 @@ class File(object):
         else:
             return object.__new__(cls)
 
-    def __init__(self, filename, key=None, mime_type=None):
+    def __init__(self, filename, key=None, suffix=None, mime_type=None):
         """
         :param filename: STRING
         :param key: BASE64 AES KEY USED ON ENCRYPTED FILES
@@ -48,7 +48,7 @@ class File(object):
         """
         if isinstance(filename, File):
             return
-        elif not isinstance(filename, (str, text)):
+        elif not is_text(filename):
             Log.error('Expecting str, not {{type}}', type=type(filename).__name__)
 
         self.key = base642bytearray(key)
@@ -102,7 +102,7 @@ class File(object):
             return home_path + self._filename[1::]
         else:
             if os.sep == "\\":
-                return os.path.abspath(self._filename).replace(os.sep, "/")
+                return "/" + os.path.abspath(self._filename).replace(os.sep, "/")
             else:
                 return os.path.abspath(self._filename)
 
@@ -232,7 +232,7 @@ class File(object):
         from mo_json import json2value
 
         content = self.read(encoding=encoding)
-        value = json2value(content, flexible=flexible, leaves=leaves)
+        value = json2value(content, flexible=flexible)
         abspath = self.abspath
         if os.sep == "\\":
             abspath = "/" + abspath.replace(os.sep, "/")
@@ -368,17 +368,31 @@ class File(object):
 
     def create(self):
         try:
-            os.makedirs(self._filename)
+            os.makedirs(os_path(self.abspath))
+        except FileExistsError:
+            pass
         except Exception as e:
             Log.error(u"Could not make directory {{dir_name}}", dir_name=self._filename, cause=e)
 
     @property
     def children(self):
-        return [File(self._filename + "/" + c) for c in os.listdir(self.filename)]
+        try:
+            return [File(self._filename + "/" + c) for c in os.listdir(self.filename)]
+        except FileNotFoundError:
+            return []
+
+    @property
+    def decendants(self):
+        yield self
+        if self.is_directory():
+            for c in os.listdir(os_path(self.abspath)):
+                child = File(self._filename + "/" + c)
+                for cc in child.decendants:
+                    yield cc
 
     @property
     def leaves(self):
-        for c in os.listdir(self.abspath):
+        for c in os.listdir(os_path(self.abspath)):
             child = File(self._filename + "/" + c)
             if child.is_directory():
                 for l in child.leaves:
@@ -434,6 +448,12 @@ class File(object):
     def __unicode__(self):
         return self.abspath
 
+    def __eq__(self, other):
+        return isinstance(other, File) and other.abspath == self.abspath
+
+    def __hash__(self):
+        return self.abspath.__hash__()
+
     def __str__(self):
         return self.abspath
 
@@ -486,24 +506,17 @@ class TempFile(File):
 
 def _copy(from_, to_):
     if from_.is_directory():
-        for c in os.listdir(from_.abspath):
+        for c in os.listdir(os_path(from_.abspath)):
             _copy(from_ / c, to_ / c)
     else:
         File.new_instance(to_).write_bytes(File.new_instance(from_).read_bytes())
 
 
-if PY3:
-    def base642bytearray(value):
-        if value == None:
-            return bytearray(b"")
-        else:
-            return bytearray(base64.b64decode(value))
-else:
-    def base642bytearray(value):
-        if value == None:
-            return bytearray(b"")
-        else:
-            return bytearray(base64.b64decode(value))
+def base642bytearray(value):
+    if value == None:
+        return bytearray(b"")
+    else:
+        return bytearray(base64.b64decode(value))
 
 
 def datetime2string(value, format="%Y-%m-%d %H:%M:%S"):
@@ -569,17 +582,20 @@ def join_path(*path):
 def delete_daemon(file, caller_stack, please_stop):
     # WINDOWS WILL HANG ONTO A FILE FOR A BIT AFTER WE CLOSED IT
     from mo_threads import Till
-
+    num_attempts = 0
     while not please_stop:
         try:
+            if file.exists:
+                return
             file.delete()
             return
         except Exception as e:
             e = Except.wrap(e)
             e.trace = e.trace[0:2] + caller_stack
-
-            Log.warning(u"problem deleting file {{file}}", file=file.abspath, cause=e)
+            if num_attempts:
+                Log.warning(u"problem deleting file {{file}}", file=file.abspath, cause=e)
             (Till(seconds=10) | please_stop).wait()
+        num_attempts += 1
 
 
 def add_suffix(filename, suffix):
@@ -592,3 +608,12 @@ def add_suffix(filename, suffix):
     parts[i] = parts[i] + "." + text(suffix).strip(".")
     path[-1] = ".".join(parts)
     return File("/".join(path))
+
+
+def os_path(path):
+    """
+    :return: OS-specific path
+    """
+    if os.sep == "/":
+        return path
+    return str(path).lstrip("/")

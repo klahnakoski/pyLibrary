@@ -10,18 +10,17 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.not_op import NotOp
 from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
 from mo_imports import export
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
 
 class MissingOp(Expression):
-    data_type = BOOLEAN
+    _data_type = T_BOOLEAN
 
     def __init__(self, term):
         Expression.__init__(self, term)
@@ -34,35 +33,35 @@ class MissingOp(Expression):
         if not is_op(other, MissingOp):
             return False
         else:
-            return self.expr == other.expr
+            return self.expr == other.frum
 
     def vars(self):
         return self.expr.vars()
 
     def map(self, map_):
-        return self.lang[MissingOp(self.expr.map(map_))]
+        return MissingOp(self.expr.map(map_))
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
-    def invert(self):
-        output = self.expr.missing()
+    def invert(self, lang):
+        output = self.expr.missing(lang)
         if is_op(output, MissingOp):
             # break call cycle
-            return self.lang[NotOp(output)]
+            return NotOp(output)
         else:
-            return self.lang[output.invert()]
+            return output.invert(lang)
 
     def exists(self):
         return TRUE
 
-    @simplified
-    def partial_eval(self):
-        output = self.lang[self.expr].partial_eval().missing()
+    def partial_eval(self, lang):
+        output = self.expr.partial_eval(lang).missing(lang)
         if is_op(output, MissingOp):
             return output
         else:
-            return output.partial_eval()
+            return output.partial_eval(lang)
 
 
 export("jx_base.expressions.expression", MissingOp)
+export("jx_base.expressions.basic_in_op", MissingOp)

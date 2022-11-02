@@ -10,12 +10,11 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from jx_base.expressions.string_op import StringOp
+from jx_base.expressions.to_text_op import ToTextOp
 from jx_base.language import is_op
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
 
 class BasicStartsWithOp(Expression):
@@ -23,9 +22,9 @@ class BasicStartsWithOp(Expression):
     PLACEHOLDER FOR BASIC value.startsWith(find, start) (CAN NOT DEAL WITH NULLS)
     """
 
-    data_type = BOOLEAN
+    _data_type = T_BOOLEAN
 
-    def __init__(self, params):
+    def __init__(self, *params):
         Expression.__init__(self, params)
         self.value, self.prefix = params
 
@@ -39,16 +38,17 @@ class BasicStartsWithOp(Expression):
     def vars(self):
         return self.value.vars() | self.prefix.vars()
 
-    def missing(self):
+    def map(self, map_):
+        return self.lang.BasicStartsWithOp([
+            self.value.map(map_),
+            self.prefix.map(map_),
+        ])
+
+    def missing(self, lang):
         return FALSE
 
-    @simplified
-    def partial_eval(self):
-        return self.lang[
-            BasicStartsWithOp(
-                [
-                    StringOp(self.value).partial_eval(),
-                    StringOp(self.prefix).partial_eval(),
-                ]
-            )
-        ]
+    def partial_eval(self, lang):
+        return BasicStartsWithOp([
+            ToTextOp(self.value).partial_eval(lang),
+            ToTextOp(self.prefix).partial_eval(lang),
+        ])

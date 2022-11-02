@@ -10,10 +10,9 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import importlib
-import inspect
 import sys
-from threading import Thread
-from time import time, sleep
+from threading import Thread, Event
+from time import time
 
 from mo_future import text, allocate_lock
 
@@ -42,13 +41,14 @@ def expect(*names):
         _error("expecting at least one name")
 
     # GET MODULE OF THE CALLER
-    caller_frame = inspect.stack()[1]
-    caller = inspect.getmodule(caller_frame[0])
+    globals = sys._getframe(1).f_globals
+    caller_name = globals["__name__"]
+    caller = importlib.import_module(caller_name)
 
     # REGISTER DESIRED EXPORT
     output = []
     for name in names:
-        desc = Expecting(caller, name, caller_frame)
+        desc = Expecting(caller, name)
         setattr(caller, name, desc)
         output.append(desc)
 
@@ -67,35 +67,28 @@ class Expecting(object):
     CLASS TO USE AS A MODULE EXPORT PLACEHOLDER UNTIL AN ACTUAL VALUE IS INSERTED
     """
 
-    __slots__ = ["module", "name", "frame"]
+    __slots__ = ["module", "name"]
 
-    def __init__(self, module, name, frame):
+    def __init__(self, module, name):
         """
         PLACEHOLDER FOR A LATER VALUE
         :param module:
         :param name:
-        :param frame:
         """
-        global _monitor, _expiry
+        global _monitor, _expiry, _event
 
         _set(self, "module", module)
         _set(self, "name", name)
-        _set(self, "frame", frame)
         with _locker:
             _expiry = time() + WAIT_FOR_EXPORT
             _expectations.append(self)
             if not _monitor:
-                _monitor = Thread(target=worker)
+                _event = Event()
+                _monitor = Thread(target=worker, args=[_event])
                 _monitor.start()
 
     def __call__(self, *args, **kwargs):
-        _error(
-            'missing expected call export("'
-            + self.module.__name__
-            + '", '
-            + self.name
-            + ")"
-        )
+        _error(f'missing expected call export("{self.module.__name__}", {self.name})')
 
     def __getattr__(self, item):
         if item in Expecting.__slots__:
@@ -136,12 +129,17 @@ def export(module, name, value=_nothing):
     """
 
     if isinstance(module, text):
-        module = importlib.import_module(module)
+        try:
+            module = importlib.import_module(module)
+        except Exception as cause:
+            _error(module + " can not be found")
     if not isinstance(name, text):
         # GET MODULE OF THE CALLER TO FIND NAME OF OBJECT
         value = name
-        frame = inspect.stack()[1]
-        caller = inspect.getmodule(frame[0])
+        globals = sys._getframe(1).f_globals
+        caller_name = globals["__name__"]
+        caller = importlib.import_module(caller_name)
+
         for n in dir(caller):
             try:
                 if getattr(caller, n) is value:
@@ -153,8 +151,9 @@ def export(module, name, value=_nothing):
             _error("Can not find variable holding a " + value.__class__.__name__)
     if value is _nothing:
         # ASSUME CALLER MODULE IS USED
-        frame = inspect.stack()[1]
-        value = inspect.getmodule(frame[0])
+        globals = sys._getframe(1).f_globals
+        caller_name = globals["__name__"]
+        value = importlib.import_module(caller_name)
 
     desc = getattr(module, name, None)
     if isinstance(desc, Expecting):
@@ -162,6 +161,8 @@ def export(module, name, value=_nothing):
             for i, e in enumerate(_expectations):
                 if desc is e:
                     del _expectations[i]
+                    if not _expectations:
+                        _event.set()
                     break
             else:
                 _error(module.__name__ + " is not expecting an export to " + name)
@@ -173,20 +174,19 @@ def export(module, name, value=_nothing):
     setattr(module, name, value)
 
 
-def worker():
+def worker(please_stop):
     global _expectations, _monitor
 
     if DEBUG:
         print(">>> expectation thread started")
     while True:
-        sleep(_expiry - time())
+        please_stop.wait(_expiry - time())
         with _locker:
+            if not _expectations:
+                _monitor = None
+                break
             if _expiry >= time():
                 continue
-
-            _monitor = None
-            if not _expectations:
-                break
 
             done, _expectations = _expectations, []
 
@@ -209,23 +209,32 @@ def _error(description):
 
 
 def delay_import(module):
+    """
+    RETURN AN OBJECT THAT WILL CONVERT TO GIVEN INSTANCE WHEN "USED"
+    "USED" MEANS CALLING ONE OF __call__, __getattribute__, __getitem__
+    :param module: FULL MODULE NAME
+    :return: A DelayedImport OBJECT THAT WILL REPLACE ITSELF WHEN USED
+    """
     globals = sys._getframe(1).f_globals
     caller_name = globals["__name__"]
-
     return DelayedImport(caller_name, module)
 
 
 class DelayedImport(object):
-
     __slots__ = ["caller", "module"]
 
     def __init__(self, caller, module):
+        if not caller:
+            _error("Can not get name of calling module")
+
         _set(self, "caller", caller)
         _set(self, "module", module)
 
     def _import_now(self):
-        # FIND MODULE VARIABLE THAT HOLDS self
+        module = _get(self, "module")
         caller_name = _get(self, "caller")
+
+        # FIND MODULE VARIABLE THAT HOLDS self
         caller = importlib.import_module(caller_name)
         names = []
         for n in dir(caller):
@@ -238,18 +247,24 @@ class DelayedImport(object):
         if not names:
             _error("Can not find variable holding a " + self.__class__.__name__)
 
-        module = _get(self, "module")
         path = module.split(".")
-        module_name, short_name = ".".join(path[:-1]), path[-1]
         try:
-            m = importlib.import_module(module_name)
-            val = getattr(m, short_name)
-
-            for n in names:
-                setattr(caller, n, val)
-            return val
+            if len(path)==1:
+                module_name = path[0]
+                val = importlib.import_module(module_name)
+            else:
+                module_name, short_name = ".".join(path[:-1]), path[-1]
+                m = importlib.import_module(module_name)
+                val = getattr(m, short_name)
         except Exception as cause:
             _error("Can not load " + _get(self, "module") + " caused by " + text(cause))
+
+        _set(self, "module", val)
+        _set(self, "caller", None)
+
+        for n in names:
+            setattr(caller, n, val)
+        return val
 
     def __call__(self, *args, **kwargs):
         m = DelayedImport._import_now(self)
@@ -260,5 +275,67 @@ class DelayedImport(object):
         return m[item]
 
     def __getattribute__(self, item):
+        if item == "__class__":
+            # reflective code, like in unittest, need to know what this is
+            return DelayedImport
         m = DelayedImport._import_now(self)
         return getattr(m, item)
+
+    def __setattr__(self, item, value):
+        m = DelayedImport._import_now(self)
+        return setattr(m, item, value)
+
+
+class DelayedValue(object):
+    """
+    can be used on module-level variables to delay creation
+    """
+    __slots__ = ["builder", "caller"]
+
+    def __init__(self, builder):
+        globals = sys._getframe(1).f_globals
+        caller_name = globals["__name__"]
+        caller = importlib.import_module(caller_name)
+        _set(self, "builder", builder)
+        _set(self, "caller", caller)
+
+    def _build(self):
+        caller = _get(self, "caller")
+        name = ""
+        for n in dir(caller):
+            try:
+                if getattr(caller, n) is self:
+                    name = n
+                    break
+            except Exception:
+                pass
+        else:
+            _error("Can not find variable holding a " + self.__class__.__name__)
+
+        value = _get(self, "builder")()
+        setattr(caller, name, value)
+        return value
+
+    def __call__(self, *args, **kwargs):
+        m = DelayedValue._build(self)
+        return m(*args, **kwargs)
+
+    def __contains__(self, item):
+        m = DelayedValue._build(self)
+        return item in m
+
+    def __getitem__(self, item):
+        m = DelayedValue._build(self)
+        return m[item]
+
+    def __getattribute__(self, item):
+        if item == "__class__":
+            # reflective code, like in unittest, need to know what this is
+            return DelayedImport
+        m = DelayedValue._build(self)
+        return getattr(m, item)
+
+    def __setattr__(self, item, value):
+        m = DelayedValue._build(self)
+        return setattr(m, item, value)
+

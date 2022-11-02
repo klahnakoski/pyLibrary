@@ -11,7 +11,6 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import is_text, is_binary
 from collections import deque
 from copy import copy
 
@@ -57,6 +56,11 @@ class Queue(object):
         for v in other:
             output.add(v)
         return output
+
+    def remove(self, value):
+        if value in self.set:
+            self.set.remove(value)
+            self.list.remove(value)
 
     def __data__(self):
         return list(self.list)

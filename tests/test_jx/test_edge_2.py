@@ -37,12 +37,12 @@ class TestEdge2(BaseTestCase):
                     {"a": "y", "b": "m", "count": 1},
                     {"a": "y", "b": "n", "count": 2},
                     {"a": "y", "b": NULL, "count": 1},
+                    {"a": "z", "b": "m", "count": 0},
+                    {"a": "z", "b": "n", "count": 0},
+                    {"a": "z", "b": NULL, "count": 0},
                     {"a": NULL, "b": "m", "count": 1},
                     {"a": NULL, "b": "n", "count": 1},
-                    {"a": "z", "b": NULL, "count": 0},
-                    {"a": NULL, "b": NULL, "count": 0},
-                    {"a": "z", "b": "m", "count": 0},
-                    {"a": "z", "b": "n", "count": 0}
+                    {"a": NULL, "b": NULL, "count": 0}
                 ]},
             "expecting_table": {
                 "meta": {"format": "table"},

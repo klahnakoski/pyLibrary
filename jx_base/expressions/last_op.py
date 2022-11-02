@@ -10,36 +10,44 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.literal import is_literal
 from jx_base.expressions.null_op import NULL
 from jx_base.language import is_op
-from mo_dots.lists import last
+from mo_dots import last, is_many
 from mo_json import OBJECT
 
 
 class LastOp(Expression):
     def __init__(self, term):
-        Expression.__init__(self, [term])
+        Expression.__init__(self, term)
         self.term = term
-        self.data_type = self.term.type
+        self._data_type = self.term.type
 
     def __data__(self):
         return {"last": self.term.__data__()}
+
+    def __call__(self, row, rownum=None, rows=None):
+        value = self.term(row, rownum, rows)
+        if is_many(value):
+            if isinstance(value, (list, tuple)):
+                return value[-1]
+            else:
+                raise NotImplementedError()
+
+        return value
 
     def vars(self):
         return self.term.vars()
 
     def map(self, map_):
-        return self.lang[LastOp(self.term.map(map_))]
+        return LastOp(self.term.map(map_))
 
-    def missing(self):
-        return self.term.missing()
+    def missing(self, lang):
+        return self.term.missing(lang)
 
-    @simplified
-    def partial_eval(self):
-        term = self.term.partial_eval()
+    def partial_eval(self, lang):
+        term = self.term.partial_eval(lang)
         if is_op(self.term, LastOp):
             return term
         elif term.type != OBJECT and not term.many:
@@ -49,4 +57,4 @@ class LastOp(Expression):
         elif is_literal(term):
             return last(term)
         else:
-            return self.lang[LastOp(term)]
+            return LastOp(term)

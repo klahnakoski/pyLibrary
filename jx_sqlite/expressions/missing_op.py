@@ -9,48 +9,44 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import MissingOp as MissingOp_
+from jx_base.expressions import MissingOp as MissingOp_, FALSE
 from jx_base.language import is_op
 from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import wrap
-from jx_sqlite.sqlite import (
-    SQL_AND,
-    SQL_EMPTY_STRING,
-    SQL_FALSE,
-    SQL_IS_NULL,
-    SQL_OR,
-    SQL_TRUE,
-    sql_iso,
-    SQL_EQ, ConcatSQL)
+from jx_sqlite.expressions.sql_script import SqlScript
+from jx_sqlite.sqlite import ConcatSQL, SQL_IS_NULL, SQL_NOT, sql_call, SQL_OR, sql_iso, SQL_EQ, TextSQL, \
+    SQL_EMPTY_STRING
+from mo_json.types import T_BOOLEAN, T_TEXT
 
 
 class MissingOp(MissingOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.expr].partial_eval()
-        missing_value = value.missing().partial_eval()
+    def to_sql(self, schema):
+        sql = self.expr.partial_eval(SQLang).to_sql(schema)
 
-        if not is_op(missing_value, MissingOp):
-            return missing_value.to_sql(schema)
-
-        value_sql = value.to_sql(schema)
-
-        if len(value_sql) > 1:
-            return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
-
-        acc = []
-        for c in value_sql:
-            for t, v in c.sql.items():
-                if t in "bn":
-                    acc.append(ConcatSQL(sql_iso(v), SQL_IS_NULL))
-                if t == "s":
-                    acc.append(ConcatSQL(
-                        sql_iso(sql_iso(v), SQL_IS_NULL),
+        if is_op(sql.miss, MissingOp):
+            if sql.type == T_TEXT:
+                return SqlScript(
+                    data_type=T_BOOLEAN,
+                    miss=FALSE,
+                    expr=sql_iso(
+                        sql.frum,
+                        SQL_IS_NULL,
                         SQL_OR,
-                        sql_iso(sql_iso(v), SQL_EQ, SQL_EMPTY_STRING)
-                    ))
+                        sql_iso(sql.frum),
+                        SQL_EQ,
+                        SQL_EMPTY_STRING
+                    ),
+                    frum=self,
+                    schema=schema
+                )
 
-        if not acc:
-            return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
-        else:
-            return wrap([{"name": ".", "sql": {"b": SQL_AND.join(acc)}}])
+            return SqlScript(
+                data_type=T_BOOLEAN,
+                miss=FALSE,
+                expr=ConcatSQL(sql.frum, SQL_IS_NULL),
+                frum=self,
+                schema=schema
+            )
+
+        expr = sql.miss.to_sql(schema)
+        return SqlScript(data_type=T_BOOLEAN, miss=FALSE, expr=expr, frum=sql.miss, schema=schema)

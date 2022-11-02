@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from mo_json import STRING
+from mo_json.types import T_TEXT
 
 
 class BasicSubstringOp(Expression):
@@ -20,34 +20,31 @@ class BasicSubstringOp(Expression):
     PLACEHOLDER FOR BASIC value.substring(start, end) (CAN NOT DEAL WITH NULLS)
     """
 
-    data_type = STRING
+    _data_type = T_TEXT
 
-    def __init__(self, terms):
+    def __init__(self, *terms):
         Expression.__init__(self, terms)
         self.value, self.start, self.end = terms
 
     def __data__(self):
-        return {
-            "basic.substring": [
-                self.value.__data__(),
-                self.start.__data__(),
-                self.end.__data__(),
-            ]
-        }
+        return {"basic.substring": [
+            self.value.__data__(),
+            self.start.__data__(),
+            self.end.__data__(),
+        ]}
 
     def map(self, map_):
-        return self.lang[BasicSubstringOp([
+        return BasicSubstringOp([
             self.value.map(map_),
             self.start.map(map_),
-            self.end.map(map_)
-        ])]
+            self.end.map(map_),
+        ])
 
     def vars(self):
         return self.value.vars() | self.start.vars() | self.end.vars()
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
-    def invert(self):
+    def invert(self, lang):
         return FALSE
-

@@ -11,6 +11,8 @@ from __future__ import unicode_literals
 
 from mo_future import is_text
 from mo_logs import Log
+from mo_dots import is_null
+
 from mo_threads import Till, Thread, MAIN_THREAD
 from mo_threads.signals import Signal
 from mo_times import Duration, Date
@@ -27,22 +29,26 @@ class Repeat(object):
 
         if isinstance(until, Signal):
             self.please_stop = until
-        elif until == None:
+        elif is_null(until):
             self.please_stop = Signal()
         else:
             self.please_stop = Till(Duration(until).seconds)
 
         self.thread = None
         if start:
-            self.thread = Thread.run(
-                "repeat",
-                _repeat,
-                self.message,
-                self.every,
-                Date(start),
-                parent_thread=MAIN_THREAD,
-                please_stop=self.please_stop,
-            ).release()
+            self.thread = (
+                Thread
+                .run(
+                    "repeat",
+                    _repeat,
+                    self.message,
+                    self.every,
+                    Date(start),
+                    parent_thread=MAIN_THREAD,
+                    please_stop=self.please_stop,
+                )
+                .release()
+            )
 
     def __enter__(self):
         if self.thread:
@@ -53,7 +59,7 @@ class Repeat(object):
             self.message,
             self.every,
             Date.now(),
-            please_stop=self.please_stop
+            please_stop=self.please_stop,
         )
 
     def __exit__(self, exc_type, exc_val, exc_tb):

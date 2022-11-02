@@ -9,23 +9,27 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import SqlInstrOp as SqlInstrOp_
-from jx_sqlite.expressions._utils import check
+from jx_base.expressions import SqlInstrOp as SqlInstrOp_, OrOp
+from jx_sqlite.expressions._utils import check, SQLang, SqlScript
 from jx_sqlite.sqlite import sql_call
-from mo_dots import wrap
+from mo_json import T_INTEGER
 
 
 class SqlInstrOp(SqlInstrOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.value.to_sql(schema, not_null=True)[0].sql.s
-        find = self.find.to_sql(schema, not_null=True)[0].sql.s
+    def to_sql(self, schema):
+        value = self.value.to_sql(schema)
+        find = self.find.to_sql(schema)
 
-        return wrap(
-            [{"name": ".", "sql": {"n": sql_call("INSTR", value, find)}}]
+        return SqlScript(
+            data_type=T_INTEGER,
+            expr=sql_call("INSTR", value.frum, find.frum),
+            frum=self,
+            miss=OrOp([self.value.missing(SQLang), self.find.missing(SQLang)]),
+            schema=schema,
         )
 
-    def partial_eval(self):
-        value = self.value.partial_eval()
-        find = self.find.partial_eval()
+    def partial_eval(self, lang):
+        value = self.value.partial_eval(SQLang)
+        find = self.find.partial_eval(SQLang)
         return SqlInstrOp([value, find])

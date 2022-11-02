@@ -21,7 +21,7 @@ class OffsetOp(Expression):
     OFFSET INDEX INTO A TUPLE
     """
 
-    def __init__(self, var):
+    def __init__(self, *var):
         Expression.__init__(self, None)
         if not is_integer(var):
             Log.error("Expecting an integer")
