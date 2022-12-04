@@ -497,8 +497,7 @@ def json_schema_to_markdown(schema):
     return "\n".join(lines)
 
 
-
-ZeroMoment2dict = mo_math.stats.ZeroMoment2dict
+from mo_math.stats import ZeroMoment2dict
 
 
 def text2QRCode(value):
