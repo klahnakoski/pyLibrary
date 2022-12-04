@@ -19,15 +19,15 @@ from jx_base.expressions.null_op import NULL
 from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.variable import Variable
 from jx_base.language import is_op
-from mo_json import NUMBER
+from mo_json.types import T_NUMBER
 
 
 class FloorOp(Expression):
     has_simple_form = True
-    data_type = NUMBER
+    _data_type = T_NUMBER
 
-    def __init__(self, terms, default=NULL):
-        Expression.__init__(self, terms)
+    def __init__(self, *terms, default=NULL):
+        Expression.__init__(self, *terms)
         if len(terms) == 1:
             self.lhs = terms[0]
             self.rhs = ONE
@@ -48,16 +48,16 @@ class FloorOp(Expression):
         return self.lhs.vars() | self.rhs.vars() | self.default.vars()
 
     def map(self, map_):
-        return self.lang[
-            FloorOp(
-                [self.lhs.map(map_), self.rhs.map(map_)], default=self.default.map(map_)
-            )
-        ]
+        return FloorOp(
+            [self.lhs.map(map_), self.rhs.map(map_)], default=self.default.map(map_)
+        )
 
-    def missing(self):
+    def missing(self, lang):
         if self.default.exists():
             return FALSE
         else:
-            return self.lang[
-                OrOp([self.lhs.missing(), self.rhs.missing(), EqOp([self.rhs, ZERO])])
-            ]
+            return OrOp(
+                self.lhs.missing(lang),
+                self.rhs.missing(lang),
+                EqOp(self.rhs, ZERO),
+            )

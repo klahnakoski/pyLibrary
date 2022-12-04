@@ -11,21 +11,19 @@ from __future__ import absolute_import, division, unicode_literals
 
 from collections import deque
 
+from jx_base.domains import SetDomain, SimpleSetDomain
+from jx_base.expressions import Variable as Variable_, Variable
 from jx_base.expressions.false_op import FALSE
-
-from jx_base.expressions.true_op import TRUE
-
-from jx_base.domains import SetDomain
-from jx_base.expressions import NULL, Variable as Variable_, ESSelectOp, Variable
-from jx_base.language import is_op
 from jx_base.expressions.query_op import DEFAULT_LIMIT
+from jx_base.expressions.true_op import TRUE
+from jx_base.language import is_op
 from jx_elasticsearch.es52.agg_format import agg_formatters
 from jx_elasticsearch.es52.agg_op_field import agg_field
 from jx_elasticsearch.es52.agg_op_formula import agg_formula
 from jx_elasticsearch.es52.decoders import AggsDecoder
 from jx_elasticsearch.es52.es_query import Aggs, FilterAggs, NestedAggs, simplify
-from jx_elasticsearch.es52.expressions import ES52, split_expression_by_path
-from jx_elasticsearch.es52.expressions.utils import setop_to_inner_joins, pre_process, query_to_outer_joins
+from jx_elasticsearch.es52.expressions import split_expression_by_path
+from jx_elasticsearch.es52.expressions.utils import pre_process, query_to_outer_joins, ES52
 from jx_elasticsearch.es52.painless import Painless
 from jx_python import jx
 from mo_dots import Data, Null, coalesce, listwrap, literal_field, unwrap, unwraplist, to_data
@@ -73,13 +71,13 @@ def get_decoders_by_path(query, schema):
             vars_ |= set(Variable(v) for v in edge.domain.dimension.fields)
             edge.domain.dimension = edge.domain.dimension.copy()
             edge.domain.dimension.fields = [c.es_column for v in vars_ for c in schema[v.var]]
-        elif edge.domain.partitions.where and all(edge.domain.partitions.where):
+        elif edge.domain.partitions and all(p.where for p in edge.domain.partitions):
             for p in edge.domain.partitions:
                 vars_ |= p.where.vars()
         else:
             # SIMPLE edge.value
             decoder = AggsDecoder(edge, query, limit)
-            depths = set(c.nested_path[0] for v in vars_ for c in schema.leaves(v.var))
+            depths = list(reversed(sorted(set(n for v in vars_ for n, _ in schema.split_values(v.var).items()))))
             output.setdefault(first(depths), []).append(decoder)
             continue
 
@@ -103,7 +101,7 @@ def sort_edges(query, prop):
     for s in jx.reverse(query.sort):
         for e in remaining_edges:
             if e.value == s.value:
-                if isinstance(e.domain, SetDomain):
+                if isinstance(e.domain, (SimpleSetDomain, SetDomain)):
                     pass  # ALREADY SORTED?
                 else:
                     e.domain.sort = s.sort
@@ -170,7 +168,7 @@ def aggop_to_es_queries(select, query_path, schema, query):
                 acc = d.append_query(path, acc)
                 start += d.num_columns
 
-            where = first(nest.where for nest in outer.nests if nest.path == path).partial_eval()
+            where = first(nest.where for nest in outer.nests if nest.path == path).partial_eval(ES52)
             if where is FALSE:
                 continue
             elif not where or where is TRUE:
@@ -179,10 +177,10 @@ def aggop_to_es_queries(select, query_path, schema, query):
                 acc = FilterAggs("_filter" + text(i) + text(p), where, None).add(acc)
             acc = NestedAggs(path).add(acc)
         output.add(acc)
-    output = simplify(output)
-    es_query = to_data(output.to_es(schema))
+    simpler_output = simplify(output)
+    es_query = to_data(simpler_output.to_es(schema))
     es_query.size = 0
-    return output, decoders, es_query
+    return simpler_output, decoders, es_query
 
 
 def es_aggsop(es, frum, query):

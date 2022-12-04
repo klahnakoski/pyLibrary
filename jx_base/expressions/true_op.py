@@ -13,14 +13,14 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal
 from mo_imports import export
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
 
 class TrueOp(Literal):
-    data_type = BOOLEAN
+    _data_type = T_BOOLEAN
 
     def __new__(cls, *args, **kwargs):
-        return object.__new__(cls, *args, **kwargs)
+        return object.__new__(cls)
 
     def __init__(self, op=None, term=None):
         Literal.__init__(self, True)
@@ -44,11 +44,15 @@ class TrueOp(Literal):
     def map(self, map_):
         return self
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
-    def invert(self):
+    def invert(self, lang):
         return FALSE
+
+    @property
+    def type(self):
+        return T_BOOLEAN
 
     def __call__(self, row=None, rownum=None, rows=None):
         return True
@@ -62,6 +66,9 @@ class TrueOp(Literal):
     def __bool__(self):
         return True
 
+    def __rcontains__(self, superset):
+        return self is superset
+
     def __nonzero__(self):
         return True
 
@@ -73,4 +80,3 @@ export("jx_base.expressions.literal", TRUE)
 export("jx_base.expressions.false_op", TRUE)
 export("jx_base.expressions._utils", TRUE)
 export("jx_base.expressions.expression", TRUE)
-

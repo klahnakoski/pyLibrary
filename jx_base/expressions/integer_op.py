@@ -10,19 +10,18 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.coalesce_op import CoalesceOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.first_op import FirstOp
 from jx_base.language import is_op
-from mo_json import INTEGER
+from mo_json import T_INTEGER
 
 
-class IntegerOp(Expression):
-    data_type = INTEGER
+class ToIntegerOp(Expression):
+    _data_type = T_INTEGER
 
     def __init__(self, term):
-        Expression.__init__(self, [term])
+        Expression.__init__(self, term)
         self.term = term
 
     def __data__(self):
@@ -32,16 +31,15 @@ class IntegerOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return self.lang[IntegerOp(self.term.map(map_))]
+        return ToIntegerOp(self.term.map(map_))
 
-    def missing(self):
-        return self.term.missing()
+    def missing(self, lang):
+        return self.term.missing(lang)
 
-    @simplified
-    def partial_eval(self):
-        term = self.lang[FirstOp(self.term)].partial_eval()
+    def partial_eval(self, lang):
+        term = FirstOp(self.term).partial_eval(lang)
         if is_op(term, CoalesceOp):
-            return self.lang[CoalesceOp([IntegerOp(t) for t in term.terms])]
-        if term.type == INTEGER:
+            return CoalesceOp(ToIntegerOp(t) for t in term.terms)
+        if term.type in T_INTEGER:
             return term
-        return self.lang[IntegerOp(term)]
+        return ToIntegerOp(term)

@@ -10,10 +10,10 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import BetweenOp as BetweenOp_
-from jx_sqlite.expressions._utils import check
+from jx_sqlite.expressions._utils import check, SQLang
 
 
 class BetweenOp(BetweenOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        return self.partial_eval().to_sql(schema)
+    def to_sql(self, schema):
+        return self.partial_eval(SQLang).to_sql(schema)

@@ -10,13 +10,8 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import InOp as InOp_
-from jx_python.expressions._utils import Python
 
 
 class InOp(InOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            Python[self.value].to_python()
-            + " in "
-            + Python[self.superset].to_python(many=True)
-        )
+    def to_python(self):
+        return self.value.to_python() + " in " + self.superset.to_python()

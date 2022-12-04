@@ -14,7 +14,8 @@ from jx_python.expressions import _utils
 
 
 class ScriptOp(ScriptOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return self.script
+
 
 _utils.ScriptOp = ScriptOp

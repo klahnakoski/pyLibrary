@@ -11,18 +11,17 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import WhenOp as WhenOp_
 from jx_python.expressions import _utils
-from jx_python.expressions._utils import Python
 
 
 class WhenOp(WhenOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return (
             "("
-            + Python[self.then].to_python()
+            + self.then.to_python()
             + ") if ("
-            + Python[self.when].to_python(boolean=True)
+            + self.when.to_python()
             + ") else ("
-            + Python[self.els_].to_python()
+            + self.els_.to_python()
             + ")"
         )
 

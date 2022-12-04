@@ -43,7 +43,7 @@ def chisquare(f_obs, f_exp):
     if DEBUG_STRANGMAN:
         from mo_testing.fuzzytestcase import assertAlmostEqualValue
 
-        sp_result = scipy.stats.chisquare(np.array(f_obs), f_exp=np.array(f_exp))
+        sp_result = scipy.stats.chisquare(np.frum(f_obs), f_exp=np.frum(f_exp))
         if not assertAlmostEqualValue(
             sp_result[0], py_result[0], digits=9
         ) and assertAlmostEqualValue(sp_result[1], py_result[1], delta=1e-8):

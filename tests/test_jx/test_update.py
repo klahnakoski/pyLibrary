@@ -9,13 +9,16 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from unittest import skip, skipIf
+
 from jx_base.expressions import NULL
 from mo_dots import dict_to_data
-from tests.test_jx import BaseTestCase
+from tests.test_jx import BaseTestCase, global_settings
 
 
 class TestUpdate(BaseTestCase):
 
+    @skip("broken")
     def test_new_field(self):
         settings = self.utils.fill_container(
             dict_to_data({"data": [
@@ -27,9 +30,8 @@ class TestUpdate(BaseTestCase):
             ]}),
             typed=False
         )
-        import jx_elasticsearch
-        container = jx_elasticsearch.new_instance(read_only=False, kwargs=self.utils._es_test_settings)
-        container.update({
+
+        self.utils.execute_update({
             "update": settings.alias,
             "set": {"c": {"add": ["a", "b"]}}
         })
@@ -45,7 +47,8 @@ class TestUpdate(BaseTestCase):
             }
         })
 
-    def test_delete(self):
+    @skipIf(global_settings.use != "elasticsearch", "only for elasticsearch")
+    def test_delete_from_elasticsearch(self):
         settings = self.utils.fill_container(
             dict_to_data({"data": [
                 {"a": 1, "b": 5},

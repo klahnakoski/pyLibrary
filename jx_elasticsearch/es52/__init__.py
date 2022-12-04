@@ -143,16 +143,26 @@ class ES52(Container):
                 else:
                     nested_path = nested_path_of(p)[1:]
 
-                jx_type = OBJECT if p == "." else NESTED
                 self.namespace.meta.columns.add(Column(
                     name=p,
                     es_column=p,
                     es_index=self.name,
-                    es_type=jx_type,
-                    jx_type=jx_type,
+                    es_type="nested",
+                    jx_type=NESTED,
                     cardinality=1,
                     nested_path=nested_path,
-                    multi=1001 if jx_type is NESTED else 1,
+                    multi=1001,
+                    last_updated=Date.now(),
+                ))
+                self.namespace.meta.columns.add(Column(
+                    name=p,
+                    es_column=p,
+                    es_index=self.name,
+                    es_type="object",
+                    jx_type=OBJECT,
+                    cardinality=1,
+                    nested_path=nested_path_of(p),
+                    multi=1,
                     last_updated=Date.now(),
                 ))
 
@@ -233,6 +243,8 @@ class ES52(Container):
             Log.error("Can not handle")
         except Exception as cause:
             cause = Except.wrap(cause)
+            if "Too many dynamic script compilations" in cause:
+                Log.error('Please add "script.max_compilations_rate: 1000/1m" to elasticsearch.yml file', cause=cause)
             if "Data too large, data for" in cause:
                 http.post(self.es.cluster.url / "_cache/clear")
                 Log.error("Problem (Tried to clear Elasticsearch cache)", cause)
@@ -274,6 +286,9 @@ class ES52(Container):
                 for update in map(value2json, ({"update": {"_id": _id}}, {"doc": row}))
                 for t in (update, "\n")
             )
+            if not content:
+                return
+
             response = self.es.cluster.post(
                 es_index.path + "/" + "_bulk",
                 data=content,
@@ -294,7 +309,7 @@ class ES52(Container):
         # DELETE BY QUERY, IF NEEDED
         if "." in listwrap(command["clear"]):
             es_filter = (
-                ES52Lang[jx_expression(command.where)].partial_eval().to_es(schema)
+                jx_expression(command.where).partial_eval(ES52Lang).to_es(schema)
             )
             self.es.delete_record(es_filter)
             return

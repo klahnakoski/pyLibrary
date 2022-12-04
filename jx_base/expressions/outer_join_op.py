@@ -10,33 +10,35 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions.null_op import NULL
-
-from jx_base.expressions.false_op import FALSE
-
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
+from jx_base.expressions.false_op import FALSE
+from jx_base.expressions.null_op import NULL
 from jx_base.expressions.or_op import OrOp
 from jx_base.language import is_op
 from mo_dots import startswith_field
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 from mo_logs import Log
 from mo_math import UNION
 
 
 class OuterJoinOp(Expression):
-    data_type = BOOLEAN
+    _data_type = T_BOOLEAN
     has_simple_form = False
 
     __slots__ = ["frum", "nests"]
 
-    def __init__(self, frum, nests):
+    def __init__(self, *frum, nests):
+        """
+        A SEQUENCE OF NESTED (OUTER) JOINS FOR A QUERY
+        :param frum: THE TABLE OF DOCUMENTS
+        :param nests: LIST OF OUTER JOINS (deepest first)
+        """
         Expression.__init__(self, nests)
         self.frum = frum
         self.nests = nests
         last = "."
         for n in reversed(nests):
-            path = n.path.var
+            path = n.nested_path.var
             if not startswith_field(path, last):
                 Log.error("Expecting nests to be reverse nested order")
             last = path
@@ -63,26 +65,27 @@ class OuterJoinOp(Expression):
     def map(self, mapping):
         return OuterJoinOp(frum=self.frum.map(mapping), nests=self.nests.map(mapping))
 
-    def invert(self):
-        return self.missing()
+    def invert(self, lang):
+        return self.missing(lang)
 
-    def missing(self):
-        return OrOp([self.frum.missing()] + [self.nests[-1].missing()]).partial_eval()
+    def missing(self, lang):
+        if not self.nests:
+            return TRUE
 
-    @property
-    def many(self):
-        return True
+        return OrOp(
+            [self.frum.missing(lang)] + [n.missing(lang) for n in self.nests]
+        ).partial_eval(lang)
 
-    @simplified
-    def partial_eval(self):
-
+    def partial_eval(self, lang):
         nests = []
         for n in self.nests:
-            n = n.partial_eval()
+            n = n.partial_eval(lang)
             if n.where is FALSE:
-                return NULL
-            nests.append(n)
+                nests = []  # ALL DEEPER IS NOTHING
+            else:
+                nests.append(n)
 
-        return OuterJoinOp(
-            frum=self.frum.partial_eval(), nests=nests
-        )
+        if nests:
+            return OuterJoinOp(frum=self.frum.partial_eval(lang), nests=nests)
+        else:
+            return NULL

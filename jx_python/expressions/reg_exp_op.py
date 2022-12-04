@@ -9,18 +9,17 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import RegExpOp as RegExpOp_
-from jx_python.expressions._utils import Python
-from mo_json import json2value
 from mo_logs.strings import quote
+
+from jx_base.expressions import RegExpOp as RegExpOp_
 
 
 class RegExpOp(RegExpOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return (
             "re.match("
-            + quote(json2value(self.pattern.json) + "$")
+            + quote(self.pattern.value + "$")
             + ", "
-            + Python[self.var].to_python()
+            + self.expr.to_python()
             + ")"
         )

@@ -10,11 +10,12 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified, value2json
+from jx_base.expressions._utils import value2json
 from jx_base.expressions.expression import Expression
-from mo_dots import Null, is_data, is_many
+from mo_dots import Null, is_data
+from mo_future import is_text
 from mo_imports import expect, export
-from mo_json import python_type_to_json_type, same_json_type, merge_json_type
+from mo_json.types import value_to_jx_type
 
 DateOp, FALSE, TRUE, NULL = expect("DateOp", "FALSE", "TRUE", "NULL")
 
@@ -23,6 +24,7 @@ class Literal(Expression):
     """
     A literal JSON document
     """
+    op = "literal"
 
     def __new__(cls, term):
         if term == None:
@@ -31,12 +33,15 @@ class Literal(Expression):
             return TRUE
         if term is False:
             return FALSE
+        if is_text(term) and not term:
+            return NULL
         if is_data(term) and term.get("date"):
             # SPECIAL CASE
-            return cls.lang[DateOp(term.get("date"))]
+            return DateOp(term.get("date"))
         return object.__new__(cls)
 
     def __init__(self, value):
+
         Expression.__init__(self, None)
         self.simplified = True
         self._value = value
@@ -82,36 +87,27 @@ class Literal(Expression):
     def map(self, map_):
         return self
 
-    def missing(self):
+    def missing(self, lang):
         if self._value in [None, Null]:
             return TRUE
         if self.value == "":
             return TRUE
         return FALSE
 
-    def invert(self):
-        return self.missing()
+    def invert(self, lang):
+        return self.missing(lang)
 
     def __call__(self, row=None, rownum=None, rows=None):
         return self.value
 
-    def __unicode__(self):
-        return self._json
-
     def __str__(self):
-        return str(self._json)
+        return self.json
 
     @property
     def type(self):
-        def typer(v):
-            if is_many(v):
-                return merge_json_type(*map(typer, v))
-            else:
-                return python_type_to_json_type[v.__class__]
-        return typer(self._value)
+        return value_to_jx_type(self._value)
 
-    @simplified
-    def partial_eval(self):
+    def partial_eval(self, lang):
         return self
 
     def str(self):
@@ -121,13 +117,12 @@ class Literal(Expression):
 ZERO = Literal(0)
 ONE = Literal(1)
 
-
 literal_op_ids = tuple()
 
 
 def register_literal(op):
     global literal_op_ids
-    literal_op_ids = literal_op_ids+(op.get_id(),)
+    literal_op_ids = literal_op_ids + (op.get_id(),)
 
 
 def is_literal(l):
@@ -137,6 +132,6 @@ def is_literal(l):
         return False
 
 
-export("jx_base.expressions._utils", Literal)
 export("jx_base.expressions.expression", Literal)
 export("jx_base.expressions.expression", is_literal)
+export("jx_base.expressions._utils", Literal)

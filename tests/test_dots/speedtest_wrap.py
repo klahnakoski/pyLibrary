@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import, division, unicode_literals
 
 import gc
@@ -26,10 +25,13 @@ def test_wrap_1():
         lambda: Data(i=Random.int(2000)),
         lambda: {"i": Random.int(2000)},
         lambda: FlatList([{"i": Random.int(2000)}]),
-        lambda: [{"i": Random.int(2000)}]
+        lambda: [{"i": Random.int(2000)}],
     ]
 
-    inputs = [switch[min(len(switch) - 1, int(floor(-log(Random.float(), 2))))]() for i in range(NUM_INPUT)]
+    inputs = [
+        switch[min(len(switch) - 1, int(floor(-log(Random.float(), 2))))]()
+        for i in range(NUM_INPUT)
+    ]
 
     for i in range(NUM_REPEAT):
         results = []
@@ -44,7 +46,7 @@ def test_wrap_1():
             for v in inputs:
                 results.append(baseline(v))
 
-        Log.note("Done {{i}} of {{num}}", i=i, num=NUM_REPEAT)
+        Log.info("Done {{i}} of {{num}}", i=i, num=NUM_REPEAT)
 
 
 def test_wrap_2():
@@ -55,10 +57,13 @@ def test_wrap_2():
         lambda: {"i": Random.int(2000)},
         lambda: Data(i=Random.int(2000)),
         lambda: FlatList([{"i": Random.int(2000)}]),
-        lambda: [{"i": Random.int(2000)}]
+        lambda: [{"i": Random.int(2000)}],
     ]
 
-    inputs = [switch[min(len(switch) - 1, int(floor(-log(Random.float(), 2))))]() for i in range(NUM_INPUT)]
+    inputs = [
+        switch[min(len(switch) - 1, int(floor(-log(Random.float(), 2))))]()
+        for i in range(NUM_INPUT)
+    ]
 
     for i in range(NUM_REPEAT):
         results = []
@@ -73,7 +78,8 @@ def test_wrap_2():
             for v in inputs:
                 results.append(baseline(v))
 
-        Log.note("Done {{i}} of {{num}}", i=i, num=NUM_REPEAT)
+        Log.info("Done {{i}} of {{num}}", i=i, num=NUM_REPEAT)
+
 
 test_wrap_1()
 test_wrap_2()

@@ -10,12 +10,11 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import GetOp as GetOp_
-from jx_python.expressions._utils import Python
 
 
 class GetOp(GetOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        output = ["(" + Python[self.var].to_python() + ")"]
+    def to_python(self):
+        output = ["(" + (self.var).to_python() + ")"]
         for o in self.offsets:
-            output.append("[" + Python[o].to_python() + "]")
+            output.append("[" + (o).to_python() + "]")
         return "".join(output)

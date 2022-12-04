@@ -11,432 +11,315 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from typing import List, Dict, Tuple
+
+from mo_imports import export
+
 from jx_base import Column
+from jx_base.expressions import NULL
 from jx_base.language import is_op
-from jx_base.queries import get_property_name
-from jx_sqlite.utils import COLUMN, ColumnMapping, ORDER, _make_column_name, get_column, UID, PARENT
-from jx_sqlite.expressions._utils import SQLang, sql_type_to_json_type
-from jx_sqlite.expressions.boolean_op import BooleanOp
+from jx_python import jx
+from jx_sqlite.expressions._utils import SQLang
 from jx_sqlite.expressions.leaves_op import LeavesOp
+from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.insert_table import InsertTable
-from mo_dots import Data, Null, concat_field, is_list, listwrap, literal_field, startswith_field, unwrap, unwraplist, \
-    exists
-from mo_future import text, unichr
-from mo_json import IS_NULL, STRUCT
+from jx_sqlite.sqlite import *
+from jx_sqlite.sqlite import quote_column, sql_alias
+from jx_sqlite.utils import (
+    COLUMN,
+    ColumnMapping,
+    ORDER,
+    _make_column_name,
+    get_column,
+    UID,
+    PARENT,
+    table_alias,
+    untype_field, sort_to_sqlite_order,
+)
+from mo_dots import (
+    Data,
+    startswith_field,
+    unwraplist,
+    relative_field,
+    is_missing,
+    Null,
+    tail_field,
+    literal_field,
+    list_to_data,
+)
+from mo_future import text
+from mo_json.types import jx_type_to_json_type, OBJECT
+from mo_logs import Log
 from mo_math import UNION
 from mo_times import Date
-from jx_sqlite.sqlite import SQL_AND, SQL_FROM, SQL_IS_NULL, SQL_LEFT_JOIN, SQL_LIMIT, SQL_NULL, SQL_ON, \
-    SQL_ORDERBY, SQL_SELECT, SQL_TRUE, SQL_UNION_ALL, SQL_WHERE, sql_iso, sql_list, ConcatSQL, SQL_STAR, SQL_EQ, \
-    SQL_ZERO
-from jx_sqlite.sqlite import quote_column, quote_value, sql_alias
 
 
 class SetOpTable(InsertTable):
     def _set_op(self, query):
-        # GET LIST OF SELECTED COLUMNS
-        vars_ = UNION([v.var for select in listwrap(query.select) for v in select.value.vars()])
-        schema = self.schema
-        known_vars = schema.keys()
+        index_to_column, ordered_sql, primary_doc_details = self.to_sql(query)
+        result = self.container.db.query(ordered_sql)
+        rows = result.data
+        num_rows = len(rows)
 
-        active_columns = {".": set()}
-        for v in vars_:
-            for c in schema.leaves(v):
-                nest = c.nested_path[0]
-                active_columns.setdefault(nest, set()).add(c)
-
-        # ANY VARS MENTIONED WITH NO COLUMNS?
-        for v in vars_:
-            if not any(startswith_field(cname, v) for cname in known_vars):
-                active_columns["."].add(Column(
-                    name=v,
-                    jx_type=IS_NULL,
-                    es_column=".",
-                    es_index=".",
-                    es_type='NULL',
-                    nested_path=["."],
-                    last_updated=Date.now()
-                ))
-
-        # EVERY COLUMN, AND THE INDEX IT TAKES UP
-        index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
-        index_to_uid = {}  # FROM NESTED PATH TO THE INDEX OF UID
-        sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
-        nest_to_alias = {
-            nested_path[0]: "__" + unichr(ord('a') + i) + "__"
-            for i, nested_path in enumerate(self.snowflake.query_paths)
-        }
-
-        sorts = []
-        if query.sort:
-            for select in query.sort:
-                col = SQLang[select.value].to_sql(schema)[0]
-                for t, sql in col.sql.items():
-                    json_type = sql_type_to_json_type[t]
-                    if json_type in STRUCT:
-                        continue
-                    column_number = len(sql_selects)
-                    # SQL HAS ABS TABLE REFERENCE
-                    column_alias = _make_column_name(column_number)
-                    sql_selects.append(sql_alias(sql, column_alias))
-                    if select.sort == -1:
-                        sorts.append(quote_column(column_alias) + SQL_IS_NULL)
-                        sorts.append(quote_column(column_alias) + " DESC")
-                    else:
-                        sorts.append(quote_column(column_alias) + SQL_IS_NULL)
-                        sorts.append(quote_column(column_alias))
-
-        primary_doc_details = Data()
-        # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
-        # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
-        nested_path = []
-        for step, sub_table in self.snowflake.tables:
-            nested_path.insert(0, step)
-            nested_doc_details = {
-                "sub_table": sub_table,
-                "children": [],
-                "index_to_column": {},
-                "nested_path": nested_path
-            }
-
-            # INSERT INTO TREE
-            if not primary_doc_details:
-                primary_doc_details = nested_doc_details
-            else:
-                def place(parent_doc_details):
-                    if startswith_field(step, parent_doc_details['nested_path'][0]):
-                        for c in parent_doc_details['children']:
-                            if place(c):
-                                return True
-                        parent_doc_details['children'].append(nested_doc_details)
-
-                place(primary_doc_details)
-
-            alias = nested_doc_details['alias'] = nest_to_alias[step]
-
-            # WE ALWAYS ADD THE UID
-            column_number = index_to_uid[step] = nested_doc_details['id_coord'] = len(sql_selects)
-            sql_select = quote_column(alias, UID)
-            sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
-            if step != ".":
-                # ID AND ORDER FOR CHILD TABLES
-                index_to_column[column_number] = ColumnMapping(
-                    sql=sql_select,
-                    type="number",
-                    nested_path=nested_path,
-                    column_alias=_make_column_name(column_number)
-                )
-                column_number = len(sql_selects)
-                sql_select = quote_column(alias, ORDER)
-                sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
-                index_to_column[column_number] = ColumnMapping(
-                    sql=sql_select,
-                    type="number",
-                    nested_path=nested_path,
-                    column_alias=_make_column_name(column_number)
-                )
-
-            # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
-            if step not in active_columns:
-                continue
-
-            # ADD SQL SELECT COLUMNS FOR EACH jx SELECT CLAUSE
-            si = 0
-            for select in listwrap(query.select):
-                try:
-                    column_number = len(sql_selects)
-                    select.pull = get_column(column_number)
-                    db_columns = SQLang[select.value].partial_eval().to_sql(schema)
-
-                    for column in db_columns:
-                        for t, unsorted_sql in column.sql.items():
-                            json_type = sql_type_to_json_type[t]
-                            if json_type in STRUCT:
-                                continue
-                            column_number = len(sql_selects)
-                            column_alias = _make_column_name(column_number)
-                            sql_selects.append(sql_alias(unsorted_sql, column_alias))
-                            if startswith_field(schema.path, step) and is_op(select.value, LeavesOp):
-                                # ONLY FLATTEN primary_nested_path AND PARENTS, NOT CHILDREN
-                                index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
-                                    push_name=literal_field(get_property_name(concat_field(select.name, column.name))),
-                                    push_child=".",
-                                    push_column_name=get_property_name(concat_field(select.name, column.name)),
-                                    push_column=si,
-                                    pull=get_column(column_number),
-                                    sql=unsorted_sql,
-                                    type=json_type,
-                                    column_alias=column_alias,
-                                    nested_path=nested_path
-                                )
-                                si += 1
-                            else:
-                                index_to_column[column_number] = nested_doc_details['index_to_column'][column_number] = ColumnMapping(
-                                    push_name=select.name,
-                                    push_child=column.name,
-                                    push_column_name=select.name,
-                                    push_column=si,
-                                    pull=get_column(column_number),
-                                    sql=unsorted_sql,
-                                    type=json_type,
-                                    column_alias=column_alias,
-                                    nested_path=nested_path
-                                )
-                finally:
-                    si += 1
-
-        where_clause = BooleanOp(query.where).partial_eval().to_sql(schema, boolean=True)[0].sql.b
-        unsorted_sql = self._make_sql_for_one_nest_in_set_op(
-            ".",
-            sql_selects,
-            where_clause,
-            active_columns,
-            index_to_column
-        )
-
-        for n, _ in self.snowflake.tables:
-            sorts.append(quote_column(COLUMN + text(index_to_uid[n])))
-
-        ordered_sql = ConcatSQL(
-            SQL_SELECT, SQL_STAR,
-            SQL_FROM, sql_iso(unsorted_sql),
-            SQL_ORDERBY, sql_list(sorts),
-            SQL_LIMIT, quote_value(query.limit)
-        )
-        result = self.db.query(ordered_sql)
-
-        def _accumulate_nested(rows, row, nested_doc_details, parent_doc_id, parent_id_coord):
+        def _accumulate_nested(
+            rownum,
+            nested_doc_details: DocumentDetails,
+            parent_id: int,
+            parent_id_coord: int,
+        ) -> Tuple[int, List[Data]]:
             """
-            :param rows: REVERSED STACK OF ROWS (WITH push() AND pop())
-            :param row: CURRENT ROW BEING EXTRACTED
+            :param rownum: index into rows for row
             :param nested_doc_details: {
                     "nested_path": wrap_nested_path(nested_path),
                     "index_to_column": map from column number to column details
                     "children": all possible direct decedents' nested_doc_details
                  }
-            :param parent_doc_id: the id of the parent doc (for detecting when to step out of loop)
-            :param parent_id_coord: the column number for the parent id (so we ca extract from each row)
-            :return: the nested property (usually an array)
+            :param parent_id_coord: the id of the parent doc (for detecting when to step out of loop)
+            :param id_index: the column number for this data (so we ca extract from each row)
+            :return: (rownum, value) pair
             """
-            previous_doc_id = None
-            doc = Null
             output = []
-            id_coord = nested_doc_details['id_coord']
+            id_coord = nested_doc_details.id_coord
+            curr_nested_path, _ = untype_field(nested_doc_details.nested_path[0])
 
+            index_to_column = tuple(
+                (i, c, c.push_list_name)
+                for i, c in nested_doc_details.index_to_column.items()
+            )
+            row = rows[rownum]
             while True:
-                doc_id = row[id_coord]
+                doc = Null
+                for i, c, rel_field in index_to_column:
+                    value = c.pull(row)
+                    if is_missing(value):
+                        continue
+                    doc = doc or Data()
+                    doc[rel_field] = value
 
-                if doc_id == None or (parent_id_coord is not None and row[parent_id_coord] != parent_doc_id):
-                    rows.append(row)  # UNDO PREVIOUS POP (RECORD IS NOT A NESTED RECORD OF parent_doc)
-                    return output
-
-                if doc_id != previous_doc_id:
-                    previous_doc_id = doc_id
-                    doc = Null
-                    curr_nested_path = nested_doc_details['nested_path'][0]
-                    index_to_column = nested_doc_details['index_to_column'].items()
-                    for i, c in index_to_column:
-                        value = row[i]
-                        if is_list(query.select) or is_op(query.select.value, LeavesOp):
-                            # ASSIGN INNER PROPERTIES
-                            relative_field = concat_field(c.push_name, c.push_child)
-                        else:  # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
-                            relative_field = c.push_child
-
-                        if relative_field == ".":
-                            if exists(value):
-                                doc = value
-                        elif exists(value):
-                            if doc is Null:
-                                doc = Data()
-                            doc[relative_field] = value
-
-                for child_details in nested_doc_details['children']:
+                for child_details in nested_doc_details.children:
                     # EACH NESTED TABLE MUST BE ASSEMBLED INTO A LIST OF OBJECTS
-                    child_id = row[child_details['id_coord']]
-                    if child_id is not None:
-                        nested_value = _accumulate_nested(rows, row, child_details, doc_id, id_coord)
-                        if nested_value != None:
-                            push_name = child_details['nested_path'][0]
-                            if is_list(query.select) or is_op(query.select.value, LeavesOp):
-                                # ASSIGN INNER PROPERTIES
-                                relative_field = relative_field(push_name, curr_nested_path)
-                            else:  # FACT IS EXPECTED TO BE A SINGLE VALUE, NOT AN OBJECT
-                                relative_field = "."
+                    child_id = row[child_details.id_coord]
+                    if child_id is None:
+                        continue
 
-                            if relative_field == ".":
-                                doc = unwraplist(nested_value)
-                            else:
-                                doc[relative_field] = unwraplist(nested_value)
+                    rownum, nested_value = _accumulate_nested(
+                        rownum, child_details, row[id_coord], id_coord
+                    )
+                    if not nested_value:
+                        continue
+                    doc = doc or Data()
+                    rel_field = relative_field(
+                        untype_field(child_details.nested_path[0])[0], curr_nested_path
+                    )
+                    doc[rel_field] = unwraplist(nested_value)
 
-                output.append(doc)
+                if doc or not parent_id:
+                    output.append(doc)
 
-                try:
-                    row = rows.pop()
-                except IndexError:
-                    return output
+                rownum += 1
+                if rownum >= num_rows:
+                    return rownum, output
+                row = rows[rownum]
+                if parent_id and parent_id != row[parent_id_coord]:
+                    rownum -= 1  # NEXT DOCUMENT, BACKUP A BIT
+                    return rownum, output
 
-        cols = tuple([i for i in index_to_column.values() if i.push_name != None])
-        rows = list(reversed(unwrap(result.data)))
+        cols = tuple(i for i in index_to_column.values() if i.push_list_name != None)
+
         if rows:
-            row = rows.pop()
-            data = _accumulate_nested(rows, row, primary_doc_details, None, None)
+            _, data = _accumulate_nested(0, primary_doc_details, 0, 0)
         else:
             data = result.data
 
+        data = list_to_data(data).get(untype_field(query.frum.nested_path[0])[0])
+
         if query.format == "cube":
-            # for f, full_name in self.snowflake.tables:
-            #     if f != '.' or (test_dots(cols) and is_list(query.select)):
-            #         num_rows = len(result.data)
-            #         num_cols = MAX([c.push_column for c in cols]) + 1 if len(cols) else 0
-            #         map_index_to_name = {c.push_column: c.push_column_name for c in cols}
-            #         temp_data = [[None] * num_rows for _ in range(num_cols)]
-            #         for rownum, d in enumerate(result.data):
-            #             for c in cols:
-            #                 if c.push_child == ".":
-            #                     temp_data[c.push_column][rownum] = c.pull(d)
-            #                 else:
-            #                     column = temp_data[c.push_column][rownum]
-            #                     if column is None:
-            #                         column = temp_data[c.push_column][rownum] = {}
-            #                     column[c.push_child] = c.pull(d)
-            #         output = Data(
-            #             meta={"format": "cube"},
-            #             data={n: temp_data[c] for c, n in map_index_to_name.items()},
-            #             edges=[{
-            #                 "name": "rownum",
-            #                 "domain": {
-            #                     "type": "rownum",
-            #                     "min": 0,
-            #                     "max": num_rows,
-            #                     "interval": 1
-            #                 }
-            #             }]
-            #         )
-            #         return output
-
-            if is_list(query.select) or is_op(query.select.value, LeavesOp):
-                num_rows = len(data)
-                temp_data = {c.push_column_name: [None] * num_rows for c in cols}
-                for rownum, d in enumerate(data):
-                    for c in cols:
-                        temp_data[c.push_column_name][rownum] = d[c.push_name]
-                return Data(
-                    meta={"format": "cube"},
-                    data=temp_data,
-                    edges=[{
-                        "name": "rownum",
-                        "domain": {
-                            "type": "rownum",
-                            "min": 0,
-                            "max": num_rows,
-                            "interval": 1
-                        }
-                    }]
-                )
+            num_rows = len(data)
+            header = tuple(jx.sort(set(c.push_column_name for c in cols)))
+            if header == (".",):
+                temp_data = {".": data}
             else:
-                num_rows = len(data)
-                map_index_to_name = {c.push_column: c.push_column_name for c in cols}
-                temp_data = [data]
-
-                return Data(
-                    meta={"format": "cube"},
-                    data={n: temp_data[c] for c, n in map_index_to_name.items()},
-                    edges=[{
-                        "name": "rownum",
-                        "domain": {
-                            "type": "rownum",
-                            "min": 0,
-                            "max": num_rows,
-                            "interval": 1
-                        }
-                    }]
-                )
-
+                locs = tuple(literal_field(h) for h in header)
+                temp_data = {h: [None] * num_rows for h in header}
+                for rownum, d in enumerate(data):
+                    for h, l in zip(header, locs):
+                        temp_data[h][rownum] = d[l]
+            return Data(
+                meta={"format": "cube"},
+                data=temp_data,
+                edges=[{
+                    "name": "rownum",
+                    "domain": {
+                        "type": "rownum",
+                        "min": 0,
+                        "max": num_rows,
+                        "interval": 1,
+                    },
+                }],
+            )
         elif query.format == "table":
-            # for f, _ in self.snowflake.tables:
-            #     if frum.endswith(f):
-            #         num_column = MAX([c.push_column for c in cols]) + 1
-            #         header = [None] * num_column
-            #         for c in cols:
-            #             header[c.push_column] = c.push_column_name
-            #
-            #         output_data = []
-            #         for d in result.data:
-            #             row = [None] * num_column
-            #             for c in cols:
-            #                 set_column(row, c.push_column, c.push_child, c.pull(d))
-            #             output_data.append(row)
-            #
-            #         return Data(
-            #             meta={"format": "table"},
-            #             header=header,
-            #             data=output_data
-            #         )
-            if is_list(query.select) or is_op(query.select.value, LeavesOp):
-                column_names = [None] * (max(c.push_column for c in cols) + 1)
-                for c in cols:
-                    column_names[c.push_column] = c.push_column_name
-
-                temp_data = []
-                for rownum, d in enumerate(data):
-                    row = [None] * len(column_names)
-                    for c in cols:
-                        row[c.push_column] = d[c.push_name]
-                    temp_data.append(row)
-
-                return Data(
-                    meta={"format": "table"},
-                    header=column_names,
-                    data=temp_data
-                )
+            header = tuple(jx.sort(set(c.push_column_name for c in cols)))
+            if header == (".",):
+                temp_data = data
             else:
-                column_names = listwrap(query.select).name
-                return Data(
-                    meta={"format": "table"},
-                    header=column_names,
-                    data=[[d] for d in data]
-                )
+                locs = tuple(literal_field(h) for h in header)
+                temp_data = [tuple(d[l] for l in locs) for d in data]
 
+            return Data(meta={"format": "table"}, header=header, data=temp_data,)
         else:
-            # for f, _ in self.snowflake.tables:
-            #     if frum.endswith(f) or (test_dots(cols) and is_list(query.select)):
-            #         data = []
-            #         for d in result.data:
-            #             row = Data()
-            #             for c in cols:
-            #                 if c.push_child == ".":
-            #                     row[c.push_name] = c.pull(d)
-            #                 elif c.num_push_columns:
-            #                     tuple_value = row[c.push_name]
-            #                     if not tuple_value:
-            #                         tuple_value = row[c.push_name] = [None] * c.num_push_columns
-            #                     tuple_value[c.push_child] = c.pull(d)
-            #                 else:
-            #                     row[c.push_name][c.push_child] = c.pull(d)
-            #
-            #             data.append(row)
-            #
-            #         return Data(
-            #             meta={"format": "list"},
-            #             data=data
-            #         )
+            return Data(meta={"format": "list"}, data=data)
 
-            if is_list(query.select) or is_op(query.select.value, LeavesOp):
-                temp_data = []
-                for rownum, d in enumerate(data):
-                    row = {}
-                    for c in cols:
-                        row[c.push_column_name] = d[c.push_name]
-                    temp_data.append(row)
-                return Data(
-                    meta={"format": "list"},
-                    data=temp_data
-                )
+    def to_sql(self, query):
+        # GET LIST OF SELECTED COLUMNS
+        select_vars = UNION([
+            v for name, value in query.select for v in value.vars()
+        ])
+        schema = query.frum.schema
+        known_vars = schema.keys()
+        active_paths = {".": set()}
+        for v in select_vars:
+            for _, c in schema.leaves(v):
+                active_paths.setdefault(c.nested_path[0], set()).add(c)
+
+        # ANY VARS MENTIONED WITH NO COLUMNS?
+        for v in select_vars:
+            if not any(startswith_field(cname, v) for cname in known_vars):
+                active_paths["."].add(Column(
+                    name=v,
+                    json_type=OBJECT,
+                    es_column=".",
+                    es_index=".",
+                    es_type="NULL",
+                    nested_path=["."],
+                    multi=1,
+                    cardinality=0,
+                    last_updated=Date.now(),
+                ))
+        # EVERY COLUMN, AND THE COLUMN INDEX IT OCCUPIES
+        index_to_column = {}  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
+        index_to_uid = {}  # FROM ARRAY PATH TO THE INDEX OF UID
+        sql_selects = []  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE)
+        nest_to_alias = {
+            nested_path: table_alias(i)
+            for i, nested_path in enumerate(self.snowflake.query_paths)
+        }
+        # ADD SQL SELECT COLUMNS
+        selects = query.select.partial_eval(SQLang).to_sql(schema).frum
+        primary_doc_details = DocumentDetails("")
+        # EVERY SELECT STATEMENT THAT WILL BE REQUIRED, NO MATTER THE DEPTH
+        # WE WILL CREATE THEM ACCORDING TO THE DEPTH REQUIRED
+        for step, sub_table in self.snowflake.tables:
+            nested_doc_details = DocumentDetails(sub_table)
+
+            if step == ".":
+                # ROOT OF TREE
+                primary_doc_details = nested_doc_details
             else:
-                return Data(
-                    meta={"format": "list"},
-                    data=data
+                # INSERT INTO TREE
+                def place(parent_doc_details: DocumentDetails):
+                    if step == parent_doc_details.nested_path[0]:
+                        return True
+                    if startswith_field(step, parent_doc_details.nested_path[0]):
+                        for c in parent_doc_details.children:
+                            if place(c):
+                                return True
+                        parent_doc_details.children.append(nested_doc_details)
+                        nested_doc_details.nested_path = (
+                            [step] + parent_doc_details.nested_path
+                        )
+
+                place(primary_doc_details)
+
+            nested_path = nested_doc_details.nested_path
+            alias = nested_doc_details.alias = nest_to_alias[step]
+
+            # WE ALWAYS ADD THE UID
+            column_number = index_to_uid[step] = nested_doc_details.id_coord = len(sql_selects)
+            sql_select = quote_column(alias, UID)
+            sql_selects.append(sql_alias(sql_select, _make_column_name(column_number)))
+            if step != ".":
+                # ID FOR CHILD TABLE (REPLACE UID)
+                index_to_column[column_number] = ColumnMapping(
+                    sql=sql_select,
+                    type="number",
+                    nested_path=nested_path,
+                    column_alias=_make_column_name(column_number),
                 )
+
+                # ORDER FOR CHILD TABLE
+                column_number = len(sql_selects)
+                sql_select = quote_column(alias, ORDER)
+                sql_selects.append(sql_alias(
+                    sql_select, _make_column_name(column_number)
+                ))
+                index_to_column[column_number] = ColumnMapping(
+                    sql=sql_select,
+                    type="number",
+                    nested_path=nested_path,
+                    column_alias=_make_column_name(column_number),
+                )
+
+            # WE DO NOT NEED DATA FROM TABLES WE REQUEST NOTHING FROM
+            if step not in active_paths:
+                continue
+
+            for i, (name, value) in enumerate(selects):
+                column_number = len(sql_selects)
+                if is_op(value, LeavesOp):
+                    Log.error("expecting SelectOp to subsume the LeavesOp")
+
+                sql = value.partial_eval(SQLang).to_sql(schema)
+                column_alias = _make_column_name(column_number)
+                sql_selects.append(sql_alias(sql, column_alias))
+                push_column_name, push_column_child = tail_field(name)
+                index_to_column[column_number] = nested_doc_details.index_to_column[column_number] = ColumnMapping(
+                    push_list_name=name,
+                    push_column_child=push_column_child,
+                    push_column_name=push_column_name,
+                    push_column_index=i,
+                    pull=get_column(column_number, json_type=value.type),
+                    sql=sql,
+                    type=jx_type_to_json_type(sql.type),
+                    column_alias=column_alias,
+                    nested_path=nested_path,
+                )
+        where_clause = ToBooleanOp(query.where).partial_eval(SQLang).to_sql(schema)
+        # ORDERING
+        sorts = []
+        if query.sort:
+            for sort in query.sort:
+                sql = sort.value.partial_eval(SQLang).to_sql(schema)
+                column_number = len(sql_selects)
+                # SQL HAS ABS TABLE REFERENCE
+                column_alias = _make_column_name(column_number)
+                sql_selects.append(sql_alias(sql, column_alias))
+                sorts.append(quote_column(column_alias) + SQL_IS_NULL)
+                sorts.append(quote_column(column_alias) + sort_to_sqlite_order[sort.sort])
+        for n, _ in self.snowflake.tables:
+            sorts.append(quote_column(COLUMN + text(index_to_uid[n])))
+        unsorted_sql = self._make_sql_for_one_nest_in_set_op(
+            ".",
+            sql_selects,
+            where_clause,
+            active_paths,
+            index_to_column,
+            index_to_uid,
+            query.limit,
+            schema,
+        )
+
+        ordered_sql = [
+            SQL_SELECT,
+            SQL_STAR,
+            SQL_FROM,
+            sql_iso(unsorted_sql),
+            SQL_ORDERBY,
+            sql_list(sorts),
+        ]
+        if query.limit is not NULL:
+            ordered_sql.extend([SQL_LIMIT, query.limit.to_sql(schema)])
+        ordered_sql = ConcatSQL(*ordered_sql)
+        return index_to_column, ordered_sql, primary_doc_details
 
     def _make_sql_for_one_nest_in_set_op(
         self,
@@ -444,7 +327,10 @@ class SetOpTable(InsertTable):
         selects,  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE
         where_clause,
         active_columns,
-        index_to_sql_select  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
+        index_to_sql_select,  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
+        nested_path_to_uid_index,  # COLUMNS USED FOR UID (REQUIRED)
+        limit,
+        schema,
     ):
         """
         FOR EACH NESTED LEVEL, WE MAKE A QUERY THAT PULLS THE VALUES/COLUMNS REQUIRED
@@ -462,73 +348,99 @@ class SetOpTable(InsertTable):
         select_clause = []
         children_sql = []
         done = []
-        if not where_clause:
-            where_clause = SQL_TRUE
+
         # STATEMENT FOR EACH NESTED PATH
-        for i, (nested_path, sub_table) in enumerate(self.snowflake.tables):
+        tables = self.snowflake.tables
+        for i, (nested_path, sub_table_name) in enumerate(tables):
             if any(startswith_field(nested_path, d) for d in done):
                 continue
 
-            alias = "__" + unichr(ord('a') + i) + "__"
+            alias = table_alias(i)
 
             if primary_nested_path == nested_path:
                 select_clause = []
                 # ADD SELECT CLAUSE HERE
                 for select_index, s in enumerate(selects):
-                    sql_select = index_to_sql_select.get(select_index)
-                    if not sql_select:
-                        select_clause.append(selects[select_index])
+                    column_mapping = index_to_sql_select.get(select_index)
+                    if not column_mapping:
+                        select_clause.append(s)
                         continue
 
-                    if startswith_field(sql_select.nested_path[0], nested_path):
-                        select_clause.append(sql_alias(sql_select.sql, sql_select.column_alias))
+                    if startswith_field(column_mapping.nested_path[0], nested_path):
+                        select_clause.append(sql_alias(
+                            column_mapping.sql, column_mapping.column_alias
+                        ))
                     else:
                         # DO NOT INCLUDE DEEP STUFF AT THIS LEVEL
-                        select_clause.append(sql_alias(SQL_NULL, sql_select.column_alias))
+                        select_clause.append(sql_alias(
+                            SQL_NULL, column_mapping.column_alias
+                        ))
 
                 if nested_path == ".":
-                    from_clause.append(SQL_FROM)
-                    from_clause.append(sql_alias(quote_column(self.snowflake.fact_name), alias))
+                    from_clause.append(ConcatSQL(
+                        SQL_FROM,
+                        sql_alias(quote_column(self.snowflake.fact_name), alias),
+                    ))
                 else:
-                    from_clause.append(SQL_LEFT_JOIN)
-                    from_clause.append(sql_alias(quote_column(self.snowflake.fact_name, sub_table.name), alias))
-                    from_clause.append(SQL_ON)
-                    from_clause.append(quote_column(alias, PARENT))
-                    from_clause.append(SQL_EQ)
-                    from_clause.append(quote_column(parent_alias, UID))
-                    where_clause = sql_iso(where_clause) + SQL_AND + quote_column(alias, ORDER) + " > 0"
+                    from_clause.append(ConcatSQL(
+                        SQL_LEFT_JOIN,
+                        sql_alias(quote_column(sub_table_name), alias),
+                        SQL_ON,
+                        quote_column(alias, PARENT),
+                        SQL_EQ,
+                        quote_column(parent_alias, UID),
+                    ))
+                    where_clause = ConcatSQL(
+                        sql_iso(where_clause),
+                        SQL_AND,
+                        quote_column(alias, ORDER),
+                        SQL_GT,
+                        SQL_ZERO,
+                    )
                 parent_alias = alias
 
             elif startswith_field(primary_nested_path, nested_path):
                 # PARENT TABLE
                 # NO NEED TO INCLUDE COLUMNS, BUT WILL INCLUDE ID AND ORDER
                 if nested_path == ".":
-                    from_clause.append(SQL_FROM)
-                    from_clause.append(sql_alias(quote_column(self.snowflake.fact_name), alias))
+                    from_clause.append(ConcatSQL(
+                        SQL_FROM,
+                        sql_alias(quote_column(self.snowflake.fact_name), alias),
+                    ))
                 else:
-                    parent_alias = alias = unichr(ord('a') + i - 1)
-                    from_clause.append(SQL_LEFT_JOIN)
-                    from_clause.append(sql_alias(quote_column(self.snowflake.fact_name, sub_table.name), alias))
-                    from_clause.append(SQL_ON)
-                    from_clause.append(quote_column(alias, PARENT))
-                    from_clause.append(SQL_EQ)
-                    from_clause.append(quote_column(parent_alias, UID))
-                    where_clause = sql_iso(where_clause) + SQL_AND + quote_column(parent_alias, ORDER) + " > 0"
+                    parent_alias = alias = table_alias(i)
+                    from_clause.append(ConcatSQL(
+                        SQL_LEFT_JOIN,
+                        sql_alias(quote_column(sub_table_name), alias),
+                        SQL_ON,
+                        quote_column(alias, PARENT),
+                        SQL_EQ,
+                        quote_column(parent_alias, UID),
+                    ))
+                    where_clause = ConcatSQL(
+                        sql_iso(where_clause),
+                        SQL_AND,
+                        quote_column(parent_alias, ORDER),
+                        SQL_GT,
+                        SQL_ZERO,
+                    )
                 parent_alias = alias
 
             elif startswith_field(nested_path, primary_nested_path):
                 # CHILD TABLE
                 # GET FIRST ROW FOR EACH NESTED TABLE
-                from_clause.append(SQL_LEFT_JOIN)
-                from_clause.append(sql_alias(quote_column(self.snowflake.fact_name, sub_table.name), alias))
-                from_clause.append(SQL_ON)
-                from_clause.append(quote_column(alias, PARENT))
-                from_clause.append(SQL_EQ)
-                from_clause.append(quote_column(parent_alias, UID))
-                from_clause.append(SQL_AND)
-                from_clause.append(quote_column(alias, ORDER))
-                from_clause.append(SQL_EQ)
-                from_clause.append(SQL_ZERO)
+                from_clause.append(ConcatSQL(
+                    SQL_LEFT_JOIN,
+                    sql_alias(quote_column(sub_table_name), alias),
+                    SQL_ON,
+                    quote_column(alias, PARENT),
+                    SQL_EQ,
+                    quote_column(parent_alias, UID),
+                    SQL_AND,
+                    quote_column(alias, ORDER),
+                    SQL_EQ,
+                    SQL_ZERO,
+                ))
 
                 # IMMEDIATE CHILDREN ONLY
                 done.append(nested_path)
@@ -538,7 +450,10 @@ class SetOpTable(InsertTable):
                     selects,  # EVERY SELECT CLAUSE (NOT TO BE USED ON ALL TABLES, OF COURSE
                     where_clause,
                     active_columns,
-                    index_to_sql_select  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
+                    index_to_sql_select,  # MAP FROM INDEX TO COLUMN (OR SELECT CLAUSE)
+                    None,
+                    None,
+                    None
                 ))
             else:
                 # SIBLING PATHS ARE IGNORED
@@ -546,11 +461,13 @@ class SetOpTable(InsertTable):
 
         sql = SQL_UNION_ALL.join(
             [ConcatSQL(
-                SQL_SELECT, sql_list(select_clause),
+                SQL_SELECT,
+                sql_list(select_clause),
                 ConcatSQL(*from_clause),
-                SQL_WHERE, where_clause
-            )],
-            *children_sql
+                SQL_WHERE,
+                where_clause,
+            )]
+            + children_sql
         )
 
         return sql
@@ -561,3 +478,25 @@ def test_dots(cols):
         if "\\" in c.push_column_name:
             return True
     return False
+
+
+class DocumentDetails(object):
+    __slots__ = [
+        "sub_table",
+        "alias",
+        "id_coord",
+        "nested_path",
+        "index_to_column",
+        "children",
+    ]
+
+    def __init__(self, sub_table: str):
+        self.sub_table: str = sub_table
+        self.alias: str = ""
+        self.id_coord: int = -1
+        self.nested_path: List[str] = ["."]
+        self.index_to_column: Dict[int, ColumnMapping] = {}
+        self.children: List[DocumentDetails] = []
+
+
+export("jx_sqlite.models.container", SetOpTable)

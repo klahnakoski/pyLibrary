@@ -8,6 +8,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import logging
+import weakref
 
 from mo_future import is_text, text
 from mo_kwargs import override
@@ -38,24 +39,27 @@ class StructuredLogger_usingLogger(StructuredLogger):
     def write(self, template, params):
         try:
             log_line = expand_template(template, params)
-            level = max(self.min_level, MAP[params.context])
+            level = max(self.min_level, MAP[params.severity])
             self.logger.log(level, log_line)
             self.count += 1
         except Exception as cause:
             cause = exceptions.Except.wrap(cause)
             import sys
-            sys.stderr.write("can not write to logger: "+text(cause))
+
+            sys.stderr.write("can not write to logger: " + text(cause))
 
     def stop(self):
         try:
-            self.logger.shutdown()
-        except Exception:
+            handlers = [weakref.ref(h, logging._removeHandlerRef) for h in self.logger.handlers]
+            logging.shutdown(handlers)
+        except Exception as cause:
             import sys
-            sys.stderr.write("Failure in the logger shutdown")
+
+            sys.stderr.write("Failure in the logger shutdown "+str(cause))
 
 
 MAP = {
     exceptions.ERROR: logging.ERROR,
     exceptions.WARNING: logging.WARNING,
-    exceptions.NOTE: logging.INFO
+    exceptions.NOTE: logging.INFO,
 }

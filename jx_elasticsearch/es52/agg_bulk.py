@@ -31,13 +31,12 @@ from pyLibrary.aws.s3 import Connection
 DEBUG = False
 MAX_CHUNK_SIZE = 5000
 MAX_PARTITIONS = 200
-URL_PREFIX = URL("https://active-data-query-results.s3-us-west-2.amazonaws.com")
-S3_CONFIG = Null
+BULK_CONFIG = Null
 
 
 def is_bulk_agg(esq, query):
     # ONLY ACCEPTING ONE DIMENSION AT THIS TIME
-    if not S3_CONFIG:
+    if not BULK_CONFIG:
         return False
     if query.destination not in {"s3", "url"}:
         return False
@@ -126,8 +125,8 @@ def es_bulkaggsop(esq, frum, query):
 
     output = to_data(
         {
-            "url": URL_PREFIX / (guid + ".json"),
-            "status": URL_PREFIX / (guid + ".status.json"),
+            "url": URL(BULK_CONFIG.url) / (guid + ".json"),
+            "status": URL(BULK_CONFIG.url) / (guid + ".status.json"),
             "meta": {
                 "format": query.format,
                 "timing": {"cardinality_check": cardinality_check.duration},
@@ -182,11 +181,14 @@ def extractor(
                         selects, query_path, schema, query
                     )
                     # REACH INTO THE QUERY TO SET THE partitions
-                    terms = es_query.aggs._filter.aggs._match.terms
+                    if not es_query.aggs._filter:
+                        # SOMETIMES _filter IS NOT USED
+                        terms = es_query.aggs._match.terms
+                    else:
+                        terms = es_query.aggs._filter.aggs._match.terms
                     terms.include.partition = i
                     terms.include.num_partitions = num_partitions
-
-                    result = esq.es.search(deepcopy(es_query), query.limit)
+                    result = esq.es.search(deepcopy(es_query))
                     aggs = unwrap(result.aggregations)
 
                     formatter.add(aggs, acc, query, decoders, selects)
@@ -244,18 +246,18 @@ def extractor(
 def upload(filename, temp_file):
     with Timer("upload file to S3 {{file}}", param={"file": filename}):
         try:
-            connection = Connection(S3_CONFIG).connection
-            bucket = connection.get_bucket(S3_CONFIG.bucket, validate=False)
+            connection = Connection(BULK_CONFIG.s3).connection
+            bucket = connection.get_bucket(BULK_CONFIG.s3.bucket, validate=False)
             storage = bucket.new_key(filename)
             storage.set_contents_from_filename(
                 temp_file.abspath, headers={"Content-Type": mimetype.JSON}
             )
-            if S3_CONFIG.public:
+            if BULK_CONFIG.s3.public:
                 storage.set_acl("public-read")
 
         except Exception as e:
             Log.error(
-                "Problem connecting to {{bucket}}", bucket=S3_CONFIG.bucket, cause=e
+                "Problem connecting to {{bucket}}", bucket=BULK_CONFIG.s3.bucket, cause=e
             )
 
 
@@ -264,19 +266,19 @@ def write_status(guid, status):
         filename = guid + ".status.json"
         with Timer("upload status to S3 {{file}}", param={"file": filename}, verbose=DEBUG):
             try:
-                connection = Connection(S3_CONFIG).connection
-                bucket = connection.get_bucket(S3_CONFIG.bucket, validate=False)
+                connection = Connection(BULK_CONFIG.s3).connection
+                bucket = connection.get_bucket(BULK_CONFIG.s3.bucket, validate=False)
                 storage = bucket.new_key(filename)
                 storage.set_contents_from_string(
                     value2json(status), headers={"Content-Type": mimetype.JSON}
                 )
-                if S3_CONFIG.public:
+                if BULK_CONFIG.s3.public:
                     storage.set_acl("public-read")
 
             except Exception as e:
                 Log.error(
                     "Problem connecting to {{bucket}}",
-                    bucket=S3_CONFIG.bucket,
+                    bucket=BULK_CONFIG.s3.bucket,
                     cause=e
                 )
     except Exception as e:
@@ -297,14 +299,15 @@ class ListFormatter(object):
         self.result = format_list_from_groupby(aggs, acc, query, decoders, selects)
 
     def bytes(self):
-        yield self.header
-        self.header = b",\n"
-
-        comma = b""
+        separator, self.header = self.header, b",\n"
         for r in self.result.data:
-            yield comma
-            comma = b",\n"
-            yield value2json(r).encode('utf8')
+            yield separator
+            separator = b",\n"
+            content = value2json(r).encode('utf8')
+            try:
+                yield content
+            except Exception as e:
+                raise e
             self.count += 1
             if self.count >= self.abs_limit:
                 yield DONE

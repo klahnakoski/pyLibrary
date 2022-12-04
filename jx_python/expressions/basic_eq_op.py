@@ -10,15 +10,8 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import BasicEqOp as BasicEqOp_
-from jx_python.expressions._utils import Python
 
 
 class BasicEqOp(BasicEqOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "("
-            + Python[self.rhs].to_python()
-            + ") == ("
-            + Python[self.lhs].to_python()
-            + ")"
-        )
+    def to_python(self):
+        return "(" + self.rhs.to_python() + ") == (" + self.lhs.to_python() + ")"

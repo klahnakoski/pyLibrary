@@ -26,8 +26,8 @@ from jx_base.language import is_op
 class SplitOp(Expression):
     has_simple_form = True
 
-    def __init__(self, term, **kwargs):
-        Expression.__init__(self, term)
+    def __init__(self, *term, **kwargs):
+        Expression.__init__(self, *term)
         self.value, self.find = term
 
     def __data__(self):
@@ -51,25 +51,19 @@ class SplitOp(Expression):
             default=self.default.map(map_),
         )
 
-    def missing(self):
+    def missing(self, lang):
         v = self.value.to_es_script(not_null=True)
         find = self.find.to_es_script(not_null=True)
         index = v + ".indexOf(" + find + ", " + self.start.to_es_script() + ")"
 
-        return self.lang[
-            AndOp(
-                [
-                    self.default.missing(),
-                    OrOp(
-                        [
-                            self.value.missing(),
-                            self.find.missing(),
-                            EqOp([ScriptOp(index), Literal(-1)]),
-                        ]
-                    ),
-                ]
-            )
-        ]
+        return AndOp(
+            self.default.missing(lang),
+            OrOp(
+                self.value.missing(lang),
+                self.find.missing(lang),
+                EqOp(ScriptOp(index), Literal(-1)),
+            ),
+        )
 
     def exists(self):
         return TRUE

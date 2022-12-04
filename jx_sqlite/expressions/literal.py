@@ -9,26 +9,13 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_sqlite.sqlite import quote_value
-
 from jx_base.expressions import Literal as Literal_
-from jx_sqlite.expressions._utils import check
-from mo_dots import wrap
-from mo_future import text
-from mo_math import is_number
+from jx_sqlite.expressions._utils import check, SqlScript
+from jx_sqlite.sqlite import quote_value
 
 
 class Literal(Literal_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         value = self.value
-        if value == None:
-            return wrap([{"name": "."}])
-        elif isinstance(value, text):
-            return wrap([{"name": ".", "sql": {"s": quote_value(value)}}])
-        elif is_number(value):
-            return wrap([{"name": ".", "sql": {"n": quote_value(value)}}])
-        elif value in [True, False]:
-            return wrap([{"name": ".", "sql": {"b": quote_value(value)}}])
-        else:
-            return wrap([{"name": ".", "sql": {"j": quote_value(self.json)}}])
+        return SqlScript(data_type=self.type, expr=quote_value(value), frum=self, schema=schema)

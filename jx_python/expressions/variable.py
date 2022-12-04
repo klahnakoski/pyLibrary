@@ -9,13 +9,14 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import Variable as Variable_
 from mo_dots import split_field
 from mo_logs import Log, strings
 
+from jx_base.expressions import Variable as Variable_
+
 
 class Variable(Variable_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         path = split_field(self.var)
         agg = "row"
         if not path:
@@ -35,12 +36,9 @@ class Variable(Variable_):
             else:
                 Log.error("do not know what {{var}} of `rows` is", var=path[1])
 
+        agg = f"({agg} or EMPTY_DICT)"
         for p in path[:-1]:
-            if not_null:
-                agg = agg + ".get(" + strings.quote(p) + ")"
-            else:
-                agg = agg + ".get(" + strings.quote(p) + ", EMPTY_DICT)"
+            agg = agg + ".get(" + strings.quote(p) + ", EMPTY_DICT)"
         output = agg + ".get(" + strings.quote(path[-1]) + ")"
-        if many:
-            output = "listwrap(" + output + ")"
+        # output = "listwrap(" + output + ")"
         return output

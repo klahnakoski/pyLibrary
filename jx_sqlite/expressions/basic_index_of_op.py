@@ -9,52 +9,51 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import BasicIndexOfOp as BasicIndexOfOp_
-from jx_sqlite.expressions._utils import check
+from jx_base.expressions import BasicIndexOfOp as BasicIndexOfOp_, FALSE
+from jx_sqlite.expressions._utils import check, SqlScript
 from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.sqlite import sql_call
-from mo_dots import wrap
-from jx_sqlite.sqlite import SQL_CASE, SQL_ELSE, SQL_END, SQL_THEN, SQL_WHEN, sql_iso, SQL_ONE
+from mo_json.types import T_NUMBER
+from mo_sql import (
+    SQL_CASE,
+    SQL_ELSE,
+    SQL_END,
+    SQL_THEN,
+    SQL_WHEN,
+    SQL_ONE,
+    ConcatSQL,
+    SQL_NEG,
+)
 
 
 class BasicIndexOfOp(BasicIndexOfOp_):
+    _data_type = T_NUMBER
+
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = self.value.to_sql(schema)[0].sql.s
-        find = self.find.to_sql(schema)[0].sql.s
+    def to_sql(self, schema):
+        value = self.value.to_sql(schema)
+        find = self.find.to_sql(schema)
         start = self.start
 
         if isinstance(start, Literal) and start.value == 0:
-            return wrap(
-                [
-                    {
-                        "name": ".",
-                        "sql": {"n": sql_call("INSTR", value, find) + "-1"},
-                    }
-                ]
-            )
+            expr = ConcatSQL(sql_call("INSTR", value, find), SQL_NEG, SQL_ONE)
+
+            return SqlScript(expr=expr, miss=FALSE, frum=self)
         else:
-            start_index = start.to_sql(schema)[0].sql.n
-            found = sql_call("INSTR", sql_call("SUBSTR", value, start_index), SQL_ONE, find)
-            return wrap(
-                [
-                    {
-                        "name": ".",
-                        "sql": {
-                            "n": (
-                                SQL_CASE
-                                + SQL_WHEN
-                                + found
-                                + SQL_THEN
-                                + found
-                                + "+"
-                                + start_index
-                                + "-1"
-                                + SQL_ELSE
-                                + "-1"
-                                + SQL_END
-                            )
-                        },
-                    }
-                ]
+            start_index = start.to_sql(schema)
+            found = sql_call(
+                "INSTR", sql_call("SUBSTR", value, start_index), SQL_ONE, find
             )
+            return SqlScript(ConcatSQL(
+                SQL_CASE,
+                SQL_WHEN,
+                found,
+                SQL_THEN,
+                found,
+                "+",
+                start_index,
+                "-1",
+                SQL_ELSE,
+                "-1",
+                SQL_END,
+            ))

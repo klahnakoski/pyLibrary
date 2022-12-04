@@ -10,36 +10,32 @@
 
 from __future__ import unicode_literals
 
-from unittest import skipIf
-
-from mo_future import PY2, text
+from mo_future import text
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
-from mo_logs import Log
+from mo_logs import logger
 
 
 class TestExcept(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
-        Log.start({"trace": False})
+        logger.start({"trace": False})
 
-    @skipIf(PY2, "test python 3 only")
     def test_cause_captured(self):
         try:
             try:
                 exec(
-                    (
-                        "try:\n"
-                        "    print(1/0)\n"
-                        "except Exception as e:\n"
-                        "    raise Exception(\"test\") from e"
-                    ),
+                    "try:\n"
+                    "    print(1/0)\n"
+                    "except Exception as e:\n"
+                    '    raise Exception("test") from e',
                     globals(),
-                    locals()
+                    locals(),
                 )
             except Exception as f:
-                Log.error("expected", cause=f)
+                logger.error("expected", cause=f)
         except Exception as g:
             self.assertIn("division by zero", g)
-            self.assertEqual(g.cause.cause.message, text('ZeroDivisionError: division by zero'))
-
+            self.assertEqual(
+                g.cause.cause.message, text("ZeroDivisionError: division by zero")
+            )

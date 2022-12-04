@@ -9,7 +9,6 @@
 from __future__ import division
 from __future__ import unicode_literals
 
-import mo_math
 from mo_dots import Data, coalesce
 from mo_future import text
 from mo_kwargs import override
@@ -57,8 +56,8 @@ class Schedule(object):
         :return: return signal for next
         """
 
-        interval = mo_math.floor((Date.now() - self.starting) / self.duration)
-        next_time = self.starting + (interval * self.duration)
+        interval = (Date.now() - self.starting).floor(self.duration)
+        next_time = self.starting + interval
         return next_time
 
     def run(self):
@@ -83,7 +82,7 @@ class Schedule(object):
 
     def done(self):
         self.last_finished = Date.now()
-        self.terminator.remove_go(self.killer)
+        self.terminator.remove_then(self.killer)
         self.terminator = None
         self.current = None
         self.next_run = self._next_run_time()
@@ -122,4 +121,4 @@ def monitor(please_stop=True):
 
 
 Log.alert("Job scheduler started...")
-Thread.run("Monitor scheduled tasks", monitor_thread)
+Thread.run("Monitor scheduled tasks", monitor)

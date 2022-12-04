@@ -13,35 +13,60 @@ from __future__ import absolute_import, division, unicode_literals
 
 import logging
 
+from mo_dots import from_data, dict_to_data
+from mo_imports import delay_import
 from mo_kwargs import override
-from mo_dots import unwrap, Null
-from mo_logs import Log
+
+from mo_logs import logger, STACKTRACE
+from mo_logs.exceptions import FATAL, ERROR, WARNING, ALARM, UNEXPECTED, INFO, NOTE
 from mo_logs.log_usingNothing import StructuredLogger
 from mo_logs.strings import expand_template
+
+Log = delay_import("mo_logs.Log")
 
 
 # WRAP PYTHON CLASSIC logger OBJECTS
 class StructuredLogger_usingHandler(StructuredLogger):
-    @override("setings")
+    @override("settings")
     def __init__(self, settings):
-        if not _Thread:
-            _late_import()
-
-        self.logger = logging.Logger("unique name", level=logging.INFO)
-        self.logger.addHandler(make_log_from_settings(settings))
+        try:
+            Log.trace = True  # ENSURE TRACING IS ON SO DETAILS ARE CAPTURED
+        except Exception as cause:
+            Log.trace = True
+        self.count = 0
+        self.handler = make_handler_from_settings(settings)
 
     def write(self, template, params):
-        expanded = expand_template(template, params)
-        self.logger.info(expanded)
+        record = logging.LogRecord(
+            name="mo-logs",
+            level=_severity_to_level[params.severity],
+            pathname=params.location.file,
+            lineno=params.location.line,
+            msg=expand_template(template.replace(STACKTRACE, ""), params),
+            args=params.params,
+            exc_info=None,
+            func=params.location.method,
+            sinfo=params.trace,
+            thread=params.thread.id,
+            threadName=params.thread.name,
+            process=params.machine.pid,
+        )
+        record.exc_text=expand_template(template, params)
+        for k, v in params.params.leaves():
+            setattr(record, k, v)
+        self.handler.handle(record)
+        self.count += 1
 
     def stop(self):
-        self.logger.shutdown()
+        self.handler.flush()
+        self.handler.close()
 
 
-def make_log_from_settings(settings):
+def make_handler_from_settings(settings):
     assert settings["class"]
+    settings.self = None
 
-    settings = settings.copy()
+    settings = dict_to_data({**settings})
 
     # IMPORT MODULE FOR HANDLER
     path = settings["class"].split(".")
@@ -52,7 +77,7 @@ def make_log_from_settings(settings):
         temp = __import__(path, globals(), locals(), [class_name], 0)
         constructor = object.__getattribute__(temp, class_name)
     except Exception as e:
-        Log.error("Can not find class {{class}}",  {"class": path}, cause=e)
+        logger.error("Can not find class {{class}}", {"class": path}, cause=e)
 
     # IF WE NEED A FILE, MAKE SURE DIRECTORY EXISTS
     if settings.filename != None:
@@ -62,30 +87,24 @@ def make_log_from_settings(settings):
         if not f.parent.exists:
             f.parent.create()
 
-    settings['class'] = None
-    settings['cls'] = None
-    settings['log_type'] = None
-    settings['settings'] = None
-    params = unwrap(settings)
+    settings["class"] = None
+    settings["cls"] = None
+    settings["log_type"] = None
+    settings["settings"] = None
+    params = from_data(settings)
     try:
         log_instance = constructor(**params)
         return log_instance
     except Exception as cause:
-        Log.error("problem with making handler", cause=cause)
+        logger.error("problem with making handler", cause=cause)
 
 
-_THREAD_STOP, _Queue, _Thread = [Null] * 3  # IMPORTS
-
-
-def _late_import():
-    global _THREAD_STOP
-    global _Queue
-    global _Thread
-
-    from mo_threads import THREAD_STOP as _THREAD_STOP
-    from mo_threads import Queue as _Queue
-    from mo_threads import Thread as _Thread
-
-    _ = _THREAD_STOP
-    _ = _Queue
-    _ = _Thread
+_severity_to_level = {
+    FATAL: logging.CRITICAL,
+    ERROR: logging.ERROR,
+    WARNING: logging.WARNING,
+    ALARM: logging.INFO,
+    UNEXPECTED: logging.CRITICAL,
+    INFO: logging.INFO,
+    NOTE: logging.INFO,
+}

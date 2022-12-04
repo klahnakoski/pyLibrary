@@ -12,13 +12,13 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.literal import Literal
 from mo_imports import export, expect
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
 TRUE = expect("TRUE")
 
 
 class FalseOp(Literal):
-    data_type = BOOLEAN
+    _data_type = T_BOOLEAN
 
     def __new__(cls, *args, **kwargs):
         return object.__new__(cls, *args, **kwargs)
@@ -45,11 +45,15 @@ class FalseOp(Literal):
     def map(self, map_):
         return self
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
-    def invert(self):
+    def invert(self, lang):
         return TRUE
+
+    @property
+    def type(self):
+        return T_BOOLEAN
 
     def __call__(self, row=None, rownum=None, rows=None):
         return False

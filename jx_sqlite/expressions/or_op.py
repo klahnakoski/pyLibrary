@@ -10,31 +10,28 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import OrOp as OrOp_
-from jx_sqlite.expressions import _utils
+from jx_base.expressions.false_op import FALSE
 from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import wrap
 from jx_sqlite.sqlite import SQL_OR, sql_iso, JoinSQL
+from mo_imports import export, expect
+from mo_json import T_BOOLEAN
+
+SqlScript = expect("SqlScript")
 
 
 class OrOp(OrOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        return wrap(
-            [
-                {
-                    "name": ".",
-                    "sql": {
-                        "b": JoinSQL(
-                            SQL_OR,
-                            [
-                                sql_iso(SQLang[t].to_sql(schema, boolean=True)[0].sql.b)
-                                for t in self.terms
-                            ],
-                        )
-                    },
-                }
-            ]
+    def to_sql(self, schema):
+        return SqlScript(
+            data_type=T_BOOLEAN,
+            miss=FALSE,
+            expr=JoinSQL(
+                SQL_OR,
+                [sql_iso(t.partial_eval(SQLang).to_sql(schema)) for t in self.terms],
+            ),
+            frum=self,
+            schema=schema
         )
 
 
-_utils.OrOp = OrOp
+export("jx_sqlite.expressions._utils", OrOp)

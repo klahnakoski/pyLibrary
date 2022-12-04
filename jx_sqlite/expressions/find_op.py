@@ -9,53 +9,54 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FindOp as FindOp_, ZERO, simplified
+from jx_base.expressions import (
+    FindOp as FindOp_,
+    BasicEqOp,
+    ZERO,
+)
+from jx_base.expressions._utils import simplified
 from jx_sqlite.expressions._utils import SQLang, check, with_var
 from jx_sqlite.expressions.and_op import AndOp
-from jx_sqlite.expressions.ne_op import NeOp
 from jx_sqlite.expressions.not_left_op import NotLeftOp
-from jx_sqlite.expressions.not_right_op import NotRightOp
 from jx_sqlite.expressions.or_op import OrOp
 from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
-from jx_sqlite.sqlite import sql_call, quote_column
-from mo_dots import coalesce, wrap
+from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import (
-    SQL,
     SQL_CASE,
     SQL_ELSE,
     SQL_END,
-    SQL_NULL,
     SQL_THEN,
     SQL_WHEN,
     SQL_ZERO,
     ConcatSQL,
     SQL_ONE,
     SQL_PLUS,
+    SQL_SUB,
 )
+from jx_sqlite.sqlite import sql_call, quote_column
+from mo_json import T_INTEGER
 
 
 class FindOp(FindOp_):
     @simplified
-    def partial_eval(self):
+    def partial_eval(self, lang):
         return FindOp(
-            [SQLang[self.value].partial_eval(), SQLang[self.find].partial_eval()],
+            [self.value.partial_eval(SQLang), self.find.partial_eval(SQLang)],
             **{
-                "start": SQLang[self.start].partial_eval(),
-                "default": SQLang[self.default].partial_eval(),
+                "start": self.start.partial_eval(SQLang),
+                "default": self.default.partial_eval(SQLang),
             }
         )
 
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        value = SQLang[self.value].partial_eval().to_sql(schema)[0].sql.s
-        find = SQLang[self.find].partial_eval().to_sql(schema)[0].sql.s
-        start = SQLang[self.start].partial_eval().to_sql(schema)[0].sql.n
-        default = coalesce(
-            SQLang[self.default].partial_eval().to_sql(schema)[0].sql.n, SQL_NULL
-        )
+    def to_sql(self, schema):
+        value = self.value.partial_eval(SQLang).to_sql(schema)
+        find = self.find.partial_eval(SQLang).to_sql(schema)
+        start = self.start.partial_eval(SQLang).to_sql(schema)
+        default = self.default.partial_eval(SQLang).to_sql(schema)
 
         if start.sql != SQL_ZERO.sql:
-            value = NotRightOp([self.value, self.start]).to_sql(schema)[0].sql.s
+            value = NotLeftOp([self.value, self.start]).to_sql(schema)
 
         index = sql_call("INSTR", value, find)
         i = quote_column("i")
@@ -68,7 +69,7 @@ class FindOp(FindOp_):
                 i,
                 SQL_THEN,
                 i,
-                SQL(" - "),
+                SQL_SUB,
                 SQL_ONE,
                 SQL_PLUS,
                 start,
@@ -77,18 +78,16 @@ class FindOp(FindOp_):
                 SQL_END,
             ),
         )
-        return wrap([{"name": ".", "sql": {"n": sql}}])
+        return SqlScript(data_type=T_INTEGER, expr=sql, frum=self, schema=schema)
 
-    def exists(self):
+    def missing(self, lang):
+        not_found = BasicEqOp([
+            SqlInstrOp([NotLeftOp([self.value, self.start]), self.find]),
+            ZERO,
+        ])
 
-        found = NeOp(
-            [SqlInstrOp([NotLeftOp([self.value, self.start]), self.find]), ZERO]
-        )
-
-        output = self.lang[OrOp(
-            [
-                self.default.exists(),
-                AndOp([self.value.exists(), self.find.exists(), found]),
-            ]
-        )].partial_eval()
+        output = AndOp([
+            self.default.missing(lang),
+            OrOp([self.value.missing(lang), self.find.missing(lang), not_found]),
+        ]).partial_eval(self.lang)
         return output

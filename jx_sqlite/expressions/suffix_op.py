@@ -9,26 +9,24 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import SuffixOp as SuffixOp_
-from jx_sqlite.expressions._utils import check
+from jx_base.expressions import SuffixOp as SuffixOp_, FALSE, TRUE
+from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.eq_op import EqOp
 from jx_sqlite.expressions.length_op import LengthOp
 from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.expressions.right_op import RightOp
-from mo_dots import wrap
-from jx_sqlite.sqlite import SQL_FALSE, SQL_TRUE
 
 
 class SuffixOp(SuffixOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         if not self.expr:
-            return wrap([{"name": ".", "sql": {"b": SQL_FALSE}}])
+            return FALSE.to_sql(schema)
         elif isinstance(self.suffix, Literal) and not self.suffix.value:
-            return wrap([{"name": ".", "sql": {"b": SQL_TRUE}}])
+            return TRUE.to_sql(schema)
         else:
             return (
                 EqOp([RightOp([self.expr, LengthOp(self.suffix)]), self.suffix])
-                .partial_eval()
+                .partial_eval(SQLang)
                 .to_sql(schema)
             )

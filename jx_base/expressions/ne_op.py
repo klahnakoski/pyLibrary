@@ -10,7 +10,6 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.basic_eq_op import BasicEqOp
 from jx_base.expressions.expression import Expression
@@ -21,23 +20,16 @@ from jx_base.expressions.not_op import NotOp
 from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.variable import Variable, IDENTITY
 from jx_base.language import is_op
-from mo_dots import is_data, is_sequence
-from mo_json import BOOLEAN
-from mo_logs import Log
+from mo_json.types import T_BOOLEAN
 
 
 class NeOp(Expression):
     has_simple_form = True
-    data_type = BOOLEAN
+    _data_type = T_BOOLEAN
 
-    def __init__(self, terms):
-        Expression.__init__(self, terms)
-        if is_sequence(terms):
-            self.lhs, self.rhs = terms
-        elif is_data(terms):
-            self.rhs, self.lhs = terms.items()[0]
-        else:
-            Log.error("logic error")
+    def __init__(self, lhs, rhs):
+        Expression.__init__(self, lhs, rhs)
+        self.lhs, self.rhs = lhs, rhs
 
     def __data__(self):
         if is_op(self.lhs, Variable) and is_literal(self.rhs):
@@ -45,41 +37,45 @@ class NeOp(Expression):
         else:
             return {"ne": [self.lhs.__data__(), self.rhs.__data__()]}
 
+    def __call__(self, row, rownum=None, rows=None):
+        v1 = self.lhs(row, rownum, rows)
+        v2 = self.rhs(row, rownum, rows)
+        if v1 == None or v2 == None:
+            return False
+        return v1 != v2
+
     def vars(self):
         return self.lhs.vars() | self.rhs.vars()
 
     def map(self, map_):
-        return self.lang[NeOp([self.lhs.map(map_), self.rhs.map(map_)])]
+        return NeOp(self.lhs.map(map_), self.rhs.map(map_))
 
-    def missing(self):
-        return (
-            FALSE
-        )  # USING THE decisive EQUALITY https://github.com/mozilla/jx-sqlite/blob/master/docs/Logical%20Equality.md#definitions
+    def missing(self, lang):
+        return FALSE  # USING THE decisive EQUALITY https://github.com/mozilla/jx-sqlite/blob/master/docs/Logical%20Equality.md#definitions
 
-    def invert(self):
-        return self.lang[OrOp([
-            self.lhs.missing(),
-            self.rhs.missing(),
-            BasicEqOp([self.lhs, self.rhs])
-        ])].partial_eval()
+    def invert(self, lang):
+        return OrOp(
+            self.lhs.missing(lang),
+            self.rhs.missing(lang),
+            BasicEqOp(self.lhs, self.rhs),
+        ).partial_eval(lang)
 
-    @simplified
-    def partial_eval(self):
-        lhs = self.lang[self.lhs].partial_eval()
-        rhs = self.lang[self.rhs].partial_eval()
+    def partial_eval(self, lang):
+        lhs = self.lhs.partial_eval(lang)
+        rhs = self.rhs.partial_eval(lang)
 
         if is_op(lhs, NestedOp):
-            return self.lang[NestedOp(
-                path=lhs.frum.partial_eval(),
+            return NestedOp(
+                path=lhs.nested_path.partial_eval(lang),
                 select=IDENTITY,
-                where=AndOp([lhs.where, NeOp([lhs.select, rhs])]).partial_eval(),
-                sort=lhs.sort.partial_eval(),
-                limit=lhs.limit.partial_eval()
-            )].partial_eval()
+                where=AndOp(lhs.where, NeOp(lhs.select, rhs)).partial_eval(lang),
+                sort=lhs.sort.partial_eval(lang),
+                limit=lhs.limit.partial_eval(lang),
+            ).partial_eval(lang)
 
-        output = self.lang[AndOp([
+        output = AndOp(
             lhs.exists(),
             rhs.exists(),
-            NotOp(BasicEqOp([lhs, rhs]))
-        ])].partial_eval()
+            NotOp(BasicEqOp(lhs, rhs)),
+        ).partial_eval(lang)
         return output

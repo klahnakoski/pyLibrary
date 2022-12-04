@@ -5,8 +5,9 @@ from setuptools import setup
 setup(
     author='Kyle Lahnakoski',
     author_email='kyle@lahnakoski.com',
-    classifiers=["Development Status :: 4 - Beta","Topic :: Software Development :: Libraries","Topic :: Software Development :: Libraries :: Python Modules","License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"],
+    classifiers=["Development Status :: 4 - Beta","Topic :: Software Development :: Libraries","Topic :: Software Development :: Libraries :: Python Modules","Programming Language :: Python :: 3.7","Programming Language :: Python :: 3.8","Programming Language :: Python :: 3.9","License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"],
     description='Library of Wonderful Things',
+    extras_require={"tests":["numpy","fastparquet"]},
     include_package_data=False,
     install_requires=["requests"],
     license='MPL 2.0',
@@ -15,5 +16,5 @@ setup(
     name='pyLibrary',
     packages=["pyLibrary/aws","pyLibrary/env","pyLibrary"],
     url='https://github.com/klahnakoski/pyLibrary',
-    version='3.98.20292'
+    version='3.264.22338'
 )

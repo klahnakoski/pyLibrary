@@ -10,16 +10,14 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import datetime
-from collections import Mapping
 
 from jx_base import Column, TableDesc
-from jx_base.schema import Schema
+from jx_base.models.schema import Schema
 from mo_collections import UniqueIndex
 from mo_dots import (
     Data,
     FlatList,
     NullType,
-    ROOT_PATH,
     concat_field,
     is_container,
     join_field,
@@ -28,19 +26,22 @@ from mo_dots import (
     unwraplist,
     to_data,
 )
+from mo_future import Mapping
 from mo_future import binary_type, items, long, none_type, reduce, text
-from mo_json import INTEGER, NUMBER, STRING, python_type_to_json_type, OBJECT
+from mo_json import INTEGER, NUMBER, STRING, python_type_to_jx_type, OBJECT
+from mo_json.typed_encoder import json_type_to_inserter_type
 from mo_times.dates import Date
 
 DEBUG = False
 META_TABLES_NAME = "meta.tables"
 META_COLUMNS_NAME = "meta.columns"
 META_COLUMNS_TYPE_NAME = "column"
+ROOT_PATH = [META_COLUMNS_NAME]
 singlton = None
 
 
 def get_schema_from_list(
-    table_name, frum, native_type_to_json_type=python_type_to_json_type
+    table_name, frum, native_type_to_json_type=python_type_to_jx_type
 ):
     """
     SCAN THE LIST FOR COLUMN TYPES
@@ -66,7 +67,7 @@ def _get_schema_from_list(
     native_type_to_json_type,  # dict from storage type name to json type name
 ):
     for d in frum:
-        row_type = python_type_to_json_type[d.__class__]
+        row_type = python_type_to_jx_type[d.__class__]
 
         if row_type != "object":
             # EXPECTING PRIMITIVE VALUE
@@ -74,13 +75,14 @@ def _get_schema_from_list(
             column = columns[full_name]
             if not column:
                 es_type = d.__class__
+                json_type = native_type_to_json_type[es_type]
 
                 column = Column(
-                    name=concat_field(table_name, full_name),
+                    name=concat_field(table_name, json_type_to_inserter_type[json_type]),
                     es_column=full_name,
                     es_index=".",
                     es_type=es_type,
-                    jx_type=native_type_to_json_type[es_type],
+                    json_type=json_type,
                     last_updated=Date.now(),
                     nested_path=nested_path,
                     multi=1,
@@ -88,7 +90,7 @@ def _get_schema_from_list(
                 columns.add(column)
             else:
                 column.es_type = _merge_python_type(column.es_type, d.__class__)
-                column.jx_type = native_type_to_json_type[column.es_type]
+                column.json_type = native_type_to_json_type[column.es_type]
         else:
             for name, value in d.items():
                 full_name = concat_field(parent, name)
@@ -108,23 +110,23 @@ def _get_schema_from_list(
                     es_type = value.__class__.__name__
 
                 if not column:
-                    jx_type = native_type_to_json_type[es_type]
+                    json_type = native_type_to_json_type[es_type]
                     column = Column(
                         name=concat_field(table_name, full_name),
                         es_column=full_name,
                         es_index=".",
                         es_type=es_type,
-                        jx_type=jx_type,
+                        json_type=json_type,
                         last_updated=Date.now(),
                         nested_path=nested_path,
-                        cardinality=1 if jx_type == OBJECT else None,
-                        multi=1
+                        cardinality=1 if json_type == OBJECT else None,
+                        multi=1,
                     )
                     columns.add(column)
                 else:
                     column.es_type = _merge_python_type(column.es_type, es_type)
                     try:
-                        column.jx_type = native_type_to_json_type[column.es_type]
+                        column.json_type = native_type_to_json_type[column.es_type]
                     except Exception as e:
                         raise e
 
@@ -152,70 +154,72 @@ def get_id(column):
     """
     return column.es_index + "|" + column.es_column
 
-
-META_COLUMNS_DESC = TableDesc(
-    name=META_COLUMNS_NAME,
-    url=None,
-    query_path=ROOT_PATH,
-    last_updated=Date.now(),
-    columns=to_data(
-        [
-            Column(
-                name=c,
-                es_index=META_COLUMNS_NAME,
-                es_column=c,
-                es_type="keyword",
-                jx_type=STRING,
-                last_updated=Date.now(),
-                nested_path=ROOT_PATH,
-                multi=1,
-            )
-            for c in [
-                "name",
-                "es_type",
-                "jx_type",
-                "es_column",
-                "es_index",
-                "partitions",
+try:
+    META_COLUMNS_DESC = TableDesc(
+        name=META_COLUMNS_NAME,
+        url=None,
+        query_path=ROOT_PATH,
+        last_updated=Date.now(),
+        columns=to_data(
+            [
+                Column(
+                    name=c,
+                    es_index=META_COLUMNS_NAME,
+                    es_column=c,
+                    es_type="keyword",
+                    json_type=STRING,
+                    last_updated=Date.now(),
+                    nested_path=ROOT_PATH,
+                    multi=1,
+                )
+                for c in [
+                    "name",
+                    "es_type",
+                    "json_type",
+                    "es_column",
+                    "es_index",
+                    "partitions",
+                ]
             ]
-        ]
-        + [
-            Column(
-                name=c,
-                es_index=META_COLUMNS_NAME,
-                es_column=c,
-                es_type="integer",
-                jx_type=INTEGER,
-                last_updated=Date.now(),
-                nested_path=ROOT_PATH,
-                multi=1
-            )
-            for c in ["count", "cardinality", "multi"]
-        ]
-        + [
-            Column(
-                name="nested_path",
-                es_index=META_COLUMNS_NAME,
-                es_column="nested_path",
-                es_type="keyword",
-                jx_type=STRING,
-                last_updated=Date.now(),
-                nested_path=ROOT_PATH,
-                multi=4,
-            ),
-            Column(
-                name="last_updated",
-                es_index=META_COLUMNS_NAME,
-                es_column="last_updated",
-                es_type="double",
-                jx_type=NUMBER,
-                last_updated=Date.now(),
-                nested_path=ROOT_PATH,
-                multi=1
-            ),
-        ]
-    ),
-)
+            + [
+                Column(
+                    name=c,
+                    es_index=META_COLUMNS_NAME,
+                    es_column=c,
+                    es_type="integer",
+                    json_type=INTEGER,
+                    last_updated=Date.now(),
+                    nested_path=ROOT_PATH,
+                    multi=1,
+                )
+                for c in ["count", "cardinality", "multi"]
+            ]
+            + [
+                Column(
+                    name="nested_path",
+                    es_index=META_COLUMNS_NAME,
+                    es_column="nested_path",
+                    es_type="keyword",
+                    json_type=STRING,
+                    last_updated=Date.now(),
+                    nested_path=ROOT_PATH,
+                    multi=4,
+                ),
+                Column(
+                    name="last_updated",
+                    es_index=META_COLUMNS_NAME,
+                    es_column="last_updated",
+                    es_type="double",
+                    json_type=NUMBER,
+                    last_updated=Date.now(),
+                    nested_path=ROOT_PATH,
+                    multi=1,
+                ),
+            ]
+        ),
+    )
+except Exception as cause:
+    print(cause)
 
 META_TABLES_DESC = TableDesc(
     name=META_TABLES_NAME,
@@ -229,10 +233,10 @@ META_TABLES_DESC = TableDesc(
                 es_index=META_TABLES_NAME,
                 es_column=c,
                 es_type="string",
-                jx_type=STRING,
+                json_type=STRING,
                 last_updated=Date.now(),
                 nested_path=ROOT_PATH,
-                multi=1
+                multi=1,
             )
             for c in ["name", "url", "query_path"]
         ]
@@ -242,10 +246,10 @@ META_TABLES_DESC = TableDesc(
                 es_index=META_TABLES_NAME,
                 es_column=c,
                 es_type="integer",
-                jx_type=INTEGER,
+                json_type=INTEGER,
                 last_updated=Date.now(),
                 nested_path=ROOT_PATH,
-                multi=1
+                multi=1,
             )
             for c in ["timestamp"]
         ]
@@ -260,11 +264,10 @@ SIMPLE_METADATA_COLUMNS = (  # FOR PURELY INTERNAL PYTHON LISTS, NOT MAPPING TO 
             es_index=META_COLUMNS_NAME,
             es_column=c,
             es_type="string",
-            jx_type=STRING,
+            json_type=STRING,
             last_updated=Date.now(),
             nested_path=ROOT_PATH,
-            multi=1
-
+            multi=1,
         )
         for c in ["table", "name", "type"]
     ]
@@ -274,10 +277,10 @@ SIMPLE_METADATA_COLUMNS = (  # FOR PURELY INTERNAL PYTHON LISTS, NOT MAPPING TO 
             es_index=META_COLUMNS_NAME,
             es_column=c,
             es_type="long",
-            jx_type=INTEGER,
+            json_type=INTEGER,
             last_updated=Date.now(),
             nested_path=ROOT_PATH,
-            multi=1
+            multi=1,
         )
         for c in ["count", "cardinality", "multi"]
     ]
@@ -287,22 +290,21 @@ SIMPLE_METADATA_COLUMNS = (  # FOR PURELY INTERNAL PYTHON LISTS, NOT MAPPING TO 
             es_index=META_COLUMNS_NAME,
             es_column="last_updated",
             es_type="time",
-            jx_type=NUMBER,
+            json_type=NUMBER,
             last_updated=Date.now(),
             nested_path=ROOT_PATH,
-            multi=1
+            multi=1,
         ),
         Column(
             name="nested_path",
             es_index=META_COLUMNS_NAME,
             es_column="nested_path",
             es_type="string",
-            jx_type=STRING,
+            json_type=STRING,
             last_updated=Date.now(),
             nested_path=ROOT_PATH,
-            multi=4
-
-        )
+            multi=4,
+        ),
     ]
 )
 

@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from copy import copy
 
-from mo_dots import get_attr, is_data, is_sequence, tuplewrap, unwrap, to_data
+from mo_dots import get_attr, is_data, is_sequence, tuplewrap, from_data, to_data
 from mo_logs import Log
 
 
@@ -49,7 +49,7 @@ class Index(object):
         key = value2key(self._keys, val)
         e = self._data.get(key, [])
         self._data[key] = e
-        e.append(unwrap(val))
+        e.append(from_data(val))
         self.count += 1
 
 

@@ -10,6 +10,8 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from unittest import skip
+
 from mo_times.dates import Date
 from mo_times.durations import DAY
 from tests.test_jx import BaseTestCase, TEST_TABLE
@@ -46,7 +48,7 @@ simple_test_data =[
 ]
 
 
-class TestEdge1(BaseTestCase):
+class TestEdgeTime(BaseTestCase):
 
     def test_count_over_time(self):
         test = {

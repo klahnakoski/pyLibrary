@@ -10,30 +10,30 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal, is_literal
 from jx_base.expressions.null_op import NULL
 from mo_dots import is_many
-from mo_json import NUMBER
+from mo_json.types import T_NUMBER
 from mo_math import MAX
 
 
 class MaxOp(Expression):
-    data_type = NUMBER
+    _data_type = T_NUMBER
 
-    def __init__(self, terms):
-        Expression.__init__(self, terms)
+    def __init__(self, *terms, default=NULL):
+        Expression.__init__(self, *terms)
         if terms == None:
             self.terms = []
         elif is_many(terms):
             self.terms = [t for t in terms if t != None]
         else:
             self.terms = [terms]
+        self.default = default
 
     def __data__(self):
-        return {"max": [t.__data__() for t in self.terms]}
+        return {"max": [t.__data__() for t in self.terms], "default": self.default.__data__()}
 
     def vars(self):
         output = set()
@@ -42,17 +42,16 @@ class MaxOp(Expression):
         return output
 
     def map(self, map_):
-        return self.lang[MaxOp([t.map(map_) for t in self.terms])]
+        return MaxOp(*(t.map(map_) for t in self.terms))
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
-    @simplified
-    def partial_eval(self):
+    def partial_eval(self, lang):
         maximum = None
         terms = []
         for t in self.terms:
-            simple = t.partial_eval()
+            simple = t.partial_eval(lang)
             if simple is NULL:
                 pass
             elif is_literal(simple):
@@ -60,14 +59,14 @@ class MaxOp(Expression):
             else:
                 terms.append(simple)
         if len(terms) == 0:
-            if maximum == None:
+            if maximum is None:
                 return NULL
             else:
                 return Literal(maximum)
         else:
-            if maximum == None:
-                output = self.lang[MaxOp(terms)]
+            if maximum is None:
+                output = MaxOp(terms)
             else:
-                output = self.lang[MaxOp([Literal(maximum)] + terms)]
+                output = MaxOp([Literal(maximum)] + terms)
 
         return output

@@ -10,18 +10,16 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified
 from jx_base.expressions.expression import Expression
-from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.null_op import NULL
-from jx_base.expressions.true_op import TRUE
-from mo_json import BOOLEAN, INTEGER, NUMBER, OBJECT, NUMBER_TYPES
+from jx_base.expressions.literal import is_literal
+from mo_json.types import T_NUMBER_TYPES, T_NUMBER, python_type_to_jx_type
 
 
 class IsNumberOp(Expression):
-    data_type = BOOLEAN
+    _data_type = T_NUMBER
 
-    def __init__(self, term):
+    def __init__(self, *term):
         Expression.__init__(self, [term])
         self.term = term
 
@@ -32,20 +30,22 @@ class IsNumberOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return self.lang[IsNumberOp(self.term.map(map_))]
+        return IsNumberOp(self.term.map(map_))
 
-    def missing(self):
-        return FALSE
+    def missing(self, lang):
+        return self.expr.missin(lang)
 
-    @simplified
-    def partial_eval(self):
-        term = self.term.partial_eval()
+    def partial_eval(self, lang):
+        term = self.term.partial_eval(lang)
 
         if term is NULL:
-            return FALSE
-        elif term.type in NUMBER_TYPES:
-            return TRUE
-        elif term.type == OBJECT:
-            return self
+            return NULL
+        elif is_literal(term):
+            if python_type_to_jx_type(term.value.__class__) in T_NUMBER_TYPES:
+                return term
+            else:
+                return NULL
+        elif term.type in T_NUMBER_TYPES:
+            return term
         else:
-            return FALSE
+            return IsNumberOp(term)

@@ -10,15 +10,14 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import AndOp as AndOp_
-from jx_python.expressions._utils import Python
-from jx_python.expressions.boolean_op import BooleanOp
+from jx_python.expressions.to_boolean_op import ToBooleanOp
 
 
 class AndOp(AndOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         if not self.terms:
             return "True"
         else:
             return " and ".join(
-                "(" + BooleanOp(Python[t]).to_python() + ")" for t in self.terms
+                f"({ToBooleanOp(t).to_python()})" for t in self.terms
             )

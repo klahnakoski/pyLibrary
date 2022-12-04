@@ -10,15 +10,14 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import FloorOp as FloorOp_
-from jx_python.expressions._utils import Python
 
 
 class FloorOp(FloorOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return (
             "mo_math.floor("
-            + Python[self.lhs].to_python()
+            + (self.lhs).to_python()
             + ", "
-            + Python[self.rhs].to_python()
+            + (self.rhs).to_python()
             + ")"
         )

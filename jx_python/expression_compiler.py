@@ -29,7 +29,7 @@ GLOBALS = {
     "re": re,
     "leaves_to_data": leaves_to_data,
     "is_data": is_data,
-    "first": first
+    "first": first,
 }
 
 
@@ -46,12 +46,19 @@ def compile_expression(source, function_name="output"):
     try:
         exec(
             (
-                "def " + function_name + "(row, rownum=None, rows=None):\n" +
-                "    _source = " + strings.quote(source) + "\n" +
-                "    try:\n" +
-                "        return " + source + "\n" +
-                "    except Exception as e:\n" +
-                "        Log.error(u'Problem with dynamic function {{func|quote}}',  func=_source, cause=e)\n"
+                "def "
+                + function_name
+                + "(row, rownum=None, rows=None):\n"
+                + "    _source = "
+                + strings.quote(source)
+                + "\n"
+                + "    try:\n"
+                + "        return "
+                + source
+                + "\n"
+                + "    except Exception as e:\n"
+                + "        Log.error(u'Problem with dynamic function {{func|quote}}', "
+                " func=_source, cause=e)\n"
             ),
             GLOBALS,
             fake_locals,

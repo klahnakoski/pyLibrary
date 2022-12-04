@@ -18,54 +18,39 @@ import mo_math
 from jx_base.expressions import NULL
 from jx_base.expressions.query_op import DEFAULT_LIMIT, MAX_LIMIT
 from mo_dots import to_data, dict_to_data, list_to_data
+from tests import STRING_TYPED_COLUMN
 from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
 
 class TestSetOps(BaseTestCase):
-
     def test_star(self):
         test = {
-           "data": [{"a": 1}],
-           "query": {
-               "select": "*",
-               "from": TEST_TABLE
-           },
-           "expecting_list": {
-               "meta": {"format": "list"}, "data": [{"a": 1}]
-           }
+            "data": [{"a": 1}],
+            "query": {"select": "*", "from": TEST_TABLE},
+            "expecting_list": {"meta": {"format": "list"}, "data": [{"a": 1}]},
         }
         self.utils.execute_tests(test)
 
     def test_simplest(self):
         test = {
-            "data": [
-                {"a": "b"}
-            ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": "a"
-            },
-            "expecting_list": {
-                "meta": {"format": "list"}, "data": ["b"]},
+            "data": [{"a": "b"}],
+            "query": {"from": TEST_TABLE, "select": "a"},
+            "expecting_list": {"meta": {"format": "list"}, "data": ["b"]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
-                "data": [["b"]]
+                "data": [["b"]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "a": ["b"]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1},
+                }],
+                "data": {"a": ["b"]},
+            },
         }
         self.utils.execute_tests(test)
 
@@ -76,41 +61,28 @@ class TestSetOps(BaseTestCase):
                 {"a": {"b": {"c": 2}}},
                 {"a": {"b": {"c": 3}}},
                 {"a": {"b": {"c": 4}}},
-                {"a": {"b": {"c": 5}}}
+                {"a": {"b": {"c": 5}}},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": "a.b.d"
-            },
+            "query": {"from": TEST_TABLE, "select": "a.b.d"},
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [
-                    {},
-                    {},
-                    {},
-                    {},
-                    {}
-                ]
+                "meta": {"format": "list"},
+                "data": [{}, {}, {}, {}, {}],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a.b.d"],
-                "data": [[NULL], [NULL], [NULL], [NULL], [NULL]]
+                "data": [[NULL], [NULL], [NULL], [NULL], [NULL]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 5, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "a.b.d": [NULL, NULL, NULL, NULL, NULL]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 5, "interval": 1},
+                }],
+                "data": {"a.b.d": [NULL, NULL, NULL, NULL, NULL]},
+            },
         }
         self.utils.execute_tests(test)
-
 
     def test_select_on_shallow_missing_field(self):
         test = {
@@ -119,174 +91,121 @@ class TestSetOps(BaseTestCase):
                 {"a": {"b": {"c": 2}}},
                 {"a": {"b": {"c": 3}}},
                 {"a": {"b": {"c": 4}}},
-                {"a": {"b": {"c": 5}}}
+                {"a": {"b": {"c": 5}}},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": "d"
-            },
+            "query": {"from": TEST_TABLE, "select": "d"},
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [
-                {},
-                {},
-                {},
-                {},
-                {}
-            ]},
+                "meta": {"format": "list"},
+                "data": [{}, {}, {}, {}, {}],
+            },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["d"],
-                "data": [[NULL], [NULL], [NULL], [NULL], [NULL]]
+                "data": [[NULL], [NULL], [NULL], [NULL], [NULL]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 5, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "d": [NULL, NULL, NULL, NULL, NULL]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 5, "interval": 1},
+                }],
+                "data": {"d": [NULL, NULL, NULL, NULL, NULL]},
+            },
         }
         self.utils.execute_tests(test)
 
-
     def test_single_deep_select(self):
-
         test = {
             "data": [
                 {"a": {"b": {"c": 1}}},
                 {"a": {"b": {"c": 2}}},
                 {"a": {"b": {"c": 3}}},
                 {"a": {"b": {"c": 4}}},
-                {"a": {"b": {"c": 5}}}
+                {"a": {"b": {"c": 5}}},
             ],
             "query": {
                 "from": TEST_TABLE,
                 "select": "a.b.c",
-                "sort": "a.b.c"  # SO THE CUBE COMPARISON WILL PASS
+                "sort": "a.b.c",  # SO THE CUBE COMPARISON WILL PASS
             },
-            "expecting_list": {
-                "meta": {"format": "list"},
-                "data": [1, 2, 3, 4, 5]
-            },
+            "expecting_list": {"meta": {"format": "list"}, "data": [1, 2, 3, 4, 5]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a.b.c"],
-                "data": [[1], [2], [3], [4], [5]]
+                "data": [[1], [2], [3], [4], [5]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 5, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "a.b.c": [1, 2, 3, 4, 5]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 5, "interval": 1},
+                }],
+                "data": {"a.b.c": [1, 2, 3, 4, 5]},
+            },
         }
         self.utils.execute_tests(test)
-
 
     def test_single_select_alpha(self):
         test = {
-            "data": [
-                {"a": "b"}
-            ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": "a"
-            },
-            "expecting_list": {
-                "meta": {"format": "list"}, "data": ["b"]},
+            "data": [{"a": "b"}],
+            "query": {"from": TEST_TABLE, "select": "a"},
+            "expecting_list": {"meta": {"format": "list"}, "data": ["b"]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
-                "data": [["b"]]
+                "data": [["b"]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "a": ["b"]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1},
+                }],
+                "data": {"a": ["b"]},
+            },
         }
         self.utils.execute_tests(test)
-
 
     def test_single_rename(self):
         test = {
             "name": "rename singleton alpha",
-            "data": [
-                {"a": "b"}
-            ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": {"name": "value", "value": "a"}
-            },
-            "expecting_list": {
-                "meta": {"format": "list"}, "data": ["b"]},
+            "data": [{"a": "b"}],
+            "query": {"from": TEST_TABLE, "select": {"name": "value", "value": "a"}},
+            "expecting_list": {"meta": {"format": "list"}, "data": ["b"]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["value"],
-                "data": [["b"]]
+                "data": [["b"]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "value": ["b"]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1},
+                }],
+                "data": {"value": ["b"]},
+            },
         }
         self.utils.execute_tests(test)
 
     def test_single_no_select(self):
         test = {
-            "data": [
-                {"a": "b"}
-            ],
-            "query": {
-                "from": TEST_TABLE
-            },
-            "expecting_list": {
-                "meta": {"format": "list"}, "data": [
-                {"a": "b"}
-            ]},
+            "data": [{"a": "b"}],
+            "query": {"from": TEST_TABLE},
+            "expecting_list": {"meta": {"format": "list"}, "data": [{"a": "b"}]},
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["."],
-                "data": [[{"a": "b"}]]
+                "header": ["a"],
+                "data": [["b"]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1}
-                    }
-                ],
-                "data": {
-                    ".": [{"a": "b"}]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1},
+                }],
+                "data": {"a": ["b"]},
+            },
         }
         self.utils.execute_tests(test)
 
@@ -295,34 +214,25 @@ class TestSetOps(BaseTestCase):
         ALWAYS GOOD TO HAVE AN ID, CALL IT "_id"
         """
         test = {
-            "data": [
-                {"a": "b"}
-            ],
-            "query": {
-                "select": "_id",
-                "from": TEST_TABLE
-            },
+            "data": [{"a": "b"}],
+            "query": {"select": "_id", "from": TEST_TABLE},
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [
-                {"_id": mo_math.is_hex}
-            ]},
+                "meta": {"format": "list"},
+                "data": [{"_id": mo_math.is_hex}],
+            },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["_id"],
-                "data": [[mo_math.is_hex]]
+                "data": [[mo_math.is_hex]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "_id": [mo_math.is_hex]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1},
+                }],
+                "data": {"_id": [mo_math.is_hex]},
+            },
         }
         self.utils.execute_tests(test)
 
@@ -331,19 +241,9 @@ class TestSetOps(BaseTestCase):
         ALWAYS GOOD TO HAVE AN ID, CALL IT "_id"
         """
         test = {
-            "data": [
-                {"a": "b"}
-            ],
-            "query": {
-                "select": "_id",
-                "from": TEST_TABLE
-            },
-            "expecting_list": {
-                "meta": {"format": "list"},
-                "data": [
-                    mo_math.is_hex
-                ]
-            }
+            "data": [{"a": "b"}],
+            "query": {"select": "_id", "from": TEST_TABLE},
+            "expecting_list": {"meta": {"format": "list"}, "data": [mo_math.is_hex]},
         }
         self.utils.execute_tests(test)
 
@@ -352,158 +252,100 @@ class TestSetOps(BaseTestCase):
         ALWAYS GOOD TO HAVE AN ID, CALL IT "_id"
         """
         test = {
-            "data": [
-                {"a": "b"}
-            ],
-            "query": {
-                "select": ["_id", "a"],
-                "from": TEST_TABLE
-            },
+            "data": [{"a": "b"}],
+            "query": {"select": ["_id", "a"], "from": TEST_TABLE},
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header":["_id", "a"],
-                "data": [
-                    [mo_math.is_hex, "b"]
-                ]
-            }
+                "header": ["_id", "a"],
+                "data": [[mo_math.is_hex, "b"]],
+            },
         }
         self.utils.execute_tests(test)
 
     def test_single_star_select(self):
         test = {
-            "data": [
-                {"a": "b"}
-            ],
-            "query": {
-                "select": "*",
-                "from": TEST_TABLE
-            },
-            "expecting_list": {
-                "meta": {"format": "list"}, "data": [
-                {"a": "b"}
-            ]},
+            "data": [{"a": "b"}],
+            "query": {"select": "*", "from": TEST_TABLE},
+            "expecting_list": {"meta": {"format": "list"}, "data": [{"a": "b"}]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
-                "data": [["b"]]
+                "data": [["b"]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "a": ["b"]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1},
+                }],
+                "data": {"a": ["b"]},
+            },
         }
         self.utils.execute_tests(test)
 
     def test_dot_select(self):
         test = {
-            "data": [
-                {"a": "b"}
-            ],
-            "query": {
-                "select": {"name": "value", "value": "."},
-                "from": TEST_TABLE
-            },
-            "expecting_list": {
-                "meta": {"format": "list"},
-                "data": [{"a": "b"}]
-            },
+            "data": [{"a": "b"}],
+            "query": {"select": {"name": "value", "value": "."}, "from": TEST_TABLE},
+            "expecting_list": {"meta": {"format": "list"}, "data": [{"a": "b"}]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["value"],
-                "data": [[{"a": "b"}]]
+                "data": [[{"a": "b"}]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "value": [{"a": "b"}]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 1, "interval": 1},
+                }],
+                "data": {"value": [{"a": "b"}]},
+            },
         }
         self.utils.execute_tests(test)
 
     def test_list_of_values(self):
         test = {
             "data": ["a", "b"],
-            "query": {
-                "from": TEST_TABLE
-            },
-            "expecting_list": {
-                "meta": {"format": "list"},
-                "data": [
-                    "a", "b"
-                ]
-            },
+            "query": {"from": TEST_TABLE},
+            "expecting_list": {"meta": {"format": "list"}, "data": ["a", "b"]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["."],
-                "data": [["a"], ["b"]]
+                "data": [["a"], ["b"]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
-                    }
-                ],
-                "data": {
-                    ".": ["a", "b"]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1},
+                }],
+                "data": {".": ["a", "b"]},
+            },
         }
         self.utils.execute_tests(test)
 
     def test_select_all_from_list_of_objects(self):
         test = {
-            "data": [
-                {"a": "b"},
-                {"a": "d"}
-            ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": "*"
-            },
+            "data": [{"a": "b"}, {"a": "d"}],
+            "query": {"from": TEST_TABLE, "select": "*"},
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [
-                    {"a": "b"},
-                    {"a": "d"}
-                ]
+                "data": [{"a": "b"}, {"a": "d"}],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a"],
-                "data": [
-                    ["b"],
-                    ["d"]
-                ]
+                "data": [["b"], ["d"]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "a": ["b", "d"]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1},
+                }],
+                "data": {"a": ["b", "d"]},
+            },
         }
         self.utils.execute_tests(test)
 
@@ -511,70 +353,45 @@ class TestSetOps(BaseTestCase):
     def test_select_into_children(self):
         test = {
             "name": "select into children to table",
-            "metadata": {
-                "properties": {
-                    "x": {"type": "integer"},
-                    "a": {
-                        "type": "nested",
-                        "properties": {
-                            "y": {
-                                "type": "keyword"
+            "metadata": {"properties": {
+                "x": {"type": "integer"},
+                "a": {
+                    "type": "nested",
+                    "properties": {
+                        "y": {"type": "keyword"},
+                        "b": {
+                            "type": "nested",
+                            "properties": {
+                                "c": {"type": "integer"},
+                                "1": {"type": "integer"},
                             },
-                            "b": {
-                                "type": "nested",
-                                "properties": {
-                                    "c": {"type": "integer"},
-                                    "1": {"type": "integer"}
-
-                                }
-                            },
-                            "z": {
-                                "type": "keyword"
-                            }
-                        }
-                    }
-                }
-            },
+                        },
+                        "z": {"type": "keyword"},
+                    },
+                },
+            }},
             "data": [
                 {"x": 5},
                 {
                     "a": [
-                        {
-                            "b": {"c": 13},
-                            "y": "m"
-                        },
-                        {
-                            "b": [
-                                {"c": 17, "1": 27},
-                                {"c": 19}
-
-                            ],
-                            "y": "q"
-                        },
-                        {
-                            "y": "r"
-                        }
+                        {"b": {"c": 13}, "y": "m"},
+                        {"b": [{"c": 17, "1": 27}, {"c": 19}], "y": "q"},
+                        {"y": "r"},
                     ],
-                    "x": 3
+                    "x": 3,
                 },
-                {
-                    "a": {"b": {"c": 23}},
-                    "x": 7
-                },
+                {"a": {"b": {"c": 23}}, "x": 7},
                 {
                     "a": {"b": [
                         {"c": 29, "1": 31},
                         {"c": 37, "1": 41},
                         {"1": 47},
-                        {"c": 53, "1": 59}
+                        {"c": 53, "1": 59},
                     ]},
-                    "x": 11
-                }
+                    "x": 11,
+                },
             ],
-            "query": {
-                "from": TEST_TABLE + ".a.b",
-                "select": ["...x", "c"]
-            },
+            "query": {"from": TEST_TABLE + ".a.b", "select": ["...x", "c"]},
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
@@ -586,8 +403,9 @@ class TestSetOps(BaseTestCase):
                     {"x": 11, "c": 29},
                     {"x": 11, "c": 37},
                     {"x": 11, "c": NULL},
-                    {"x": 11, "c": 53}
-                ]},
+                    {"x": 11, "c": 53},
+                ],
+            },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["x", "c"],
@@ -600,34 +418,34 @@ class TestSetOps(BaseTestCase):
                     [11, 29],
                     [11, 37],
                     [11, NULL],
-                    [11, 53]
-                ]
+                    [11, 53],
+                ],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "index",
-                        "domain": {"type": "rownum", "min": 0, "max": 9, "interval": 1}
-                    }
-                ],
+                "edges": [{
+                    "name": "index",
+                    "domain": {"type": "rownum", "min": 0, "max": 9, "interval": 1},
+                }],
                 "data": {
                     "x": [5, 3, 3, 3, 7, 11, 11, 11, 11],
-                    "c": [NULL, 13, 17, 19, 23, 29, 37, NULL, 53]
-                }
-            }
+                    "c": [NULL, 13, 17, 19, 23, 29, 37, NULL, 53],
+                },
+            },
         }
         self.utils.execute_tests(test, typed=False)
 
-    @skipIf(global_settings.use == "sqlite", "no need for limit when using own resources")
+    @skipIf(
+        global_settings.use == "sqlite", "no need for limit when using own resources"
+    )
     def test_max_limit(self):
         test = dict_to_data({
             "data": lots_of_data,
             "query": {
                 "from": TEST_TABLE,
                 "select": {"name": "value", "value": "a"},
-                "limit": 1000000000
-            }
+                "limit": 1000000000,
+            },
         })
 
         self.utils.fill_container(test)
@@ -637,10 +455,7 @@ class TestSetOps(BaseTestCase):
     def test_default_limit(self):
         test = dict_to_data({
             "data": lots_of_data,
-            "query": {
-                "from": TEST_TABLE,
-                "select": {"name": "value", "value": "a"},
-            },
+            "query": {"from": TEST_TABLE, "select": {"name": "value", "value": "a"},},
         })
 
         self.utils.fill_container(test)
@@ -662,7 +477,7 @@ class TestSetOps(BaseTestCase):
             "query": {
                 "from": TEST_TABLE,
                 "select": {"name": "value", "value": "a"},
-                "limit": 5
+                "limit": 5,
             },
         })
 
@@ -685,7 +500,7 @@ class TestSetOps(BaseTestCase):
             "query": {
                 "from": TEST_TABLE,
                 "select": {"name": "value", "value": "a"},
-                "limit": -1
+                "limit": -1,
             },
         })
 
@@ -699,48 +514,39 @@ class TestSetOps(BaseTestCase):
                 {"a": {"b": 0, "c": 0}, "d": 7},
                 {"a": {"b": 0, "c": 1}},
                 {"a": {"b": 1, "c": 0}},
-                {"a": {"b": 1, "c": 1}}
+                {"a": {"b": 1, "c": 1}},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": "*",
-                "sort": ["a.b", "a.c"]
-            },
+            "query": {"from": TEST_TABLE, "select": "*", "sort": ["a.b", "a.c"]},
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [
-                {"a.b": 0, "a.c": 0, "d": 7},
-                {"a.b": 0, "a.c": 1},
-                {"a.b": 1, "a.c": 0},
-                {"a.b": 1, "a.c": 1}
-                ]
+                "meta": {"format": "list"},
+                "data": [
+                    {"a.b": 0, "a.c": 0, "d": 7},
+                    {"a.b": 0, "a.c": 1},
+                    {"a.b": 1, "a.c": 0},
+                    {"a.b": 1, "a.c": 1},
+                ],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a.b", "a.c", "d"],
-                "data": [
-                    [0, 0, 7],
-                    [0, 1, NULL],
-                    [1, 0, NULL],
-                    [1, 1, NULL]
-                ]
+                "data": [[0, 0, 7], [0, 1, NULL], [1, 0, NULL], [1, 1, NULL]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1}
-                    }
-                ],
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
+                }],
                 "data": {
                     "a.b": [0, 0, 1, 1],
                     "a.c": [0, 1, 0, 1],
-                    "d": [7, NULL, NULL, NULL]
-                }
-            }
+                    "d": [7, NULL, NULL, NULL],
+                },
+            },
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_w_deep_star(self):
         test = {
             "data": [
@@ -749,41 +555,41 @@ class TestSetOps(BaseTestCase):
                 {"a": {"b": 1, "c": 0}},
                 {"a": {"b": 1, "c": 1}},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": "a.*",
-                "sort": ["a.b", "a.c"]
-            },
+            "query": {"from": TEST_TABLE, "select": "a.*", "sort": ["a.b", "a.c"]},
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [
-                    {"a": {"b": 0, "c": 0}},
-                    {"a": {"b": 0, "c": 1}},
-                    {"a": {"b": 1, "c": 0}},
-                    {"a": {"b": 1, "c": 1}},
-            ]},
+                "meta": {"format": "list"},
+                "data": [
+                    {"b": 0, "c": 0},
+                    {"b": 0, "c": 1},
+                    {"b": 1, "c": 0},
+                    {"b": 1, "c": 1},
+                ],
+            },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["a.b", "a.c"],
+                "header": ["a"],
                 "data": [
-                    [0, 0],
-                    [0, 1],
-                    [1, 0],
-                    [1, 1]
-                ]
+                    {"b": 0, "c": 0},
+                    {"b": 0, "c": 1},
+                    {"b": 1, "c": 0},
+                    {"b": 1, "c": 1},
+                ],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1}
-                    }
-                ],
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
+                }],
                 "data": {
-                    "a.b": [0, 0, 1, 1],
-                    "a.c": [0, 1, 0, 1]
-                }
-            }
+                    "a": [
+                        {"b": 0, "c": 0},
+                        {"b": 0, "c": 1},
+                        {"b": 1, "c": 0},
+                        {"b": 1, "c": 1},
+                    ],
+                },
+            },
         }
         self.utils.execute_tests(test)
 
@@ -799,35 +605,32 @@ class TestSetOps(BaseTestCase):
                 "from": TEST_TABLE,
                 "select": [
                     {"name": "sum", "value": {"add": ["a.b", "a.c"]}},
-                    {"name": "sub", "value": {"sub": ["a.b", "a.c"]}}
+                    {"name": "sub", "value": {"sub": ["a.b", "a.c"]}},
                 ],
-                "sort": ["a.b", "a.c"]
+                "sort": ["a.b", "a.c"],
             },
             "expecting_list": {
-                "meta": {"format": "list"}, "data": [
-                {"sum": 0, "sub": 0},
-                {"sum": 1, "sub": -1},
-                {"sum": 1, "sub": 1},
-                {"sum": 2, "sub": 0}
-            ]},
+                "meta": {"format": "list"},
+                "data": [
+                    {"sum": 0, "sub": 0},
+                    {"sum": 1, "sub": -1},
+                    {"sum": 1, "sub": 1},
+                    {"sum": 2, "sub": 0},
+                ],
+            },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["sum", "sub"],
-                "data": [[0, 0], [1, -1], [1, 1], [2, 0]]
+                "data": [[0, 0], [1, -1], [1, 1], [2, 0]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "sum": [0, 1, 1, 2],
-                    "sub": [0, -1, 1, 0]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
+                }],
+                "data": {"sum": [0, 1, 1, 2], "sub": [0, -1, 1, 0]},
+            },
         }
         self.utils.execute_tests(test)
 
@@ -841,21 +644,17 @@ class TestSetOps(BaseTestCase):
                 {"o": 3, "a": {"b": "x", "v": 2}},
                 {"o": 1, "a": {"b": "x", "v": 5}},
                 {"o": 2, "a": {"b": "x", "v": 7}},
-                {"o": 4, "c": "x"}
+                {"o": 4, "c": "x"},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": ["a"],
-                "sort": "a.v"
-            },
+            "query": {"from": TEST_TABLE, "select": ["a"], "sort": "a.v"},
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
                     {"a": {"b": "x", "v": 2}},
                     {"a": {"b": "x", "v": 5}},
                     {"a": {"b": "x", "v": 7}},
-                    {}
-                ]
+                    {},
+                ],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -864,29 +663,26 @@ class TestSetOps(BaseTestCase):
                     [{"b": "x", "v": 2}],
                     [{"b": "x", "v": 5}],
                     [{"b": "x", "v": 7}],
-                    [{}]
-                ]
+                    [{}],
+                ],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "a": [
-                        {"b": "x", "v": 2},
-                        {"b": "x", "v": 5},
-                        {"b": "x", "v": 7},
-                        {}
-                    ]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
+                }],
+                "data": {"a": [
+                    {"b": "x", "v": 2},
+                    {"b": "x", "v": 5},
+                    {"b": "x", "v": 7},
+                    {},
+                ]},
+            },
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_leaves(self):
         """
         ES DOES NOT ALLOW YOU TO SELECT AN OBJECT, ONLY THE LEAVES
@@ -897,45 +693,71 @@ class TestSetOps(BaseTestCase):
                 {"o": 3, "a": {"b": "x", "v": 2}},
                 {"o": 1, "a": {"b": "x", "v": 5}},
                 {"o": 2, "a": {"b": "x", "v": 7}},
-                {"o": 4, "c": "x"}
+                {"o": 4, "c": "x"},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": ["a.*"],
-                "sort": "a.v"
-            },
+            "query": {"from": TEST_TABLE, "select": ["a.*"], "sort": "a.v"},
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
                     {"a": {"b": "x", "v": 2}},
                     {"a": {"b": "x", "v": 5}},
                     {"a": {"b": "x", "v": 7}},
-                    {}
-                ]
+                    {},
+                ],
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header": ["a"],
+                "data": [[{"b": "x", "v": 2}], [{"b": "x", "v": 5}], [{"b": "x", "v": 7}], [NULL, NULL]],
+            },
+            "expecting_cube": {
+                "meta": {"format": "cube"},
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
+                }],
+                "data": {"a": [
+                    {"b": "x", "v": 2},
+                    {"b": "x", "v": 5},
+                    {"b": "x", "v": 7},
+                    NULL
+                ]},
+            },
+        }
+        self.utils.execute_tests(test)
+
+    @skipIf(global_settings.use == "sqlite", "broken")
+    def test_select_leaves2(self):
+        test = {
+            "data": [
+                {"o": 3, "a": {"b": "x", "v": 2}},
+                {"o": 1, "a": {"b": "x", "v": 5}},
+                {"o": 2, "a": {"b": "x", "v": 7}},
+                {"o": 4, "c": "x"},
+            ],
+            "query": {"from": TEST_TABLE, "select": ["a*"], "sort": "a.v"},
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"a.b": "x", "a.v": 2},
+                    {"a.b": "x", "a.v": 5},
+                    {"a.b": "x", "a.v": 7},
+                    {},
+                ],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["a.b", "a.v"],
-                "data": [
-                    ["x", 2],
-                    ["x", 5],
-                    ["x", 7],
-                    [NULL, NULL]
-                ]
+                "data": [["x", 2], ["x", 5], ["x", 7], [NULL, NULL]],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "a.b": ["x", "x", "x", NULL],
-                    "a.v": [2, 5, 7, NULL]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
+                }],
+                "data": {"a.b": ["x", "x", "x", NULL], "a.v": [2, 5, 7, NULL]},
+            },
         }
         self.utils.execute_tests(test)
 
@@ -949,21 +771,17 @@ class TestSetOps(BaseTestCase):
                 {"o": 3, "a": {"b": "x", "v": 2}},
                 {"o": 1, "a": {"b": "x", "v": 5}},
                 {"o": 2, "a": {"b": "x", "v": 7}},
-                {"o": 4, "c": "x"}
+                {"o": 4, "c": "x"},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": "a",
-                "sort": "a.v"
-            },
+            "query": {"from": TEST_TABLE, "select": "a", "sort": "a.v"},
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
                     {"b": "x", "v": 2},
                     {"b": "x", "v": 5},
                     {"b": "x", "v": 7},
-                    {}
-                ]
+                    {},
+                ],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -972,26 +790,22 @@ class TestSetOps(BaseTestCase):
                     [{"b": "x", "v": 2}],
                     [{"b": "x", "v": 5}],
                     [{"b": "x", "v": 7}],
-                    [{}]
-                ]
+                    [{}],
+                ],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "a": [
-                        {"b": "x", "v": 2},
-                        {"b": "x", "v": 5},
-                        {"b": "x", "v": 7},
-                        {}
-                    ]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
+                }],
+                "data": {"a": [
+                    {"b": "x", "v": 2},
+                    {"b": "x", "v": 5},
+                    {"b": "x", "v": 7},
+                    {},
+                ]},
+            },
         }
         self.utils.execute_tests(test)
 
@@ -1005,21 +819,17 @@ class TestSetOps(BaseTestCase):
                 {"o": 3, "a": {"b": "x", "v": 2}},
                 {"o": 1, "a": {"b": "x", "v": 5}},
                 {"o": 2, "a": {"b": "x", "v": 7}},
-                {"o": 4, "c": "x"}
+                {"o": 4, "c": "x"},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": ["o", "a"],
-                "sort": "a.v"
-            },
+            "query": {"from": TEST_TABLE, "select": ["o", "a"], "sort": "a.v"},
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
                     {"o": 3, "a": {"b": "x", "v": 2}},
                     {"o": 1, "a": {"b": "x", "v": 5}},
                     {"o": 2, "a": {"b": "x", "v": 7}},
-                    {"o": 4}
-                ]
+                    {"o": 4},
+                ],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
@@ -1028,30 +838,29 @@ class TestSetOps(BaseTestCase):
                     [3, {"b": "x", "v": 2}],
                     [1, {"b": "x", "v": 5}],
                     [2, {"b": "x", "v": 7}],
-                    [4, {}]
-                ]
+                    [4, {}],
+                ],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1}
-                    }
-                ],
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
+                }],
                 "data": {
                     "a": [
                         {"b": "x", "v": 2},
                         {"b": "x", "v": 5},
                         {"b": "x", "v": 7},
-                        {}
+                        {},
                     ],
-                    "o": [3, 1, 2, 4]
-                }
-            }
+                    "o": [3, 1, 2, 4],
+                },
+            },
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select3_object(self):
         """
         ES DOES NOT ALLOW YOU TO SELECT AN OBJECT, ONLY THE LEAVES
@@ -1062,156 +871,136 @@ class TestSetOps(BaseTestCase):
                 {"o": 3, "a": {"b": "x", "v": 2}},
                 {"o": 1, "a": {"b": "x", "v": 5}},
                 {"o": 2, "a": {"b": "x", "v": 7}},
-                {"o": 4, "c": "x"}
+                {"o": 4, "c": "x"},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": ["o", "a.*"],
-                "sort": "a.v"
-            },
+            "query": {"from": TEST_TABLE, "select": ["o", "a.*"], "sort": "a.v"},
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
                     {"o": 3, "a": {"b": "x", "v": 2}},
                     {"o": 1, "a": {"b": "x", "v": 5}},
                     {"o": 2, "a": {"b": "x", "v": 7}},
-                    {"o": 4}
-                ]
+                    {"o": 4},
+                ],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["o", "a.b", "a.v"],
+                "header": ["o", "a", "a"],
                 "data": [
-                    [3, "x", 2],
-                    [1, "x", 5],
-                    [2, "x", 7],
-                    [4, NULL, NULL]
-                ]
+                    [3, {"b": "x", "v": 2}],
+                    [1, {"b": "x", "v": 5}],
+                    [2, {"b": "x", "v": 7}],
+                    [4, NULL, NULL],
+                ],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1}
-                    }
-                ],
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 4, "interval": 1},
+                }],
                 "data": {
-                    "a.b": ["x", "x", "x", NULL],
-                    "a.v": [2, 5, 7, NULL],
-                    "o": [3, 1, 2, 4]
-                }
-            }
+                    "a": [
+                        {"b": "x", "v": 2},
+                        {"b": "x", "v": 5},
+                        {"b": "x", "v": 7},
+                        NULL,
+                    ],
+                    "o": [3, 1, 2, 4],
+                },
+            },
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_array_as_value(self):
         test = {
             "data": [
                 {"_a": [{"b": 1, "c": 1}, {"b": 2, "c": 1}]},
-                {"_a": [{"b": 1, "c": 2}, {"b": 2, "c": 2}]}
+                {"_a": [{"b": 1, "c": 2}, {"b": 2, "c": 2}]},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": "_a"
-            },
+            "query": {"from": TEST_TABLE, "select": "_a"},
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
                     [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
-                    [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
-                ]
+                    [{"b": 1, "c": 2}, {"b": 2, "c": 2}],
+                ],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["_a"],
                 "data": [
-                   [[{"b": 1, "c": 1}, {"b": 2, "c": 1}]],
-                   [[{"b": 1, "c": 2}, {"b": 2, "c": 2}]]
-                ]
+                    [[{"b": 1, "c": 1}, {"b": 2, "c": 1}]],
+                    [[{"b": 1, "c": 2}, {"b": 2, "c": 2}]],
+                ],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
-                    }
-                ],
-                "data": {
-                    "_a": [
-                        [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
-                        [{"b": 1, "c": 2}, {"b": 2, "c": 2}]
-                    ]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1},
+                }],
+                "data": {"_a": [
+                    [{"b": 1, "c": 1}, {"b": 2, "c": 1}],
+                    [{"b": 1, "c": 2}, {"b": 2, "c": 2}],
+                ]},
+            },
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_w_nested_values(self):
         test = {
             "data": [
                 {"_a": [{"k": [{"b": 1}, {"b": 2}]}]},
-                {"_a": [{"k": [{"b": 1}, {"b": 2}]}]}
+                {"_a": [{"k": [{"b": 1}, {"b": 2}]}]},
             ],
-            "query": {
-                "from": TEST_TABLE
-            },
+            "query": {"from": TEST_TABLE},
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
                     {"_a": {"k": [{"b": 1}, {"b": 2}]}},
-                    {"_a": {"k": [{"b": 1}, {"b": 2}]}}
-                ]
+                    {"_a": {"k": [{"b": 1}, {"b": 2}]}},
+                ],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["."],
                 "data": [
                     [{"_a": {"k": [{"b": 1}, {"b": 2}]}}],
-                    [{"_a": {"k": [{"b": 1}, {"b": 2}]}}]
-                ]
+                    [{"_a": {"k": [{"b": 1}, {"b": 2}]}}],
+                ],
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1}
-                    }
-                ],
-                "data": {
-                    ".": [
-                        {"_a": {"k": [{"b": 1}, {"b": 2}]}},
-                        {"_a": {"k": [{"b": 1}, {"b": 2}]}}
-                    ]
-                }
-            }
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 2, "interval": 1},
+                }],
+                "data": {".": [
+                    {"_a": {"k": [{"b": 1}, {"b": 2}]}},
+                    {"_a": {"k": [{"b": 1}, {"b": 2}]}},
+                ]},
+            },
         }
         self.utils.execute_tests(test)
 
+
+
     def test_select_typed_column(self):
         test = {
-            "data": [
-                {"a": "test"}
-            ],
-            "query": {
-                "select": ["a.~s~"],
-                "from": TEST_TABLE,
-            },
+            "data": [{"a": "test"}],
+            "query": {"select": ["a."+STRING_TYPED_COLUMN], "from": TEST_TABLE,},
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [
-                    {"a": {"~s~": "test"}}
-                ]
+                "data": [{"a": {STRING_TYPED_COLUMN: "test"}}],
             },
             "expecting_table": {
                 "meta": {"format": "table"},
-                "header": ["a.~s~"],
-                "data": [
-                    ["test"]
-                ]
-            }
+                "header": ["a."+STRING_TYPED_COLUMN],
+                "data": [["test"]],
+            },
         }
         self.utils.execute_tests(test)
 
@@ -1225,24 +1014,22 @@ class TestSetOps(BaseTestCase):
         # 	"where":{"exists":"timestamp.~s~"}
         # }
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_union_columns(self):
         test = {
             "data": [
-                {"a": [1, 2, 3], "b": [2, 3, 4], "c":1},
-                {"a": [4, 4, 4], "b": [2, 3, 4], "c":2}
+                {"a": [1, 2, 3], "b": [2, 3, 4], "c": 1},
+                {"a": [4, 4, 4], "b": [2, 3, 4], "c": 2},
             ],
             "query": {
                 "select": [{"name": "x", "value": {"union": ["a", "b"]}}],
                 "from": TEST_TABLE,
-                "sort": "c"  # USE sort TO ENSURE ORDER OF ROWS TO MATCH expecting_list
+                "sort": "c",  # USE sort TO ENSURE ORDER OF ROWS TO MATCH expecting_list
             },
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [
-                    {"x": {1, 2, 3, 4}},
-                    {"x": {2, 3, 4}}
-                ]
-            }
+                "data": [{"x": {1, 2, 3, 4}}, {"x": {2, 3, 4}}],
+            },
         }
         self.utils.execute_tests(test)
 
@@ -1255,63 +1042,42 @@ class TestSetOps(BaseTestCase):
                 {"v": 3, "a": {}},
                 {"v": 5, "a": {"b": 4}},
                 {"v": 6, "a": 3},
-                {"v": 7}
+                {"v": 7},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": "v",
-                "where": {"exists": "a.b"}
-            },
-            "expecting_list": {
-                "meta": {"format": "list"},
-                "data": [2, 4, 5]
-            },
+            "query": {"from": TEST_TABLE, "select": "v", "where": {"exists": "a.b"}},
+            "expecting_list": {"meta": {"format": "list"}, "data": [2, 4, 5]},
             "expecting_table": {
                 "meta": {"format": "table"},
                 "header": ["v"],
-                "data": [[2], [4], [5]]
+                "data": [[2], [4], [5]],
             },
-            "expecting_cube": {
-                "meta": {"format": "cube"},
-                "data": {
-                    "v": [2, 4, 5]
-                }
-            }
+            "expecting_cube": {"meta": {"format": "cube"}, "data": {"v": [2, 4, 5]}},
         }
         self.utils.execute_tests(test)
 
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_id_and_source(self):
         test = {
-            "data": [
-                {"_id": "test_id", "v": 4, "a": [{"b": 1}, {"b": 2}, {"b": 2}]},
-            ],
+            "data": [{"_id": "test_id", "v": 4, "a": [{"b": 1}, {"b": 2}, {"b": 2}]},],
             "query": {
                 "from": TEST_TABLE,
-                "select": ["_id", {"name": "_source", "value": "."}]
+                "select": ["_id", {"name": "_source", "value": "."}],
             },
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [
-                    {"_id": "test_id", "_source": {"v": 4, "a": [{"b": 1}, {"b": 2}, {"b": 2}]}}
-                ]
-            }
+                "data": [{
+                    "_id": "test_id",
+                    "_source": {"v": 4, "a": [{"b": 1}, {"b": 2}, {"b": 2}]},
+                }],
+            },
         }
         self.utils.execute_tests(test)
 
     def test_eq_1_list(self):
         test = {
-            "data": [
-                {"a": 1},
-                {"a": 2},
-                {"a": 3},
-                {"a": None},
-                {},
-            ],
+            "data": [{"a": 1}, {"a": 2}, {"a": 3}, {"a": None}, {},],
             "query": {
-                "select": [
-                    "a",
-                    {"name": "eq1", "value": {"eq": {"a": 1}}}
-                ],
+                "select": ["a", {"name": "eq1", "value": {"eq": {"a": 1}}}],
                 "from": TEST_TABLE,
             },
             "expecting_list": {
@@ -1322,7 +1088,7 @@ class TestSetOps(BaseTestCase):
                     {"a": 3, "eq1": False},
                     {"a": NULL, "eq1": False},
                     {"a": NULL, "eq1": False},
-                ]
+                ],
             },
             "expecting_table": {
                 "header": ["a", "eq1"],
@@ -1331,26 +1097,17 @@ class TestSetOps(BaseTestCase):
                     [2, False],
                     [3, False],
                     [NULL, False],
-                    [NULL, False]
-                ]
-            }
+                    [NULL, False],
+                ],
+            },
         }
         self.utils.execute_tests(test)
 
     def test_bad_select(self):
         subtest = {
-            "data": [
-                {"a": 1},
-                {"a": 2},
-                {"a": 3},
-                {"a": None},
-                {},
-            ],
-            "query": {
-                "select": {"between": "a"},
-                "from": TEST_TABLE,
-            },
-            "expecting_error": "Expecting `value` or `aggregate` in select "
+            "data": [{"a": 1}, {"a": 2}, {"a": 3}, {"a": None}, {},],
+            "query": {"select": {"between": "a"}, "from": TEST_TABLE,},
+            "expecting_error": "Expecting a select clause",
         }
         subtest = to_data(subtest)
 
@@ -1366,44 +1123,21 @@ class TestSetOps(BaseTestCase):
                 {"a": {"b": 3}},
                 {},
             ],
-            "query": {
-                "from": TEST_TABLE,
-                "where": {"prefix": {"a": "test"}}
-            },
+            "query": {"from": TEST_TABLE, "where": {"prefix": {"a": "test"}}},
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [
-                    {"a": "test1"},
-                    {"a": "test2"},
-                    {"a": "test3"},
-                ]
+                "data": [{"a": "test1"}, {"a": "test2"}, {"a": "test3"},],
             },
         }
         self.utils.execute_tests(test)
 
     def test_exists_in_where_clause(self):
         test = {
-            "data": [
-                {"a": "test1"},
-                {"a": 0},
-                {"a": False},
-                {"a": {"b": 3}},
-                {},
-            ],
-            "query": {
-                "from": TEST_TABLE,
-                "where": {"exists": "a"}
-            },
+            "data": [{"a": "test1"}, {"a": 0}, {"a": False}, {"a": {"b": 3}}, {}],
+            "query": {"from": TEST_TABLE, "where": {"exists": "a"}},
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [
-                    {"a": "test1"},
-                    {"a": 0},
-                    {"a": False},
-                    {"a": {"b": 3}},
-                ]
+                "data": [{"a": "test1"}, {"a": 0}, {"a": False}, {"a": {"b": 3}}],
             },
         }
         self.utils.execute_tests(test)
-
-

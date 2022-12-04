@@ -10,15 +10,10 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import SplitOp as SplitOp_
-from jx_python.expressions._utils import Python
 
 
 class SplitOp(SplitOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return (
-            "("
-            + Python[self.value].to_python()
-            + ").split("
-            + Python[self.find].to_python()
-            + ")"
+            "(" + (self.value).to_python() + ").split(" + (self.find).to_python() + ")"
         )

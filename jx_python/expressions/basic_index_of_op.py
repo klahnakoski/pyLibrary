@@ -10,18 +10,18 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import BasicIndexOfOp as BasicIndexOfOp_
-from jx_python.expressions._utils import with_var, Python
+from jx_python.expressions._utils import with_var
 
 
 class BasicIndexOfOp(BasicIndexOfOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return with_var(
             "f",
             "("
-            + Python[self.value].to_python()
+            + (self.value).to_python()
             + ").find"
             + "("
-            + Python[self.find].to_python()
+            + (self.find).to_python()
             + ")",
             "None if f==-1 else f",
         )

@@ -12,17 +12,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import os
+
 from jx_mysql import mysql_snowflake_extractor
 from mo_dots import set_default, wrap
 from mo_logs import Log, startup, constants
 from mo_sql import SQL
 from mo_times.timer import Timer
 
-from jx_mysql.mysql import MySQL, execute_file
+from jx_mysql.mysql import MySql, execute_file
 from jx_mysql.mysql_snowflake_extractor import MySqlSnowflakeExtractor
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
-settings = startup.read_settings(filename="tests/resources/config/test.json")
+settings = startup.read_settings(filename=os.environ.get('TEST_CONFIG') or "tests/resources/config/test.json")
 constants.set(settings.constants)
 
 
@@ -32,7 +34,7 @@ class TestExtract(FuzzyTestCase):
         Log.start(settings.debug)
         with Timer("setup database"):
             try:
-                with MySQL(schema=None, kwargs=settings.database) as db:
+                with MySql(schema=None, kwargs=settings.database) as db:
                     db.query("drop database testing")
             except Exception as e:
                 if "Can't drop database " in e:
@@ -50,16 +52,15 @@ class TestExtract(FuzzyTestCase):
         self.assertEqual(mysql_snowflake_extractor.DEBUG, False)
 
     def run_compare(self, config, id_sql, expected):
-        db = MySQL(**config.database)
+        db = MySql(**config.database)
         extractor = MySqlSnowflakeExtractor(kwargs=config)
 
         sql = extractor.get_sql(SQL(id_sql))
 
         result = []
         with db.transaction():
-            cursor = db.query(sql, stream=True, row_tuples=True)
-            cursor = list(cursor)
-            extractor.construct_docs(cursor, result.append, False)
+            table = db.query(sql, format="table")
+            extractor.construct_docs(table.data, result.append, False)
 
         self.assertEqual(result, expected, "expecting identical")
         self.assertEqual(expected, result, "expecting identical")
@@ -84,49 +85,41 @@ class TestExtract(FuzzyTestCase):
         self.run_compare(
             config_template,
             "SELECT 10 AS id",
-            [
-                {
-                    "about": {"id": 1, "time": {"id": -1, "value": 0}, "value": "a"},
-                    "id": 10,
-                    "name": "A",
-                    "nested1": [
+            [{
+                "about": {"id": 1, "time": {"id": -1, "value": 0}, "value": "a"},
+                "id": 10,
+                "name": "A",
+                "nested1": [{
+                    "about": {"id": -1, "value": 0},
+                    "description": "aaa",
+                    "id": 100,
+                    "nested2": [
                         {
-                            "about": {"id": -1, "value": 0},
-                            "description": "aaa",
-                            "id": 100,
-                            "nested2": [
-                                {
-                                    "about": {
-                                        "id": 1,
-                                        "time": {"id": -1, "value": 0},
-                                        "value": "a",
-                                    },
-                                    "id": 1000,
-                                    "minutia": 3.1415926539,
-                                    "ref": 100,
-                                },
-                                {
-                                    "about": {
-                                        "id": 2,
-                                        "time": {"id": -2},
-                                        "value": "b",
-                                    },
-                                    "id": 1001,
-                                    "minutia": 4,
-                                    "ref": 100,
-                                },
-                                {
-                                    "about": {"id": 3, "value": "c"},
-                                    "id": 1002,
-                                    "minutia": 5.1,
-                                    "ref": 100,
-                                },
-                            ],
-                            "ref": 10,
-                        }
+                            "about": {
+                                "id": 1,
+                                "time": {"id": -1, "value": 0},
+                                "value": "a",
+                            },
+                            "id": 1000,
+                            "minutia": 3.1415926539,
+                            "ref": 100,
+                        },
+                        {
+                            "about": {"id": 2, "time": {"id": -2}, "value": "b",},
+                            "id": 1001,
+                            "minutia": 4,
+                            "ref": 100,
+                        },
+                        {
+                            "about": {"id": 3, "value": "c"},
+                            "id": 1002,
+                            "minutia": 5.1,
+                            "ref": 100,
+                        },
                     ],
-                }
-            ],
+                    "ref": 10,
+                }],
+            }],
         )
 
     def test_inline(self):
@@ -135,68 +128,60 @@ class TestExtract(FuzzyTestCase):
                 {"reference_only": ["inner1.value", "inner2.value"]}, config_template,
             ),
             "SELECT 10 AS id",
-            [
-                {
-                    "about": {"id": 1, "value": "a"},
-                    "id": 10,
-                    "name": "A",
-                    "nested1": [
+            [{
+                "about": {"id": 1, "value": "a"},
+                "id": 10,
+                "name": "A",
+                "nested1": [{
+                    "about": {"id": -1, "value": 0},
+                    "ref": 10,
+                    "description": "aaa",
+                    "nested2": [
                         {
-                            "about": {"id": -1, "value": 0},
-                            "ref": 10,
-                            "description": "aaa",
-                            "nested2": [
-                                {
-                                    "about": {"id": 1, "value": "a"},
-                                    "ref": 100,
-                                    "id": 1000,
-                                    "minutia": 3.1415926539,
-                                },
-                                {
-                                    "about": {"id": 2, "value": "b"},
-                                    "ref": 100,
-                                    "id": 1001,
-                                    "minutia": 4,
-                                },
-                                {
-                                    "about": {"id": 3, "value": "c"},
-                                    "ref": 100,
-                                    "id": 1002,
-                                    "minutia": 5.1,
-                                },
-                            ],
-                            "id": 100,
-                        }
+                            "about": {"id": 1, "value": "a"},
+                            "ref": 100,
+                            "id": 1000,
+                            "minutia": 3.1415926539,
+                        },
+                        {
+                            "about": {"id": 2, "value": "b"},
+                            "ref": 100,
+                            "id": 1001,
+                            "minutia": 4,
+                        },
+                        {
+                            "about": {"id": 3, "value": "c"},
+                            "ref": 100,
+                            "id": 1002,
+                            "minutia": 5.1,
+                        },
                     ],
-                }
-            ],
+                    "id": 100,
+                }],
+            }],
         )
 
     def test_lean(self):
         self.run_compare(
             set_default({"show_foreign_keys": False}, config_template),
             "SELECT 10 AS id",
-            [
-                {
-                    "about": {"value": "a", "time": {"value": 0}},
-                    "id": 10,
-                    "name": "A",
-                    "nested1": [
+            [{
+                "about": {"value": "a", "time": {"value": 0}},
+                "id": 10,
+                "name": "A",
+                "nested1": [{
+                    "about": {"value": 0},
+                    "description": "aaa",
+                    "nested2": [
                         {
-                            "about": {"value": 0},
-                            "description": "aaa",
-                            "nested2": [
-                                {
-                                    "about": {"value": "a", "time": {"value": 0}},
-                                    "minutia": 3.1415926539,
-                                },
-                                {"about": {"value": "b"}, "minutia": 4},
-                                {"about": {"value": "c"}, "minutia": 5.1},
-                            ],
-                        }
+                            "about": {"value": "a", "time": {"value": 0}},
+                            "minutia": 3.1415926539,
+                        },
+                        {"about": {"value": "b"}, "minutia": 4},
+                        {"about": {"value": "c"}, "minutia": 5.1},
                     ],
-                }
-            ],
+                }],
+            }],
         )
 
     def test_lean_inline(self):
@@ -209,24 +194,20 @@ class TestExtract(FuzzyTestCase):
                 config_template,
             ),
             "SELECT 10 AS id",
-            [
-                {
-                    "about": "a",
-                    "id": 10,
-                    "name": "A",
-                    "nested1": [
-                        {
-                            "about": 0,
-                            "description": "aaa",
-                            "nested2": [
-                                {"about": "a", "minutia": 3.1415926539},
-                                {"about": "b", "minutia": 4},
-                                {"about": "c", "minutia": 5.1},
-                            ],
-                        }
+            [{
+                "about": "a",
+                "id": 10,
+                "name": "A",
+                "nested1": [{
+                    "about": 0,
+                    "description": "aaa",
+                    "nested2": [
+                        {"about": "a", "minutia": 3.1415926539},
+                        {"about": "b", "minutia": 4},
+                        {"about": "c", "minutia": 5.1},
                     ],
-                }
-            ],
+                }],
+            }],
         )
 
     def test_lean_inline_all(self):
@@ -244,39 +225,33 @@ class TestExtract(FuzzyTestCase):
             ),
             [
                 {
-                    "nested1": [
-                        {
-                            "about": 0,
-                            "description": "aaa",
-                            "nested2": [
-                                {"about": "a", "minutia": 3.1415926539},
-                                {"about": "b", "minutia": 4},
-                                {"about": "c", "minutia": 5.1},
-                            ],
-                        }
-                    ],
+                    "nested1": [{
+                        "about": 0,
+                        "description": "aaa",
+                        "nested2": [
+                            {"about": "a", "minutia": 3.1415926539},
+                            {"about": "b", "minutia": 4},
+                            {"about": "c", "minutia": 5.1},
+                        ],
+                    }],
                     "about": "a",
                     "id": 10,
                     "name": "A",
                 },
                 {
-                    "nested1": [
-                        {
-                            "description": "bbb",
-                            "nested2": [{"about": "a", "minutia": 6.2}],
-                        }
-                    ],
+                    "nested1": [{
+                        "description": "bbb",
+                        "nested2": [{"about": "a", "minutia": 6.2}],
+                    }],
                     "about": "b",
                     "id": 11,
                     "name": "B",
                 },
                 {
-                    "nested1": [
-                        {
-                            "description": "ccc",
-                            "nested2": [{"about": "c", "minutia": 7.3}],
-                        }
-                    ],
+                    "nested1": [{
+                        "description": "ccc",
+                        "nested2": [{"about": "c", "minutia": 7.3}],
+                    }],
                     "about": "c",
                     "id": 12,
                     "name": "C",
@@ -322,15 +297,13 @@ class TestExtract(FuzzyTestCase):
 
 filename = "tests/output/test_output.json"
 
-config_template = wrap(
-    {
-        "fact_table": "fact_table",
-        "show_foreign_keys": True,
-        "null_values": ["-", "unknown", ""],
-        "add_relations": [],
-        "include": [],
-        "exclude": [],
-        "reference_only": ["inner1", "inner2"],
-        "database": settings.database,
-    }
-)
+config_template = wrap({
+    "fact_table": "fact_table",
+    "show_foreign_keys": True,
+    "null_values": ["-", "unknown", ""],
+    "add_relations": [],
+    "include": [],
+    "exclude": [],
+    "reference_only": ["inner1", "inner2"],
+    "database": settings.database,
+})

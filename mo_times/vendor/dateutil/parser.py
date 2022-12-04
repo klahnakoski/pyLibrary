@@ -30,7 +30,7 @@ __all__ = ["parse", "parserinfo"]
 
 class _timelex(object):
 
-    def __init__(self, instream):
+    def __init__(query_path, instream):
         if is_text(instream):
             instream = StringIO(instream)
         self.instream = instream
@@ -376,7 +376,7 @@ class parser(object):
                     elif len_li == 6 or (len_li > 6 and l[i-1].find('.') == 6):
                         # YYMMDD or HHMMSS[.ss]
                         s = l[i-1]
-                        if not ymd and l[i-1].find('.') == -1:
+                        if not ymd and '.' not in l[i-1]:
                             ymd.append(info.convertyear(int(s[:2])))
                             ymd.append(int(s[2:4]))
                             ymd.append(int(s[4:]))

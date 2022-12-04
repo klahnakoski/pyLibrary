@@ -7,12 +7,8 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 import os
+import sys
 from unittest import skipIf
 
 from mo_logs import Log
@@ -22,7 +18,7 @@ from mo_threads import Process
 from mo_threads import Till
 from tests import IS_WINDOWS
 
-IS_TRAVIS = bool(os.environ.get('TRAVIS'))
+IS_TRAVIS = bool(os.environ.get("TRAVIS"))
 
 
 class TestProcesses(FuzzyTestCase):
@@ -36,7 +32,7 @@ class TestProcesses(FuzzyTestCase):
 
     def test_exit(self):
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
+            "waiting", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
@@ -50,28 +46,31 @@ class TestProcesses(FuzzyTestCase):
         CAN WE CATCH A SIGINT?
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
+            "waiting", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
-        command = ["kill",  "-s", "int", p.pid]
+        command = ["kill", "-s", "int", p.pid]
         k = Process("killer", command, shell=True)
         k.join(raise_on_error=True)
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-    @skipIf(IS_TRAVIS, "travis can not kill")
+    @skipIf(
+        IS_TRAVIS or IS_WINDOWS,
+        "travis can not kill, Python can not send ctrl-c on Windows",
+    )
     def test_sigint(self):
         """
         CAN WE CATCH A SIGINT?
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/sigint_test.py"], debug=True
+            "waiting", [ sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
-        Till(seconds=2).wait()
         if IS_WINDOWS:
             import signal
+
             os.kill(p.pid, signal.CTRL_C_EVENT)
         else:
             Process("killer", ["kill", "-SIGINT", p.pid]).join()
@@ -83,7 +82,7 @@ class TestProcesses(FuzzyTestCase):
         DO WE STILL EXIT WITHOUT SIGINT?
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/sigint_test.py"], debug=True
+            "waiting", [ sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
@@ -96,7 +95,7 @@ class TestProcesses(FuzzyTestCase):
         CAN WE CATCH A SIGINT?
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/sigint_test.py"], debug=True
+            "waiting", [ sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
@@ -109,8 +108,15 @@ class TestProcesses(FuzzyTestCase):
         CAN PROCESS STOP ITSELF??
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/stop_test.py"], debug=True
+            "waiting", [ sys.executable, "-u", "tests/programs/stop_test.py"], debug=True
         )
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
+    def test_stop_does_not_throw_after_warning(self):
+        p = Process(
+            "waiting", [sys.executable, "-u", "tests/programs/simple_test.py"], debug=True
+        )
+        p.join()
+        lines = p.stdout.pop_all()
+        self.assertIn("All threads have shutdown", lines)

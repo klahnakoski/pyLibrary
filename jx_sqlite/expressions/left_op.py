@@ -9,12 +9,30 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import LeftOp as LeftOp_, ONE
-from jx_sqlite.expressions._utils import check
-from jx_sqlite.expressions.sql_substr_op import SqlSubstrOp
+from jx_base.expressions import LeftOp as LeftOp_, ONE, LengthOp, WhenOp, BasicSubstringOp, ZERO, MaxOp, MinOp, \
+    SqlSubstrOp, EqOp
+from jx_sqlite.expressions._utils import check, SQLang
 
 
 class LeftOp(LeftOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        return SqlSubstrOp([self.value, ONE, self.length]).partial_eval().to_sql(schema)
+    def to_sql(self, schema):
+        return (
+            SqlSubstrOp([self.value, ONE, self.length])
+            .partial_eval(SQLang)
+            .to_sql(schema)
+        )
+
+    def partial_eval(self, lang):
+        value = self.value.partial_eval(lang)
+        length = self.length.partial_eval(lang)
+        max_length = LengthOp(value)
+
+        return WhenOp(
+            EqOp([max_length, ZERO]),
+            **{"else": SqlSubstrOp([
+                value,
+                ONE,
+                length,
+            ])}
+        ).partial_eval(lang)

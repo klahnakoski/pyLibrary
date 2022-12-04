@@ -23,7 +23,7 @@ PERIOD = 0.3
 class StructuredLogger_usingThread(StructuredLogger):
     def __init__(self, logger, period=PERIOD):
         if not isinstance(logger, StructuredLogger):
-            Log.error("Expecting a StructuredLogger")
+            logger.error("Expecting a StructuredLogger")
 
         self.logger = logger
         self.queue = Queue(
@@ -52,10 +52,10 @@ class StructuredLogger_usingThread(StructuredLogger):
             self.queue.add(THREAD_STOP)  # BE PATIENT, LET REST OF MESSAGE BE SENT
             self.thread.join()
         except Exception as e:
-            Log.note("problem in threaded logger" + str(e))
+            Log.info("problem in threaded logger" + str(e))
 
 
-def worker(logger, queue, period, please_stop):
+def worker(logger: StructuredLogger, queue, period, please_stop):
     please_stop.then(lambda: queue.close)
 
     try:
@@ -74,8 +74,11 @@ def worker(logger, queue, period, please_stop):
         for log in queue.pop_all():
             if log is not THREAD_STOP:
                 logger.write(**log)
+
+        logger.stop()
     except Exception as e:
         import sys
+        e = Except.wrap(e)
 
         sys.stderr.write(
             "problem in " + StructuredLogger_usingThread.__name__ + ": " + str(e)

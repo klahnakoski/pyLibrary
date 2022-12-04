@@ -1,5 +1,8 @@
 # encoding: utf-8
-# module mo_parsing.py
+
+# ORIGINALLY COPIED FROM pyparsing UNDER THE MIT LICENCE
+
+# module pyparsing.py
 #
 # Copyright (c) 2003-2019  Paul T. McGuire
 #
@@ -22,251 +25,73 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-
-__doc__ = """
-mo_parsing module - Classes and methods to define and execute parsing grammars
-=============================================================================
-
-The mo_parsing module is an alternative approach to creating and
-executing simple grammars, vs. the traditional lex/yacc approach, or the
-use of regular expressions.  With mo_parsing, you don't need to learn
-a new syntax for defining grammars or matching expressions - the parsing
-module provides a library of classes that you use to construct the
-grammar directly in Python.
-
-Here is a program to parse "Hello, World!" (or any greeting of the form
-``"<salutation>, <addressee>!"``), built up using :class:`Word`,
-:class:`Literal`, and :class:`And` elements
-(the :class:`'+'<ParserElement.__add__>` operators create :class:`And` expressions,
-and the strings are auto-converted to :class:`Literal` expressions)::
-
-    from mo_parsing import Word, alphas
-
-    # define grammar of a greeting
-    greet = Word(alphas) + "," + Word(alphas) + "!"
-
-    hello = "Hello, World!"
-    print (hello, "->", greet.parseString(hello))
-
-The program outputs the following::
-
-    Hello, World! -> ['Hello', ',', 'World', '!']
-
-The Python representation of the grammar is quite readable, owing to the
-self-explanatory class names, and the use of '+', '|' and '^' operators.
-
-The :class:`ParseResults` object returned from
-:class:`ParserElement.parseString` can be
-accessed as a nested list, a dictionary, or an object with named
-attributes.
-
-The mo_parsing module handles some of the problems that are typically
-vexing when writing text parsers:
-
-  - extra or missing whitespace (the above program will also handle
-    "Hello,World!", "Hello  ,  World  !", etc.)
-  - quoted strings
-  - embedded comments
-
-
-Getting Started -
------------------
-Visit the classes :class:`ParserElement` and :class:`ParseResults` to
-see the base classes that most other mo_parsing
-classes inherit from. Use the docstrings for examples of how to:
-
- - construct literal match expressions from :class:`Literal` and
-   :class:`CaselessLiteral` classes
- - construct character word-group expressions using the :class:`Word`
-   class
- - see how to create repetitive expressions using :class:`ZeroOrMore`
-   and :class:`OneOrMore` classes
- - use :class:`'+'<And>`, :class:`'|'<MatchFirst>`, :class:`'^'<Or>`,
-   and :class:`'&'<Each>` operators to combine simple expressions into
-   more complex ones
- - associate names with your parsed results using
-   :class:`ParserElement.set_token_name`
- - access the parsed data, which is returned as a :class:`ParseResults`
-   object
- - find some helpful expression short-cuts like :class:`delimitedList`
-   and :class:`oneOf`
- - find more useful common expressions in the :class:`parsing_common`
-   namespace class
-"""
-
-from mo_parsing.core import ParserElement, _PendingSkip
-from mo_parsing.enhancement import (
-    Combine,
-    Dict,
-    FollowedBy,
-    Forward,
-    Group,
-    NotAny,
-    OneOrMore,
-    Optional,
-    ParseElementEnhance,
-    PrecededBy,
-    SkipTo,
-    Suppress,
-    TokenConverter,
-    ZeroOrMore,
-)
+from mo_parsing import whitespaces
+from mo_parsing.core import ParserElement, _PendingSkip, set_parser_names
+from mo_parsing.enhancement import *
 from mo_parsing.exceptions import (
-    OnlyOnce,
-    ParseBaseException,
     ParseException,
-    ParseFatalException,
+    ParseException,
     ParseSyntaxException,
     RecursiveGrammarException,
-    conditionAsParseAction,
 )
-from mo_parsing.expressions import And, Each, MatchFirst, Or, ParseExpression
-from mo_parsing.helpers import (
-    alphas8bit,
-    anyCloseTag,
-    anyOpenTag,
-    cStyleComment,
-    commaSeparatedList,
-    commonHTMLEntity,
-    countedArray,
-    cppStyleComment,
-    dblQuotedString,
-    dblSlashComment,
-    delimitedList,
-    dictOf,
-    downcaseTokens,
-    downcaseTokens,
-    empty,
-    empty,
-    hexnums,
-    htmlComment,
-    htmlComment,
-    indentedBlock,
-    infixNotation,
-    javaStyleComment,
-    javaStyleComment,
-    lineEnd,
-    lineEnd,
-    lineStart,
-    lineStart,
-    locatedExpr,
-    makeHTMLTags,
-    matchOnlyAtCol,
-    matchPreviousExpr,
-    matchPreviousLiteral,
-    nestedExpr,
-    nums,
-    oneOf,
+from mo_parsing.expressions import And, MatchAll, MatchFirst, Or, ParseExpression
+from mo_parsing.whitespaces import Whitespace
+
+whitespaces.NO_WHITESPACE = Whitespace("").use()
+whitespaces.STANDARD_WHITESPACE = Whitespace().use()
+
+from mo_parsing.infix import (
     LEFT_ASSOC,
     RIGHT_ASSOC,
-    originalTextFor,
-    printables,
-    punc8bit,
-    punc8bit,
-    pythonStyleComment,
-    pythonStyleComment,
-    quotedString,
-    quotedString,
-    removeQuotes,
-    replaceHTMLEntity,
-    replaceWith,
-    replaceWith,
-    restOfLine,
-    restOfLine,
-    sglQuotedString,
-    sglQuotedString,
-    srange,
-    stringEnd,
-    stringEnd,
-    stringStart,
-    stringStart,
-    ungroup,
-    unicodeString,
-    unicodeString,
-    upcaseTokens,
-    upcaseTokens,
-    withAttribute,
-    withAttribute,
-    withClass,
-    commaSeparatedList,
+    infix_notation,
+    delimited_list,
+    one_of,
 )
-from mo_parsing.results import ParseResults
-from mo_parsing.tokens import (
-    CaselessKeyword,
-    CaselessLiteral,
-    Char,
-    CloseMatch,
-    Empty,
-    GoToColumn,
-    LineEnd,
-    LineStart,
-    NoMatch,
-    QuotedString,
-    Regex,
-    StringStart,
-    White,
-    Word,
-    WordEnd,
-    WordStart,
-    CharsNotIn,
-    Keyword,
-    Literal,
-    StringEnd,
-    Token,
-)
-from mo_parsing.utils import (
-    _MAX_INT,
-    wrap_parse_action,
-    alphanums,
-    alphas,
-    col,
-    hexnums,
-    line,
-    lineno,
-    nums,
-    printables,
-    parsing_unicode,
-    singleArgBuiltins,
-    traceParseAction,
-    unicode_set,
-)
+from mo_parsing.regex import Regex
+from mo_parsing.tokens import *
 
 __all__ = [
     "And",
+    "AnyChar",
     "CaselessKeyword",
     "CaselessLiteral",
     "CharsNotIn",
     "Combine",
     "Dict",
-    "Each",
+    "delimited_list",
+    "MatchAll",
     "Empty",
     "FollowedBy",
     "Forward",
-    "GoToColumn",
     "Group",
+    "infix_notation",
     "Keyword",
+    "LEFT_ASSOC",
     "LineEnd",
     "LineStart",
     "Literal",
+    "LookAhead",
+    "LookBehind",
     "PrecededBy",
+    "Many",
     "MatchFirst",
     "NoMatch",
     "NotAny",
+    "one_of",
     "OneOrMore",
-    "OnlyOnce",
     "Optional",
     "Or",
-    "ParseBaseException",
-    "ParseElementEnhance",
+    "ParseException",
+    "ParseEnhancement",
     "ParseException",
     "ParseExpression",
-    "ParseFatalException",
     "ParseResults",
     "ParseSyntaxException",
     "ParserElement",
-    "QuotedString",
+    "RIGHT_ASSOC",
     "RecursiveGrammarException",
     "Regex",
+    "set_parser_names",
     "SkipTo",
     "StringEnd",
     "StringStart",
@@ -279,63 +104,8 @@ __all__ = [
     "WordStart",
     "ZeroOrMore",
     "Char",
-    "alphanums",
-    "alphas",
-    "alphas8bit",
-    "anyCloseTag",
-    "anyOpenTag",
-    "cStyleComment",
-    "col",
-    "commaSeparatedList",
-    "commonHTMLEntity",
-    "countedArray",
-    "cppStyleComment",
-    "dblQuotedString",
-    "dblSlashComment",
-    "delimitedList",
-    "dictOf",
-    "downcaseTokens",
-    "empty",
-    "hexnums",
-    "htmlComment",
-    "javaStyleComment",
-    "line",
-    "lineEnd",
-    "lineStart",
-    "lineno",
-    "makeHTMLTags",
-    "matchOnlyAtCol",
-    "matchPreviousExpr",
-    "matchPreviousLiteral",
-    "nestedExpr",
-    "nums",
-    "oneOf",
     "LEFT_ASSOC",
     "RIGHT_ASSOC",
-    "printables",
-    "punc8bit",
-    "pythonStyleComment",
-    "quotedString",
-    "removeQuotes",
-    "replaceHTMLEntity",
-    "replaceWith",
-    "restOfLine",
-    "sglQuotedString",
-    "srange",
-    "stringEnd",
-    "stringStart",
-    "traceParseAction",
-    "unicodeString",
-    "upcaseTokens",
-    "withAttribute",
-    "indentedBlock",
-    "originalTextFor",
-    "ungroup",
-    "infixNotation",
-    "locatedExpr",
-    "withClass",
+    "infix_notation",
     "CloseMatch",
-    "parsing_unicode",
-    "unicode_set",
-    "conditionAsParseAction",
 ]

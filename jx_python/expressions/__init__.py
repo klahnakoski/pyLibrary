@@ -3,8 +3,9 @@ from jx_python.expressions.add_op import AddOp
 from jx_python.expressions.and_op import AndOp
 from jx_python.expressions.basic_eq_op import BasicEqOp
 from jx_python.expressions.basic_index_of_op import BasicIndexOfOp
+from jx_python.expressions.basic_starts_with_op import BasicStartsWithOp
+from jx_python.expressions.basic_substring_op import BasicSubstringOp
 from jx_python.expressions.between_op import BetweenOp
-from jx_python.expressions.boolean_op import BooleanOp
 from jx_python.expressions.case_op import CaseOp
 from jx_python.expressions.coalesce_op import CoalesceOp
 from jx_python.expressions.concat_op import ConcatOp
@@ -22,13 +23,13 @@ from jx_python.expressions.get_op import GetOp
 from jx_python.expressions.gt_op import GtOp
 from jx_python.expressions.gte_op import GteOp
 from jx_python.expressions.in_op import InOp
-from jx_python.expressions.integer_op import IntegerOp
 from jx_python.expressions.last_op import LastOp
 from jx_python.expressions.leaves_op import LeavesOp
 from jx_python.expressions.length_op import LengthOp
 from jx_python.expressions.literal import Literal
 from jx_python.expressions.lt_op import LtOp
 from jx_python.expressions.lte_op import LteOp
+from jx_python.expressions.min_op import MinOp
 from jx_python.expressions.max_op import MaxOp
 from jx_python.expressions.missing_op import MissingOp
 from jx_python.expressions.mod_op import ModOp
@@ -37,7 +38,6 @@ from jx_python.expressions.ne_op import NeOp
 from jx_python.expressions.not_left_op import NotLeftOp
 from jx_python.expressions.not_op import NotOp
 from jx_python.expressions.not_right_op import NotRightOp
-from jx_python.expressions.number_op import NumberOp
 from jx_python.expressions.offset_op import OffsetOp
 from jx_python.expressions.or_op import OrOp
 from jx_python.expressions.prefix_op import PrefixOp
@@ -49,9 +49,12 @@ from jx_python.expressions.rows_op import RowsOp
 from jx_python.expressions.script_op import ScriptOp
 from jx_python.expressions.select_op import SelectOp
 from jx_python.expressions.split_op import SplitOp
-from jx_python.expressions.string_op import StringOp
 from jx_python.expressions.sub_op import SubOp
 from jx_python.expressions.suffix_op import SuffixOp
+from jx_python.expressions.to_boolean_op import ToBooleanOp
+from jx_python.expressions.to_integer_op import ToIntegerOp
+from jx_python.expressions.to_number_op import ToNumberOp
+from jx_python.expressions.to_text_op import ToTextOp
 from jx_python.expressions.true_op import TrueOp
 from jx_python.expressions.tuple_op import TupleOp
 from jx_python.expressions.variable import Variable

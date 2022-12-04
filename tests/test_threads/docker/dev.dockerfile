@@ -1,12 +1,10 @@
-FROM python:3.7.2
+FROM python:3.7.8
 
 WORKDIR /app
 RUN mkdir tests
-COPY requirements.txt /app
-COPY tests/requirements.txt /app/tests
-RUN python -m pip install -r requirements.txt \
-    && python -m pip install -r tests/requirements.txt
+COPY ./ /app/
+RUN pip install .
+RUN python tests/smoke_test.py
+#RUN pip install tests/requirements.txt
 
-ADD . /app
-CMD export PYTHONPATH=.:vendor \
-    && python -m unittest discover tests
+#CMD python -m unittest discover tests

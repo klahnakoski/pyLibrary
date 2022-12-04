@@ -52,13 +52,14 @@ class Parser(object):
             self.json = List_usingStream(NEXT(json))
         else:
             Log.error(
-                "Expecting json to be a stream, or a function that will return more bytes"
+                "Expecting json to be a stream, or a function that will return more"
+                " bytes"
             )
 
         if is_data(query_path) and query_path.get("items"):
-            self.path_list = split_field(query_path.get("items")) + [
-                "$items"
-            ]  # INSERT A MARKER SO THAT OBJECT IS STREAM DECODED
+            self.path_list = (
+                split_field(query_path.get("items")) + ["$items"]
+            )  # INSERT A MARKER SO THAT OBJECT IS STREAM DECODED
         else:
             self.path_list = split_field(query_path)
 
@@ -157,7 +158,8 @@ class Parser(object):
                     else:
                         if len(self.done[0]) <= len(child_path):
                             Log.error(
-                                "Can not pick up more variables, iterator over {{path}} is done",
+                                "Can not pick up more variables, iterator over {{path}}"
+                                " is done",
                                 path=join_field(self.done[0]),
                             )
                         index = self._assign_token(index, c, child_expected)
@@ -347,7 +349,7 @@ class Parser(object):
         return c, index + 1
 
 
-def parse(json, query_path, expected_vars=NO_VARS):
+def parse(json, query_path=None, expected_vars=NO_VARS):
     """
     INTENDED TO TREAT JSON AS A STREAM; USING MINIMAL MEMORY WHILE IT ITERATES
     THROUGH THE STRUCTURE.  ASSUMING THE JSON IS LARGE, AND HAS A HIGH LEVEL
@@ -368,6 +370,8 @@ def parse(json, query_path, expected_vars=NO_VARS):
                           MORE-THAN-ONE PASS IS REQUIRED
     :return: RETURNS AN ITERATOR OVER ALL OBJECTS FROM ARRAY LOCATED AT query_path
     """
+    if not query_path:
+        query_path = "."
     for v, i in Parser(json, query_path, expected_vars).parse():
         yield v
 

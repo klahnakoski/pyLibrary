@@ -14,25 +14,25 @@ from jx_base.expressions._utils import operators
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.literal import Literal
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 from mo_logs import Log
 
 
 class RangeOp(Expression):
+    """
+    DO NOT USE, NOT AN OPERATOR
+    """
+
     has_simple_form = True
-    data_type = BOOLEAN
+    _data_type = T_BOOLEAN
 
     def __new__(cls, term, *args):
         Expression.__new__(cls, *args)
         field, comparisons = term  # comparisons IS A Literal()
-        return cls.lang[
-            AndOp(
-                [
-                    getattr(cls.lang, operators[op])([field, Literal(value)])
-                    for op, value in comparisons.value.items()
-                ]
-            )
-        ]
+        return AndOp(*(
+            getattr(cls.lang, operators[op])([field, Literal(value)])
+            for op, value in comparisons.value.items()
+        ))
 
-    def __init__(self, term):
+    def __init__(self, *term):
         Log.error("Should never happen!")

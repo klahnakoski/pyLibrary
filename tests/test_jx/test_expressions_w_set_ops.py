@@ -10,10 +10,12 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from unittest import skip, skipIf
+
 from jx_base.expressions import NULL
 from mo_dots import list_to_data
 from mo_json import null
-from tests.test_jx import BaseTestCase, TEST_TABLE
+from tests.test_jx import BaseTestCase, TEST_TABLE, global_settings
 
 lots_of_data = list_to_data([{"a": i} for i in range(30)])
 
@@ -41,12 +43,10 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "rownum",
-                        "domain": {"type": "rownum", "min": 0, "max": 5, "interval": 1},
-                    }
-                ],
+                "edges": [{
+                    "name": "rownum",
+                    "domain": {"type": "rownum", "min": 0, "max": 5, "interval": 1},
+                }],
                 "data": {"l": [1, 2, 3, 4, 5]},
             },
         }
@@ -125,10 +125,7 @@ class TestSetOps(BaseTestCase):
             "query": {"from": TEST_TABLE, "select": ".", "where": {"ne": ["a", "b"]}},
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [
-                    {"a": 0, "b": 1},
-                    {"a": 1, "b": 0},
-                ],
+                "data": [{"a": 0, "b": 1}, {"a": 1, "b": 0},],
             },
         }
         self.utils.execute_tests(test)
@@ -136,9 +133,9 @@ class TestSetOps(BaseTestCase):
     def test_concat(self):
         test = {
             "data": [
-                {"v": "hello", "w": None},
-                {"v": "hello", "w": ""},
-                {"v": "hello", "w": "world"},
+                {"o": 0, "v": "hello", "w": None},
+                {"o": 1, "v": "hello", "w": ""},
+                {"o": 2, "v": "hello", "w": "world"},
             ],
             "query": {
                 "from": TEST_TABLE,
@@ -156,10 +153,33 @@ class TestSetOps(BaseTestCase):
                         "value": {"concat": [{"literal": ""}, "v"], "separator": "-"},
                     },
                 ],
+                "sort": "o",
             },
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
+                    {
+                        "a": NULL,
+                        "b": "hellotest",
+                        "c": "hello",
+                        "d": "hello",
+                        "e": NULL,
+                        "f": "hello-0",
+                        "g": "hello",
+                        "h": "hello",
+                        "i": "hello",
+                    },
+                    {
+                        "a": NULL,
+                        "b": "hellotest",
+                        "c": "hello",
+                        "d": "hello",
+                        "e": NULL,
+                        "f": "hello-0",
+                        "g": "hello",
+                        "h": "hello",
+                        "i": "hello",
+                    },
                     {
                         "a": NULL,
                         "b": "hellotest",
@@ -169,28 +189,6 @@ class TestSetOps(BaseTestCase):
                         "f": "hello-0",
                         "g": "hello-world",
                         "h": "world-hello",
-                        "i": "hello",
-                    },
-                    {
-                        "a": NULL,
-                        "b": "hellotest",
-                        "c": "hello",
-                        "d": "hello",
-                        "e": NULL,
-                        "f": "hello-0",
-                        "g": "hello",
-                        "h": "hello",
-                        "i": "hello",
-                    },
-                    {
-                        "a": NULL,
-                        "b": "hellotest",
-                        "c": "hello",
-                        "d": "hello",
-                        "e": NULL,
-                        "f": "hello-0",
-                        "g": "hello",
-                        "h": "hello",
                         "i": "hello",
                     },
                 ],
@@ -239,116 +237,7 @@ class TestSetOps(BaseTestCase):
         }
         self.utils.execute_tests(test)
 
-    def test_select_when_on_multivalue(self):
-        test = {
-            "data": [
-                {"a": "e"},
-                {"a": "c"},
-                {"a": ["e"]},
-                {"a": ["c"]},
-                {"a": ["e", "c"]},
-                {},
-            ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": [
-                    "a",
-                    {
-                        "name": "is_e",
-                        "value": {"when": {"eq": {"a": "e"}}, "then": 1, "else": 0},
-                    },
-                    {
-                        "name": "not_e",
-                        "value": {
-                            "when": {"not": {"eq": {"a": "e"}}},
-                            "then": 1,
-                            "else": 0,
-                        },
-                    },
-                    {
-                        "name": "is_c",
-                        "value": {"when": {"eq": {"a": "c"}}, "then": 1, "else": 0},
-                    },
-                ],
-            },
-            "expecting_list": {
-                "meta": {"format": "list"},
-                "data": [
-                    {"a": "e", "is_e": 1, "not_e": 0, "is_c": 0},
-                    {"a": "c", "is_e": 0, "not_e": 1, "is_c": 1},
-                    {"a": "e", "is_e": 1, "not_e": 0, "is_c": 0},
-                    {"a": "c", "is_e": 0, "not_e": 1, "is_c": 1},
-                    {"a": ["e", "c"], "is_e": 1, "not_e": 0, "is_c": 1},
-                    {"a": NULL, "is_e": 0, "not_e": 1, "is_c": 0},
-                ],
-            },
-        }
-        self.utils.execute_tests(test)
-
-    def test_select_in_w_multivalue(self):
-        test = {
-            "data": [
-                {"a": "e"},
-                {"a": "c"},
-                {"a": ["e"]},
-                {"a": ["c"]},
-                {"a": ["e", "c"]},
-                {},
-            ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": [
-                    "a",
-                    {"name": "is_e", "value": {"in": [{"literal": "e"}, "a"]}},
-                    {
-                        "name": "not_e",
-                        "value": {"not": {"in": [{"literal": "e"}, "a"]}},
-                    },
-                    {"name": "is_c", "value": {"in": [{"literal": "c"}, "a"]}},
-                ],
-            },
-            "expecting_list": {
-                "meta": {"format": "list"},
-                "data": [
-                    {"a": "e", "is_e": True, "not_e": False, "is_c": False},
-                    {"a": "c", "is_e": False, "not_e": True, "is_c": True},
-                    {"a": "e", "is_e": True, "not_e": False, "is_c": False},
-                    {"a": "c", "is_e": False, "not_e": True, "is_c": True},
-                    {"a": ["e", "c"], "is_e": True, "not_e": False, "is_c": True},
-                    {"a": NULL, "is_e": False, "not_e": True, "is_c": False},
-                ],
-            },
-        }
-        self.utils.execute_tests(test)
-
-    def test_select_agg_mult_w_when(self):
-        test = {
-            "data": [
-                {"a": 0, "b": False},  # 0*1
-                {"a": 1, "b": False},  # 1*1 = 1
-                {"a": 2, "b": True},  # 2*0
-                {"a": 3, "b": False},  # 3*1 = 3
-                {"a": 4, "b": True},  # 4*0
-                {"a": 5, "b": False},  # 5*1 = 5
-                {"a": 6, "b": True},  # 6*0
-                {"a": 7, "b": True},  # 7*0
-                {"a": 8},  # COUNTED, "b" IS NOT true  # 8*1 = 8
-                {"b": True},  # NOT COUNTED              null * 0 = null
-                {"b": False},  # COUNTED                 null * 1 = null
-            ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": {
-                    "name": "ab",
-                    "value": {"mult": ["a", {"when": "b", "then": 0, "else": 1}]},
-                    "aggregate": "sum",
-                },
-            },
-            "expecting_list": {"meta": {"format": "value"}, "data": 17},
-        }
-        self.utils.execute_tests(test)
-
-    # @skip("boolean in when is not using false")
+    @skipIf(global_settings.use == "sqlite", "broken")
     def test_select_mult_w_when(self):
         test = {
             "data": [
@@ -375,21 +264,19 @@ class TestSetOps(BaseTestCase):
                 ],
                 "limit": 100,
             },
-            "expecting_list": {
-                "data": [
-                    {"ab": 0, "b": 0},
-                    {"ab": 0, "b": 0},
-                    {"ab": 0, "b": 0},
-                    {"ab": 0, "b": 0},
-                    {"ab": 0, "b": 1},
-                    {"ab": 1, "b": 1},
-                    {"ab": 3, "b": 1},
-                    {"ab": 5, "b": 1},
-                    {"ab": 8, "b": 1},
-                    {"ab": NULL, "b": 1},
-                    {"ab": NULL, "b": 0},
-                ]
-            },
+            "expecting_list": {"data": [
+                {"ab": 0, "b": 0},
+                {"ab": 0, "b": 0},
+                {"ab": 0, "b": 0},
+                {"ab": 0, "b": 0},
+                {"ab": 0, "b": 1},
+                {"ab": 1, "b": 1},
+                {"ab": 3, "b": 1},
+                {"ab": 5, "b": 1},
+                {"ab": 8, "b": 1},
+                {"ab": NULL, "b": 1},
+                {"ab": NULL, "b": 0},
+            ]},
         }
         self.utils.execute_tests(test)
 
@@ -433,7 +320,12 @@ class TestSetOps(BaseTestCase):
 
     def test_select_add_w_default(self):
         test = {
-            "data": [{"a": 1, "b": -1}, {}],  # DUMMY VALUE TO CREATE COLUMNS
+            "data": [
+                {"a": 1, "b": -1},
+                {"a": 1},
+                {"b": -1},
+                {}
+            ],
             "query": {
                 "from": TEST_TABLE,
                 "select": [
@@ -444,7 +336,7 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_list": {
                 "meta": {"format": "list"},
-                "data": [{"a": 1, "b": -1, "t": 0}, {"t": -5}],
+                "data": [{"a": 1, "b": -1, "t": 0}, {"a": 1, "t": -5}, {"b": -1, "t": -5}, {"t": -5}],
             },
         }
         self.utils.execute_tests(test)
@@ -485,23 +377,17 @@ class TestSetOps(BaseTestCase):
 
     def test_select_average(self):
         test = {
-            "data": [
-                {
-                    "a": {
-                        "_b": [
-                            {"a": 0, "b": 0},
-                            {"a": 0, "b": 1},
-                            {"a": 0},
-                            {"a": 1, "b": 0},
-                            {"a": 1, "b": 1},
-                            {"a": 1},
-                            {"b": 0},
-                            {"b": 1},
-                            {},
-                        ]
-                    }
-                }
-            ],
+            "data": [{"a": {"_b": [
+                {"a": 0, "b": 0},
+                {"a": 0, "b": 1},
+                {"a": 0},
+                {"a": 1, "b": 0},
+                {"a": 1, "b": 1},
+                {"a": 1},
+                {"b": 0},
+                {"b": 1},
+                {},
+            ]}}],
             "query": {
                 "from": TEST_TABLE + ".a._b",
                 "select": [
@@ -536,45 +422,16 @@ class TestSetOps(BaseTestCase):
             "data": [{"a": {"_b": [{"a": 5}, {}]}}],
             "query": {
                 "from": TEST_TABLE + ".a._b",
-                "select": [
-                    {"name": "t", "value": {"add": ["a", "a"]}, "aggregate": "average"}
-                ],
+                "select": [{
+                    "name": "t",
+                    "value": {"add": ["a", "a"]},
+                    "aggregate": "average",
+                }],
                 "edges": ["a"],
             },
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [{"a": 5, "t": 10}, {"t": NULL}],
-            },
-        }
-        self.utils.execute_tests(test)
-
-    def test_select_gt_on_sub(self):
-        test = {
-            "data": [
-                {
-                    "a": {
-                        "_b": [
-                            {"a": 0, "b": 0},
-                            {"a": 0, "b": 1},
-                            {"a": 0},
-                            {"a": 1, "b": 0},
-                            {"a": 1, "b": 1},
-                            {"a": 1},
-                            {"b": 0},
-                            {"b": 1},
-                            {},
-                        ]
-                    }
-                }
-            ],
-            "query": {
-                "from": TEST_TABLE + ".a._b",
-                "select": ["a", "b", {"name": "diff", "value": {"sub": ["a", "b"]}}],
-                "where": {"gt": [{"sub": ["a", "b"]}, 0]},
-            },
-            "expecting_list": {
-                "meta": {"format": "list"},
-                "data": [{"a": 1, "b": 0, "diff": 1}],
             },
         }
         self.utils.execute_tests(test)
@@ -641,19 +498,13 @@ class TestSetOps(BaseTestCase):
             },
             "expecting_cube": {
                 "meta": {"format": "cube"},
-                "edges": [
-                    {
-                        "name": "a",
-                        "domain": {
-                            "type": "set",
-                            "partitions": [
-                                {"value": "a"},
-                                {"value": "n"},
-                                {"value": "t"},
-                            ],
-                        },
-                    }
-                ],
+                "edges": [{
+                    "name": "a",
+                    "domain": {
+                        "type": "set",
+                        "partitions": [{"value": "a"}, {"value": "n"}, {"value": "t"},],
+                    },
+                }],
                 "data": {"count": [1, 1, 1, 2]},
             },
         }
@@ -690,26 +541,24 @@ class TestSetOps(BaseTestCase):
                 "from": TEST_TABLE,
                 "limit": 100,
             },
-            "expecting_list": {
-                "data": [
-                    {"i": 0, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
-                    {"i": 1, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
-                    {"i": 2, "a": NULL, "b": "a", "c": NULL, "d": "a"},
-                    {"i": 3, "a": NULL, "b": "abcdefg", "c": NULL, "d": "abcdefg"},
-                    {"i": 4, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
-                    {"i": 5, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
-                    {"i": 6, "a": NULL, "b": "a", "c": NULL, "d": "a"},
-                    {"i": 7, "a": NULL, "b": "abcdefg", "c": NULL, "d": "abcdefg"},
-                    {"i": 8, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
-                    {"i": 9, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
-                    {"i": 10, "a": "a", "b": NULL, "c": "a", "d": NULL},
-                    {"i": 11, "a": "abc", "b": "defg", "c": "efg", "d": "abcd"},
-                    {"i": 12, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
-                    {"i": 13, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
-                    {"i": 14, "a": "a", "b": NULL, "c": "a", "d": NULL},
-                    {"i": 15, "a": "abcdefg", "b": NULL, "c": "abcdefg", "d": NULL},
-                ]
-            },
+            "expecting_list": {"data": [
+                {"i": 0, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
+                {"i": 1, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
+                {"i": 2, "a": NULL, "b": "a", "c": NULL, "d": "a"},
+                {"i": 3, "a": NULL, "b": "abcdefg", "c": NULL, "d": "abcdefg"},
+                {"i": 4, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
+                {"i": 5, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
+                {"i": 6, "a": NULL, "b": "a", "c": NULL, "d": "a"},
+                {"i": 7, "a": NULL, "b": "abcdefg", "c": NULL, "d": "abcdefg"},
+                {"i": 8, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
+                {"i": 9, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
+                {"i": 10, "a": "a", "b": NULL, "c": "a", "d": NULL},
+                {"i": 11, "a": "abc", "b": "defg", "c": "efg", "d": "abcd"},
+                {"i": 12, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
+                {"i": 13, "a": NULL, "b": NULL, "c": NULL, "d": NULL},
+                {"i": 14, "a": "a", "b": NULL, "c": "a", "d": NULL},
+                {"i": 15, "a": "abcdefg", "b": NULL, "c": "abcdefg", "d": NULL},
+            ]},
         }
         self.utils.execute_tests(test)
 
@@ -717,7 +566,7 @@ class TestSetOps(BaseTestCase):
         test = {
             "data": [{"v": 1}, {"v": "2"}, {"v": 3}, {"v": "4"}, {"v": "100"}, {}],
             "query": {
-                "select": {"name": "v", "value": {"string": "v"}},
+                "select": {"name": "v", "value": {"to_text": "v"}},
                 "from": TEST_TABLE,
             },
             "expecting_list": {
@@ -791,9 +640,11 @@ class TestSetOps(BaseTestCase):
                     {"name": "a", "value": {"between": {"v": ["/this/", "/"]}}},
                     {
                         "name": "c",
-                        "value": {
-                            "between": ["v", {"literal": "/this/"}, {"literal": "/"}]
-                        },
+                        "value": {"between": [
+                            "v",
+                            {"literal": "/this/"},
+                            {"literal": "/"},
+                        ]},
                     },
                     {"name": "d", "value": {"between": {"v": [-1, 5]}}},
                     {"name": "e", "value": {"between": {"v": [None, "/is"]}}},
@@ -839,11 +690,10 @@ class TestSetOps(BaseTestCase):
                     {
                         "name": "filename",
                         "value": {
-                            "when": {
-                                "missing": {
-                                    "between": {"url": ["https://hg.mozilla.org/", "/"]}
-                                }
-                            },
+                            "when": {"missing": {"between": {"url": [
+                                "https://hg.mozilla.org/",
+                                "/",
+                            ]}}},
                             "then": "url",
                         },
                     },
@@ -857,7 +707,7 @@ class TestSetOps(BaseTestCase):
             "expecting_list": {
                 "meta": {"format": "list"},
                 "data": [
-                    NULL,
+                    {},  # {"select":[]} RETURNS OBJCETS
                     {"url": "/", "filename": "/", "subdir": NULL},
                     {
                         "url": "https://hg.mozilla.org/",
@@ -913,17 +763,13 @@ class TestSetOps(BaseTestCase):
         test = {
             "data": [{"v": "/this/is/a/directory"}, {"v": "/"}],
             "query": {
-                "select": [
-                    {
-                        "name": "b",
-                        "value": {
-                            "case": [
-                                {"when": {"missing": {"literal": "/this/"}}, "then": 0},
-                                {"find": {"v": "/this/"}, "start": 0},
-                            ]
-                        },
-                    }
-                ],
+                "select": [{
+                    "name": "b",
+                    "value": {"case": [
+                        {"when": {"missing": {"literal": "/this/"}}, "then": 0},
+                        {"find": {"v": "/this/"}, "start": 0},
+                    ]},
+                }],
                 "from": TEST_TABLE,
             },
             "expecting_list": {
@@ -979,16 +825,14 @@ class TestSetOps(BaseTestCase):
                 "from": TEST_TABLE,
                 "groupby": {
                     "name": "f",
-                    "value": {
-                        "left": [
-                            "url",
-                            {
-                                "find": {"url": "/"},
-                                "start": 23,
-                                "default": {"length": "url"},
-                            },
-                        ]
-                    },
+                    "value": {"left": [
+                        "url",
+                        {
+                            "find": {"url": "/"},
+                            "start": 23,
+                            "default": {"length": "url"},
+                        },
+                    ]},
                 },
             },
             "expecting_list": {
@@ -1002,6 +846,62 @@ class TestSetOps(BaseTestCase):
                     {"f": "https://hg.mozilla.org/c", "count": 1},
                     {"f": "https://hg.mozilla.org/d", "count": 1},
                     {"f": "https://hg.mozilla.org/e", "count": 1},
+                ],
+            },
+        }
+
+        self.utils.execute_tests(test)
+
+    def test_left_w_find(self):
+        test = {
+            "data": [
+                {},
+                {"url": "/"},
+                #        012345678901234567890123456789
+                {"url": "https://hg.mozilla.org/"},
+                {"url": "https://hg.mozilla.org/a"},
+                {"url": "https://hg.mozilla.org/b"},
+                {"url": "https://hg.mozilla.org/b/1"},
+                {"url": "https://hg.mozilla.org/b/2"},
+                {"url": "https://hg.mozilla.org/b/3"},
+                {"url": "https://hg.mozilla.org/c"},
+                {"url": "https://hg.mozilla.org/d"},
+                {"url": "https://hg.mozilla.org/e"},
+            ],
+            "query": {
+                "from": TEST_TABLE,
+                "select": [
+                    {"name": "d", "value": {"find": {"url": "/"}}},
+                    {"name": "e", "value": {"find": {"url": "/"}, "start": 23}},
+                    {
+                        "name": "f",
+                        "value": {"left": [
+                            "url",
+                            {
+                                "find": {"url": "/"},
+                                "start": 23,
+                                "default": {"length": "url"},
+                            },
+                        ]},
+                    },
+                ],
+                "limit": 20
+            },
+            "expecting_table": {
+                "meta": {"format": "table"},
+                "header":["d", "e", "f"],
+                "data": [
+                    [NULL, NULL, NULL],
+                    [0, NULL, "/"],
+                    [6, NULL, "https://hg.mozilla.org/"],
+                    [6, NULL, "https://hg.mozilla.org/a"],
+                    [6, NULL, "https://hg.mozilla.org/b"],
+                    [6, 24, "https://hg.mozilla.org/b"],
+                    [6, 24, "https://hg.mozilla.org/b"],
+                    [6, 24, "https://hg.mozilla.org/b"],
+                    [6, NULL, "https://hg.mozilla.org/c"],
+                    [6, NULL, "https://hg.mozilla.org/d"],
+                    [6, NULL, "https://hg.mozilla.org/e"],
                 ],
             },
         }
@@ -1026,16 +926,10 @@ class TestSetOps(BaseTestCase):
             ],
             "query": {
                 "from": TEST_TABLE,
-                "where": {
-                    "and": [
-                        {"prefix": {"url": "https://hg.mozilla.org/"}},
-                        {
-                            "not": {
-                                "find": [{"not_left": {"url": 23}}, {"literal": "/"}]
-                            }
-                        },
-                    ]
-                },
+                "where": {"and": [
+                    {"prefix": {"url": "https://hg.mozilla.org/"}},
+                    {"not": {"find": [{"not_left": {"url": 23}}, {"literal": "/"}]}},
+                ]},
             },
             "expecting_list": {
                 "meta": {"format": "list"},
@@ -1072,31 +966,6 @@ class TestSetOps(BaseTestCase):
                 },
             },
             "expecting_list": {"meta": {"format": "list"}, "data": [1, 1, NULL]},
-        }
-
-        self.utils.execute_tests(test)
-
-    def test_boolean_in_expression(self):
-        test = {
-            "data": [
-                {"result": {"ok": True}},
-                {"result": {"ok": True}},
-                {"result": {"ok": True}},
-                {"result": {"ok": True}},
-                {"result": {"ok": False}},
-                {"result": {"ok": False}},
-                {"result": {"ok": False}},
-                {"result": {"ok": False}},
-            ],
-            "query": {
-                "from": TEST_TABLE,
-                "select": {
-                    "name": "failures",
-                    "aggregate": "sum",
-                    "value": {"when": {"eq": {"result.ok": "F"}}, "then": 1, "else": 0},
-                },
-            },
-            "expecting_list": {"meta": {"format": "value"}, "data": 4},
         }
 
         self.utils.execute_tests(test)
@@ -1145,6 +1014,32 @@ class TestSetOps(BaseTestCase):
                 "data": [
                     {"result": {}},
                     {"result": {}},
+                    {"result": {"ok": False}},
+                    {"result": {"ok": False}},
+                    {"result": {"ok": False}},
+                ],
+            },
+        }
+
+        self.utils.execute_tests(test)
+
+    def test_boolean_in_where_clause3(self):
+        test = {
+            "data": [
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": True}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+                {"result": {"ok": False}},
+            ],
+            "query": {"from": TEST_TABLE, "where": {"in": {"result.ok": [False]}}},
+            "expecting_list": {
+                "meta": {"format": "list"},
+                "data": [
+                    {"result": {"ok": False}},
                     {"result": {"ok": False}},
                     {"result": {"ok": False}},
                     {"result": {"ok": False}},

@@ -17,7 +17,7 @@ from jx_elasticsearch.es52.expressions.nested_op import NestedOp
 from jx_elasticsearch.es52.expressions.or_op import OrOp
 from jx_elasticsearch.es52.expressions.utils import ES52
 from jx_elasticsearch.es52.expressions.variable import Variable
-from jx_elasticsearch.es52.painless import Painless, AndOp
+from jx_elasticsearch.es52.painless import AndOp
 from mo_dots import is_many
 from mo_future import first
 from mo_json import BOOLEAN
@@ -40,9 +40,11 @@ class InOp(BaseInOp):
                     if is_literal(self.superset) and not is_many(self.superset.value):
                         return {"term": {var: value2boolean(self.superset.value)}}
                     else:
-                        return {"terms": {var: list(map(
-                            value2boolean, self.superset.value
-                        ))}}
+                        return {
+                            "terms": {
+                                var: list(map(value2boolean, self.superset.value))
+                            }
+                        }
                 else:
                     if is_literal(self.superset) and not is_many(self.superset.value):
                         return {"term": {var: self.superset.value}}
@@ -51,7 +53,7 @@ class InOp(BaseInOp):
             elif is_op(self.superset, TupleOp):
                 return (
                     OrOp([EqOp([value, s]) for s in self.superset.terms])
-                    .partial_eval()
+                    .partial_eval(ES52)
                     .to_es(schema)
                 )
         if (
@@ -60,15 +62,15 @@ class InOp(BaseInOp):
             and is_op(value.select, Variable)
         ):
             output = (
-                ES52[NestedOp(
+                NestedOp(
                     path=value.path,
                     select=NULL,
                     where=AndOp([value.where, InOp([value.select, self.superset])]),
-                )]
+                )
                 .exists()
-                .partial_eval()
+                .partial_eval(ES52)
                 .to_es(schema)
             )
             return output
         # THE HARD WAY
-        return Painless[self].to_es_script(schema).to_es(schema)
+        return (self).to_es_script(schema).to_es(schema)

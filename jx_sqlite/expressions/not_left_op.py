@@ -9,18 +9,37 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import NotLeftOp as NotLeftOp_
-from jx_sqlite.expressions._utils import check
-from mo_dots import wrap
+from jx_base.expressions import (
+    NotLeftOp as NotLeftOp_,
+    GteOp,
+    LengthOp,
+    AddOp,
+    MaxOp,
+    ZERO,
+    ONE,
+)
+from jx_sqlite.expressions._utils import check, SQLang, SqlScript, OrOp
+from jx_sqlite.sqlite import sql_call, SQL_ZERO, ConcatSQL, SQL_ONE, SQL_PLUS
+from mo_json import T_TEXT
 
 
 class NotLeftOp(NotLeftOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
-        # test_v = self.value.missing().to_sql(boolean=True)[0].sql.b
-        # test_l = self.length.missing().to_sql(boolean=True)[0].sql.b
-        v = self.value.to_sql(schema, not_null=True)[0].sql.s
-        l = "max(0, " + self.length.to_sql(schema, not_null=True)[0].sql.n + ")"
+    def to_sql(self, schema):
+        v = self.value.to_sql(schema)
+        start = (
+            AddOp([MaxOp([ZERO, self.length]), ONE]).partial_eval(SQLang).to_sql(schema)
+        )
 
-        expr = "substr(" + v + ", " + l + "+1)"
-        return wrap([{"name": ".", "sql": {"s": expr}}])
+        expr = sql_call("SUBSTR", v, start)
+        return SqlScript(
+            data_type=T_TEXT,
+            expr=expr,
+            frum=self,
+            miss=OrOp([
+                self.value.missing(SQLang),
+                self.length.missing(SQLang),
+                GteOp([self.length, LengthOp(self.value)]),
+            ]),
+            schema=schema,
+        )

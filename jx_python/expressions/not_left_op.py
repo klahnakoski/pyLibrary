@@ -10,13 +10,12 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import NotLeftOp as NotLeftOp_
-from jx_python.expressions._utils import Python
 
 
 class NotLeftOp(NotLeftOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        v = Python[self.value].to_python()
-        l = Python[self.length].to_python()
+    def to_python(self):
+        v = (self.value).to_python()
+        l = (self.length).to_python()
         return (
             "None if "
             + v

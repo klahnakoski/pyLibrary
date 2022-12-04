@@ -11,40 +11,34 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-from __future__ import absolute_import, division, unicode_literals
-
-from mo_threads import till
 from mo_threads.futures import Future
 from mo_threads.lock import Lock
-from mo_threads.multiprocess import Process
+from mo_threads.multiprocess import Process, Command
 from mo_threads.queues import Queue, ThreadedQueue
 from mo_threads.signals import Signal, DONE
 from mo_threads.threads import (
-    MAIN_THREAD,
     MainThread,
     THREAD_STOP,
     THREAD_TIMEOUT,
     Thread,
     stop_main_thread,
-    register_thread
+    register_thread,
+    wait_for_shutdown_signal,
+    start_main_thread,
 )
 from mo_threads.till import Till
 
-MAIN_THREAD.timers = Thread.run("timers daemon", till.daemon)
-MAIN_THREAD.children.remove(MAIN_THREAD.timers)
-till.enabled.wait()
-keep_import = (
-    Future,
-    Till,
-    Lock,
-    Process,
-    Queue,
-    ThreadedQueue,
-    Signal,
-    DONE,
-    MainThread,
-    THREAD_STOP,
-    THREAD_TIMEOUT,
-    stop_main_thread,
-    register_thread
-)
+
+def coverage_detector():
+    try:
+        # DETECT COVERAGE
+        from coverage.collector import Collector
+        from mo_threads import threads
+        if Collector._collectors:
+            threads.COVERAGE_COLLECTOR = Collector
+    except Exception:
+        pass
+
+
+coverage_detector()
+start_main_thread()

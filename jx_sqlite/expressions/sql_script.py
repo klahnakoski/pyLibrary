@@ -9,12 +9,14 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import FALSE, NULL, ONE, SQLScript as SQLScript_, TRUE, ZERO
-from jx_sqlite.expressions import _utils
-from jx_sqlite.expressions._utils import json_type_to_sql_type, SQLang, check
-from mo_dots import coalesce, wrap
-from mo_future import PY2, text
-from mo_logs import Log
+from jx_base.expressions import (
+    FALSE,
+    SqlScript as SQLScript_,
+    TRUE,
+    Variable,
+)
+from jx_base.language import is_op
+from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.sqlite import (
     SQL,
     SQL_CASE,
@@ -26,31 +28,38 @@ from jx_sqlite.sqlite import (
     ConcatSQL,
     SQL_NOT,
 )
+from mo_future import PY2, text
+from mo_imports import export
+from mo_json import JxType
+from mo_logs import Log
 
 
-class SQLScript(SQLScript_, SQL):
-    __slots__ = ("miss", "data_type", "expr", "frum", "many", "schema")
+class SqlScript(SQLScript_, SQL):
+    __slots__ = ("_data_type", "expr", "frum", "miss", "schema")
 
-    def __init__(self, data_type, expr, frum, miss=None, many=False, schema=None):
+    def __init__(self, data_type, expr, frum, miss=None, schema=None):
         object.__init__(self)
-        if miss not in [None, NULL, FALSE, TRUE, ONE, ZERO]:
-            if frum.lang != miss.lang:
-                Log.error("logic error")
         if expr == None:
-            Log.error('expecting expr')
+            Log.error("expecting expr")
+        if not isinstance(expr, SQL):
+            Log.error("Expecting SQL")
+        if not isinstance(data_type, JxType):
+            Log.error("Expecting JxType")
+        if schema is None:
+            Log.error("expecting schema")
 
-        self.miss = coalesce(
-            miss, FALSE
-        )  # Expression that will return true/false to indicate missing result
-        self.data_type = data_type  # JSON DATA TYPE
+        if miss is None:
+            self.miss = frum.missing(SQLang)
+        else:
+            self.miss = miss
+        self._data_type = data_type  # JSON DATA TYPE
         self.expr = expr
-        self.many = many  # True if script returns multi-value
         self.frum = frum  # THE ORIGINAL EXPRESSION THAT MADE expr
         self.schema = schema
 
     @property
     def type(self):
-        return self.data_type
+        return self._data_type
 
     @property
     def name(self):
@@ -67,31 +76,25 @@ class SQLScript(SQLScript_, SQL):
 
     def __iter__(self):
         """
-        ASSUMED PART OF class SQL, RETURN SQL
+        ASSUMED TO OVERRIDE SQL.__iter__()
         """
-        yield self
+        return self.sql.__iter__()
+
+    def to_sql(self, schema):
+        return self
 
     @property
     def sql(self):
-        self.miss = self.miss.partial_eval()
+        self.miss = self.miss.partial_eval(SQLang)
         if self.miss is TRUE:
-            return wrap({json_type_to_sql_type[self.data_type]: SQL_NULL})
-        elif self.miss is FALSE:
-            return wrap({json_type_to_sql_type[self.data_type]: self.expr})
-        else:
-            return wrap(
-                {
-                    json_type_to_sql_type[self.data_type]: ConcatSQL(
-                        SQL_CASE,
-                        SQL_WHEN,
-                        SQL_NOT,
-                        sql_iso(SQLang[self.miss].to_sql(self.schema)[0].sql.b),
-                        SQL_THEN,
-                        self.expr,
-                        SQL_END,
-                    )
-                }
-            )
+            return SQL_NULL
+        elif self.miss is FALSE or is_op(self.frum, Variable):
+            return self.expr
+
+        missing = self.miss.partial_eval(SQLang).to_sql(self.schema)
+        return ConcatSQL(
+            SQL_CASE, SQL_WHEN, SQL_NOT, sql_iso(missing), SQL_THEN, self.expr, SQL_END,
+        )
 
     def __str__(self):
         return str(self.sql)
@@ -109,10 +112,10 @@ class SQLScript(SQLScript_, SQL):
         __unicode__ = __str__
 
     @check
-    def to_sql(self, schema, not_null=False, boolean=False, many=True):
+    def to_sql(self, schema):
         return self
 
-    def missing(self):
+    def missing(self, lang):
         return self.miss
 
     def __data__(self):
@@ -121,10 +124,11 @@ class SQLScript(SQLScript_, SQL):
     def __eq__(self, other):
         if not isinstance(other, SQLScript_):
             return False
-        elif self.expr == other.expr:
+        elif self.expr == other.frum:
             return True
         else:
             return False
 
 
-_utils.SQLScript = SQLScript
+export("jx_sqlite.expressions._utils", SqlScript)
+export("jx_sqlite.expressions.or_op", SqlScript)

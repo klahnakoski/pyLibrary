@@ -9,21 +9,38 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from copy import copy
+from typing import List
+
 import jx_base
-from jx_base import Column, Table, jx_expression
-from jx_base.meta_columns import META_COLUMNS_DESC, META_COLUMNS_NAME, SIMPLE_METADATA_COLUMNS
-from jx_base.schema import Schema
+from jx_base import Table, Container, Column
+from jx_base.meta_columns import (
+    META_COLUMNS_DESC,
+    META_COLUMNS_NAME,
+    SIMPLE_METADATA_COLUMNS,
+)
+from jx_base.models.nested_path import NestedPath
+from jx_base.models.schema import Schema
 from jx_python import jx
+from jx_sqlite.expressions._utils import sql_type_key_to_json_type
 from jx_sqlite.utils import untyped_column
-from jx_sqlite.expressions._utils import sql_type_to_json_type
-from mo_dots import Data, Null, coalesce, is_data, is_list, literal_field, startswith_field, tail_field, unwraplist, \
-    wrap
+from mo_dots import (
+    Data,
+    Null,
+    coalesce,
+    is_data,
+    is_list,
+    startswith_field,
+    unwraplist,
+    wrap,
+    list_to_data, to_data,
+)
+from mo_future import sort_using_key
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, untyped
 from mo_logs import Log
-from mo_threads import Lock, Queue
+from mo_threads import Queue
 from mo_times.dates import Date
-from jx_sqlite.sqlite import sql_query
 
 DEBUG = False
 singlton = None
@@ -35,7 +52,7 @@ ID = {"field": ["es_index", "es_column"], "version": "last_updated"}
 CACHE = {}  # MAP FROM id(db) TO ColumnList MANAGING THAT DB
 
 
-class ColumnList(jx_base.Table, jx_base.Container):
+class ColumnList(Table, Container):
     """
     OPTIMIZED FOR fact column LOOKUP
     """
@@ -49,21 +66,21 @@ class ColumnList(jx_base.Table, jx_base.Container):
     def __init__(self, db):
         Table.__init__(self, META_COLUMNS_NAME)
         self.data = {}  # MAP FROM fact_name TO (abs_column_name to COLUMNS)
-        self.locker = Lock()
+        self.locker = _FakeLock()
         self._schema = None
         self.dirty = False
         self.db = db
         self.es_index = None
         self.last_load = Null
-        self.todo = Queue(
-            "update columns to es"
-        )  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
-        self._snowflakes = Data()
+        self.todo = Queue("update columns to es")  # HOLD (action, column) PAIR, WHERE action in ['insert', 'update']
+        self._snowflakes = {}
+        self.tables = set()
+        self.primary_keys = {}
         self._load_from_database()
 
     def _query(self, query):
         result = Data()
-        curr = self.es_cluster.execute(query)
+        curr = self.db.execute(query)
         result.meta.format = "table"
         result.header = [d[0] for d in curr.description] if curr.description else None
         result.data = curr.fetchall()
@@ -71,59 +88,76 @@ class ColumnList(jx_base.Table, jx_base.Container):
 
     def _load_from_database(self):
         # FIND ALL TABLES
-        result = self.db.query(sql_query({
-            "from": "sqlite_master",
-            "where": {"eq": {"type": "table"}},
-            "orderby": "name"
-        }))
-        tables = wrap([{k: d for k, d in zip(result.header, row)} for row in result.data])
-        last_nested_path = ["."]
-        for table in tables:
-            if table.name.startswith("__"):
+        tables = list(sort_using_key(self.db.get_tables(), lambda d: d.name))
+        self.tables.update(t.name for t in tables)
+        last_nested_path = []
+        for table in list(tables):
+            table_name = table.name
+            if table_name.startswith("__"):
                 continue
-            base_table, nested_path = tail_field(table.name)
 
-            # FIND COMMON NESTED PATH SUFFIX
-            if nested_path == ".":
-                last_nested_path = []
+            # ASSUME TABLES WITH SAME PREFIX FORM A SNOWFLAKE
+            for i, p in enumerate(last_nested_path):
+                if startswith_field(table_name, p):
+                    last_nested_path = last_nested_path[i:]
+                    break
             else:
-                for i, p in enumerate(last_nested_path):
-                    if startswith_field(nested_path, p):
-                        last_nested_path = last_nested_path[i:]
-                        break
-                else:
-                    last_nested_path = []
+                last_nested_path = []
 
-            full_nested_path = [nested_path] + last_nested_path
-            self._snowflakes[literal_field(base_table)] += [full_nested_path]
+            full_nested_path = [table_name] + last_nested_path
+            self._snowflakes.setdefault(full_nested_path[-1], []).append(full_nested_path)
 
             # LOAD THE COLUMNS
-            details = self.db.about(table.name)
+            details = self.db.about(table_name)
 
             for cid, name, dtype, notnull, dfft_value, pk in details:
-                if name.startswith("__"):
-                    continue
                 cname, ctype = untyped_column(name)
+
+                if pk:
+                    (to_data(self.primary_keys)[table.name]+[])[pk] = name
+
                 self.add(Column(
                     name=cname,
-                    jx_type=coalesce(sql_type_to_json_type.get(ctype), IS_NULL),
+                    json_type=coalesce(
+                        sql_type_key_to_json_type.get(ctype),
+                        sqlite_type_to_json_type.get(dtype),
+                        IS_NULL,
+                    ),
                     nested_path=full_nested_path,
                     es_type=dtype,
                     es_column=name,
-                    es_index=table.name,
-                    last_updated=Date.now()
+                    es_index=table_name,
+                    multi=1,
+                    last_updated=Date.now(),
                 ))
             last_nested_path = full_nested_path
 
-    def find(self, es_index, abs_column_name=None):
+    def find_columns(self, table_name):
         with self.locker:
-            if es_index.startswith("meta."):
+            if table_name.startswith("meta."):
+                self._update_meta()
+
+            return set(
+                col
+                for cols in self.data[table_name].values()
+                for col in cols
+            )
+
+    def find(self, fact_table, abs_column_name=None):
+        with self.locker:
+            if fact_table.startswith("meta."):
                 self._update_meta()
 
             if not abs_column_name:
-                return [c for cs in self.data.get(es_index, {}).values() for c in cs]
+                return [
+                    cc
+                    for table, cs in self.data.items()
+                    if startswith_field(table, fact_table)
+                    for c in cs.values()
+                    for cc in c
+                ]
             else:
-                return self.data.get(es_index, {}).get(abs_column_name, [])
+                return self.data.get(fact_table, {}).get(abs_column_name, [])
 
     def extend(self, columns):
         self.dirty = True
@@ -143,7 +177,7 @@ class ColumnList(jx_base.Table, jx_base.Container):
     def remove(self, column):
         self.dirty = True
         with self.locker:
-            canonical = self._remove(column)
+            self._remove(column)
 
     def remove_table(self, table_name):
         del self.data[table_name]
@@ -151,10 +185,10 @@ class ColumnList(jx_base.Table, jx_base.Container):
     def _add(self, column):
         """
         :param column: ANY COLUMN OBJECT
-        :return:  None IF column IS canonical ALREADY (NET-ZERO EFFECT)
+        :return: None IF column IS canonical ALREADY (NET-ZERO EFFECT)
         """
         columns_for_table = self.data.setdefault(column.es_index, {})
-        existing_columns = columns_for_table.setdefault(column.name, [])
+        existing_columns = columns_for_table.setdefault(column.es_column, [])
 
         for canonical in existing_columns:
             if canonical is column:
@@ -172,6 +206,7 @@ class ColumnList(jx_base.Table, jx_base.Container):
                             canonical[key] = new_value
                 return canonical
         existing_columns.append(column)
+        self.tables.add(column.es_index)
         return column
 
     def _remove(self, column):
@@ -179,7 +214,7 @@ class ColumnList(jx_base.Table, jx_base.Container):
         :param column: ANY COLUMN OBJECT
         """
         columns_for_table = self.data.setdefault(column.es_index, {})
-        existing_columns = columns_for_table.setdefault(column.name, [])
+        existing_columns = columns_for_table.setdefault(column.es_column, [])
 
         for i, canonical in enumerate(existing_columns):
             if canonical is column:
@@ -240,7 +275,7 @@ class ColumnList(jx_base.Table, jx_base.Container):
     def update(self, command):
         self.dirty = True
         try:
-            command = wrap(command)
+            command = list_to_data(command)
             DEBUG and Log.note(
                 "Update {{timestamp}}: {{command|json}}",
                 command=command,
@@ -370,6 +405,13 @@ class ColumnList(jx_base.Table, jx_base.Container):
             Log.error("this container has only the " + META_COLUMNS_NAME)
         return self._all_columns()
 
+    def get_query_paths(self, fact_name) -> List[NestedPath]:
+        """
+        RETURN LIST OF QUERY PATHS FOR GIVEN FACT
+        :return:
+        """
+        return copy(self._snowflakes[fact_name])
+
     def denormalized(self):
         """
         THE INTERNAL STRUCTURE FOR THE COLUMN METADATA IS VERY DIFFERENT FROM
@@ -388,12 +430,12 @@ class ColumnList(jx_base.Table, jx_base.Container):
                     "count": c.count,
                     "nested_path": [unnest_path(n) for n in c.nested_path],
                     "es_type": c.es_type,
-                    "type": c.jx_type,
+                    "type": c.json_type,
                 }
                 for tname, css in self.data.items()
                 for cname, cs in css.items()
                 for c in cs
-                if c.jx_type not in STRUCT  # and c.es_column != "_id"
+                if c.json_type not in STRUCT  # and c.es_column != "_id"
             ]
 
         from jx_python.containers.list import ListContainer

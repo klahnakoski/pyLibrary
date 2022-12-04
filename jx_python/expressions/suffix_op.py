@@ -10,15 +10,8 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import SuffixOp as SuffixOp_
-from jx_python.expressions._utils import Python
 
 
 class SuffixOp(SuffixOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (
-            "("
-            + Python[self.expr].to_python()
-            + ").endswith("
-            + Python[self.suffix].to_python()
-            + ")"
-        )
+    def to_python(self):
+        return f"({self.expr.to_python()}).endswith({self.suffix.to_python()})"

@@ -14,20 +14,20 @@ from jx_base.expressions.eq_op import EqOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.language import is_op
-from mo_json import BOOLEAN
+from mo_json.types import T_BOOLEAN
 
 
 class SqlEqOp(Expression):
-    data_type = BOOLEAN
+    _data_type = T_BOOLEAN
 
-    def __init__(self, terms):
-        Expression.__init__(self, terms)
+    def __init__(self, *terms):
+        Expression.__init__(self, *terms)
         self.lhs, self.rhs = terms
 
     def __data__(self):
         return {"sql.eq": [self.lhs.__data__(), self.rhs.__data__()]}
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
     def __eq__(self, other):

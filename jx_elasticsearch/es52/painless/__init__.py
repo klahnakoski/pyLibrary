@@ -3,6 +3,7 @@ from jx_elasticsearch.es52.painless.add_op import AddOp
 from jx_elasticsearch.es52.painless.and_op import AndOp
 from jx_elasticsearch.es52.painless.basic_add_op import BasicAddOp
 from jx_elasticsearch.es52.painless.basic_eq_op import BasicEqOp
+from jx_elasticsearch.es52.painless.basic_in_op import BasicInOp
 from jx_elasticsearch.es52.painless.basic_index_of_op import BasicIndexOfOp
 from jx_elasticsearch.es52.painless.basic_mul_op import BasicMulOp
 from jx_elasticsearch.es52.painless.basic_starts_with_op import BasicStartsWithOp
@@ -15,6 +16,7 @@ from jx_elasticsearch.es52.painless.count_op import CountOp
 from jx_elasticsearch.es52.painless.date_op import DateOp
 from jx_elasticsearch.es52.painless.div_op import DivOp
 from jx_elasticsearch.es52.painless.eq_op import EqOp
+from jx_elasticsearch.es52.painless.es_script import EsScript
 from jx_elasticsearch.es52.painless.es_script import EsScript
 from jx_elasticsearch.es52.painless.exists_op import ExistsOp
 from jx_elasticsearch.es52.painless.exp_op import ExpOp
@@ -49,10 +51,5 @@ from jx_elasticsearch.es52.painless.tuple_op import TupleOp
 from jx_elasticsearch.es52.painless.union_op import UnionOp
 from jx_elasticsearch.es52.painless.variable import Variable
 from jx_elasticsearch.es52.painless.when_op import WhenOp
-from jx_elasticsearch.es52.painless.false_op import FalseOp, false_script
-from jx_elasticsearch.es52.painless.true_op import TrueOp, true_script
-from jx_elasticsearch.es52.painless.null_op import NullOp, null_script
-from jx_elasticsearch.es52.painless.es_script import EsScript
-
 
 Painless.register_ops(vars())

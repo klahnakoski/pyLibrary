@@ -10,13 +10,13 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_elasticsearch.es52 import agg_bulk
-from jx_elasticsearch.es52.agg_bulk import write_status, upload, URL_PREFIX
+from jx_elasticsearch.es52.agg_bulk import write_status, upload, BULK_CONFIG
 from jx_elasticsearch.es52.expressions.utils import setop_to_es_queries, pre_process
 from jx_elasticsearch.es52.set_format import doc_formatter, row_formatter, format_table_header
 from jx_elasticsearch.es52.set_op import es_query_proto, get_selects
 from jx_elasticsearch.es52.util import jx_sort_to_es_sort
 from mo_dots import to_data, Null
-from mo_files import TempFile
+from mo_files import TempFile, URL
 from mo_json import value2json
 from mo_logs import Log, Except
 from mo_math import MIN, randoms
@@ -30,7 +30,7 @@ MAX_DOCUMENTS = 10 * 1000 * 1000
 
 def is_bulk_set(esq, query):
     # ONLY ACCEPTING ONE DIMENSION AT THIS TIME
-    if not agg_bulk.S3_CONFIG:
+    if not agg_bulk.BULK_CONFIG:
         return False
     if query.destination not in {"s3", "url"}:
         return False
@@ -70,8 +70,8 @@ def es_bulksetop(esq, frum, query):
 
     output = to_data(
         {
-            "url": URL_PREFIX / (guid + ".json"),
-            "status": URL_PREFIX / (guid + ".status.json"),
+            "url": URL(BULK_CONFIG.url) / (guid + ".json"),
+            "status": URL(BULK_CONFIG.url) / (guid + ".status.json"),
             "meta": {"format": query.format, "es_query": es_query, "limit": abs_limit},
         }
     )

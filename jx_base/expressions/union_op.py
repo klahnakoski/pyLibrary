@@ -10,7 +10,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions._utils import simplified, merge_types
+from jx_base.expressions._utils import merge_types
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal
@@ -21,8 +21,8 @@ from mo_math import MIN
 
 
 class UnionOp(Expression):
-    def __init__(self, terms):
-        Expression.__init__(self, terms)
+    def __init__(self, *terms):
+        Expression.__init__(self, *terms)
         if terms == None:
             self.terms = []
         elif is_many(terms):
@@ -44,17 +44,16 @@ class UnionOp(Expression):
         return output
 
     def map(self, map_):
-        return self.lang[UnionOp([t.map(map_) for t in self.terms])]
+        return UnionOp(*(t.map(map_) for t in self.terms))
 
-    def missing(self):
+    def missing(self, lang):
         return FALSE
 
-    @simplified
-    def partial_eval(self):
+    def partial_eval(self, lang):
         minimum = None
         terms = []
         for t in self.terms:
-            simple = t.partial_eval()
+            simple = t.partial_eval(lang)
             if simple is NULL:
                 pass
             elif is_op(simple, Literal):
@@ -68,8 +67,8 @@ class UnionOp(Expression):
                 return Literal(minimum)
         else:
             if minimum == None:
-                output = self.lang[UnionOp(terms)]
+                output = UnionOp(terms)
             else:
-                output = self.lang[UnionOp([Literal(minimum)] + terms)]
+                output = UnionOp([Literal(minimum)] + terms)
 
         return output

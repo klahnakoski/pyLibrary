@@ -11,35 +11,40 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import CaseOp as CaseOp_
 from jx_sqlite.expressions._utils import SQLang, check
-from mo_dots import coalesce, wrap
+from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import (
     SQL_CASE,
     SQL_ELSE,
     SQL_END,
-    SQL_NULL,
     SQL_THEN,
     SQL_WHEN,
     ConcatSQL,
 )
+from mo_json import union_type
 
 
 class CaseOp(CaseOp_):
     @check
-    def to_sql(self, schema, not_null=False, boolean=False):
+    def to_sql(self, schema):
         if len(self.whens) == 1:
-            return SQLang[self.whens[-1]].to_sql(schema)
+            return self.whens[-1].partial_eval(SQLang).to_sql(schema)
 
-        output = {}
-        for t in "bsn":  # EXPENSIVE LOOP to_sql() RUN 3 TIMES
-            els_ = coalesce(SQLang[self.whens[-1]].to_sql(schema)[0].sql[t], SQL_NULL)
-            acc = SQL_ELSE + els_ + SQL_END
-            for w in reversed(self.whens[0:-1]):
-                acc = ConcatSQL(
-                    SQL_WHEN,
-                    SQLang[w.when].to_sql(schema, boolean=True)[0].sql.b,
-                    SQL_THEN,
-                    coalesce(SQLang[w.then].to_sql(schema)[0].sql[t], SQL_NULL),
-                    acc,
-                )
-            output[t] = SQL_CASE + acc
-        return wrap([{"name": ".", "sql": output}])
+        acc = [SQL_CASE]
+        _data_type = []
+        for w in self.whens[:-1]:
+            when = w.when.partial_eval(SQLang).to_sql(schema)
+            value = w.then.partial_eval(SQLang).to_sql(schema)
+            _data_type.append(value.type)
+            acc.append(ConcatSQL(SQL_WHEN, when, SQL_THEN, value))
+
+        value = self.whens[-1].partial_eval(SQLang).to_sql(schema)
+        _data_type.append(value.type)
+        acc.append(ConcatSQL(SQL_ELSE, value, SQL_END,))
+
+        return SqlScript(
+            data_type=union_type(*_data_type),
+            expr=ConcatSQL(*acc),
+            frum=self,
+            miss=self.missing(SQLang),
+            schema=schema,
+        )
