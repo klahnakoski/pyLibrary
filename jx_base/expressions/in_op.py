@@ -57,7 +57,7 @@ class InOp(Expression):
         return self.value.vars()
 
     def map(self, map_):
-        return InOp([self.value.map(map_), self.superset.map(map_)])
+        return InOp(self.value.map(map_), self.superset.map(map_))
 
     def partial_eval(self, lang):
         value = self.value.partial_eval(lang)
@@ -70,21 +70,21 @@ class InOp(Expression):
             if is_literal(value):
                 return Literal(value() in listwrap(superset.value))
             elif is_many(superset.value):
-                return InOp([value, superset])
+                return InOp(value, superset)
             else:
-                return EqOp([value, superset])
+                return EqOp(value, superset)
         elif is_op(value, NestedOp):
             return (
                 NestedOp(
                     value.nested_path,
                     None,
-                    AndOp([InOp([value.select, superset]), value.where]),
+                    AndOp(InOp(value.select, superset), value.where),
                 )
                 .exists()
                 .partial_eval(lang)
             )
         else:
-            return InOp([value, superset])
+            return InOp(value, superset)
 
     def __call__(self, row, rownum=None, rows=None):
         return self.value(row) in self.superset(row)
@@ -95,9 +95,9 @@ class InOp(Expression):
     def invert(self, lang):
         this = self.partial_eval(lang)
         if is_op(this, InOp):
-            inv = NotOp(BasicInOp([this.value, this.superset]))
+            inv = NotOp(BasicInOp(this.value, this.superset))
             inv.simplified = True
-            return OrOp([MissingOp(this.value), inv])
+            return OrOp(MissingOp(this.value), inv)
         else:
             return this.invert(lang)
 

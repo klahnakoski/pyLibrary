@@ -13,5 +13,5 @@ from jx_base.expressions import FalseOp as FalseOp_
 
 
 class FalseOp(FalseOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return "False"

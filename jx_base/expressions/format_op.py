@@ -29,7 +29,7 @@ class FormatOp(Expression):
         return self.frum.vars() | self.format.vars()
 
     def map(self, map_):
-        return FormatOp([self.frum.map(mao_), self.format.map(map_)])
+        return FormatOp(self.frum.map(mao_), self.format.map(map_))
 
     @property
     def type(self):

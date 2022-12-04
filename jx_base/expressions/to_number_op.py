@@ -78,7 +78,7 @@ class ToNumberOp(Expression):
                 term.when, then=ToNumberOp(term.then), **{"else": ToNumberOp(term.els_)}
             ).partial_eval(lang)
         elif is_op(term, CoalesceOp):
-            return CoalesceOp([ToNumberOp(t) for t in term.terms])
+            return CoalesceOp(*(ToNumberOp(t) for t in term.terms))
         elif is_op(term, SelectOp):
             return CoalesceOp([
                 ToNumberOp(s["value"]).partial_eval(lang) for s in term.terms

@@ -23,7 +23,7 @@ class RegExpOp(Expression):
     _data_type = T_BOOLEAN
 
     def __init__(self, *terms):
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         self.expr, self.pattern = terms
 
     def __data__(self):
@@ -32,11 +32,16 @@ class RegExpOp(Expression):
 
         return {"regexp": [self.expr.__data__(), self.pattern.__data__()]}
 
+    def __eq__(self, other):
+        if not isinstance(other, RegExpOp):
+            return False
+        return self.expr == other.expr and self.pattern == other.pattern
+
     def vars(self):
         return self.expr.vars() | self.pattern.vars()
 
     def map(self, map_):
-        return RegExpOp([self.expr.map(map_), self.pattern.map(map_)])
+        return RegExpOp(self.expr.map(map_), self.pattern.map(map_))
 
     def missing(self, lang):
-        return OrOp([self.expr.missing(lang), self.pattern.missing(lang)])
+        return OrOp(self.expr.missing(lang), self.pattern.missing(lang))

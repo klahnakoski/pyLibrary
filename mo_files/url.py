@@ -51,7 +51,7 @@ class URL(object):
                 self.port = coalesce(port, output.port)
                 self.host = output.netloc.split(":")[0]
                 self.path = coalesce(path, output.path)
-                self.query = coalesce(query, to_data(compress, gzip(output.query)))
+                self.query = coalesce(query, to_data(url_param2value(output.query)))
                 self.fragment = coalesce(fragment, output.fragment)
         except Exception as e:
             Log.error(u"problem parsing {{value}} to URL", value=value, cause=e)

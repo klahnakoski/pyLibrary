@@ -11,11 +11,9 @@ from __future__ import absolute_import, division, unicode_literals
 
 import itertools
 
-from jx_base import Column
 from jx_base.models.container import Container
 from jx_base.expressions import TRUE, Variable
 from jx_base.language import is_expression, is_op
-from jx_base.meta_columns import get_schema_from_list
 from jx_base.models.namespace import Namespace
 from jx_base.models.schema import Schema
 from jx_base.models.table import Table
@@ -36,12 +34,13 @@ from mo_dots import (
     dict_to_data,
 )
 from mo_future import first, sort_using_key
-from mo_imports import export, expect
+from mo_imports import export, expect, delay_import
 from mo_json import ARRAY
 from mo_logs import Log
 from mo_threads import Lock
 
 jx = expect("jx")
+Column = delay_import("jx_base.Column")
 
 
 class ListContainer(Container, Namespace, Table):

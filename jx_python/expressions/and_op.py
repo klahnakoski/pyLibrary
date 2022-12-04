@@ -14,10 +14,10 @@ from jx_python.expressions.to_boolean_op import ToBooleanOp
 
 
 class AndOp(AndOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         if not self.terms:
             return "True"
         else:
             return " and ".join(
-                "(" + ToBooleanOp(t).to_python() + ")" for t in self.terms
+                f"({ToBooleanOp(t).to_python()})" for t in self.terms
             )

@@ -10,9 +10,8 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import ExistsOp as ExistsOp_
-from jx_python.expressions._utils import Python
 
 
 class ExistsOp(ExistsOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (self.expr).to_python() + " != None"
+    def to_python(self):
+        return self.expr.to_python() + " != None"

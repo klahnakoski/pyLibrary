@@ -15,7 +15,7 @@ from jx_base.expressions.literal import is_literal
 from jx_base.expressions.null_op import NULL
 from jx_base.language import is_op
 from mo_dots import last, is_many
-from mo_json import OBJECT
+from mo_json import OBJECT, jx_type_to_json_type
 
 
 class LastOp(Expression):
@@ -50,7 +50,7 @@ class LastOp(Expression):
         term = self.term.partial_eval(lang)
         if is_op(self.term, LastOp):
             return term
-        elif term.type != OBJECT and not term.many:
+        elif jx_type_to_json_type(term.type) != OBJECT and not term.many:
             return term
         elif term is NULL:
             return term

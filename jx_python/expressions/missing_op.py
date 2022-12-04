@@ -10,9 +10,8 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import MissingOp as MissingOp_
-from jx_python.expressions._utils import Python
 
 
 class MissingOp(MissingOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        return (self.expr).to_python() + " == None"
+    def to_python(self):
+        return self.expr.to_python() + " == None"

@@ -21,17 +21,17 @@ class TestSimple(TestCase):
         self.assertEqual(result, expected)
 
     def test_dot_table_name(self):
-        result = format({"select": "*", "from": "SYS.XYZZY",})
+        result = format({"select": "*", "from": "SYS.XYZZY", })
         expected = "SELECT * FROM SYS.XYZZY"
         self.assertEqual(result, expected)
 
     def select_one_column(self):
-        result = format({"select": [{"value": "A"}], "from": ["dual"],})
+        result = format({"select": [{"value": "A"}], "from": ["dual"], })
         expected = "SELECT A FROM dual"
         self.assertEqual(result, expected)
 
     def test_select_quote(self):
-        result = format({"select": {"value": {"literal": "'"}}, "from": "dual",})
+        result = format({"select": {"value": {"literal": "'"}}, "from": "dual", })
         expected = "SELECT '''' FROM dual"
         self.assertEqual(result, expected)
 
@@ -60,12 +60,12 @@ class TestSimple(TestCase):
         self.assertEqual(result, expected)
 
     def test_select_underscore_name(self):
-        result = format({"select": {"value": "_id"}, "from": "dual",})
+        result = format({"select": {"value": "_id"}, "from": "dual", })
         expected = "SELECT _id FROM dual"
         self.assertEqual(result, expected)
 
     def test_select_dots_names(self):
-        result = format({"select": {"value": "a.b.c._d"}, "from": "dual",})
+        result = format({"select": {"value": "a.b.c._d"}, "from": "dual", })
         expected = "SELECT a.b.c._d FROM dual"
         self.assertEqual(result, expected)
 
@@ -101,7 +101,7 @@ class TestSimple(TestCase):
             "from": "dual",
             "where": {"and": [
                 {"in": ["a", {"literal": ["r", "g", "b"]}]},
-                {"in": ["b", [10, 11, 12],]},
+                {"in": ["b", [10, 11, 12], ]},
             ]},
         })
         expected = "SELECT a FROM dual WHERE a IN ('r', 'g', 'b') AND b IN (10, 11, 12)"
@@ -144,7 +144,7 @@ class TestSimple(TestCase):
         self.assertEqual(result, expected)
 
     def test_function(self):
-        result = format({"select": {"value": {"count": 1}}, "from": "mytable",})
+        result = format({"select": {"value": {"count": 1}}, "from": "mytable", })
         expected = "SELECT COUNT(1) FROM mytable"
         self.assertEqual(result, expected)
 
@@ -476,7 +476,7 @@ class TestSimple(TestCase):
         format_result = format(parse_result)
         self.assertEqual(format_result, query)
 
-    def test_found_in_sparqling_queries(self):
+    def test_found_in_sparqling_queries1(self):
         # https://github.com/yandex-research/sparqling-queries/blob/e04d0bfd507c4859be3f35d4e0d8eb57434bb4f6/data/spider
 
         query = """SELECT name, date FROM battle"""
@@ -516,6 +516,7 @@ class TestSimple(TestCase):
         format_result = format(parse_result)
         self.assertEqual(format_result, query)
 
+    def test_found_in_sparqling_queries2(self):
         query = """SELECT document_name FROM documents GROUP BY document_type_code INTERSECT SELECT document_name FROM documents GROUP BY document_structure_code ORDER BY COUNT(*) DESC LIMIT 3"""
         parse_result = parse(query)
         format_result = format(parse_result)
@@ -736,8 +737,7 @@ class TestSimple(TestCase):
             "SELECT 'str1' || 'str2' || my_int_field from testtable"
         ))
         self.assertEqual(
-            new_sql,
-            "SELECT CONCAT('str1', 'str2', my_int_field) FROM testtable",
+            new_sql, "SELECT CONCAT('str1', 'str2', my_int_field) FROM testtable",
         )
 
         new_sql = format(parse(
@@ -756,9 +756,88 @@ class TestSimple(TestCase):
         )
 
     def test_issue_87_loss_of_brackets(self):
-        sql="""SELECT (SELECT COUNT(result) FROM dbo.b AS B) as attr FROM dbo.table"""
+        sql = """SELECT (SELECT COUNT(result) FROM dbo.b AS B) as attr FROM dbo.table"""
         new_sql = format(parse(sql))
         self.assertEqual(
             new_sql,
-            """SELECT (SELECT COUNT(result) FROM dbo.b AS B) AS attr FROM dbo.table"""
+            """SELECT (SELECT COUNT(result) FROM dbo.b AS B) AS attr FROM dbo.table""",
         )
+
+    def test_table_sample1(self):
+        sql = "SELECT * FROM foo SAMPLE bernoulli (1)"
+        new_sql = format(parse(sql))
+        self.assertEqual(new_sql, "SELECT * FROM foo TABLESAMPLE bernoulli (1 PERCENT)")
+
+        sql = "SELECT * FROM foo SAMPLE(1) WHERE a < 42"
+        new_sql = format(parse(sql))
+        self.assertEqual(
+            new_sql, "SELECT * FROM foo TABLESAMPLE (1 PERCENT) WHERE a < 42"
+        )
+
+        sql = "SELECT * FROM foo TABLESAMPLE bernoulli (1)"
+        new_sql = format(parse(sql))
+        self.assertEqual(new_sql, "SELECT * FROM foo TABLESAMPLE bernoulli (1 PERCENT)")
+
+        sql = "SELECT * FROM foo f TABLESAMPLE bernoulli (1) WHERE f.a < 42"
+        new_sql = format(parse(sql))
+        self.assertEqual(
+            new_sql,
+            "SELECT * FROM foo AS f TABLESAMPLE bernoulli (1 PERCENT) WHERE f.a < 42",
+        )
+
+    def test_table_sample2(self):
+        sql = """SELECT a FROM test TABLESAMPLE (BUCKET 1 OUT OF 5)"""
+        new_sql = format(parse(sql))
+        self.assertEqual(new_sql, sql)
+
+        sql = """SELECT a FROM test TABLESAMPLE (BUCKET 1 OUT OF 5 ON x)"""
+        new_sql = format(parse(sql))
+        self.assertEqual(new_sql, sql)
+
+        sql = """SELECT a FROM test TABLESAMPLE (BUCKET 1 OUT OF 5 ON RAND())"""
+        new_sql = format(parse(sql))
+        self.assertEqual(new_sql, sql)
+
+        sql = """SELECT a FROM test TABLESAMPLE (0.1 PERCENT)"""
+        new_sql = format(parse(sql))
+        self.assertEqual(new_sql, sql)
+
+    def test_table_sample3(self):
+        sql = """SELECT a FROM test TABLESAMPLE (100 ROWS)"""
+        new_sql = format(parse(sql))
+        self.assertEqual(new_sql, sql)
+
+    def test_issue_146(self):
+        parsed = {
+            "from": "customer",
+            "where":
+                {"in": [
+                    {"from": 1, "for": 2, "substring": "c_phone"},
+                    {"literal": [
+                        "28",
+                        "27",
+                        "17",
+                        "10",
+                        "14",
+                        "34",
+                        "15",
+                    ]},
+                ]},
+        }
+        sql = format(parsed)
+        self.assertEqual(sql, """FROM customer WHERE SUBSTRING(c_phone FROM 1 FOR 2) IN ('28', '27', '17', '10', '14', '34', '15')""")
+
+    def test_issue_136(self):
+        sql = """SELECT * FROM T1 WHERE NOT EXISTS (SELECT * FROM T1,T2 WHERE T1.C1=T2.C2)"""
+        result = parse(sql)
+        new_sql = format(result)
+        self.assertEqual(new_sql,  """SELECT * FROM T1 WHERE NOT EXISTS (SELECT * FROM T1, T2 WHERE T1.C1 = T2.C2)""")
+
+    def test_issue_137_delete(self):
+        formatted = format({"delete": "x", "where": {"gt": ["y", 1]}})
+        self.assertEqual(formatted, """DELETE FROM x\nWHERE y > 1""")
+
+    def test_issue_142_agg_functions(self):
+        sql= """SELECT ARRAY_AGG(DISTINCT x IGNORE NULLS ORDER BY x LIMIT 1)"""
+        formatted = format(parse(sql))
+        self.assertEqual(formatted, sql)

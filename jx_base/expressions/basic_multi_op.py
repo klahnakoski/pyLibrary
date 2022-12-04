@@ -28,7 +28,7 @@ class BasicMultiOp(Expression):
     op = None
 
     def __init__(self, *terms):
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         self.terms = terms
 
     def vars(self):

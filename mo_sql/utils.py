@@ -6,8 +6,6 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
 
-from math import isnan
-
 from jx_base import DataClass
 
 from mo_dots import (
@@ -16,9 +14,8 @@ from mo_dots import (
     is_list,
     join_field,
     split_field,
-    is_sequence,
 )
-from mo_future import is_text, POS_INF
+from mo_future import is_text
 from mo_json import (
     BOOLEAN,
     ARRAY,

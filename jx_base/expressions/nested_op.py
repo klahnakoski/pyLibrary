@@ -57,14 +57,14 @@ class NestedOp(Expression):
         MERGE TWO  NestedOp
         """
         if not is_op(other, NestedOp):
-            return AndOp([self, other])
+            return AndOp(self, other)
 
         # MERGE
         elif self.nested_path == other.frum:
             return NestedOp(
                 self.nested_path,
                 listwrap(self.select) + listwrap(other.select),
-                AndOp([self.where, other.where]),
+                AndOp(self.where, other.where),
                 coalesce(self.sort, other.sort),
                 coalesce(self.limit, other.limit),
             )
@@ -78,7 +78,7 @@ class NestedOp(Expression):
         elif startswith_field(self.nested_path.var, other.frum.var):
             return NestedOp(self, other.select, other.where, other.sort, other.limit,)
         else:
-            return AndOp([self, other])
+            return AndOp(self, other)
 
     def __data__(self):
         return {"nested": {
@@ -121,12 +121,12 @@ class NestedOp(Expression):
         return self.missing(lang)
 
     def missing(self, lang):
-        return OrOp([
+        return OrOp(
             NotOp(self.where),
             # self.path.missing(lang), ASSUME PATH TO TABLES, WHICH ASSUMED TO HAVE DATA (EXISTS)
             # self.select.missing(lang),
-            EqOp([self.limit, ZERO]),
-        ]).partial_eval(lang)
+            EqOp(self.limit, ZERO),
+        ).partial_eval(lang)
 
 
 export("jx_base.expressions.basic_in_op", NestedOp)

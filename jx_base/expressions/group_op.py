@@ -15,7 +15,7 @@ from jx_base.expressions.expression import Expression
 
 class GroupOp(Expression):
     def __init__(self, *terms):
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         self.frum, self.select = terms
         if self.frum.type != T_ARRAY:
             Log.error("expecting an array")
@@ -27,7 +27,7 @@ class GroupOp(Expression):
         return self.frum.vars() | self.select.vars()
 
     def map(self, map_):
-        return GroupOp([self.frum.map(map_), self.select.map(map_)])
+        return GroupOp(self.frum.map(map_), self.select.map(map_))
 
     @property
     def type(self):

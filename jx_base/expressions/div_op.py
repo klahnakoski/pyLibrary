@@ -22,14 +22,14 @@ class DivOp(BaseBinaryOp):
     op = "div"
 
     def missing(self, lang):
-        return AndOp([
+        return AndOp(
             self.default.missing(lang),
-            OrOp([
+            OrOp(
                 self.lhs.missing(lang),
                 self.rhs.missing(lang),
-                EqOp([self.rhs, ZERO]),
-            ]),
-        ]).partial_eval(lang)
+                EqOp(self.rhs, ZERO),
+            ),
+        ).partial_eval(lang)
 
     def partial_eval(self, lang):
         default = self.default.partial_eval(lang)

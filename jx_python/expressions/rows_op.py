@@ -9,16 +9,16 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import RowsOp as RowsOp_
-from jx_python.expressions._utils import Python
-from jx_python.expressions.to_integer_op import ToIntegerOp
 from mo_dots import split_field
 from mo_json import json2value
 from mo_logs import strings
 
+from jx_base.expressions import RowsOp as RowsOp_
+from jx_python.expressions.to_integer_op import ToIntegerOp
+
 
 class RowsOp(RowsOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         agg = "rows[rownum+" + (ToIntegerOp(self.offset)).to_python() + "]"
         path = split_field(json2value(self.var.json))
         if not path:

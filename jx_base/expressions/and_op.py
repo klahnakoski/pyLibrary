@@ -54,13 +54,13 @@ class AndOp(Expression):
         return output
 
     def map(self, map_):
-        return AndOp([t.map(map_) for t in self.terms])
+        return AndOp(*(t.map(map_) for t in self.terms))
 
     def missing(self, lang):
         return FALSE
 
     def invert(self, lang):
-        return OrOp([t.invert(lang) for t in self.terms]).partial_eval(lang)
+        return OrOp(*(t.invert(lang) for t in self.terms)).partial_eval(lang)
 
     def partial_eval(self, lang):
         # MERGE IDENTICAL NESTED QUERIES
@@ -105,12 +105,12 @@ class AndOp(Expression):
             elif len(and_terms) == 1:
                 return and_terms[0]
             else:
-                return AndOp(and_terms)
+                return AndOp(*and_terms)
 
-        return OrOp([
-            AndOp(and_terms) if len(and_terms) > 1 else and_terms[0]
+        return OrOp(*(
+            AndOp(*and_terms) if len(and_terms) > 1 else and_terms[0]
             for and_terms in or_terms
-        ]).partial_eval(lang)
+        )).partial_eval(lang)
 
 
 export("jx_base.expressions.expression", AndOp)

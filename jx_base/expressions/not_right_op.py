@@ -31,7 +31,7 @@ class NotRightOp(Expression):
     _data_type = T_TEXT
 
     def __init__(self, *term):
-        Expression.__init__(self, term)
+        Expression.__init__(self, *term)
         if is_data(term):
             self.value, self.length = term.items()[0]
         else:
@@ -47,10 +47,10 @@ class NotRightOp(Expression):
         return self.value.vars() | self.length.vars()
 
     def map(self, map_):
-        return NotRightOp([self.value.map(map_), self.length.map(map_)])
+        return NotRightOp(self.value.map(map_), self.length.map(map_))
 
     def missing(self, lang):
-        return OrOp([self.value.missing(lang), self.length.missing(lang)])
+        return OrOp(self.value.missing(lang), self.length.missing(lang))
 
     def partial_eval(self, lang):
         value = (self.value).partial_eval(lang)
@@ -60,9 +60,9 @@ class NotRightOp(Expression):
             return value
 
         max_length = LengthOp(value)
-        part = BasicSubstringOp([
+        part = BasicSubstringOp(
             value,
             ZERO,
-            MaxOp([ZERO, MinOp([max_length, SubOp([max_length, length])])]),
-        ])
+            MaxOp(ZERO, MinOp(max_length, SubOp(max_length, length))),
+        )
         return (WhenOp(self.missing(lang), **{"else": part})).partial_eval(lang)

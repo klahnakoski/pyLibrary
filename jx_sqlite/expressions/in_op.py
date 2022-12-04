@@ -25,7 +25,6 @@ from jx_sqlite.sqlite import SQL_FALSE, SQL_IN, ConcatSQL
 from jx_sqlite.sqlite import quote_list
 from mo_json import T_BOOLEAN
 from mo_logs import Log
-from pyLibrary.convert import value2boolean
 
 
 class InOp(InOp_):

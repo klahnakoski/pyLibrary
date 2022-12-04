@@ -28,7 +28,7 @@ class LeavesOp(Expression):
         elif not is_literal(prefix):
             Log.error("expecting literal prefix")
 
-        Expression.__init__(self, term)
+        Expression.__init__(self, *term)
         self.term = term
         self.prefix = prefix
 

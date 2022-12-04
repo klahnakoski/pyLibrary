@@ -24,9 +24,10 @@ class BaseInequalityOp(Expression):
     _data_type = T_BOOLEAN
     op = None
 
-    def __init__(self, *terms):
-        Expression.__init__(self, *terms)
-        self.lhs, self.rhs = terms
+    def __init__(self, lhs, rhs):
+        Expression.__init__(self, lhs, rhs)
+        self.lhs = lhs
+        self.rhs = rhs
 
     @property
     def name(self):
@@ -59,4 +60,4 @@ class BaseInequalityOp(Expression):
         if is_literal(lhs) and is_literal(rhs):
             return Literal(builtin_ops[self.op](lhs, rhs))
 
-        return self.__class__([lhs, rhs])
+        return self.__class__(lhs, rhs)

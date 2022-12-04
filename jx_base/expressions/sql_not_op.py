@@ -24,7 +24,7 @@ class SqlNotOp(Expression):
         """
         EMPTY STRINGS AND `0` ARE TREATED AS FALSE
         """
-        Expression.__init__(self, term)
+        Expression.__init__(self, *term)
         self.term = term
 
     def __data__(self):

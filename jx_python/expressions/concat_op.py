@@ -10,11 +10,10 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import ConcatOp as ConcatOp_
-from jx_python.expressions._utils import Python
 
 
 class ConcatOp(ConcatOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         v = (self.value).to_python()
         l = (self.length).to_python()
         return (

@@ -23,7 +23,7 @@ from mo_future import (
 )
 from mo_imports import expect
 from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, STRING, scrub
-from mo_json.types import union_type, to_jx_type
+from mo_json.types import union_type
 from mo_logs import Except, Log
 from mo_math import is_number
 from mo_times import Date
@@ -104,7 +104,7 @@ def _jx_expression(json, lang):
     elif json.__class__ is Date:
         return Literal(json.unix)
     elif is_sequence(json):
-        return TupleOp([_jx_expression(e, lang) for e in json])
+        return TupleOp(*(_jx_expression(e, lang) for e in json))
 
     try:
         items = list(json.items())

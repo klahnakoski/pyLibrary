@@ -25,7 +25,7 @@ class BasicStartsWithOp(Expression):
     _data_type = T_BOOLEAN
 
     def __init__(self, *params):
-        Expression.__init__(self, params)
+        Expression.__init__(self, *params)
         self.value, self.prefix = params
 
     def __data__(self):
@@ -39,16 +39,16 @@ class BasicStartsWithOp(Expression):
         return self.value.vars() | self.prefix.vars()
 
     def map(self, map_):
-        return self.lang.BasicStartsWithOp([
+        return self.lang.BasicStartsWithOp(
             self.value.map(map_),
             self.prefix.map(map_),
-        ])
+        )
 
     def missing(self, lang):
         return FALSE
 
     def partial_eval(self, lang):
-        return BasicStartsWithOp([
+        return BasicStartsWithOp(
             ToTextOp(self.value).partial_eval(lang),
             ToTextOp(self.prefix).partial_eval(lang),
-        ])
+        )

@@ -31,7 +31,7 @@ class CaseOp(Expression):
     def __init__(self, *terms, **clauses):
         if not is_sequence(terms):
             Log.error("case expression requires a list of `when` sub-clauses")
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         if len(terms) == 0:
             Log.error("Expecting at least one clause")
 
@@ -61,7 +61,7 @@ class CaseOp(Expression):
         return output
 
     def map(self, map_):
-        return CaseOp([w.map(map_) for w in self.whens])
+        return CaseOp(*(w.map(map_) for w in self.whens))
 
     def missing(self, lang):
         whens = [
@@ -82,10 +82,10 @@ class CaseOp(Expression):
             nots = []
             ors = []
             for w in self.whens[:-1]:
-                ors.append(AndOp(nots + [w.when, w.then]))
+                ors.append(AndOp(*nots, w.when, w.then))
                 nots.append(NotOp(w.when))
-            ors.append(AndOp(nots + [self.whens[-1]]))
-            return OrOp(ors).partial_eval(lang)
+            ors.append(AndOp(*nots, self.whens[-1]))
+            return OrOp(*ors).partial_eval(lang)
 
         whens = []
         for w in self.whens[:-1]:

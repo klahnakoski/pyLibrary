@@ -10,7 +10,9 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_python.expression_compiler import compile_expression
+from mo_dots import is_data, is_list, Null
+from mo_future import is_text
+from mo_json.types import T_BOOLEAN
 
 from jx_base.expressions import (
     FALSE,
@@ -20,9 +22,7 @@ from jx_base.expressions import (
     jx_expression,
 )
 from jx_base.language import Language, is_expression, is_op
-from mo_dots import is_data, is_list, Null
-from mo_future import is_text
-from mo_json.types import T_BOOLEAN
+from jx_python.expression_compiler import compile_expression
 
 ToNumberOp, OrOp, PythonScript, ScriptOp, WhenOp = [None] * 5
 
@@ -39,7 +39,7 @@ def jx_expression_to_function(expr):
         if is_op(expr, ScriptOp) and not is_text(expr.script):
             return expr.script
         else:
-            func = compile_expression((expr).to_python())
+            func = compile_expression(expr.to_python())
             return JXExpression(func, expr.__data__())
     if not is_data(expr) and not is_list(expr) and hasattr(expr, "__call__"):
         # THIS APPEARS TO BE A FUNCTION ALREADY
@@ -69,14 +69,14 @@ class JXExpression(object):
 
 
 @extend(NullOp)
-def to_python(self, many=False):
+def to_python(self):
     return "None"
 
 
-def _inequality_to_python(self, not_null=False, boolean=False):
+def _inequality_to_python(self):
     op, identity = _python_operators[self.op]
-    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python(not_null=True)
-    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python(not_null=True)
+    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python()
+    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python()
     script = "(" + lhs + ") " + op + " (" + rhs + ")"
 
     output = (
@@ -96,20 +96,20 @@ def _inequality_to_python(self, not_null=False, boolean=False):
 def _binaryop_to_python(self, not_null=False, boolean=False):
     op, identity = _python_operators[self.op]
 
-    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python(not_null=True)
-    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python(not_null=True)
+    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python()
+    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python()
     script = "(" + lhs + ") " + op + " (" + rhs + ")"
-    missing = OrOp([
+    missing = OrOp(
         self.lhs.missing(Python),
         self.rhs.missing(Python),
-    ]).partial_eval(Python)
+    ).partial_eval(Python)
     if missing is FALSE:
         return script
     else:
         return "(None) if (" + missing.to_python() + ") else (" + script + ")"
 
 
-def multiop_to_python(self, not_null=False, boolean=False, many=False):
+def multiop_to_python(self):
     sign, zero = _python_operators[self.op]
     if len(self.terms) == 0:
         return (self.default).to_python()

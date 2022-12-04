@@ -10,9 +10,6 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import datetime
-from collections import Mapping
-
-from mo_json.typed_encoder import json_type_to_inserter_type
 
 from jx_base import Column, TableDesc
 from jx_base.models.schema import Schema
@@ -29,8 +26,10 @@ from mo_dots import (
     unwraplist,
     to_data,
 )
+from mo_future import Mapping
 from mo_future import binary_type, items, long, none_type, reduce, text
 from mo_json import INTEGER, NUMBER, STRING, python_type_to_jx_type, OBJECT
+from mo_json.typed_encoder import json_type_to_inserter_type
 from mo_times.dates import Date
 
 DEBUG = False
@@ -155,70 +154,72 @@ def get_id(column):
     """
     return column.es_index + "|" + column.es_column
 
-
-META_COLUMNS_DESC = TableDesc(
-    name=META_COLUMNS_NAME,
-    url=None,
-    query_path=ROOT_PATH,
-    last_updated=Date.now(),
-    columns=to_data(
-        [
-            Column(
-                name=c,
-                es_index=META_COLUMNS_NAME,
-                es_column=c,
-                es_type="keyword",
-                json_type=STRING,
-                last_updated=Date.now(),
-                nested_path=ROOT_PATH,
-                multi=1,
-            )
-            for c in [
-                "name",
-                "es_type",
-                "json_type",
-                "es_column",
-                "es_index",
-                "partitions",
+try:
+    META_COLUMNS_DESC = TableDesc(
+        name=META_COLUMNS_NAME,
+        url=None,
+        query_path=ROOT_PATH,
+        last_updated=Date.now(),
+        columns=to_data(
+            [
+                Column(
+                    name=c,
+                    es_index=META_COLUMNS_NAME,
+                    es_column=c,
+                    es_type="keyword",
+                    json_type=STRING,
+                    last_updated=Date.now(),
+                    nested_path=ROOT_PATH,
+                    multi=1,
+                )
+                for c in [
+                    "name",
+                    "es_type",
+                    "json_type",
+                    "es_column",
+                    "es_index",
+                    "partitions",
+                ]
             ]
-        ]
-        + [
-            Column(
-                name=c,
-                es_index=META_COLUMNS_NAME,
-                es_column=c,
-                es_type="integer",
-                json_type=INTEGER,
-                last_updated=Date.now(),
-                nested_path=ROOT_PATH,
-                multi=1,
-            )
-            for c in ["count", "cardinality", "multi"]
-        ]
-        + [
-            Column(
-                name="nested_path",
-                es_index=META_COLUMNS_NAME,
-                es_column="nested_path",
-                es_type="keyword",
-                json_type=STRING,
-                last_updated=Date.now(),
-                nested_path=ROOT_PATH,
-                multi=4,
-            ),
-            Column(
-                name="last_updated",
-                es_index=META_COLUMNS_NAME,
-                es_column="last_updated",
-                es_type="double",
-                json_type=NUMBER,
-                last_updated=Date.now(),
-                nested_path=ROOT_PATH,
-                multi=1,
-            ),
-        ]
-    ),
-)
+            + [
+                Column(
+                    name=c,
+                    es_index=META_COLUMNS_NAME,
+                    es_column=c,
+                    es_type="integer",
+                    json_type=INTEGER,
+                    last_updated=Date.now(),
+                    nested_path=ROOT_PATH,
+                    multi=1,
+                )
+                for c in ["count", "cardinality", "multi"]
+            ]
+            + [
+                Column(
+                    name="nested_path",
+                    es_index=META_COLUMNS_NAME,
+                    es_column="nested_path",
+                    es_type="keyword",
+                    json_type=STRING,
+                    last_updated=Date.now(),
+                    nested_path=ROOT_PATH,
+                    multi=4,
+                ),
+                Column(
+                    name="last_updated",
+                    es_index=META_COLUMNS_NAME,
+                    es_column="last_updated",
+                    es_type="double",
+                    json_type=NUMBER,
+                    last_updated=Date.now(),
+                    nested_path=ROOT_PATH,
+                    multi=1,
+                ),
+            ]
+        ),
+    )
+except Exception as cause:
+    print(cause)
 
 META_TABLES_DESC = TableDesc(
     name=META_TABLES_NAME,

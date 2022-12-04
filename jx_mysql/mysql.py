@@ -12,7 +12,6 @@ from urllib.parse import unquote
 
 from pymysql import connect, cursors
 
-from jx_mysql.utils import round_up_pow2
 from jx_python import jx
 from mo_dots import (
     coalesce,
@@ -24,16 +23,15 @@ from mo_dots import (
 )
 from mo_files import File, URL
 from mo_future import transpose, utf8_json_encoder
+from mo_future.cache import cache
 from mo_http import http
 from mo_json import *
 from mo_kwargs import override
 from mo_logs import Except, suppress_exception, strings
 from mo_logs.strings import expand_template, indent, outdent
-from mo_math import is_number
+from mo_math import is_number, ceiling, log
 from mo_sql import *
 from mo_times import Date, DAY
-from pyLibrary import convert
-from pyLibrary.meta import cache
 
 DEBUG = True
 MAX_BATCH_SIZE = 1
@@ -616,9 +614,9 @@ def execute_sql(host, username, password, sql, schema=None, param=None, kwargs=N
     # have to shell out to the commandline client.
     args = [
         MYSQL_EXECUTABLE,
-        "-h{0}".format(host),
-        "-u{0}".format(username),
-        "-p{0}".format(password),
+        f"-h{host}",
+        f"-u{username}",
+        f"-p{password}",
     ]
     if schema:
         args.append("{0}".format(schema))
@@ -995,7 +993,7 @@ def _esfilter2sqlwhere(esfilter):
                 return "FALSE"
 
             try:
-                int_list = convert.value2intlist(v)
+                int_list = value2intlist(v)
                 has_null = any(vv == None for vv in v)
                 if int_list:
                     filter = int_list_packer(col, int_list)
@@ -1116,7 +1114,7 @@ _json_type_to_mysql_type = {
 
 def json_type_to_mysql_type(json_type, value):
     mysql_type = _json_type_to_mysql_type.get(json_type)
-    if json_type == STRING:
+    if value is not None and json_type == STRING:
         length = min(16, round_up_pow2(len(value)))
         mysql_type = mysql_type + f"({length})"
     return mysql_type
@@ -1213,7 +1211,26 @@ def sql_insert(table, records):
         sql_list(sql_iso(sql_list([quote_value(r[k]) for k in keys])) for r in records),
     )
 
+def value2intlist(value):
+    if value == None:
+        return []
+    elif is_many(value):
+        output = [int(d) for d in value if d != "" and d != None]
+        return output
+    elif isinstance(value, int):
+        return [value]
+    elif value.strip() == "":
+        return []
+    else:
+        return [int(value)]
+
+
+def round_up_pow2(value):
+    return pow(2, ceiling(log(value, 2)))
+
 
 BEGIN = "BEGIN"
 COMMIT = "COMMIT"
 ROLLBACK = "ROLLBACK"
+
+

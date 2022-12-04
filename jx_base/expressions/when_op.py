@@ -10,6 +10,9 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from mo_imports import export
+from mo_logs import Log
+
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
@@ -20,8 +23,6 @@ from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.to_boolean_op import ToBooleanOp
 from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
-from mo_imports import export
-from mo_logs import Log
 
 
 class WhenOp(Expression):
@@ -46,6 +47,11 @@ class WhenOp(Expression):
         else:
             return self.els_(row, rownum, rows)
 
+    def __eq__(self, other):
+        if not isinstance(other, WhenOp):
+            return False
+        return self.when == other.when and self.then == other.then and self.els_ == other.els_
+
     def vars(self):
         return self.when.vars() | self.then.vars() | self.els_.vars()
 
@@ -57,16 +63,16 @@ class WhenOp(Expression):
         )
 
     def missing(self, lang):
-        return OrOp([
-            AndOp([self.when, self.then.missing(lang)]),
-            AndOp([NotOp(self.when), self.els_.missing(lang)]),
-        ]).partial_eval(lang)
+        return OrOp(
+            AndOp(self.when, self.then.missing(lang)),
+            AndOp(NotOp(self.when), self.els_.missing(lang)),
+        ).partial_eval(lang)
 
     def invert(self, lang):
-        return OrOp([
-            AndOp([self.when, self.then.invert(lang)]),
-            AndOp([NotOp(self.when), self.els_.invert(lang)]),
-        ]).partial_eval(lang)
+        return OrOp(
+            AndOp(self.when, self.then.invert(lang)),
+            AndOp(NotOp(self.when), self.els_.invert(lang)),
+        ).partial_eval(lang)
 
     def partial_eval(self, lang):
         when = ToBooleanOp(self.when).partial_eval(lang)

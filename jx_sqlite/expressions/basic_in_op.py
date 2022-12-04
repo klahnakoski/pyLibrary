@@ -21,7 +21,6 @@ from jx_sqlite.sqlite import quote_list
 from mo_json.types import T_BOOLEAN
 from mo_logs import Log
 from mo_sql import ConcatSQL, SQL_IN
-from pyLibrary.convert import value2boolean
 
 
 class BasicInOp(BasicInOp_):

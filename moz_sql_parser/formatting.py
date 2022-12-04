@@ -124,6 +124,10 @@ ordered_clauses = [
     "fetch",
 ]
 
+agg_kwargs = {"distinct", "orderby", "limit", "nulls"}
+
+ordered_query_kwargs = agg_kwargs | set(ordered_clauses)
+
 
 class Formatter:
     # infix operators
@@ -146,6 +150,8 @@ class Formatter:
     _not_like = Operator("not like")
     _rlike = Operator("rlike")
     _not_rlike = Operator("not rlike")
+    _ilike = Operator("ilike")
+    _not_ilike = Operator("not ilike")
     _union = Operator("union")
     _union_all = Operator("union all")
     _intersect = Operator("intersect")
@@ -165,13 +171,17 @@ class Formatter:
         if isinstance(json, dict):
             if len(json) == 0:
                 return ""
+            elif "delete" in json:
+                return self.delete(json, prec)
+            elif "substring" in json:
+                return self._substring(json, prec)
             elif "value" in json:
                 return self.value(json, prec)
             elif "join" in json:
-                return self._join_on(json)
+                return self._join_on(json, prec)
             elif "insert" in json:
-                return self.insert(json)
-            elif json.keys() & set(ordered_clauses):
+                return self.insert(json, prec)
+            elif json.keys() & ordered_query_kwargs:
                 return self.ordered_query(json, prec)
             elif json.keys() & set(unordered_clauses):
                 return self.unordered_query(json, prec)
@@ -255,6 +265,25 @@ class Formatter:
             parts.append(f"({window})")
         if "name" in json:
             parts.extend(["AS", self.dispatch(json["name"])])
+        if "tablesample" in json:
+            parts.append("TABLESAMPLE")
+            sample = json["tablesample"]
+            sampling_method = sample.get("method")
+            if sampling_method:
+                parts.append(sampling_method)
+            sampling_rows = sample.get("rows")
+            if sampling_rows:
+                parts.append(f"({sampling_rows} ROWS)")
+            sampling_pct = sample.get("percent")
+            if sampling_pct:
+                parts.append(f"({sampling_pct} PERCENT)")
+            sampling_bucket = sample.get("bucket")
+            if sampling_bucket:
+                bucket_parts = [f"BUCKET {sampling_bucket[0]} OUT OF {sampling_bucket[1]}"]
+                sampling_on = sample.get("on")
+                if sampling_on:
+                    bucket_parts.append(f"ON {self.format(sampling_on)}")
+                parts.append("("+" ".join(bucket_parts)+")")
 
         return " ".join(parts)
 
@@ -287,8 +316,18 @@ class Formatter:
     def _binary_not(self, value, prec):
         return "~{0}".format(self.dispatch(value))
 
+    def _not(self, value, prec):
+        op_prec = precedence["not"]
+        if prec >= op_prec:
+            return f"NOT {self.dispatch(value)}"
+        else:
+            return f"NOT ({self.dispatch(value)})"
+
     def _exists(self, value, prec):
-        return "{0} IS NOT NULL".format(self.dispatch(value, precedence["is"]))
+        sql = self.dispatch(value, precedence["exists"])
+        if "from" in value:
+            return f"EXISTS {sql}"
+        return f"{sql} IS NOT NULL"
 
     def _missing(self, value, prec):
         return "{0} IS NULL".format(self.dispatch(value, precedence["is"]))
@@ -297,6 +336,9 @@ class Formatter:
         return "{0} COLLATE {1}".format(
             self.dispatch(pair[0], precedence["collate"]), pair[1]
         )
+
+    def _substring(self, json, prec):
+        return f"SUBSTRING({json['substring']} FROM {json['from']} FOR {json['for']})"
 
     def _in(self, json, prec):
         member, set = json
@@ -445,9 +487,20 @@ class Formatter:
         return " ".join(acc)
 
     def ordered_query(self, json, prec):
+        op = None
         if json.keys() & set(unordered_clauses) - {"from"}:
             # regular query
             acc = [self.unordered_query(json, precedence["order"])]
+        elif "from" not in json and len(json.keys() - agg_kwargs) == 1:
+            # aggreate operation
+            op = first(json.keys() - agg_kwargs)
+            acc = []
+            if json.get("distinct"):
+                acc.append("DISTINCT")
+            acc.append(self.dispatch(json[op], precedence["order"]))
+            if json.get('nulls'):
+                acc.append(json.get('nulls').upper())
+                acc.append("NULLS")
         else:
             # set-op expression
             acc = [self.dispatch(json["from"], precedence["order"])]
@@ -459,8 +512,13 @@ class Formatter:
             for part in [getattr(self, clause)(json, precedence["order"])]
             if part
         )
-        sql = " ".join(acc)
-        if prec >= precedence["order"]:
+        try:
+            sql = " ".join(acc)
+        except Exception as cause:
+            print(cause)
+        if op:
+            return f"{op.upper()}({sql})"
+        elif prec >= precedence["order"]:
             return sql
         else:
             return f"({sql})"
@@ -565,6 +623,14 @@ class Formatter:
     def fetch(self, json, prec):
         num = self.dispatch(json["offset"], precedence["order"])
         return f"FETCH {num} ROWS ONLY"
+
+    def delete(self, json, prec):
+        acc = ["DELETE FROM ", json['delete']]
+        if "where" in json:
+            json = {k: v for k, v in json.items() if k != "delete"}
+            acc.append("\n")
+            acc.append(self.dispatch(json, prec))
+        return "".join(acc)
 
     def insert(self, json, prec=precedence["from"]):
         acc = ["INSERT"]

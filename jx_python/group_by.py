@@ -15,7 +15,7 @@ import math
 from jx_base.models.container import Container
 from jx_base.expressions import jx_expression
 from jx_base.language import is_expression
-from mo_dots import Data, FlatList, Null, listwrap
+from mo_dots import Data, FlatList, Null, listwrap, dict_to_data
 from mo_dots.lists import list_types
 from mo_future import binary_type, text
 from mo_logs import Log
@@ -76,16 +76,12 @@ def _groupby_keys(data, key_paths, accessors):
     for i, d in enumerate(data):
         curr = accessors(d)
         if curr != prev:
-            group = {}
-            for k, gg in zip(key_paths, prev):
-                group[k] = gg
-            yield Data(group), data[start:i:]
+            group = dict(zip(key_paths, prev))
+            yield dict_to_data(group), data[start:i:]
             start = i
             prev = curr
-    group = {}
-    for k, gg in zip(key_paths, prev):
-        group[k] = gg
-    yield Data(group), data[start::]
+    group = dict(zip(key_paths, prev))
+    yield dict_to_data(group), data[start::]
 
 
 def groupby_multiset(data, min_size, max_size):

@@ -22,7 +22,7 @@ from mo_math import MIN
 
 class UnionOp(Expression):
     def __init__(self, *terms):
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         if terms == None:
             self.terms = []
         elif is_many(terms):
@@ -44,7 +44,7 @@ class UnionOp(Expression):
         return output
 
     def map(self, map_):
-        return UnionOp([t.map(map_) for t in self.terms])
+        return UnionOp(*(t.map(map_) for t in self.terms))
 
     def missing(self, lang):
         return FALSE

@@ -9,9 +9,10 @@
 import re
 from datetime import datetime, date
 from decimal import Decimal
+from math import isnan
 
-from mo_dots import split_field, NullType, is_many, is_data, concat_field
-from mo_future import text, none_type, PY2, long, items, first
+from mo_dots import split_field, NullType, is_many, is_data, concat_field, is_sequence
+from mo_future import text, none_type, PY2, long, items, first, POS_INF
 from mo_logs import Log
 from mo_times import Date
 
@@ -286,7 +287,27 @@ _type_to_json_type = {
 }
 
 
-def value_to_json_type(value):
+def value_to_json_type(v):
+    if v == None:
+        return None
+    elif isinstance(v, bool):
+        return BOOLEAN
+    elif isinstance(v, str):
+        return STRING
+    elif is_data(v):
+        return OBJECT
+    elif isinstance(v, float):
+        if isnan(v) or abs(v) == POS_INF:
+            return None
+        return NUMBER
+    elif isinstance(v, (int, Date)):
+        return NUMBER
+    elif is_sequence(v):
+        return ARRAY
+    return None
+
+
+def value_to_jx_type(value):
     if is_many(value):
         return _primitive(_A, union_type(*(value_to_json_type(v) for v in value)))
     elif is_data(value):

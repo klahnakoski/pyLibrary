@@ -38,7 +38,7 @@ class CommentOp(Expression):
         return self.frum.vars() | self.comment.vars()
 
     def map(self, map_):
-        return CommentOp([self.frum.map(mao_), self.comment.map(map_)])
+        return CommentOp(self.frum.map(mao_), self.comment.map(map_))
 
     @property
     def type(self):

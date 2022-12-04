@@ -12,9 +12,6 @@ from __future__ import absolute_import, division, unicode_literals
 from copy import copy
 from typing import List
 
-from jx_base.models.nested_path import NestedPath
-from jx_base.models.schema import Schema
-
 import jx_base
 from jx_base import Table, Container, Column
 from jx_base.meta_columns import (
@@ -22,6 +19,8 @@ from jx_base.meta_columns import (
     META_COLUMNS_NAME,
     SIMPLE_METADATA_COLUMNS,
 )
+from jx_base.models.nested_path import NestedPath
+from jx_base.models.schema import Schema
 from jx_python import jx
 from jx_sqlite.expressions._utils import sql_type_key_to_json_type
 from jx_sqlite.utils import untyped_column
@@ -32,7 +31,6 @@ from mo_dots import (
     is_data,
     is_list,
     startswith_field,
-    tail_field,
     unwraplist,
     wrap,
     list_to_data, to_data,
@@ -43,7 +41,6 @@ from mo_json.typed_encoder import unnest_path, untyped
 from mo_logs import Log
 from mo_threads import Queue
 from mo_times.dates import Date
-from pyLibrary.meta import _FakeLock
 
 DEBUG = False
 singlton = None
@@ -123,13 +120,13 @@ class ColumnList(Table, Container):
                     name=cname,
                     json_type=coalesce(
                         sql_type_key_to_json_type.get(ctype),
-                        sql_type_key_to_json_type.get(dtype),
+                        sqlite_type_to_json_type.get(dtype),
                         IS_NULL,
                     ),
                     nested_path=full_nested_path,
                     es_type=dtype,
                     es_column=name,
-                    es_index=table.name,
+                    es_index=table_name,
                     multi=1,
                     last_updated=Date.now(),
                 ))

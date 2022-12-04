@@ -10,11 +10,11 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import RightOp as RightOp_
-from jx_python.expressions._utils import Python, with_var
+from jx_python.expressions._utils import with_var
 
 
 class RightOp(RightOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         v = (self.value).to_python()
         l = (self.length).to_python()
 

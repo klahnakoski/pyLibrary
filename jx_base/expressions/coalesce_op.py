@@ -24,7 +24,7 @@ class CoalesceOp(Expression):
     has_simple_form = True
 
     def __init__(self, *terms):
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         self.terms = terms
         self._data_type = union_type(*(t.type for t in terms))
 
@@ -39,7 +39,7 @@ class CoalesceOp(Expression):
 
     def missing(self, lang):
         # RETURN true FOR RECORDS THE WOULD RETURN NULL
-        return AndOp([v.missing(lang) for v in self.terms])
+        return AndOp(*(v.missing(lang) for v in self.terms))
 
     def vars(self):
         output = set()
@@ -48,7 +48,7 @@ class CoalesceOp(Expression):
         return output
 
     def map(self, map_):
-        return CoalesceOp([v.map(map_) for v in self.terms])
+        return CoalesceOp(*(v.map(map_) for v in self.terms))
 
     def partial_eval(self, lang):
         terms = []

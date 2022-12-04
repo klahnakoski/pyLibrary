@@ -9,12 +9,13 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import SelectOp as SelectOp_
 from mo_logs.strings import quote
+
+from jx_base.expressions import SelectOp as SelectOp_
 
 
 class SelectOp(SelectOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return (
             "leaves_to_data({"
             + ",".join(

@@ -22,34 +22,34 @@ from jx_python.expressions.when_op import WhenOp
 
 class FindOp(FindOp_):
     def partial_eval(self, lang):
-        index = BasicIndexOfOp([self.value, self.find, self.start]).partial_eval(lang)
+        index = BasicIndexOfOp(self.value, self.find, self.start).partial_eval(lang)
 
         output = WhenOp(
-            OrOp([
+            OrOp(
                 self.value.missing(Python),
                 self.find.missing(Python),
-                BasicEqOp([index, Literal(-1)]),
-            ]),
+                BasicEqOp(index, Literal(-1)),
+            ),
             then=self.default,
             **{"else": index}
         ).partial_eval(lang)
         return output
 
     def missing(self, lang):
-        output = AndOp([
+        output = AndOp(
             self.default.missing(Python),
-            OrOp([
+            OrOp(
                 self.value.missing(Python),
                 self.find.missing(Python),
-                EqOp([
-                    BasicIndexOfOp([self.value, self.find, self.start]),
-                    Literal(-1),
-                ]),
-            ]),
-        ]).partial_eval(lang)
+                EqOp(
+                    BasicIndexOfOp(self.value, self.find, self.start),
+                    Literal(-1)
+                )
+            )
+        ).partial_eval(lang)
         return output
 
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return with_var(
             "f",
             "("

@@ -26,7 +26,7 @@ class MinOp(Expression):
     _data_type = T_NUMBER
 
     def __init__(self, *terms, default=NULL):
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         if terms == None:
             self.terms = []
         elif is_many(terms):
@@ -45,7 +45,7 @@ class MinOp(Expression):
         return output
 
     def map(self, map_):
-        return MinOp([t.map(map_) for t in self.terms])
+        return MinOp(*(t.map(map_) for t in self.terms))
 
     def missing(self, lang):
         return FALSE

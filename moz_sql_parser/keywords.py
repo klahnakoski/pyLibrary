@@ -169,7 +169,7 @@ NOT_IN = Group(NOT + IN).set_parser_name("nin")
 IS_NOT = Group(IS + NOT).set_parser_name("is_not")
 
 _SIMILAR = keyword("similar")
-TO = keyword("to")
+TO = Keyword("to", caseless=True).suppress()
 SIMILAR_TO = Group(_SIMILAR + TO).set_parser_name("similar_to")
 NOT_SIMILAR_TO = Group(NOT + _SIMILAR + TO).set_parser_name("not_similar_to")
 
@@ -202,7 +202,6 @@ RESERVED = MatchFirst([
     IN,
     INNER,
     INTERSECT,
-    INTERVAL,
     IS_NOT,
     IS,
     JOIN,
@@ -221,7 +220,6 @@ RESERVED = MatchFirst([
     OUTER,
     OVER,
     PARTITION,
-    # PIVOT,
     PRIMARY,
     QUALIFY,
     REFERENCES,
@@ -235,7 +233,6 @@ RESERVED = MatchFirst([
     UNION,
     UNIQUE,
     UNNEST,
-    # UNPIVOT,
     USING,
     WHEN,
     WHERE,
@@ -290,6 +287,7 @@ precedence = {
     "at_time_zone": 8,
     "between": 8,
     "not_between": 8,
+    "not": 8,
     "in": 8,
     "nin": 8,
     "is": 8,
@@ -297,6 +295,8 @@ precedence = {
     "not_like": 8,
     "rlike": 8,
     "not_rlike": 8,
+    "ilike": 8,
+    "not_ilike": 8,
     "similar_to": 8,
     "not_similar_to": 8,
     "and": 10,

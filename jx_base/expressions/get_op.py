@@ -18,7 +18,7 @@ class GetOp(Expression):
     has_simple_form = True
 
     def __init__(self, *term):
-        Expression.__init__(self, term)
+        Expression.__init__(self, *term)
         self.var = term[0]
         self.offsets = term[1:]
 
@@ -35,4 +35,4 @@ class GetOp(Expression):
         return output
 
     def map(self, map_):
-        return GetOp([self.var.map(map_)] + [o.map(map_) for o in self.offsets])
+        return GetOp(self.var.map(map_), *(o.map(map_) for o in self.offsets))

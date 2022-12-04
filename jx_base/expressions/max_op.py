@@ -23,7 +23,7 @@ class MaxOp(Expression):
     _data_type = T_NUMBER
 
     def __init__(self, *terms, default=NULL):
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         if terms == None:
             self.terms = []
         elif is_many(terms):
@@ -42,7 +42,7 @@ class MaxOp(Expression):
         return output
 
     def map(self, map_):
-        return MaxOp([t.map(map_) for t in self.terms])
+        return MaxOp(*(t.map(map_) for t in self.terms))
 
     def missing(self, lang):
         return FALSE

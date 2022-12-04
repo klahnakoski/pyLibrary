@@ -29,16 +29,16 @@ class BasicInOp(Expression):
     has_simple_form = True
     _data_type = T_BOOLEAN
 
-    def __new__(cls, terms):
-        if is_op(terms[0], Variable) and is_op(terms[1], Literal):
-            name, value = terms
-            if not is_many(value.value):
-                return EqOp([name, Literal([value.value])])
+    def __new__(cls, value, superset):
+        if is_op(value, Variable) and is_op(superset, Literal):
+            if not is_many(superset.value):
+                return EqOp(value, Literal(superset.value))
         return object.__new__(cls)
 
-    def __init__(self, *term):
-        Expression.__init__(self, term)
-        self.value, self.superset = term
+    def __init__(self, value, superset):
+        Expression.__init__(self, value, superset)
+        self.value = value
+        self.superset = superset
         if self.value is None:
             Log.error("Should not happpen")
 
@@ -57,7 +57,7 @@ class BasicInOp(Expression):
         return self.value.vars()
 
     def map(self, map_):
-        return BasicInOp([self.value.map(map_), self.superset.map(map_)])
+        return BasicInOp(self.value.map(map_), self.superset.map(map_))
 
     def partial_eval(self, lang):
         value = self.value.partial_eval(lang)
@@ -73,13 +73,13 @@ class BasicInOp(Expression):
                 NestedOp(
                     value.nested_path,
                     None,
-                    AndOp([BasicInOp([value.select, superset]), value.where]),
+                    AndOp(BasicInOp(value.select, superset), value.where),
                 )
                 .exists()
                 .partial_eval(lang)
             )
         else:
-            return lang.BasicInOp([value, superset])
+            return lang.BasicInOp(value, superset)
 
     def __call__(self, row, rownum=None, rows=None):
         value = self.value(row)

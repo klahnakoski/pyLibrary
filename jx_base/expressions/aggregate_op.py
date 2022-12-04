@@ -34,7 +34,7 @@ class AggregateOp(Expression):
         return self.frum.vars() | self.op.vars()
 
     def map(self, map_):
-        return AggregateOp([self.frum.map(mao_), self.op.map(map_)])
+        return AggregateOp(self.frum.map(mao_), self.op.map(map_))
 
     @property
     def type(self):

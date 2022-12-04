@@ -9,12 +9,13 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import Literal as Literal_
 from mo_dots import from_data
 from mo_future import text
 from mo_json import json2value
 
+from jx_base.expressions import Literal as Literal_
+
 
 class Literal(Literal_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return text(repr(from_data(json2value(self.json))))

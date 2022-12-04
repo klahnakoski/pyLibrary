@@ -14,7 +14,7 @@ from jx_python.expressions._utils import Python
 
 
 class ToTextOp(ToTextOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
-        missing = (self.term.missing(Python)).to_python(boolean=True)
-        value = self.term.to_python(not_null=True)
+    def to_python(self):
+        missing = self.term.missing(Python).to_python()
+        value = self.term.to_python()
         return "null if (" + missing + ") else text(" + value + ")"

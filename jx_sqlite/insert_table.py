@@ -17,41 +17,13 @@ from jx_base import Column, generateGuid, Facts
 from jx_base.expressions import jx_expression, TRUE
 from jx_base.models.nested_path import NestedPath
 from jx_sqlite.expressions._utils import json_type_to_sql_type_key, SQL_ARRAY_KEY
-from jx_sqlite.sqlite import (
-    SQL_AND,
-    SQL_FROM,
-    SQL_INNER_JOIN,
-    SQL_NULL,
-    SQL_SELECT,
-    SQL_TRUE,
-    SQL_UNION_ALL,
-    SQL_WHERE,
-    sql_iso,
-    sql_list,
-    SQL_VALUES,
-    SQL_INSERT,
-    ConcatSQL,
-    SQL_EQ,
-    SQL_UPDATE,
-    SQL_SET,
-    SQL_ONE,
-    SQL_DELETE,
-    SQL_ON,
-    SQL_COMMA,
-)
-from jx_sqlite.sqlite import (
-    json_type_to_sqlite_type,
-    quote_column,
-    quote_value,
-    sql_alias,
-)
+from jx_sqlite.sqlite import *
 from jx_sqlite.utils import (
     GUID,
     ORDER,
     PARENT,
     UID,
     get_if_type,
-    value_to_json_type,
     typed_column,
     untyped_column,
 )
@@ -67,7 +39,7 @@ from mo_dots import (
     to_data, relative_field,
 )
 from mo_future import text, first
-from mo_json import STRUCT, ARRAY, OBJECT
+from mo_json import STRUCT, ARRAY, OBJECT, value_to_json_type
 from mo_logs import Log
 from mo_times import Date
 
@@ -311,7 +283,7 @@ class InsertTable(Facts):
         doc_collection: Dict[str, Insertion] = {".": facts_insertion}
         # KEEP TRACK OF WHAT TABLE WILL BE MADE (SHORTLY)
         required_changes = []
-        snowflake = self.container.get_or_create_facts(self.name).snowflake
+        snowflake = self.container.get_or_create_table(self.name).schema.snowflake
 
         def _flatten(doc, doc_path, nested_path: NestedPath, row, row_num, row_id, parent_id):
             """
@@ -337,9 +309,9 @@ class InsertTable(Facts):
             for rel_name, v in items:
                 abs_name = concat_field(doc_path, rel_name)
                 json_type = value_to_json_type(v)
+                es_type = json_type_to_sqlite_type.get(json_type, json_type)
                 if json_type is None:
                     continue
-
                 columns = (
                     snowflake.get_schema(nested_path).columns + insertion.active_columns
                 )
@@ -354,7 +326,6 @@ class InsertTable(Facts):
                         deeper_insertion = doc_collection.setdefault(
                             curr_column.es_column, Insertion()
                         )
-
                 else:
                     curr_column = first(
                         cc
@@ -374,7 +345,7 @@ class InsertTable(Facts):
                     curr_column = Column(
                         name=abs_name,
                         json_type=json_type,
-                        es_type=json_type_to_sqlite_type.get(json_type, json_type),
+                        es_type=es_type,
                         es_column=typed_column(
                             abs_name,
                             json_type_to_sql_type_key.get(json_type),
@@ -416,7 +387,7 @@ class InsertTable(Facts):
                     # deeper_column = Column(
                     #     name=abs_name,
                     #     json_type=json_type,
-                    #     es_type=json_type_to_sqlite_type.get(json_type, json_type),
+                    #     es_type=es_type
                     #     es_column=typed_column(
                     #         abs_name, json_type_to_sql_type_key.get(json_type)
                     #     ),

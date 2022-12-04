@@ -20,7 +20,7 @@ class DefaultOp(Expression):
     has_simple_form = True
 
     def __init__(self, *terms):
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         self.expr, self.default = terms
         self._data_type = union_type(*(t.type for t in terms))
 
@@ -33,13 +33,13 @@ class DefaultOp(Expression):
         return False
 
     def missing(self, lang):
-        return AndOp([self.expr.missing(), self.default.missing()])
+        return AndOp(self.expr.missing(), self.default.missing())
 
     def vars(self):
         return self.expr.vars() | self.default.vars()
 
     def map(self, map_):
-        return DefaultOp([self.expr.map(map_), self.default.map(map_)])
+        return DefaultOp(self.expr.map(map_), self.default.map(map_))
 
     def partial_eval(self, lang):
         expr_miss = self.expr.missing()
@@ -51,4 +51,4 @@ class DefaultOp(Expression):
         fall_miss = self.default.missing()
         if fall_miss is TRUE:
             return self.expr.partial_eval(lang)
-        return DefaultOp([self.expr.partial_eval(lang), self.default.partial_eval(lang)])
+        return DefaultOp(self.expr.partial_eval(lang), self.default.partial_eval(lang))

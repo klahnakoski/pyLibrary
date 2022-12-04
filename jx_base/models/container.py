@@ -24,7 +24,7 @@ from mo_future import is_text
 from mo_imports import expect
 from mo_logs import Log
 
-ListContainer, Cube, run = expect("ListContainer", "Cube", "run")
+ListContainer, Cube = expect("ListContainer", "Cube")
 
 type2container = Data()
 config = Data()  # config.default IS EXPECTED TO BE SET BEFORE CALLS ARE MADE

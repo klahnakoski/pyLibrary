@@ -13,7 +13,7 @@ from jx_base.expressions import CardinalityOp as CardinalityOp_
 
 
 class CardinalityOp(CardinalityOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         if not self.terms:
             return "0"
         else:

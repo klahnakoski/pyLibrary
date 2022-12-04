@@ -10,9 +10,9 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import ToBooleanOp as ToBooleanOp_
-from jx_python.expressions._utils import with_var, Python
+from jx_python.expressions._utils import with_var
 
 
 class ToBooleanOp(ToBooleanOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return with_var("f", self.term.to_python(), "bool(f)",)

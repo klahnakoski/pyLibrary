@@ -10,11 +10,10 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import EqOp as EqOp_
-from jx_python.expressions._utils import Python
 
 
 class EqOp(EqOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return (
             "("
             + (self.rhs).to_python()

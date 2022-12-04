@@ -47,9 +47,9 @@ class EqOp(Expression):
             acc = []
             for lhs, rhs in items:
                 if rhs.json.startswith("["):
-                    acc.append(InOp([Variable(lhs), rhs]))
+                    acc.append(InOp(Variable(lhs), rhs))
                 else:
-                    acc.append(EqOp([Variable(lhs), rhs]))
+                    acc.append(EqOp(Variable(lhs), rhs))
             return AndOp(acc)
 
     @classmethod
@@ -97,7 +97,7 @@ class EqOp(Expression):
         return self.lhs.vars() | self.rhs.vars()
 
     def map(self, map_):
-        return EqOp([self.lhs.map(map_), self.rhs.map(map_)])
+        return EqOp(self.lhs.map(map_), self.rhs.map(map_))
 
     def missing(self, lang):
         return FALSE
@@ -106,17 +106,17 @@ class EqOp(Expression):
         return TRUE
 
     def partial_eval(self, lang):
-        lhs = (self.lhs).partial_eval(lang)
-        rhs = (self.rhs).partial_eval(lang)
+        lhs = self.lhs.partial_eval(lang)
+        rhs = self.rhs.partial_eval(lang)
 
         if is_literal(lhs) and is_literal(rhs):
             return FALSE if value_compare(lhs.value, rhs.value) else TRUE
         else:
-            return CaseOp([
+            return CaseOp(
                 WhenOp(lhs.missing(lang), then=rhs.missing(lang)),
                 WhenOp(rhs.missing(lang), then=FALSE),
-                BasicEqOp([lhs, rhs]),
-            ]).partial_eval(lang)
+                BasicEqOp(lhs, rhs),
+            ).partial_eval(lang)
 
 
 export("jx_base.expressions.basic_in_op", EqOp)

@@ -19,7 +19,7 @@ class AbsOp(Expression):
     _data_type = T_NUMBER
 
     def __init__(self, *term):
-        Expression.__init__(self, term)
+        Expression.__init__(self, *term)
         self.term = term
 
     def __data__(self):

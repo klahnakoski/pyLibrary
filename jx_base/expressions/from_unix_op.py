@@ -22,7 +22,7 @@ class FromUnixOp(Expression):
     _data_type = T_NUMBER
 
     def __init__(self, *term):
-        Expression.__init__(self, term)
+        Expression.__init__(self, *term)
         self.value = term
 
     def vars(self):

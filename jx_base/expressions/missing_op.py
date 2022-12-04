@@ -33,7 +33,7 @@ class MissingOp(Expression):
         if not is_op(other, MissingOp):
             return False
         else:
-            return self.expr == other.frum
+            return self.expr == other.expr
 
     def vars(self):
         return self.expr.vars()

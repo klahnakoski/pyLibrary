@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import os
+from unittest import skipIf
 
 import keyring
 from mo_dots import Data
@@ -22,6 +23,8 @@ from mo_testing.fuzzytestcase import FuzzyTestCase
 
 import mo_json_config
 from mo_json_config import URL
+
+IS_TRAVIS = os.environ.get('TRAVIS') or False
 
 
 class TestRef(FuzzyTestCase):
@@ -127,6 +130,7 @@ class TestRef(FuzzyTestCase):
             "expecting proper expansion",
         )
 
+    @skipIf(IS_TRAVIS, "no home travis")
     def test_read_home(self):
         file = "~/___test_file.json"
         source = File.new_instance(
@@ -188,6 +192,7 @@ class TestRef(FuzzyTestCase):
             Exception, mo_json_config.expand, doc, doc_url, {"value": {"name": "hello"}}
         )
 
+    @skipIf(IS_TRAVIS, "no keyring on travis")
     def test_keyring(self):
         keyring.set_password("example_service", "ekyle", "password")
         doc = {"a": {"$ref": "keyring://example_service?username=ekyle"}}
@@ -195,6 +200,7 @@ class TestRef(FuzzyTestCase):
         result = mo_json_config.expand(doc, doc_url)
         self.assertEqual(result, {"a": "password"})
 
+    @skipIf(IS_TRAVIS, "no keyring on travis")
     def test_keyring_username(self):
         keyring.set_password("example_service", "ekyle", "password")
         doc = {"a": {"$ref": "keyring://ekyle@example_service"}}

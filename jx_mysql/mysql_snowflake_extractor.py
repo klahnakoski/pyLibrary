@@ -185,6 +185,8 @@ class MySqlSnowflakeExtractor(object):
                 information_schema.table_constraints c on c.table_name=t.table_name AND c.table_schema=t.table_schema and (constraint_type='UNIQUE' or constraint_type='PRIMARY KEY')
             LEFT JOIN
                 information_schema.key_column_usage k on k.constraint_name=c.constraint_name AND k.table_name=t.table_name and k.table_schema=t.table_schema
+            WHERE
+                t.table_schema NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys')
             ORDER BY
                 t.table_schema,
                 t.table_name,
@@ -197,7 +199,7 @@ class MySqlSnowflakeExtractor(object):
         # ORGANIZE, AND PICK ONE UNIQUE CONSTRAINT FOR LINKING
         tables = UniqueIndex(keys=["name", "schema"])
         for t, c in jx.groupby(raw_tables, ["table_name", "table_schema"]):
-            c = wrap(list(c))
+            c = to_data(list(c))
             best_index = Null
             is_referenced = False
             is_primary = False

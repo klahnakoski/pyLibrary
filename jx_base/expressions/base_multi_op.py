@@ -54,20 +54,20 @@ class BaseMultiOp(Expression):
     def missing(self, lang):
         if self.decisive:
             if self.default is NULL:
-                return AndOp([t.missing(lang) for t in self.terms])
+                return AndOp(*(t.missing(lang) for t in self.terms))
             else:
                 return TRUE
         else:
             if self.default is NULL:
-                return OrOp([t.missing(lang) for t in self.terms])
+                return OrOp(*(t.missing(lang) for t in self.terms))
             else:
                 return FALSE
 
     def exists(self):
         if self.decisive:
-            return OrOp([t.exists() for t in self.terms])
+            return OrOp(*(t.exists() for t in self.terms))
         else:
-            return AndOp([t.exists() for t in self.terms])
+            return AndOp(*(t.exists() for t in self.terms))
 
     def partial_eval(self, lang):
         literal_acc = None
@@ -96,10 +96,10 @@ class BaseMultiOp(Expression):
                 terms.append(Literal(literal_acc))
 
             output = WhenOp(
-                AndOp([t.missing(lang) for t in terms]),
+                AndOp(*(t.missing(lang) for t in terms)),
                 then=self.default,
                 **{"else": operators["basic." + self.op]([
-                    CoalesceOp([t, _jx_identity.get(self.op, NULL)]) for t in terms
+                    CoalesceOp(t, _jx_identity.get(self.op, NULL)) for t in terms
                 ])}
             ).partial_eval(lang)
         else:
@@ -108,7 +108,7 @@ class BaseMultiOp(Expression):
                 terms.append(Literal(literal_acc))
 
             output = WhenOp(
-                OrOp([t.missing(lang) for t in terms]),
+                OrOp(*(t.missing(lang) for t in terms)),
                 then=self.default,
                 **{"else": operators["basic." + self.op](terms)}
             ).partial_eval(lang)

@@ -78,6 +78,7 @@ if PY3:
         type({}.values()),
         type(map(lambda: 0, iter([]))),
         type(reversed([])),
+        type(range(1)),
     )
     unichr = chr
 
@@ -187,7 +188,7 @@ else:  # PY2
     unichr = __builtin__.unichr
 
     xrange = __builtin__.xrange
-    generator_types = (GeneratorType, type(reversed([])))
+    generator_types = (GeneratorType, type(reversed([])), type(range(1)))
     unichr = __builtin__.unichr
 
     round = __builtin__.round
@@ -373,3 +374,5 @@ _keep_imports = (
     interrupt_main,
     process_time,
 )
+
+POS_INF = float("+inf")

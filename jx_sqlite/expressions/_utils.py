@@ -20,33 +20,10 @@ from jx_base.expressions import (
 )
 from jx_base.expressions._utils import TYPE_CHECK
 from jx_base.language import Language
-from jx_sqlite.sqlite import (
-    SQL,
-    SQL_FALSE,
-    SQL_NULL,
-    SQL_TRUE,
-    sql_iso,
-    SQL_ZERO,
-    SQL_ONE,
-    SQL_PLUS,
-    SQL_STAR,
-    SQL_LT,
-    ConcatSQL,
-    SQL_AS,
-    SQL_SELECT,
-    SQL_FROM,
-    SQL_WITH,
-    SQL_DIV,
-    SQL_GT,
-    SQL_LE,
-    SQL_GE,
-)
-from jx_sqlite.sqlite import sql_call
+from jx_sqlite.sqlite import *
 from mo_future import decorate
 from mo_imports import expect
-from mo_json import BOOLEAN, ARRAY, OBJECT, STRING, NUMBER, IS_NULL, TIME, INTERVAL
-from mo_json.types import T_IS_NULL, T_BOOLEAN, T_NUMBER, T_TIME, T_INTERVAL, T_TEXT
-from mo_logs import Log
+from mo_sql.utils import *
 
 ToNumberOp, OrOp, SqlScript = expect("ToNumberOp", "OrOp", "SqlScript")
 
@@ -196,15 +173,6 @@ _sql_operators = {
     "lte": (SQL_LE, None),
     "lt": (SQL_LT, None),
 }
-
-SQL_IS_NULL_KEY = "0"
-SQL_BOOLEAN_KEY = "b"
-SQL_NUMBER_KEY = "n"
-SQL_TIME_KEY = "t"
-SQL_INTERVAL_KEY = "n"
-SQL_STRING_KEY = "s"
-SQL_OBJECT_KEY = "j"
-SQL_ARRAY_KEY = "a"
 
 SQL_KEYS = [
     "$" + SQL_IS_NULL_KEY,

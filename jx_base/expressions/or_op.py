@@ -38,13 +38,13 @@ class OrOp(Expression):
         return output
 
     def map(self, map_):
-        return OrOp([t.map(map_) for t in self.terms])
+        return OrOp(*(t.map(map_) for t in self.terms))
 
     def missing(self, lang):
         return FALSE
 
     def invert(self, lang):
-        return AndOp([t.invert(lang) for t in self.terms]).partial_eval(lang)
+        return AndOp(*(t.invert(lang) for t in self.terms)).partial_eval(lang)
 
     def __call__(self, row=None, rownum=None, rows=None):
         return any(t(row, rownum, rows) for t in self.terms)
@@ -87,7 +87,7 @@ class OrOp(Expression):
             return FALSE
         if len(terms) == 1:
             return terms[0]
-        return OrOp(terms)
+        return OrOp(*terms)
 
 
 export("jx_base.expressions.and_op", OrOp)

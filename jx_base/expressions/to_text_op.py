@@ -24,8 +24,8 @@ from mo_json.types import T_TEXT, T_IS_NULL
 class ToTextOp(Expression):
     _data_type = T_TEXT
 
-    def __init__(self, *term):
-        Expression.__init__(self, [term])
+    def __init__(self, term):
+        Expression.__init__(self, term)
         self.term = term
 
     def __data__(self):
@@ -48,7 +48,7 @@ class ToTextOp(Expression):
         if is_op(term, ToTextOp):
             return term.term.partial_eval(lang)
         elif is_op(term, CoalesceOp):
-            return CoalesceOp([(ToTextOp(t)).partial_eval(lang) for t in term.terms])
+            return CoalesceOp(*((ToTextOp(t)).partial_eval(lang) for t in term.terms))
         elif is_literal(term):
             if term.type == T_TEXT:
                 return term

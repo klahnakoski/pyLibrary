@@ -12,6 +12,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import os
+
 from jx_mysql import mysql_snowflake_extractor
 from mo_dots import set_default, wrap
 from mo_logs import Log, startup, constants
@@ -22,7 +24,7 @@ from jx_mysql.mysql import MySql, execute_file
 from jx_mysql.mysql_snowflake_extractor import MySqlSnowflakeExtractor
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
-settings = startup.read_settings(filename="tests/resources/config/test.json")
+settings = startup.read_settings(filename=os.environ.get('TEST_CONFIG') or "tests/resources/config/test.json")
 constants.set(settings.constants)
 
 

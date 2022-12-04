@@ -85,11 +85,11 @@ class PrefixOp(Expression):
         return FALSE
 
     def partial_eval(self, lang):
-        return CaseOp([
+        return CaseOp(
             WhenOp(self.prefix.missing(lang), then=TRUE),
             WhenOp(self.expr.missing(lang), then=FALSE),
-            BasicStartsWithOp([self.expr, self.prefix]),
-        ]).partial_eval(lang)
+            BasicStartsWithOp(self.expr, self.prefix),
+        ).partial_eval(lang)
 
     def __eq__(self, other):
         if not is_op(other, PrefixOp):

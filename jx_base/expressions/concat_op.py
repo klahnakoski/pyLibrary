@@ -32,7 +32,7 @@ class ConcatOp(Expression):
             Log.error("Expecting many terms")
         if not is_literal(separator):
             Log.error("Expecting a literal separator")
-        Expression.__init__(self, terms + [separator, default])
+        Expression.__init__(self, *terms, separator, default)
         self.terms = terms
         self.separator = separator
         self.default = default

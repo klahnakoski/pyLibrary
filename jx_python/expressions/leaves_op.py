@@ -13,5 +13,5 @@ from jx_base.expressions import LeavesOp as LeavesOp_
 
 
 class LeavesOp(LeavesOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return "Data(" + self.term.to_python() + ").leaves()"

@@ -1135,7 +1135,8 @@ class TestSimple(TestCase):
         sql = "SELECT COUNT(DISTINCT Y) FROM A "
         result = parse(sql)
         self.assertEqual(
-            result, {"from": "A", "select": {"value": {"count": {"distinct": "Y"}}}},
+            result,
+            {"from": "A", "select": {"value": {"count": "Y", "distinct": True}}},
         )
 
     def test_issue2b_of_fork(self):
@@ -1146,10 +1147,10 @@ class TestSimple(TestCase):
             {
                 "from": "C",
                 "select": [
-                    {"value": {"count": {"distinct": [
-                        {"value": "B"},
-                        {"value": "E"},
-                    ]}}},
+                    {"value": {
+                        "count": ["B", "E"],
+                        "distinct": True,
+                    }},
                     {"value": "A"},
                 ],
                 "where": {"eq": ["D", "X"]},

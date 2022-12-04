@@ -14,14 +14,12 @@ from jx_base.expressions import (
     FALSE,
     is_literal,
     NotOp,
-    ToBooleanOp,
 )
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import sql_iso, SQL_EQ
 from mo_json.types import T_BOOLEAN
-from mo_sql import ConcatSQL, SQL_NOT
-from pyLibrary.convert import value2boolean
+from mo_sql import ConcatSQL
 
 
 class BasicEqOp(BasicEqOp_):
@@ -58,3 +56,22 @@ class BasicEqOp(BasicEqOp_):
             frum=self,
             miss=FALSE, schema=schema
         )
+
+
+_v2b = {
+    True: True,
+    "true": True,
+    "T": True,
+    1: True,
+    False: False,
+    "false": False,
+    "F": False,
+    0: False,
+    None: None
+}
+
+
+def value2boolean(value):
+    return _v2b.get(value, True)
+
+

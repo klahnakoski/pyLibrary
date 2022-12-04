@@ -14,12 +14,12 @@ from jx_python.expressions import _utils
 
 
 class WhenOp(WhenOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return (
             "("
             + self.then.to_python()
             + ") if ("
-            + self.when.to_python(boolean=True)
+            + self.when.to_python()
             + ") else ("
             + self.els_.to_python()
             + ")"

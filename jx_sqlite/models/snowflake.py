@@ -12,36 +12,10 @@ from typing import List
 
 import jx_base
 from jx_base.models.nested_path import NestedPath
-from jx_sqlite.expressions._utils import SQL_ARRAY_KEY
 from jx_sqlite.models.schema import Schema
 from jx_sqlite.models.table import Table
-from jx_sqlite.sqlite import (
-    SQL_FROM,
-    SQL_SELECT,
-    SQL_ZERO,
-    sql_iso,
-    sql_list,
-    SQL_CREATE,
-    SQL_AS,
-    ConcatSQL,
-    SQL_ALTER_TABLE,
-    SQL_ADD_COLUMN,
-    SQL_RENAME_COLUMN,
-    SQL_RENAME_TO,
-    SQL_TO,
-    TextSQL,
-    SQL_INSERT,
-)
-from jx_sqlite.sqlite import quote_column
-from jx_sqlite.utils import (
-    quoted_ORDER,
-    quoted_PARENT,
-    quoted_UID,
-    UID,
-    GUID,
-    PARENT,
-    untype_field, ORDER,
-)
+from jx_sqlite.sqlite import *
+from jx_sqlite.utils import *
 from mo_dots import (
     concat_field,
     to_data,
@@ -53,6 +27,7 @@ from mo_dots import (
 from mo_future import first
 from mo_json import ARRAY, OBJECT, EXISTS, INTEGER
 from mo_logs import Log, Except
+from mo_sql.utils import SQL_IS_NULL_KEY
 from mo_times import Date
 
 
@@ -93,6 +68,10 @@ class Snowflake(jx_base.Snowflake):
                 self._add_column(required_change.add)
             elif required_change.nest:
                 self._nest_column(required_change.nest)
+            elif required_change.alter:
+                self._alter_column(required_change.alter, required_change.es_type)
+            else:
+                Log.error("can not handle {{required_change}}", required_change=required_change)
 
     def _add_column(self, column):
         cname = column.name
@@ -109,7 +88,7 @@ class Snowflake(jx_base.Snowflake):
                     quote_column(table),
                     SQL_ADD_COLUMN,
                     quote_column(column.es_column),
-                    quote_column(column.es_type),
+                    TextSQL(column.es_type),
                 ))
             self.namespace.columns.add(column)
         except Exception as e:
@@ -256,7 +235,7 @@ class Snowflake(jx_base.Snowflake):
                     quote_column(destination_table),
                     SQL_ADD_COLUMN,
                     quote_column(new_es_column(c)),
-                    quote_column(column.es_type),
+                    TextSQL(column.es_type),
                 ))
 
             # FILL THE NESTED TABLE WITH EXISTING DATA
@@ -306,6 +285,47 @@ class Snowflake(jx_base.Snowflake):
             c.es_column = new_es_column(c)
             c.nested_path = new_nested_path(c)
             all_columns.add(c)
+
+    def _alter_column(self, column, new_es_type):
+        table_name = column.nested_path[0]
+        temp_column = concat_field(untype_field(column.es_column)[0], SQL_IS_NULL_KEY)
+
+        with self.namespace.container.db.transaction() as t:
+            # RENAME OLD COLUMN
+            t.execute(ConcatSQL(
+                SQL_ALTER_TABLE,
+                quote_column(table_name),
+                SQL_RENAME_COLUMN,
+                quote_column(column.es_column),
+                SQL_TO,
+                quote_column(temp_column)
+            ))
+            # MAKE NEW COLUMN
+            t.execute(ConcatSQL(
+                SQL_ALTER_TABLE,
+                quote_column(table_name),
+                SQL_ADD_COLUMN,
+                quote_column(column.es_column),
+                quote_column(new_es_type),
+            ))
+            # COPY CONTENTS
+            t.execute(ConcatSQL(
+                SQL_UPDATE,
+                quote_column(table_name),
+                SQL_SET,
+                quote_column(column.es_column),
+                SQL_EQ,
+                quote_column(temp_column)
+            ))
+            # DELETE OLD COLUMNS
+            t.execute(ConcatSQL(
+                SQL_ALTER_TABLE,
+                quote_column(table_name),
+                SQL_DROP_COLUMN,
+                quote_column(temp_column),
+            ))
+
+        column.es_type = new_es_type
 
     def add_table(self, nested_path):
         query_paths = self.namespace.columns._snowflakes[self.fact_name]

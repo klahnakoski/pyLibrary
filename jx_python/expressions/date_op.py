@@ -9,11 +9,12 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import DateOp as DateOp_
 from mo_future import text
 from mo_times.dates import Date
 
+from jx_base.expressions import DateOp as DateOp_
+
 
 class DateOp(DateOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return text(Date(self.value).unix)

@@ -43,7 +43,7 @@ class ExistsOp(Expression):
         return FALSE
 
     def invert(self, lang):
-        return (self.expr).missing(lang)
+        return self.expr.missing(lang)
 
     def exists(self):
         return TRUE

@@ -9,12 +9,13 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import OffsetOp as OffsetOp_
 from mo_future import text
+
+from jx_base.expressions import OffsetOp as OffsetOp_
 
 
 class OffsetOp(OffsetOp_):
-    def to_python(self, not_null=False, boolean=False, many=False):
+    def to_python(self):
         return (
             "row["
             + text(self.var)

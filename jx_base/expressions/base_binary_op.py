@@ -28,7 +28,7 @@ class BaseBinaryOp(Expression):
     op = None
 
     def __init__(self, *terms, default=None):
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         self.lhs, self.rhs = terms
         self.default = coalesce(default, NULL)
 
@@ -57,7 +57,7 @@ class BaseBinaryOp(Expression):
         if self.default.exists():
             return FALSE
         else:
-            return OrOp([self.lhs.missing(lang), self.rhs.missing(lang)])
+            return OrOp(self.lhs.missing(lang), self.rhs.missing(lang))
 
     def partial_eval(self, lang):
         lhs = self.lhs.partial_eval(lang)

@@ -9,6 +9,8 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+from mo_logs import Log
+
 from jx_base.expressions import (
     FALSE,
     NULL,
@@ -20,7 +22,6 @@ from jx_base.expressions import (
 )
 from jx_base.utils import coalesce
 from jx_python.expressions import _utils, Python
-from mo_logs import Log
 
 
 class PythonScript(PythonScript_):
@@ -59,7 +60,7 @@ class PythonScript(PythonScript_):
             b = str(self)
             return ""
 
-    def to_python(self, not_null=False, boolean=False):
+    def to_python(self):
         return self
 
     def missing(self, lang):

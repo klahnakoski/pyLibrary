@@ -24,7 +24,7 @@ class BasicEqOp(Expression):
     _data_type = T_BOOLEAN
 
     def __init__(self, *terms):
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         self.lhs, self.rhs = terms
 
     def __data__(self):
@@ -37,7 +37,7 @@ class BasicEqOp(Expression):
         return self.lhs.vars() | self.rhs.vars()
 
     def map(self, map_):
-        return BasicEqOp([self.lhs.map(map_), self.rhs.map(map_)])
+        return BasicEqOp(self.lhs.map(map_), self.rhs.map(map_))
 
     def __eq__(self, other):
         if not is_op(other, BasicEqOp):

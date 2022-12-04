@@ -20,8 +20,8 @@ from mo_json import T_INTEGER
 class ToIntegerOp(Expression):
     _data_type = T_INTEGER
 
-    def __init__(self, *term):
-        Expression.__init__(self, [term])
+    def __init__(self, term):
+        Expression.__init__(self, term)
         self.term = term
 
     def __data__(self):
@@ -39,7 +39,7 @@ class ToIntegerOp(Expression):
     def partial_eval(self, lang):
         term = FirstOp(self.term).partial_eval(lang)
         if is_op(term, CoalesceOp):
-            return CoalesceOp([ToIntegerOp(t) for t in term.terms])
+            return CoalesceOp(ToIntegerOp(t) for t in term.terms)
         if term.type in T_INTEGER:
             return term
         return ToIntegerOp(term)

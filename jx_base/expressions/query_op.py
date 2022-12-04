@@ -59,9 +59,9 @@ Column = expect("Column")
 BAD_SELECT = "Expecting `value` or `aggregate` in select clause not {{select}}"
 DEFAULT_LIMIT = 10
 MAX_LIMIT = 10000
-DEFAULT_SELECT = SelectOp([dict(
+DEFAULT_SELECT = SelectOp(dict(
     name="count", value=Variable("."), aggregate=CountOp(Variable(".")), default=ZERO
-)])
+))
 
 
 class QueryOp(Expression):

@@ -30,7 +30,7 @@ class LeftOp(Expression):
     _data_type = T_TEXT
 
     def __init__(self, *term):
-        Expression.__init__(self, term)
+        Expression.__init__(self, *term)
         if is_data(term):
             self.value, self.length = term.items()[0]
         else:
@@ -46,13 +46,13 @@ class LeftOp(Expression):
         return self.value.vars() | self.length.vars()
 
     def map(self, map_):
-        return LeftOp([self.value.map(map_), self.length.map(map_)])
+        return LeftOp(self.value.map(map_), self.length.map(map_))
 
     def missing(self, lang):
-        return OrOp([
+        return OrOp(
             self.value.missing(lang),
             self.length.missing(lang),
-        ]).partial_eval(lang)
+        ).partial_eval(lang)
 
     def partial_eval(self, lang):
         value = (self.value).partial_eval(lang)
@@ -61,9 +61,9 @@ class LeftOp(Expression):
 
         return WhenOp(
             self.missing(lang),
-            **{"else": BasicSubstringOp([
+            **{"else": BasicSubstringOp(
                 value,
                 ZERO,
-                MaxOp([ZERO, MinOp([length, max_length])]),
-            ])}
+                MaxOp(ZERO, MinOp(length, max_length)),
+            )}
         ).partial_eval(lang)

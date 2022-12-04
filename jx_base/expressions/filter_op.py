@@ -17,7 +17,7 @@ from mo_dots import is_many
 
 class FilterOp(Expression):
     def __init__(self, *terms):
-        Expression.__init__(self, terms)
+        Expression.__init__(self, *terms)
         self.frum, self.func = terms
         if self.frum.type != T_ARRAY:
             Log.error("expecting an array")
@@ -29,7 +29,7 @@ class FilterOp(Expression):
         return self.frum.vars() | self.func.vars()
 
     def map(self, map_):
-        return FilterOp([self.frum.map(mao_), self.func.map(map_)])
+        return FilterOp(self.frum.map(mao_), self.func.map(map_))
 
     @property
     def type(self):
