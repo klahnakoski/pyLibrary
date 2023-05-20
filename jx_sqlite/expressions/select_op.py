@@ -23,13 +23,13 @@ from jx_sqlite.sqlite import (
     ENABLE_TYPE_CHECKING, SQL_CR,
 )
 from mo_dots import concat_field, literal_field
-from mo_json.types import to_jx_type, T_IS_NULL
+from mo_json.types import to_jx_type, JX_IS_NULL
 
 
 class SelectOp(SelectOp_):
     @check
     def to_sql(self, schema):
-        type = T_IS_NULL
+        type = JX_IS_NULL
         sql_terms = []
         diff = False
         for name, expr in self:

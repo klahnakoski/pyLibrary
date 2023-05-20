@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.basic_substring_op import BasicSubstringOp
 from jx_base.expressions.expression import Expression
@@ -22,12 +21,12 @@ from jx_base.expressions.sub_op import SubOp
 from jx_base.expressions.variable import Variable
 from jx_base.expressions.when_op import WhenOp
 from jx_base.language import is_op
-from mo_json.types import T_TEXT
+from mo_json.types import JX_TEXT
 
 
 class RightOp(Expression):
     has_simple_form = True
-    _data_type = T_TEXT
+    _data_type = JX_TEXT
 
     def __init__(self, value, length):
         Expression.__init__(self, value, length)
@@ -55,9 +54,5 @@ class RightOp(Expression):
 
         return WhenOp(
             self.missing(lang),
-            **{"else": BasicSubstringOp(
-                value,
-                MaxOp(ZERO, MinOp(max_length, SubOp(max_length, length))),
-                max_length,
-            )}
+            **{"else": BasicSubstringOp(value, MaxOp(ZERO, MinOp(max_length, SubOp(max_length, length))), max_length,)}
         ).partial_eval(lang)

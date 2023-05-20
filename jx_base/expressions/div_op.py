@@ -8,35 +8,33 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import builtin_ops
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.base_binary_op import BaseBinaryOp
 from jx_base.expressions.eq_op import EqOp
-from jx_base.expressions.literal import Literal, ZERO, is_literal
+from jx_base.expressions.literal import Literal, ZERO, is_literal, NULL
 from jx_base.expressions.or_op import OrOp
 
 
 class DivOp(BaseBinaryOp):
     op = "div"
 
+    def __call__(self, row=None, rownum=None, rows=None):
+        lhs = self.lhs(row)
+        rhs = self.rhs(row)
+        if not isinstance(lhs, (float, int)) or not rhs:
+            return None
+        return lhs/rhs
+
     def missing(self, lang):
-        return AndOp(
-            self.default.missing(lang),
-            OrOp(
-                self.lhs.missing(lang),
-                self.rhs.missing(lang),
-                EqOp(self.rhs, ZERO),
-            ),
-        ).partial_eval(lang)
+        return OrOp(self.lhs.missing(lang), self.rhs.missing(lang), EqOp(self.rhs, ZERO)).partial_eval(lang)
 
     def partial_eval(self, lang):
-        default = self.default.partial_eval(lang)
         rhs = self.rhs.partial_eval(lang)
         if rhs is ZERO:
-            return default
+            return NULL
         lhs = self.lhs.partial_eval(lang)
         if is_literal(lhs) and is_literal(rhs):
-            return Literal(builtin_ops[self.op](lhs.value, rhs.value))
-        return self.__class__([lhs, rhs], default=default)
+            return Literal(lhs.value / rhs.value)
+        return DivOp(lhs, rhs)

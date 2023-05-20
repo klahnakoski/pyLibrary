@@ -7,11 +7,16 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from mo_dots import coalesce
 
 from jx_base.expressions import CoalesceOp as CoalesceOp_
+from jx_base.expressions.python_script import PythonScript
 
 
 class CoalesceOp(CoalesceOp_):
-    def to_python(self):
-        return "coalesce(" + ", ".join((t).to_python() for t in self.terms) + ")"
+    def to_python(self, loop_depth=0):
+        return PythonScript(
+            {"coalesce": coalesce},
+            loop_depth,
+            "coalesce(" + ", ".join((t).to_python(loop_depth) for t in self.terms) + ")",
+        )

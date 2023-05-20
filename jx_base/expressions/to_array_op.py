@@ -8,20 +8,23 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
-from jx_base.expressions.null_op import NULL
+from jx_base.expressions.literal import NULL, Literal
+from mo_json import ARRAY
 
 
 class ToArrayOp(Expression):
+    """
+    Ensure the result is an array, or Null
+    """
 
-    def __init__(self, *term):
-        Expression.__init__(self, [term])
+    def __init__(self, term):
+        Expression.__init__(self, term)
         self.term = term
 
     def __data__(self):
-        return {"array": self.term.__data__()}
+        return {"to_array": self.term.__data__()}
 
     def vars(self):
         return self.term.vars()
@@ -33,8 +36,11 @@ class ToArrayOp(Expression):
         return self.term.missing(lang)
 
     def partial_eval(self, lang):
-        if self.term.missing():
-            return NULL
-        if self.term.type == T_ARRAY:
-            return self.term.partial_eval(lang)
-        return ToArrayOp(self.term.partial_eval(lang))
+        term = self.term.partial_eval(lang)
+        if term.op == ToArrayOp.op:
+            return term
+        if term is NULL:
+            return Literal([])
+        if self.term.type == ARRAY:
+            return term
+        return ToArrayOp(term)

@@ -16,7 +16,7 @@ from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.expressions.sub_op import SubOp
 from jx_sqlite.sqlite import sql_call
-from mo_json import T_TEXT
+from mo_json import JX_TEXT
 
 
 class BasicSubstringOp(BasicSubstringOp_):
@@ -27,5 +27,5 @@ class BasicSubstringOp(BasicSubstringOp_):
         length = SubOp([self.end, self.start]).partial_eval(SQLang).to_sql(schema)
         sql = sql_call("SUBSTR", value.frum, start.frum, length.frum)
         return SqlScript(
-            data_type=T_TEXT, expr=sql, frum=self, miss=FALSE, schema=schema
+            data_type=JX_TEXT, expr=sql, frum=self, miss=FALSE, schema=schema
         )

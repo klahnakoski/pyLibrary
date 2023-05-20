@@ -7,8 +7,6 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
 from mo_future import PY3, allocate_lock, STDERR, STDOUT
 from mo_logs.log_usingNothing import StructuredLogger
 from mo_logs.strings import CR, expand_template
@@ -19,7 +17,7 @@ class StructuredLogger_usingStream(StructuredLogger):
         try:
             self.locker = allocate_lock()
             self.flush = stream.flush
-            if stream in (STDOUT, STDERR) and PY3:
+            if stream in (STDOUT, STDERR):
                 try:
                     stream = stream.buffer
                 except Exception:

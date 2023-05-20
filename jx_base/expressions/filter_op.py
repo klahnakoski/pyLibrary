@@ -8,28 +8,25 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions.expression import Expression, jx_expression
-from jx_base.expressions.literal import TRUE
 from mo_dots import is_many
+
+from jx_base.expressions.expression import Expression, jx_expression, MissingOp
+from jx_base.expressions.literal import TRUE
 
 
 class FilterOp(Expression):
-    def __init__(self, *terms):
-        Expression.__init__(self, *terms)
-        self.frum, self.func = terms
-        if self.frum.type != T_ARRAY:
-            Log.error("expecting an array")
+    def __init__(self, frum, predicate):
+        Expression.__init__(self, frum, predicate)
+        self.frum, self.predicate = frum, predicate
 
     def __data__(self):
-        return {"filter": [self.frum.__data(), self.func.__data__()]}
+        return {"filter": [self.frum.__data(), self.predicate.__data__()]}
 
     def vars(self):
-        return self.frum.vars() | self.func.vars()
+        return self.frum.vars() | self.predicate.vars()
 
     def map(self, map_):
-        return FilterOp(self.frum.map(mao_), self.func.map(map_))
+        return FilterOp(self.frum.map(map_), self.predicate.map(map_))
 
     @property
     def type(self):

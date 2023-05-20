@@ -7,12 +7,22 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from mo_future import first
 
-from jx_base.expressions import FirstOp as FirstOp_
+from jx_base.expressions import FirstOp as FirstOp_, ToArrayOp
+from jx_base.expressions.python_script import PythonScript
+from jx_python.expressions import Python
+from jx_python.utils import merge_locals, to_python_list
+from mo_json import member_type, ARRAY_KEY
 
 
 class FirstOp(FirstOp_):
-    def to_python(self):
-        value = self.term.to_python()
-        return "listwrap(" + value + ")[0]"
+    def to_python(self, loop_depth=0):
+        value = ToArrayOp(self.term).partial_eval(Python).to_python(loop_depth)
+        return PythonScript(
+            merge_locals(value.locals, first=first, ARRAY_KEY=ARRAY_KEY),
+            loop_depth,
+            member_type(value.type),
+            f"first({to_python_list(value.source)})",
+            self,
+        )

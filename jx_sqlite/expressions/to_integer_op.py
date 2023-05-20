@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions import ToIntegerOp as IntegerOp_
 from jx_sqlite.expressions._utils import check, SqlScript
 from jx_sqlite.sqlite import sql_cast
-from mo_json import base_type, T_TEXT, T_INTEGER
+from mo_json import base_type, JX_TEXT, JX_INTEGER
 
 
 class ToIntegerOp(IntegerOp_):
@@ -20,9 +20,9 @@ class ToIntegerOp(IntegerOp_):
     def to_sql(self, schema):
         value = self.term.to_sql(schema)
 
-        if base_type(value) == T_TEXT:
+        if base_type(value) == JX_TEXT:
             return SqlScript(
-                data_type=T_INTEGER,
+                data_type=JX_INTEGER,
                 expr=sql_cast(value, "INTEGER"),
                 frum=self,
                 miss=value.miss,

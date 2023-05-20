@@ -7,25 +7,30 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from jx_base.expressions import NotRightOp as NotRightOp_
+from jx_base.expressions.python_script import PythonScript
 
 
 class NotRightOp(NotRightOp_):
-    def to_python(self):
-        v = (self.value).to_python()
-        l = (self.length).to_python()
-        return (
-            "None if "
-            + v
-            + " == None or "
-            + l
-            + " == None else "
-            + v
-            + "[0:max(0, len("
-            + v
-            + ")-("
-            + l
-            + "))]"
+    def to_python(self, loop_depth=0):
+        v = self.value.to_python(loop_depth)
+        l = self.length.to_python(loop_depth)
+        return PythonScript(
+            {**v.locals, **l.locals},
+            loop_depth,
+            (
+                "None if "
+                + v.source
+                + " == None or "
+                + l.source
+                + " == None else "
+                + v.source
+                + "[0:max(0, len("
+                + v.source
+                + ")-("
+                + l.source
+                + "))]"
+            ),
         )

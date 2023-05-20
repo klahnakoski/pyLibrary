@@ -14,16 +14,25 @@ from jx_sqlite.expressions._utils import check, SqlScript
 from jx_sqlite.sqlite import quote_column
 from jx_sqlite.utils import GUID
 from mo_dots import concat_field
-from mo_json.types import to_jx_type, T_INTEGER
+from mo_json.types import to_jx_type, JX_INTEGER
 
 
 class Variable(Variable_):
     @check
     def to_sql(self, schema):
+        if not schema:
+            output = SqlScript(
+                data_type=self.type,
+                expr=quote_column(self.var),
+                frum=self,
+                schema=self.type,
+            )
+            return output
+
         var_name = self.var
         if var_name == GUID:
             output = SqlScript(
-                data_type=T_INTEGER,
+                data_type=JX_INTEGER,
                 expr=quote_column(GUID),
                 frum=self,
                 miss=FALSE,

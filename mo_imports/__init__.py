@@ -85,6 +85,7 @@ class Expecting(object):
             if not _monitor:
                 _event = Event()
                 _monitor = Thread(target=worker, args=[_event])
+                _monitor.daemon = True
                 _monitor.start()
 
     def __call__(self, *args, **kwargs):

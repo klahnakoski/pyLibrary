@@ -7,16 +7,17 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from jx_base.expressions import TupleOp as TupleOp_
+from jx_base.expressions.python_script import PythonScript
 
 
 class TupleOp(TupleOp_):
-    def to_python(self):
+    def to_python(self, loop_depth=0):
         if len(self.terms) == 0:
-            return "tuple()"
+            return PythonScript({}, loop_depth, "tuple()")
         elif len(self.terms) == 1:
-            return "(" + (self.terms[0]).to_python() + ",)"
+            return PythonScript({}, loop_depth, "(" + (self.terms[0]).to_python(loop_depth) + ",)")
         else:
-            return "(" + ",".join((t).to_python() for t in self.terms) + ")"
+            return PythonScript({}, loop_depth, "(" + ",".join((t).to_python(loop_depth) for t in self.terms) + ")",)

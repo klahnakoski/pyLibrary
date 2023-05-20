@@ -7,14 +7,12 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-from __future__ import absolute_import, division, unicode_literals
-
 import json as _json
 import math
 import re
 import string
 from datetime import date, datetime as builtin_datetime, timedelta
+from typing import Tuple
 
 from mo_dots import (
     Data,
@@ -26,17 +24,16 @@ from mo_dots import (
     is_many,
 )
 from mo_future import (
-    PY3,
     get_function_name,
     is_text,
     round as _round,
-    text,
     transpose,
     xrange,
     zip_longest,
     binary_type,
 )
 from mo_imports import delay_import
+
 from mo_logs.convert import (
     datetime2string,
     datetime2unix,
@@ -45,14 +42,14 @@ from mo_logs.convert import (
     value2json,
 )
 
-Log = delay_import("mo_logs.Log")
+logger = delay_import("mo_logs.logger")
 json_encoder = delay_import("mo_json.encoder.json_encoder")
 Except = delay_import("mo_logs.exceptions.Except")
 Duration = delay_import("mo_times.durations.Duration")
 
 
 FORMATTERS = {}
-CR = text("\n")
+CR = "\n"
 
 
 def formatter(func):
@@ -72,6 +69,8 @@ def datetime(value):
     """
     if isinstance(value, (date, builtin_datetime)):
         pass
+    elif value.__class__.__name__ == "Date":
+        value = unix2datetime(value.unix)
     elif value < 10000000000:
         value = unix2datetime(value)
     else:
@@ -95,7 +94,7 @@ def unicode(value):
     """
     if value == None:
         return ""
-    return text(value)
+    return str(value)
 
 
 @formatter
@@ -150,6 +149,16 @@ def upper(value):
 
 
 @formatter
+def capitalize(value: str):
+    """
+    convert first character of word to uppercase
+    :param value:
+    :return:
+    """
+    return value.capitalize()
+
+
+@formatter
 def lower(value):
     """
     convert to lowercase
@@ -200,7 +209,7 @@ def tab(value):
         h, d = transpose(*to_data(value).leaves())
         return "\t".join(map(value2json, h)) + CR + "\t".join(map(value2json, d))
     else:
-        text(value)
+        str(value)
 
 
 @formatter
@@ -222,9 +231,7 @@ def indent(value, prefix="\t", indent=None):
         lines = content.splitlines()
         return prefix + (CR + prefix).join(lines) + suffix
     except Exception as e:
-        raise Exception(
-            "Problem with indent of value (" + e.message + ")\n" + text(toString(value))
-        )
+        raise Exception(f"Problem with indent of value ({e.message})\n{toString(value)}")
 
 
 @formatter
@@ -243,11 +250,11 @@ def outdent(value):
                 num = min(num, len(l) - len(l.lstrip()))
         return CR.join([l[num:] for l in lines])
     except Exception as e:
-        Log.error("can not outdent value", e)
+        logger.error("can not outdent value", e)
 
 
 @formatter
-def round(value, decimal=None, digits=None, places=None):
+def round(value, decimal=0, digits=None, places=None):
     """
     :param value:  THE VALUE TO ROUND
     :param decimal: NUMBER OF DECIMAL PLACES TO ROUND (NEGATIVE IS LEFT-OF-DECIMAL)
@@ -265,7 +272,7 @@ def round(value, decimal=None, digits=None, places=None):
         decimal = digits - left_of_decimal
 
     right_of_decimal = max(decimal, 0)
-    format = "{:." + text(right_of_decimal) + "f}"
+    format = f"{{:.{right_of_decimal}f}}"
     return format.format(_round(value, decimal))
 
 
@@ -293,7 +300,7 @@ def percent(value, decimal=None, digits=None, places=None):
 
     decimal = coalesce(decimal, 0)
     right_of_decimal = max(decimal, 0)
-    format = "{:." + text(right_of_decimal) + "%}"
+    format = f"{{:.{right_of_decimal}%}}"
     return format.format(_round(value, decimal + 2))
 
 
@@ -386,9 +393,7 @@ def between(value, prefix=None, suffix=None, start=0):
         if e == -1:
             return None
 
-    s = value.rfind(
-        prefix, start, e
-    ) + len(prefix)  # WE KNOW THIS EXISTS, BUT THERE MAY BE A RIGHT-MORE ONE
+    s = value.rfind(prefix, start, e) + len(prefix)  # WE KNOW THIS EXISTS, BUT THERE MAY BE A RIGHT-MORE ONE
 
     return value[s:e]
 
@@ -416,7 +421,7 @@ def right_align(value, length):
     if length <= 0:
         return ""
 
-    value = text(value)
+    value = str(value)
 
     if len(value) < length:
         return (" " * (length - len(value))) + value
@@ -429,7 +434,7 @@ def left_align(value, length):
     if length <= 0:
         return ""
 
-    value = text(value)
+    value = str(value)
 
     if len(value) < length:
         return value + (" " * (length - len(value)))
@@ -461,7 +466,7 @@ def comma(value):
         else:
             output = "{:,}".format(float(value))
     except Exception:
-        output = text(value)
+        output = str(value)
 
     return output
 
@@ -475,7 +480,7 @@ def quote(value):
     """
     if value == None:
         return ""
-    output = _json.dumps(value)
+    output = _json.dumps(str(value))
     return output
 
 
@@ -509,7 +514,7 @@ def limit(value, length):
             rhs = length - len(_SNIP) - lhs
             return value[:lhs] + _SNIP + value[-rhs:]
     except Exception as e:
-        Log.error("Not expected", cause=e)
+        logger.error("Not expected", cause=e)
 
 
 @formatter
@@ -574,14 +579,7 @@ def is_hex(value):
     return all(c in string.hexdigits for c in value)
 
 
-if PY3:
-    delchars = "".join(c for c in map(chr, range(256)) if not c.isalnum())
-else:
-    delchars = "".join(
-        c.decode("latin1")
-        for c in map(chr, range(256))
-        if not c.decode("latin1").isalnum()
-    )
+delchars = "".join(c for c in map(chr, range(256)) if not c.isalnum())
 
 
 def deformat(value):
@@ -598,9 +596,6 @@ def deformat(value):
             continue
         output.append(c)
     return "".join(output)
-
-
-_variable_pattern = re.compile(r"\{\{([\w_\.]+(\|[^\}^\|]+)*)\}\}")
 
 
 def _expand(template, seq):
@@ -625,19 +620,22 @@ def _expand(template, seq):
     elif is_list(template):
         return "".join(_expand(t, seq) for t in template)
     else:
-        Log.error("can not handle")
+        logger.error("can not handle")
 
 
-def _simple_expand(template, seq):
+def _simple_expand(template, seq: Tuple[Data]):
     """
     seq IS TUPLE OF OBJECTS IN PATH ORDER INTO THE DATA TREE
     seq[-1] IS THE CURRENT CONTEXT
     """
+    parsed = parse_template(template)
 
-    def replacer(found):
-        ops = found.group(1).split("|")
-
-        path = ops[0]
+    result = []
+    for text, code in chunk(parsed, 2):
+        result.append(text)
+        if not code:
+            continue
+        path, *rest = code.split("|")
         var = path.lstrip(".")
         depth = min(len(seq), max(1, len(path) - len(var)))
         try:
@@ -647,14 +645,14 @@ def _simple_expand(template, seq):
                     val = val[int(var)]
                 else:
                     val = val[var]
-            for func_name in ops[1:]:
-                parts = func_name.split("(")
+            for func_name in rest:
+                parts = func_name.split("(", 1)
                 if len(parts) > 1:
-                    val = eval(parts[0] + "(val, " + "(".join(parts[1::]))
+                    val = eval(parts[0] + "(val, " + parts[1])
                 else:
                     val = FORMATTERS[func_name](val)
             val = toString(val)
-            return val
+            result.append(val)
         except Exception as cause:
             from mo_logs import Except
 
@@ -663,18 +661,21 @@ def _simple_expand(template, seq):
                 if cause.message.find("is not JSON serializable"):
                     # WORK HARDER
                     val = toString(val)
-                    return val
+                    result.append(val)
             except Exception as f:
-                Log.warning(
-                    "Can not expand "
-                    + "|".join(ops)
-                    + " in template: {{template_|json}}",
+                logger.warning(
+                    f"Can not expand {op}|{rest} in template: {{template_|json}}",
                     template_=template,
                     cause=cause,
                 )
-            return "[template expansion error: (" + str(cause.message) + ")]"
+            result.append(f"[template expansion error: ({cause.message})]")
 
-    return _variable_pattern.sub(replacer, template)
+    return "".join(result)
+
+
+def chunk(data, size=0):
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
 
 
 def toString(val):
@@ -687,10 +688,10 @@ def toString(val):
     elif hasattr(val, "__json__"):
         return val.__json__()
     elif isinstance(val, Duration):
-        return text(round(val.seconds, places=4)) + " seconds"
+        return f"{round(val.seconds, places=4)} seconds"
     elif isinstance(val, timedelta):
         duration = val.total_seconds()
-        return text(round(duration, 3)) + " seconds"
+        return f"{round(duration, 3)} seconds"
     elif is_text(val):
         return val
     elif isinstance(val, binary_type):
@@ -702,16 +703,12 @@ def toString(val):
         try:
             return val.decode("latin1")
         except Exception as e:
-            Log.error(
-                text(type(val)) + " type can not be converted to unicode", cause=e
-            )
+            logger.error(f"{type(val)} type can not be converted to unicode", cause=e)
     else:
         try:
-            return text(val)
+            return str(val)
         except Exception as e:
-            Log.error(
-                text(type(val)) + " type can not be converted to unicode", cause=e
-            )
+            logger.error(f"{type(val)} type can not be converted to unicode", cause=e)
 
 
 def edit_distance(s1, s2):
@@ -772,31 +769,18 @@ def apply_diff(text, diff, reverse=False, verify=True):
     hunks = [
         (new_diff[start_hunk], new_diff[start_hunk + 1 : end_hunk])
         for new_diff in [
-            [
-                d.lstrip()
-                for d in diff
-                if d.lstrip() and d != "\\ No newline at end of file"
-            ]
-            + ["@@"]
+            [d.lstrip() for d in diff if d.lstrip() and d != "\\ No newline at end of file"] + ["@@"]
         ]  # ANOTHER REPAIR
-        for start_hunk, end_hunk in pairwise(
-            i for i, l in enumerate(new_diff) if l.startswith("@@")
-        )
+        for start_hunk, end_hunk in pairwise(i for i, l in enumerate(new_diff) if l.startswith("@@"))
     ]
     for header, hunk_body in reversed(hunks) if reverse else hunks:
         matches = DIFF_PREFIX.match(header.strip())
         if not matches:
-            Log.error("Can not handle \n---\n{{diff}}\n---\n", diff=diff)
+            logger.error("Can not handle \n---\n{{diff}}\n---\n", diff=diff)
 
-        removes = tuple(
-            int(i.strip()) for i in matches.group(1).split(",")
-        )  # EXPECTING start_line, length TO REMOVE
-        remove = Data(
-            start=removes[0], length=1 if len(removes) == 1 else removes[1]
-        )  # ASSUME FIRST LINE
-        adds = tuple(
-            int(i.strip()) for i in matches.group(2).split(",")
-        )  # EXPECTING start_line, length TO ADD
+        removes = tuple(int(i.strip()) for i in matches.group(1).split(","))  # EXPECTING start_line, length TO REMOVE
+        remove = Data(start=removes[0], length=1 if len(removes) == 1 else removes[1])  # ASSUME FIRST LINE
+        adds = tuple(int(i.strip()) for i in matches.group(2).split(","))  # EXPECTING start_line, length TO ADD
         add = Data(start=adds[0], length=1 if len(adds) == 1 else adds[1])
 
         if add.length == 0 and add.start == 0:
@@ -808,19 +792,13 @@ def apply_diff(text, diff, reverse=False, verify=True):
             # EXAMPLE: -kward has the details.+kward has the details.
             # DETECT THIS PROBLEM FOR THIS HUNK AND FIX THE DIFF
             if reverse:
-                last_lines = [
-                    o
-                    for b, o in zip(reversed(hunk_body), reversed(output))
-                    if b != "+" + o
-                ]
+                last_lines = [o for b, o in zip(reversed(hunk_body), reversed(output)) if b != "+" + o]
                 if not last_lines:
                     return hunk_body
 
                 last_line = last_lines[0]
                 for problem_index, problem_line in enumerate(hunk_body):
-                    if problem_line.startswith("-") and problem_line.endswith(
-                        "+" + last_line
-                    ):
+                    if problem_line.startswith("-") and problem_line.endswith("+" + last_line):
                         split_point = len(problem_line) - (len(last_line) + 1)
                         break
                     elif problem_line.startswith("+" + last_line + "-"):
@@ -833,9 +811,7 @@ def apply_diff(text, diff, reverse=False, verify=True):
                     return hunk_body
                 last_line = output[-1]
                 for problem_index, problem_line in enumerate(hunk_body):
-                    if problem_line.startswith("+") and problem_line.endswith(
-                        "-" + last_line
-                    ):
+                    if problem_line.startswith("+") and problem_line.endswith("-" + last_line):
                         split_point = len(problem_line) - (len(last_line) + 1)
                         break
                     elif problem_line.startswith("-" + last_line + "+"):
@@ -875,14 +851,20 @@ def apply_diff(text, diff, reverse=False, verify=True):
                 if t in ["reports: https://goo.gl/70o6w6\r"]:
                     break  # KNOWN INCONSISTENCIES
                 if t != o:
-                    Log.error("logical verification check failed")
+                    logger.error("logical verification check failed")
                     break
 
     return output
 
 
+WORDS = re.compile(r"[A-Z][0-9a-z]+|[A-Z][0-9A-Z]+(?=$|[^a-z])|[a-z][0-9a-z]+|[0-9][0-9]+|[0-9A-Za-z]")
+
+
 def wordify(value):
-    return [w for w in re.split(r"[\W_]", value) if strip(w)]
+    result = [w.lower() for w in WORDS.findall(value) if strip(w)]
+    if len(result) <= 1:
+        return [value.lower()]
+    return result
 
 
 def pairwise(values):
@@ -896,3 +878,65 @@ def pairwise(values):
     for b in i:
         yield (a, b)
         a = b
+
+
+body_pattern = re.compile(r"[^][)(}{\"']*")
+bodies = {
+    "(": body_pattern,
+    "[": body_pattern,
+    "{": body_pattern,
+    '"': re.compile(r'(\\"|[^"])*'),
+    "'": re.compile(r"(\\'|[^'])*"),
+}
+closers = {
+    ")": "(",
+    "}": "{",
+    "]": "[",
+    '"': '"',
+    "'": "'",
+}
+any_opener = re.compile(r'[\[{("\']')
+
+
+def parse_template(template):
+    """
+    WITH template = "a {b} c {d} e"
+    RETURN ["a ", b, " c ", d, " e"]
+    """
+
+    result = []
+    while "{" in template:
+        start = template.index("{")
+        text, code = template[:start], template[start:]
+        result.append(text)
+        code, template = parse_code(code)
+        if code.startswith("{{") and code.endswith("}}"):
+            # STILL ALLOWING MOUSTACHES TO BE USED AS ESCAPE SEQUENCE
+            result.append(code[2:-2])
+        else:
+            result.append(code[1:-1])
+    if template:
+        result.append(template)
+        result.append("")
+    return result
+
+
+def parse_code(code):
+    """
+    EXPECTING any_opener.match(code) TO BE TRUE
+    """
+    first, residue = code[0], code[1:]
+    result = [first]
+    while True:
+        body = bodies[first].match(residue)
+        result.append(body.group(0))
+        residue = residue[body.end():]
+        next_char = residue[0]
+        if closers.get(next_char) == first:
+            result.append(next_char)
+            return "".join(result), residue[1:]
+        elif next_char in bodies:
+            more, residue = parse_code(residue)
+            result.append(more)
+        else:
+            logger.error(f"expecting {closers.get(next_char)}")

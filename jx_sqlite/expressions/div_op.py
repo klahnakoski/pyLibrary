@@ -19,7 +19,7 @@ from jx_base.expressions import (
 )
 from jx_sqlite.expressions._utils import SQLang, check, SqlScript
 from jx_sqlite.sqlite import sql_iso, ConcatSQL, sql_call, SQL_DIV
-from mo_json import T_NUMBER
+from mo_json import JX_NUMBER
 
 
 class DivOp(DivOp_):
@@ -31,7 +31,7 @@ class DivOp(DivOp_):
 
         if d.miss is TRUE:
             return SqlScript(
-                data_type=T_NUMBER,
+                data_type=JX_NUMBER,
                 expr=ConcatSQL(sql_iso(lhs), SQL_DIV, sql_iso(rhs)),
                 frum=self,
                 miss=OrOp([MissingOp(self.lhs), MissingOp(self.rhs)]),
@@ -39,7 +39,7 @@ class DivOp(DivOp_):
             )
         else:
             return SqlScript(
-                data_type=T_NUMBER | d.type,
+                data_type=JX_NUMBER | d.type,
                 expr=sql_call(
                     "COALESCE", ConcatSQL(sql_iso(lhs), SQL_DIV, sql_iso(rhs)), d
                 ),

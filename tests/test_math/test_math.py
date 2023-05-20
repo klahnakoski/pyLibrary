@@ -72,3 +72,6 @@ class TestMath(FuzzyTestCase):
         self.assertAlmostEqual(mo_math.round(4, digits=0), 10)
         self.assertAlmostEqual(mo_math.round(11, digits=0), 10)
         self.assertAlmostEqual(mo_math.round(3.1415), 3)
+
+    def test_random_hex(self):
+        self.assertEqual(len(randoms.hex(5)), 5)

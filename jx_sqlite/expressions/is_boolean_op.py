@@ -11,14 +11,14 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import IsBooleanOp as ToBooleanOp_, FALSE, TRUE, is_literal
 from jx_sqlite.expressions._utils import SQLang, check
-from mo_json.types import T_BOOLEAN
+from mo_json.types import JX_BOOLEAN
 
 
 class IsBooleanOp(ToBooleanOp_):
     @check
     def to_sql(self, schema):
         term = self.term.partial_eval(SQLang)
-        if term.type is T_BOOLEAN:
+        if term.type is JX_BOOLEAN:
             return term.to_sql(schema)
         elif is_literal(term) and term.value in ("T", "F"):
             if term.value == "T":

@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
@@ -18,12 +17,12 @@ from jx_base.expressions.null_op import NULL
 from jx_base.expressions.null_op import NullOp
 from jx_base.language import is_op
 from mo_dots import is_many
-from mo_json.types import T_NUMBER
+from mo_json.types import JX_NUMBER
 from mo_math import MIN
 
 
 class MinOp(Expression):
-    _data_type = T_NUMBER
+    _data_type = JX_NUMBER
 
     def __init__(self, *terms, default=NULL):
         Expression.__init__(self, *terms)
@@ -36,7 +35,10 @@ class MinOp(Expression):
         self.default = default
 
     def __data__(self):
-        return {"min": [t.__data__() for t in self.terms], "default": self.default.__data__()}
+        return {
+            "min": [t.__data__() for t in self.terms],
+            "default": self.default.__data__(),
+        }
 
     def vars(self):
         output = set()
@@ -58,7 +60,7 @@ class MinOp(Expression):
             if is_op(simple, NullOp):
                 pass
             elif is_literal(simple):
-                minimum = MIN([minimum, simple.value])
+                minimum = MIN(minimum, simple.value)
             else:
                 terms.append(simple)
         if len(terms) == 0:
@@ -68,8 +70,8 @@ class MinOp(Expression):
                 return Literal(minimum)
         else:
             if minimum == None:
-                output = MinOp(terms)
+                output = MinOp(*terms)
             else:
-                output = MinOp([Literal(minimum)] + terms)
+                output = MinOp(Literal(minimum), *terms)
 
         return output

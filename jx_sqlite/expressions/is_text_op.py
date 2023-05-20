@@ -11,14 +11,14 @@ from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import IsTextOp as IsTextOp_, NULL
 from jx_sqlite.expressions._utils import check
-from mo_json.types import T_TEXT
+from mo_json.types import JX_TEXT
 
 
 class IsTextOp(IsTextOp_):
     @check
     def to_sql(self, schema):
         value = self.term.to_sql(schema)
-        if value._data_type == T_TEXT:
+        if value._data_type == JX_TEXT:
             return value
         else:
             return NULL.to_sql()

@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.case_op import CaseOp
 from jx_base.expressions.expression import Expression
@@ -18,7 +17,7 @@ from jx_base.language import is_op
 from mo_dots import is_many
 from mo_future import first
 from mo_imports import expect
-from mo_json.types import base_type, T_ARRAY
+from mo_json.types import base_type, JX_ARRAY, ARRAY
 
 WhenOp = expect("WhenOp")
 
@@ -43,7 +42,7 @@ class FirstOp(Expression):
         return self.term.vars()
 
     def map(self, map_):
-        return LastOp(self.term.map(map_))
+        return FirstOp(self.term.map(map_))
 
     def missing(self, lang):
         return self.term.missing(lang)
@@ -51,20 +50,17 @@ class FirstOp(Expression):
     def partial_eval(self, lang):
         term = self.term.partial_eval(lang)
 
-        if base_type(term.type) != T_ARRAY:
+        if base_type(term.type) != ARRAY:
             return term
         elif is_op(term, FirstOp):
             return term
         elif is_op(term, CaseOp):  # REWRITING
             return CaseOp(
-                [WhenOp(t.when, then=FirstOp(t.then)) for t in term.whens[:-1]]
-                + [FirstOp(term.whens[-1])]
+                [WhenOp(t.when, then=FirstOp(t.then)) for t in term.whens[:-1]] + [FirstOp(term.whens[-1])]
             ).partial_eval(lang)
         elif is_op(term, WhenOp):
-            return WhenOp(
-                term.when, then=FirstOp(term.then), **{"else": FirstOp(term.els_)}
-            ).partial_eval(lang)
-        elif base_type(term.type) == T_ARRAY:
+            return WhenOp(term.when, then=FirstOp(term.then), **{"else": FirstOp(term.els_)}).partial_eval(lang)
+        elif base_type(term.type) == ARRAY:
             return term
         elif is_literal(term):
             value = term.value

@@ -9,30 +9,34 @@
 #
 
 
-from typing import Dict, Tuple
-from mo_logs import Log
+from typing import Tuple
+
 from jx_base.expressions._utils import TYPE_CHECK
 from jx_base.expressions.expression import Expression
 from mo_json.types import JxType
+from mo_logs import Log
+from collections import namedtuple
+
+
+SqlAlias = namedtuple("SqlAlias", ["name", "value"])
 
 
 class SqlSelectOp(Expression):
-    def __init__(self, frum, selects: Tuple[Dict[str, Expression]]):
+    def __init__(self, frum, selects: Tuple[SqlAlias]):
         if TYPE_CHECK and (
-                not isinstance(selects, tuple)
-                and not all(isinstance(s, dict) for s in selects)
-                or any(s.get("name") is None for s in selects)
+            not isinstance(selects, tuple)
+            and not all(isinstance(s, SqlAlias) for s in selects)
+            or any(s.name is None for s in selects)
+            or not all(isinstance(s.value, Expression) for s in selects)
         ):
-            Log.error("expecting list of dicts with 'name' and 'value' property")
+            Log.error("expecting tuple of SqlAlias")
         Expression.__init__(self, frum)
         self.frum = frum
         self.selects = selects
 
     @property
     def type(self):
-        return JxType(
-            **{
-                s['name']: s['value'].type
-                for s in self.selects
-            }
-        )
+        return JxType(**{n: v.type for n, v in self.selects})
+
+    def __str__(self):
+        return str(self.to_sql(None))

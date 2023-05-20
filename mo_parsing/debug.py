@@ -13,29 +13,30 @@ from mo_parsing.utils import (
     ParseException,
 )
 
-DEBUGGING = False
+DEBUGGER = None
+_max_preamble = 60
 
 
 class Debugger(object):
     def __init__(self, silent=False):
         self.previous_parse = None
-        self.was_debugging = False
+        self.was_debugging = None
         self.parse_count = 0
         self.max_stack_depth = 0
         self.silent = silent
 
     def __enter__(self):
-        global DEBUGGING
-        self.was_debugging = DEBUGGING
-        DEBUGGING = True
+        global DEBUGGER
+        self.was_debugging = DEBUGGER
+        DEBUGGER = self
         self.previous_parse = ParserElement._parse
         ParserElement._parse = _debug_parse(self)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        global DEBUGGING
+        global DEBUGGER
         ParserElement._parse = self.previous_parse
-        DEBUGGING = self.was_debugging
+        DEBUGGER = self.was_debugging
 
 
 def _debug_parse(debugger):
@@ -71,28 +72,30 @@ def _debug_parse(debugger):
 
 
 def _try(expr, start, string):
+    global _max_preamble
+    preamble = f"  Attempt {quote(string, start)} at loc ({lineno(start, string)},{col(start, string)}), index={start}"
+    length = len(preamble)
+    _max_preamble = max(_max_preamble, length)
     print(
-        "  Attempt "
-        + quote(string, start)
-        + " at loc "
-        + text(start)
-        + "(%d,%d)" % (lineno(start, string), col(start, string))
-        + " for "
+        preamble
+        + " " * (_max_preamble - length)
+        + "for"
         + " " * stack_depth()
         + text(expr)[:300]
     )
 
 
 def match(expr, start, end, string, tokens):
+    global _max_preamble
+    preamble = f"> Matched {quote(string[start:end])} at loc ({lineno(start, string)},{col(start, string)}), length={end-start}"
+    length = len(preamble)
+    _max_preamble = max(_max_preamble, length)
     print(
-        "> Matched "
-        + quote(string[start:end])
-        + "between "
-        + f"[{start}, {end}] for"
+        preamble
+        + " " * (_max_preamble - length)
+        + "for"
         + " " * stack_depth()
-        + text(expr)
-        + " -> "
-        + str(tokens)
+        + f"{expr} -> {tokens}"
     )
 
 

@@ -11,9 +11,12 @@ from __future__ import absolute_import, division, unicode_literals
 from mo_dots import Data, get_module
 from mo_future import PY2, binary_type
 from mo_future import is_text, is_binary
-from mo_logs import Log
+from mo_imports import delay_import
+
 from mo_math import base642bytes, crypto, bytes2base64
 from mo_math.vendor.aespython import aes_cipher, cbc_mode, key_expander
+
+logger = delay_import("mo_logs.Log")
 
 DEBUG = False
 
@@ -34,7 +37,8 @@ def encrypt(text, _key, salt=None):
             data = text
 
     if _key is None:
-        Log.error("Expecting a key")
+
+        logger.error("Expecting a key")
     if is_binary(_key):
         _key = bytearray(_key)
     if salt is None:
@@ -62,7 +66,7 @@ def encrypt(text, _key, salt=None):
     if DEBUG:
         test = decrypt(json, _key)
         if test != text:
-            Log.error("problem with encryption")
+            logger.error("problem with encryption")
 
     return json
 
@@ -73,7 +77,8 @@ def decrypt(data, _key):
     """
     # Key and iv have not been generated or provided, bail out
     if _key is None:
-        Log.error("Expecting a key")
+
+        logger.error("Expecting a key")
 
     _input = get_module("mo_json").json2value(
         data.decode("utf8"), leaves=False, flexible=False

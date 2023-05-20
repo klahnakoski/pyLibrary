@@ -12,9 +12,9 @@ from mo_parsing import *
 
 from mo_sql_parsing.utils import SQL_NULL, keyword
 
-NULL = keyword("null") / (lambda: SQL_NULL)
-TRUE = keyword("true") / (lambda: True)
-FALSE = keyword("false") / (lambda: False)
+NULL = keyword("null") / SQL_NULL
+TRUE = keyword("true") / True
+FALSE = keyword("false") / False
 NOCASE = keyword("nocase")
 ASC = keyword("asc")
 DESC = keyword("desc")
@@ -23,11 +23,12 @@ DESC = keyword("desc")
 AS = keyword("as").suppress()
 ALL = keyword("all")
 BY = keyword("by").suppress()
-CAST = keyword("cast")
 CONSTRAINT = keyword("constraint").suppress()
 CREATE = keyword("create").suppress()
 CROSS = keyword("cross")
+DESCRIBE = keyword("describe")
 DISTINCT = keyword("distinct")
+EXPLAIN = keyword("explain")
 EXCEPT = keyword("except")
 FETCH = keyword("fetch").suppress()
 FOR = keyword("for").suppress()
@@ -43,6 +44,7 @@ LEFT = keyword("left")
 LIKE = keyword("like")
 LIMIT = keyword("limit").suppress()
 MINUS = keyword("minus")
+NATURAL = keyword("natural")
 OFFSET = keyword("offset").suppress()
 ON = keyword("on").suppress()
 ORDER = keyword("order").suppress()
@@ -53,7 +55,6 @@ PARTITION = keyword("partition").suppress()
 QUALIFY = keyword("qualify").suppress()
 RIGHT = keyword("right")
 RLIKE = keyword("rlike")
-SAFE_CAST = keyword("safe_cast")
 SAMPLE = keyword("sample").suppress()
 SELECT = keyword("select").suppress()
 SET = keyword("set").suppress()
@@ -141,13 +142,7 @@ VIEW = keyword("view")
 
 
 joins = (
-    (
-        Optional(
-            CROSS | OUTER | INNER | ((FULL | LEFT | RIGHT) + Optional(INNER | OUTER))
-        )
-        + JOIN
-        + Optional(LATERAL)
-    )
+    (Optional(CROSS | OUTER | INNER | NATURAL | ((FULL | LEFT | RIGHT) + Optional(INNER | OUTER))) + JOIN + Optional(LATERAL))
     | LATERAL + Optional(VIEW + Optional(OUTER))
     | (CROSS | OUTER) + APPLY
 ) / (lambda tokens: " ".join(tokens).lower())
@@ -160,7 +155,7 @@ GROUP_BY = Group(GROUP + BY).set_parser_name("group by")
 ORDER_BY = Group(ORDER + BY).set_parser_name("order by")
 
 # COMPOUND OPERATORS
-AT_TIME_ZONE = Group(keyword("at") + keyword("time") + keyword("zone"))
+AT_TIME_ZONE = keyword("at time zone")
 NOT_BETWEEN = Group(NOT + BETWEEN).set_parser_name("not_between")
 NOT_ILIKE = Group(NOT + ILIKE).set_parser_name("not_ilike")
 NOT_LIKE = Group(NOT + LIKE).set_parser_name("not_like")
@@ -210,6 +205,7 @@ RESERVED = MatchFirst([
     LIKE,
     LIMIT,
     MINUS,
+    NATURAL,
     NOCASE,
     NOT,
     NULL,
@@ -221,6 +217,7 @@ RESERVED = MatchFirst([
     OVER,
     PARTITION,
     PRIMARY,
+    PIVOT,
     QUALIFY,
     REFERENCES,
     RIGHT,
@@ -233,6 +230,7 @@ RESERVED = MatchFirst([
     UNION,
     UNIQUE,
     UNNEST,
+    UNPIVOT,
     USING,
     WHEN,
     WHERE,
@@ -243,7 +241,10 @@ RESERVED = MatchFirst([
 
 LB = Literal("(").suppress()
 RB = Literal(")").suppress()
+LK = Literal("[").suppress()
+RK = Literal("]").suppress()
 EQ = Char("=").suppress()
+comma = Optional(",").suppress()
 
 join_keywords = {
     "join",
@@ -265,6 +266,7 @@ precedence = {
     "get": 0,
     "interval": 0,
     "cast": 0,
+    "try_cast": 0,
     "collate": 0,
     "concat": 1,
     "mul": 2,
@@ -335,8 +337,10 @@ KNOWN_OPS = [
     NOT_IN,
     IS_NOT,
     IS,
-    LIKE, ILIKE,
-    NOT_LIKE, NOT_ILIKE,
+    LIKE,
+    ILIKE,
+    NOT_LIKE,
+    NOT_ILIKE,
     RLIKE,
     NOT_RLIKE,
     SIMILAR_TO,
@@ -373,34 +377,43 @@ durations = {
     "second": "second",
     "secs": "second",
     "sec": "second",
-    "s": "second",
     "minutes": "minute",
     "minute": "minute",
     "mins": "minute",
     "min": "minute",
-    "m": "minute",
     "hours": "hour",
     "hour": "hour",
     "hrs": "hour",
     "hr": "hour",
-    "h": "hour",
-    "days": "day",
-    "day": "day",
-    "d": "day",
+    "day_of_week": "dow",
     "dayofweek": "dow",
     "dow": "dow",
+    "day_of_month": "dom",
+    "dayofmonth": "dom",
+    "dom": "dow",
+    "day_of_year": "doy",
+    "dayofyear": "doy",
+    "doy": "doy",
+    "date": "date",
+    "days": "day",
+    "day": "day",
     "weekday": "dow",
     "weeks": "week",
     "week": "week",
-    "w": "week",
+    "isoweek": "isoweek",
     "months": "month",
     "month": "month",
     "mons": "month",
     "mon": "month",
     "quarters": "quarter",
     "quarter": "quarter",
+    "year_of_week": "yow",
+    "yearofweek": "yow",
     "years": "year",
     "year": "year",
+    "yow": "yow",
+    "isodow": "isodow",
+    "isoyear": "isoyear",
     "decades": "decade",
     "decade": "decade",
     "decs": "decade",
@@ -409,10 +422,22 @@ durations = {
     "century": "century",
     "cents": "century",
     "cent": "century",
-    "c": "century",
     "millennia": "millennium",
     "millennium": "millennium",
     "mils": "millennium",
     "mil": "millennium",
     "epoch": "epoch",
+    "julian": "julian",
+    "timezone_minute": "timezone_minute",
+    "timezone_hour": "timezone_hour",
+    "timezone": "timezone",
+    "s": "second",
+    "m": "minute",
+    "h": "hour",
+    "d": "day",
+    "w": "week",
+    "M": "month",
+    "y": "year",
+    "c": "century",
+
 }

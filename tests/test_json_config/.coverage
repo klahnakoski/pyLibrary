@@ -1,0 +1,10 @@
+[run]
+source = ./mo_json_config
+
+[report]
+exclude_lines =
+    pragma: no cover
+    except Exception as
+    except BaseException as
+    Log.error
+    if DEBUG

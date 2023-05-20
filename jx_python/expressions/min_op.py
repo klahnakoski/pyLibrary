@@ -7,11 +7,24 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import MinOp as MinOp_
+
+from jx_base.expressions import MinOp as MinOp_, AndOp
+from jx_base.expressions.python_script import PythonScript
+from jx_python.expressions import Python
+from jx_python.utils import merge_locals
+from mo_json import union_type
 
 
 class MinOp(MinOp_):
-    def to_python(self):
-        return "min([" + ",".join((t).to_python() for t in self.terms) + "])"
+    def to_python(self, loop_depth=0):
+        terms = [t.partial_eval(Python).to_python(loop_depth) for t in self.terms]
+        source, locals = zip(*((t.source, t.locals) for t in terms))
+        return PythonScript(
+            merge_locals(locals),
+            loop_depth,
+            union_type(*(t.type for t in terms)),
+            "min([" + ",".join(source) + "])",
+            self,
+            AndOp(*(t.miss for t in terms)),
+        )

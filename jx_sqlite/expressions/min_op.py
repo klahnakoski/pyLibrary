@@ -13,7 +13,7 @@ from jx_base.expressions import MinOp as MinOp_
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import sql_call
-from mo_json import T_NUMBER
+from mo_json import JX_NUMBER
 
 
 class MinOp(MinOp_):
@@ -21,5 +21,5 @@ class MinOp(MinOp_):
     def to_sql(self, schema):
         terms = [t.partial_eval(SQLang).to_sql(schema).frum for t in self.terms]
         return SqlScript(
-            data_type=T_NUMBER, expr=sql_call("MIN", *terms), frum=self, schema=schema
+            data_type=JX_NUMBER, expr=sql_call("MIN", *terms), frum=self, schema=schema
         )

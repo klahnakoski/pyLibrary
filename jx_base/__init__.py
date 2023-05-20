@@ -7,13 +7,17 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
 
 
 from uuid import uuid4
 
+from mo_dots import coalesce, listwrap, to_data, last
+from mo_dots.datas import register_data
+from mo_future import is_text, text
+from mo_logs import Log
+from mo_logs.strings import expand_template, quote
+
 from jx_base.expressions import jx_expression
-from jx_base.models.container import Container
 from jx_base.models.container import Container
 from jx_base.models.facts import Facts
 from jx_base.models.namespace import Namespace
@@ -23,48 +27,26 @@ from jx_base.models.schema import Schema
 from jx_base.models.snowflake import Snowflake
 from jx_base.models.table import Table
 from jx_python.expressions import Python
-from mo_dots import coalesce, listwrap, to_data
-from mo_dots.datas import register_data
-from mo_dots.lists import last
-from mo_future import is_text, text
-from mo_imports import export
 from mo_json import (
     value2json,
     true,
     false,
     null,
-    EXISTS,
-    OBJECT,
-    ARRAY, )
-from mo_json.typed_encoder import EXISTS_KEY
-from mo_logs import Log
-from mo_logs.strings import expand_template, quote
+)
 
 ENABLE_CONSTRAINTS = True
 
 
 def generateGuid():
-    """
-    Gets a random GUID.
-    Note: python's UUID generation library is used here.
-    Basically UUID is the same as GUID when represented as a string.
-    :Returns:
-        str, the generated random GUID.
-
-    a=GenerateGuid()
-    import uuid
-    print(a)
-    print(uuid.UUID(a).hex)
-    """
     return text(uuid4())
 
 
-def _exec(code, name):
+def _exec(code, name, defines={}):
     try:
+        locals = {}
         globs = globals()
-        fake_locals = {}
-        exec(code, globs, fake_locals)
-        temp = fake_locals[name]
+        exec(code, {**defines, **globs}, locals)
+        temp = locals[name]
         return temp
     except Exception as cause:
         Log.error("Can not make class\n{{code}}", code=code, cause=cause)
@@ -79,8 +61,8 @@ def _to_python(value):
 
 def failure(row, rownum, rows, constraint):
     constraint = to_data(constraint)
-    if constraint['and']:
-        for a in constraint['and']:
+    if constraint["and"]:
+        for a in constraint["and"]:
             failure(row, rownum, rows, a)
         return
     expr = jx_expression(constraint)
@@ -116,23 +98,15 @@ def DataClass(name, columns, constraint=None):
     """
 
     columns = to_data([
-        {"name": c, "required": True, "nulls": False, "type": object}
-        if is_text(c)
-        else c
-        for c in columns
+        {"name": c, "required": True, "nulls": False, "type": object} if is_text(c) else c for c in columns
     ])
-    constraint = {
-        "and": [
-            {"exists": c.name} for c in columns if not c.nulls and c.default == None
-        ]
-        + [constraint]
-    }
+    constraint = {"and": [{"exists": c.name} for c in columns if not c.nulls and c.default == None] + [constraint]}
     slots = columns.name
     required = to_data(filter(lambda c: c.required and c.default == None, columns)).name
     # nulls = to_data(filter(lambda c: c.nulls, columns)).name
     defaults = {c.name: coalesce(c.default, None) for c in columns}
     types = {c.name: coalesce(c.type, object) for c in columns}
-
+    constraint_expr = jx_expression(not ENABLE_CONSTRAINTS or constraint).partial_eval(Python).to_python()
     code = expand_template(
         """
 import re
@@ -148,12 +122,12 @@ class {{class_name}}(Mapping):
     __slots__ = {{slots}}
 
 
-    def _constraint(row, rownum, rows):
+    def _constraint(row0, rownum0, rows0):
         code = {{constraint_expr|quote}}
         import re
         if {{constraint_expr}}:
             return
-        failure(row, rownum, rows, {{constraint}})
+        failure(row0, rownum0, rows0, {{constraint}})
         Log.error(
             "constraint\\n{" + "{code}}\\nnot satisfied {" + "{expect}}\\n{" + "{value|indent}}",
             code={{constraint_expr|quote}},
@@ -238,115 +212,13 @@ class {{class_name}}(Mapping):
             "defaults": _to_python(defaults),
             "len_slots": len(slots),
             "dict": "{" + ", ".join(quote(s) + ": self." + s for s in slots) + "}",
-            "assign": "; ".join(
-                "_set(output, " + quote(s) + ", self." + s + ")" for s in slots
-            ),
-            "types": "{"
-            + ",".join(quote(k) + ": " + v.__name__ for k, v in types.items())
-            + "}",
-            "constraint_expr": jx_expression(
-                not ENABLE_CONSTRAINTS or constraint
-            ).partial_eval(Python).to_python(),
+            "assign": "; ".join("_set(output, " + quote(s) + ", self." + s + ")" for s in slots),
+            "types": "{" + ",".join(quote(k) + ": " + v.__name__ for k, v in types.items()) + "}",
+            "constraint_expr": constraint_expr.source,
             "constraint": value2json(constraint),
         },
     )
 
-    output = _exec(code, name)
+    output = _exec(code, name, constraint_expr.locals)
     register_data(output)
     return output
-
-
-TableDesc = DataClass(
-    "Table",
-    [
-        "name",
-        {"name": "url", "nulls": true},
-        "query_path",
-        {"name": "last_updated", "nulls": False},
-        "columns",
-    ],
-    constraint={"and": [{"ne": [{"last": "query_path"}, {"literal": "."}]}]},
-)
-
-Column = DataClass(
-    "Column",
-    [
-        "name",
-        "es_column",
-        "es_index",
-        "es_type",
-        "json_type",
-        "nested_path",  # AN ARRAY OF PATHS (FROM DEEPEST TO SHALLOWEST) INDICATING THE JSON SUB-ARRAYS
-        {"name": "count", "nulls": True},
-        {"name": "cardinality", "nulls": True},
-        {"name": "multi", "nulls": False},
-        {"name": "partitions", "nulls": True},
-        "last_updated",
-    ],
-    constraint={"and": [
-        {
-            "when": {"ne": {"name": "."}},
-            "then": {"or": [
-                {"and": [{"eq": {"json_type": "object"}}, {"eq": {"multi": 1}}]},
-                {"ne": ["name", {"first": "nested_path"}]},
-            ]},
-            "else": True,
-        },
-        {
-            "when": {"eq": {"es_column": "."}},
-            "then": {"in": {"json_type": ["nested", "object"]}},
-            "else": True,
-        },
-        {"not": {"find": {"es_column": "null"}}},
-        {"not": {"eq": {"es_column": "string"}}},
-        {"not": {"eq": {"es_type": "object", "json_type": "exists"}}},
-        {
-            "when": {"suffix": {"es_column": "." + EXISTS_KEY}},
-            "then": {"eq": {"json_type": EXISTS}},
-            "else": True,
-        },
-        {
-            "when": {"suffix": {"es_column": "." + EXISTS_KEY}},
-            "then": {"exists": "cardinality"},
-            "else": True,
-        },
-        {
-            "when": {"eq": {"json_type": OBJECT}},
-            "then": {"in": {"cardinality": [0, 1]}},
-            "else": True,
-        },
-        {
-            "when": {"eq": {"json_type": ARRAY}},
-            "then": {"in": {"cardinality": [0, 1]}},
-            "else": True,
-        },
-        {"not": {"prefix": [{"first": "nested_path"}, {"literal": "testdata"}]}},
-        {"ne": [{"last": "nested_path"}, {"literal": "."}]},  # NESTED PATHS MUST BE REAL TABLE NAMES INSIDE Namespace
-        {
-            "when": {"eq": [{"literal": ".~N~"}, {"right": {"es_column": 4}}]},
-            "then": {"or": [
-                {"and": [
-                    {"gt": {"multi": 1}},
-                    {"eq": {"json_type": "nested"}},
-                    {"eq": {"es_type": "nested"}},
-                ]},
-                {"and": [
-                    {"eq": {"multi": 1}},
-                    {"eq": {"json_type": "object"}},
-                    {"eq": {"es_type": "object"}},
-                ]},
-            ]},
-            "else": True,
-        },
-        {
-            "when": {"gte": [{"count": "nested_path"}, 2]},
-            "then": {"ne": [
-                {"first": {"right": {"nested_path": 2}}},
-                {"literal": "."},
-            ]},  # SECOND-LAST ELEMENT
-            "else": True,
-        },
-    ]},
-)
-
-export("jx_base.expressions.query_op", Column)

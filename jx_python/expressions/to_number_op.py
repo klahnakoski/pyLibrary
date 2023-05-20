@@ -7,29 +7,34 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from mo_imports import export
 
-from mo_json.types import T_NUMBER_TYPES
-
+from jx_base.expressions.python_script import PythonScript
 from jx_base.expressions.to_number_op import ToNumberOp as NumberOp_
-from jx_base.expressions.true_op import TRUE
-from jx_python.expressions import _utils
+from jx_python.utils import merge_locals
+from mo_json.types import JX_NUMBER
 
 
 class ToNumberOp(NumberOp_):
-    def to_python(self):
-        term = self.term
+    def to_python(self, loop_depth=0):
         exists = self.term.exists()
-        value = self.term.to_python()
+        value = self.term.to_python(loop_depth)
 
-        if exists is TRUE:
-            if term.type in T_NUMBER_TYPES:
-                return value
-            return "float(" + value + ")"
-        else:
-            return (
-                "float(" + value + ") if (" + exists.to_python() + ") else None"
-            )
+        return PythonScript(
+            merge_locals(value.locals, to_float=to_float),
+            loop_depth,
+            JX_NUMBER,
+            f"to_float({value.source})",
+            self,
+            exists,
+        )
 
 
-_utils.ToNumberOp = ToNumberOp
+def to_float(value):
+    try:
+        return float(value)
+    except:
+        return None
+
+
+export("jx_python.expressions._utils", ToNumberOp)

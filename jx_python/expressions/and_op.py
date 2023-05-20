@@ -7,17 +7,19 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import AndOp as AndOp_
-from jx_python.expressions.to_boolean_op import ToBooleanOp
+
+from jx_base.expressions import AndOp as AndOp_, FALSE, PythonScript, ToBooleanOp
+from jx_python.utils import merge_locals
+from mo_json import JX_BOOLEAN
 
 
 class AndOp(AndOp_):
-    def to_python(self):
+    def to_python(self, loop_depth=0):
         if not self.terms:
-            return "True"
-        else:
-            return " and ".join(
-                f"({ToBooleanOp(t).to_python()})" for t in self.terms
-            )
+            return PythonScript({}, loop_depth, JX_BOOLEAN, "True", self, FALSE)
+
+        sources, locals = zip(
+            *((c.source, c.locals) for t in self.terms for c in [ToBooleanOp(t).to_python(loop_depth)])
+        )
+        return PythonScript(merge_locals(*locals), loop_depth, JX_BOOLEAN, " and ".join(sources), self, FALSE,)

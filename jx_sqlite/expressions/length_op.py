@@ -18,7 +18,7 @@ from jx_base.expressions import (
 from jx_sqlite.expressions._utils import SQLang, check, SqlScript
 from jx_sqlite.sqlite import quote_value, sql_call, SQL_NULL
 from mo_future import text
-from mo_json import T_INTEGER
+from mo_json import JX_INTEGER
 
 
 class LengthOp(LengthOp_):
@@ -38,7 +38,7 @@ class LengthOp(LengthOp_):
             value = term.to_sql(schema)
             sql = sql_call("LENGTH", value.frum)
         return SqlScript(
-            data_type=T_INTEGER,
+            data_type=JX_INTEGER,
             expr=sql,
             frum=self,
             miss=ToBooleanOp(IsTextOp(self.term)),

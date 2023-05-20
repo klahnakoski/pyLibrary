@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.literal import is_literal
@@ -49,8 +48,6 @@ class LastOp(Expression):
     def partial_eval(self, lang):
         term = self.term.partial_eval(lang)
         if is_op(self.term, LastOp):
-            return term
-        elif jx_type_to_json_type(term.type) != OBJECT and not term.many:
             return term
         elif term is NULL:
             return term

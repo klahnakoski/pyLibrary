@@ -7,12 +7,10 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 import datetime
 
-from jx_base import Column, TableDesc
-from jx_base.models.schema import Schema
 from mo_collections import UniqueIndex
 from mo_dots import (
     Data,
@@ -21,16 +19,29 @@ from mo_dots import (
     concat_field,
     is_container,
     join_field,
-    listwrap,
     split_field,
-    unwraplist,
     to_data,
 )
 from mo_future import Mapping
 from mo_future import binary_type, items, long, none_type, reduce, text
-from mo_json import INTEGER, NUMBER, STRING, python_type_to_jx_type, OBJECT
-from mo_json.typed_encoder import json_type_to_inserter_type
+from mo_imports import export
+from mo_logs import strings
 from mo_times.dates import Date
+
+from jx_base import DataClass
+from jx_base.models.schema import Schema
+from jx_base.utils import enlist, delist
+from mo_json import (
+    INTEGER,
+    NUMBER,
+    STRING,
+    python_type_to_jx_type,
+    OBJECT,
+    true,
+    EXISTS,
+    ARRAY,
+)
+from mo_json.typed_encoder import json_type_to_inserter_type, EXISTS_KEY
 
 DEBUG = False
 META_TABLES_NAME = "meta.tables"
@@ -39,10 +50,66 @@ META_COLUMNS_TYPE_NAME = "column"
 ROOT_PATH = [META_COLUMNS_NAME]
 singlton = None
 
+strings
 
-def get_schema_from_list(
-    table_name, frum, native_type_to_json_type=python_type_to_jx_type
-):
+TableDesc = DataClass(
+    "Table",
+    ["name", {"name": "url", "nulls": true}, "query_path", {"name": "last_updated", "nulls": False}, "columns"],
+    constraint={"and": [{"ne": [{"last": "query_path"}, {"literal": "."}]}]},
+)
+
+Column = DataClass(
+    "Column",
+    [
+        "name",
+        "es_column",
+        "es_index",
+        "es_type",
+        "json_type",
+        "nested_path",  # AN ARRAY OF PATHS (FROM DEEPEST TO SHALLOWEST) INDICATING THE JSON SUB-ARRAYS
+        {"name": "count", "nulls": True},
+        {"name": "cardinality", "nulls": True},
+        {"name": "multi", "nulls": False},
+        {"name": "partitions", "nulls": True},
+        "last_updated",
+    ],
+    constraint={"and": [
+        {
+            "when": {"ne": {"name": "."}},
+            "then": {"or": [
+                {"and": [{"eq": {"json_type": "object"}}, {"eq": {"multi": 1}}]},
+                {"ne": ["name", {"first": "nested_path"}]},
+            ]},
+            "else": True,
+        },
+        {"when": {"eq": {"es_column": "."}}, "then": {"in": {"json_type": ["nested", "object"]}}, "else": True},
+        {"not": {"find": {"es_column": "null"}}},
+        {"not": {"eq": {"es_column": "string"}}},
+        {"not": {"eq": {"es_type": "object", "json_type": "exists"}}},
+        {"when": {"suffix": {"es_column": "." + EXISTS_KEY}}, "then": {"eq": {"json_type": EXISTS}}, "else": True},
+        {"when": {"suffix": {"es_column": "." + EXISTS_KEY}}, "then": {"exists": "cardinality"}, "else": True},
+        {"when": {"eq": {"json_type": OBJECT}}, "then": {"in": {"cardinality": [0, 1]}}, "else": True},
+        {"when": {"eq": {"json_type": ARRAY}}, "then": {"in": {"cardinality": [0, 1]}}, "else": True},
+        {"not": {"prefix": [{"first": "nested_path"}, {"literal": "testdata"}]}},
+        {"ne": [{"last": "nested_path"}, {"literal": "."}]},  # NESTED PATHS MUST BE REAL TABLE NAMES INSIDE Namespace
+        {
+            "when": {"eq": [{"literal": ".~N~"}, {"right": {"es_column": 4}}]},
+            "then": {"or": [
+                {"and": [{"gt": {"multi": 1}}, {"eq": {"json_type": "nested"}}, {"eq": {"es_type": "nested"}}]},
+                {"and": [{"eq": {"multi": 1}}, {"eq": {"json_type": "object"}}, {"eq": {"es_type": "object"}}]},
+            ]},
+            "else": True,
+        },
+        {
+            "when": {"gte": [{"count": "nested_path"}, 2]},
+            "then": {"ne": [{"first": {"right": {"nested_path": 2}}}, {"literal": "."}]},  # SECOND-LAST ELEMENT
+            "else": True,
+        },
+    ]},
+)
+
+
+def get_schema_from_list(table_name, frum, native_type_to_json_type=python_type_to_jx_type):
     """
     SCAN THE LIST FOR COLUMN TYPES
     """
@@ -103,9 +170,7 @@ def _get_schema_from_list(
                     elif len(v) == 1:
                         es_type = v[0].__class__.__name__
                     else:
-                        es_type = reduce(
-                            _merge_python_type, (vi.__class__.__name__ for vi in value)
-                        )
+                        es_type = reduce(_merge_python_type, (vi.__class__.__name__ for vi in value))
                 else:
                     es_type = value.__class__.__name__
 
@@ -132,19 +197,12 @@ def _get_schema_from_list(
 
                 if es_type in {"object", "dict", "Mapping", "Data"}:
                     _get_schema_from_list(
-                        [value],
-                        table_name,
-                        full_name,
-                        nested_path,
-                        columns,
-                        native_type_to_json_type,
+                        [value], table_name, full_name, nested_path, columns, native_type_to_json_type,
                     )
                 elif es_type in {"list", "FlatList"}:
-                    np = listwrap(nested_path)
-                    newpath = unwraplist([join_field(split_field(np[0]) + [name])] + np)
-                    _get_schema_from_list(
-                        value, table_name, full_name, newpath, columns
-                    )
+                    np = enlist(nested_path)
+                    newpath = delist([join_field(split_field(np[0]) + [name])] + np)
+                    _get_schema_from_list(value, table_name, full_name, newpath, columns)
 
 
 def get_id(column):
@@ -153,6 +211,7 @@ def get_id(column):
     :return: Elasticsearch id for column
     """
     return column.es_index + "|" + column.es_column
+
 
 try:
     META_COLUMNS_DESC = TableDesc(
@@ -172,14 +231,7 @@ try:
                     nested_path=ROOT_PATH,
                     multi=1,
                 )
-                for c in [
-                    "name",
-                    "es_type",
-                    "json_type",
-                    "es_column",
-                    "es_index",
-                    "partitions",
-                ]
+                for c in ["name", "es_type", "json_type", "es_column", "es_index", "partitions"]
             ]
             + [
                 Column(
@@ -344,3 +396,6 @@ def _merge_python_type(A, B):
         return output
     else:
         return output.__name__
+
+
+export("jx_base.expressions.query_op", Column)

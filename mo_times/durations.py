@@ -229,6 +229,9 @@ class Duration(object):
     def __float__(self):
         return self.seconds
 
+    def __int__(self):
+        return int(self.seconds)
+
     def __str__(self):
         return str(self.__unicode__())
 

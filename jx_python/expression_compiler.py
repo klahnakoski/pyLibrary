@@ -11,10 +11,21 @@ from __future__ import absolute_import, division
 
 import re
 
+from jx_base.utils import listwrap
 from mo_future import first
-from mo_dots import Data, coalesce, is_data, listwrap, leaves_to_data
+from mo_dots import Data, coalesce, is_data, leaves_to_data
 from mo_logs import Log, strings
 from mo_times.dates import Date
+
+
+def get_attr(value, item):
+    try:
+        return listwrap(getattr(value, item))
+    except:
+        pass
+
+    return listwrap(value[item])
+
 
 GLOBALS = {
     "true": True,
@@ -30,6 +41,7 @@ GLOBALS = {
     "leaves_to_data": leaves_to_data,
     "is_data": is_data,
     "first": first,
+    "get_attr": get_attr,
 }
 
 
@@ -63,6 +75,8 @@ def compile_expression(source, function_name="output"):
             GLOBALS,
             fake_locals,
         )
+        func = fake_locals[function_name]
+        setattr(func, "_source", source)
+        return func
     except Exception as e:
-        Log.error(u"Bad source: {{source}}", source=source, cause=e)
-    return fake_locals["output"]
+        raise Log.error(u"Bad source: {{source}}", source=source, cause=e)

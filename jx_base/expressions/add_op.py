@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from mo_dots import exists
 
@@ -16,7 +15,17 @@ from jx_base.expressions.base_multi_op import BaseMultiOp
 
 
 class AddOp(BaseMultiOp):
+    """
+    CONSERVATIVE ADDITION
+    """
     op = "add"
 
     def __call__(self, row=None, rownum=None, rows=None):
-        return sum(v for t in self.terms for v in [t(row, rownum, rows)] if exists(v))
+        output = 0
+        for t in self.terms:
+            v = t(row, rownum, rows)
+            if not exists(v):
+                return None
+            else:
+                output += v
+        return output

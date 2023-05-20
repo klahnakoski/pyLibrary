@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.expression import Expression
@@ -21,7 +20,7 @@ from jx_base.expressions.true_op import TRUE
 from jx_base.language import is_op
 from mo_dots import is_sequence
 from mo_imports import expect
-from mo_json.types import T_BOOLEAN, union_type
+from mo_json.types import JX_BOOLEAN, union_type
 from mo_logs import Log
 
 WhenOp = expect("WhenOp")
@@ -37,9 +36,7 @@ class CaseOp(Expression):
 
         for w in terms[:-1]:
             if not is_op(w, WhenOp) or w.els_ is not NULL:
-                Log.error(
-                    "case expression does not allow `else` clause in `when` sub-clause"
-                )
+                Log.error("case expression does not allow `else` clause in `when` sub-clause")
 
         els_ = terms[-1]
         if is_op(els_, WhenOp):
@@ -64,21 +61,17 @@ class CaseOp(Expression):
         return CaseOp(*(w.map(map_) for w in self.whens))
 
     def missing(self, lang):
-        whens = [
-            WhenOp(w.when, then=w.then.missing(lang))
-            for w in self.whens[:-1]
-        ]+[self.whens[-1].missing(lang)]
+        whens = [WhenOp(w.when, then=w.then.missing(lang)) for w in self.whens[:-1]] + [self.whens[-1].missing(lang)]
 
         return CaseOp(whens).partial_eval(lang)
 
     def invert(self, lang):
         return CaseOp(
-            [WhenOp(w.when, then=w.then.invert(lang)) for w in self.whens[:-1]]
-            + [self.whens[-1]]
+            [WhenOp(w.when, then=w.then.invert(lang)) for w in self.whens[:-1]] + [self.whens[-1]]
         ).partial_eval(lang)
 
     def partial_eval(self, lang):
-        if self.type is T_BOOLEAN:
+        if self.type is JX_BOOLEAN:
             nots = []
             ors = []
             for w in self.whens[:-1]:

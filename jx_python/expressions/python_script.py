@@ -7,46 +7,23 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from mo_imports import export
 
-from mo_logs import Log
-
-from jx_base.expressions import (
-    FALSE,
-    NULL,
-    ONE,
-    PythonScript as PythonScript_,
-    TRUE,
-    ZERO,
-    Expression,
-)
-from jx_base.utils import coalesce
-from jx_python.expressions import _utils, Python
+from jx_base.expressions import FALSE, TRUE, PythonScript as PythonScript_
+from jx_python.expressions import Python
 
 
 class PythonScript(PythonScript_):
-    __slots__ = ("miss", "_data_type", "expr", "frum", "many")
-
-    def __init__(self, type, expr, frum, miss=None, many=False):
-        Expression.__init__(self, None)
-        if miss not in [None, NULL, FALSE, TRUE, ONE, ZERO]:
-            if frum.lang != miss.lang:
-                Log.error("logic error")
-
-        self.miss = coalesce(miss, FALSE)
-        self._data_type = type
-        self.expr = expr
-        self.many = many  # True if script returns multi-value
-        self.frum = frum  # THE ORIGINAL EXPRESSION THAT MADE expr
-
     def __str__(self):
         missing = self.miss.partial_eval(Python)
         if missing is FALSE:
-            return self.partial_eval(Python).to_python().expr
+            return self.partial_eval(Python).to_python(self.loop_depth).source
         elif missing is TRUE:
             return "None"
 
-        return "None if (" + missing.to_python().expr + ") else (" + self.expr + ")"
+        missing = missing.to_python(self.loop_depth)
+
+        return f"None if {missing.source}) else ({self.source})"
 
     def __add__(self, other):
         return str(self) + str(other)
@@ -60,7 +37,7 @@ class PythonScript(PythonScript_):
             b = str(self)
             return ""
 
-    def to_python(self):
+    def to_python(self, loop_depth=0):
         return self
 
     def missing(self, lang):
@@ -76,6 +53,3 @@ class PythonScript(PythonScript_):
             return True
         else:
             return False
-
-
-_utils.PythonScript = PythonScript

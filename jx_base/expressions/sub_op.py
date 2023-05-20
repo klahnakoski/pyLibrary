@@ -8,10 +8,16 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.base_binary_op import BaseBinaryOp
 
 
 class SubOp(BaseBinaryOp):
     op = "sub"
+
+    def __call__(self, row=None, rownum=None, rows=None):
+        lhs = self.lhs(row)
+        rhs = self.rhs(row)
+        if not isinstance(lhs, (float, int)) or not isinstance(rhs, (float, int)):
+            return None
+        return lhs - rhs

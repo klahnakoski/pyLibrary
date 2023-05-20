@@ -13,7 +13,7 @@ from jx_base.expressions import SqlEqOp as SqlEqOp_, is_literal, AndOp, FALSE
 from jx_sqlite.expressions._utils import SQLang, check, SqlScript
 from jx_sqlite.expressions.to_boolean_op import ToBooleanOp
 from jx_sqlite.sqlite import SQL_OR, ConcatSQL, SQL_EQ
-from mo_json import T_BOOLEAN
+from mo_json import JX_BOOLEAN
 from mo_logs import Log
 
 
@@ -47,5 +47,5 @@ class SqlEqOp(SqlEqOp_):
             sql = ConcatSQL(lhs_sql, SQL_EQ, rhs_sql, SQL_OR, null_match.to_sql(schema))
 
         return SqlScript(
-            data_type=T_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
+            data_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
         )

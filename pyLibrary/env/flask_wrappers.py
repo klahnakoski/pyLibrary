@@ -231,7 +231,7 @@ def setup_flask_ssl(flask_app, flask_config):
                 context = SSLContext(PROTOCOL_SSLv23)
                 context.load_cert_chain(
                     tempfile.name,
-                    keyfile=File(ssl_flask.ssl_context.privatekey_file).abspath,
+                    keyfile=File(ssl_flask.ssl_context.privatekey_file).abs_path,
                 )
 
                 ssl_flask.ssl_context = context

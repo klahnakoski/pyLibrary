@@ -7,38 +7,25 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-from mo_dots import split_field
-from mo_logs import Log, strings
+from mo_logs import logger
 
 from jx_base.expressions import Variable as Variable_
+from jx_base.expressions.python_script import PythonScript
+from jx_python.expressions.get_op import get_attr
+from jx_python.utils import merge_locals
+from mo_json import JX_ANY
 
 
 class Variable(Variable_):
-    def to_python(self):
-        path = split_field(self.var)
-        agg = "row"
-        if not path:
-            return agg
-        elif path[0] in ["row", "rownum"]:
-            # MAGIC VARIABLES
-            agg = path[0]
-            path = path[1:]
-            if len(path) == 0:
-                return agg
-        elif path[0] == "rows":
-            if len(path) == 1:
-                return "rows"
-            elif path[1] in ["first", "last"]:
-                agg = "rows." + path[1] + "()"
-                path = path[2:]
-            else:
-                Log.error("do not know what {{var}} of `rows` is", var=path[1])
+    def to_python(self, loop_depth=0):
+        if self.var == ".":
+            return PythonScript({}, loop_depth, JX_ANY, f"row{loop_depth}", self)
+        if self.var not in ["row", "rownum", "rows"]:
+            if loop_depth == 0:
+                # WE ASSUME THIS IS NAIVE PYTHON EXPRESSION BUILD
+                return PythonScript(
+                    merge_locals(get_attr=get_attr), loop_depth, JX_ANY, f"get_attr(row{loop_depth}, {self.var})", self
+                )
 
-        agg = f"({agg} or EMPTY_DICT)"
-        for p in path[:-1]:
-            agg = agg + ".get(" + strings.quote(p) + ", EMPTY_DICT)"
-        output = agg + ".get(" + strings.quote(path[-1]) + ")"
-        # output = "listwrap(" + output + ")"
-        return output
+            logger.error("not expected")
+        return PythonScript({}, loop_depth, JX_ANY, f"{self.var}{loop_depth}", self)

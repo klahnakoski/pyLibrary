@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
@@ -23,14 +22,11 @@ class SqlSelectAllFromOp(Expression):
     def __init__(self, table):
         Expression.__init__(self)
         self.simplified = True
-        self.table=table
+        self.table = table
 
     @property
     def type(self):
-        return {
-            c.es_column: JxType(c.type)
-            for c in self.table.schema.columns
-        }
+        return {c.es_column: str(JxType(c.type)) for c in self.table.schema.columns}
 
     def __data__(self):
         return {"sql.select_all_from": [self.lhs.__data__(), self.rhs.__data__()]}

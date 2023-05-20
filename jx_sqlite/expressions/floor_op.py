@@ -24,7 +24,7 @@ from jx_sqlite.sqlite import (
     SQL_ZERO, sql_cast,
 )
 from mo_future import text
-from mo_json import T_NUMBER
+from mo_json import JX_NUMBER
 
 
 class FloorOp(FloorOp_):
@@ -45,7 +45,7 @@ class FloorOp(FloorOp_):
             sql = ConcatSQL(floor, SQL_SUB, modifier)
 
         return SqlScript(
-            data_type=T_NUMBER,
+            data_type=JX_NUMBER,
             expr=sql,
             frum=self,
             miss=OrOp([self.lhs.missing(SQLang), self.rhs.missing(SQLang)]),

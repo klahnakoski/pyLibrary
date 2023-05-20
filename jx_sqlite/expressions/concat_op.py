@@ -38,7 +38,7 @@ from jx_sqlite.sqlite import (
     ConcatSQL,
 )
 from jx_sqlite.sqlite import sql_call
-from mo_json import T_TEXT
+from mo_json import JX_TEXT
 
 
 class ConcatOp(ConcatOp_):
@@ -95,7 +95,7 @@ class ConcatOp(ConcatOp_):
             )
 
         return SqlScript(
-            data_type=T_TEXT,
+            data_type=JX_TEXT,
             expr=sql,
             frum=self,
             miss=AndOp([MissingOp(t) for t in self.terms]),

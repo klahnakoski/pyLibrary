@@ -8,30 +8,8 @@
 
 from jx_base import DataClass
 
-from mo_dots import (
-    concat_field,
-    is_data,
-    is_list,
-    join_field,
-    split_field,
-)
-from mo_future import is_text
-from mo_json import (
-    BOOLEAN,
-    ARRAY,
-    NUMBER,
-    OBJECT,
-    STRING,
-    T_BOOLEAN,
-    T_TEXT,
-    T_NUMBER,
-    IS_NULL,
-    TIME,
-    INTERVAL,
-    T_IS_NULL,
-    T_TIME,
-    T_INTERVAL,
-)
+from mo_dots import is_list, join_field
+from mo_json import *
 from mo_logs import Log
 from mo_math import randoms
 from mo_times import Date
@@ -58,7 +36,7 @@ def column_key(k, v):
         return None
     elif isinstance(v, bool):
         return k, "boolean"
-    elif is_text(v):
+    elif isinstance(v, str):
         return k, "string"
     elif is_list(v):
         return k, None
@@ -71,9 +49,9 @@ def column_key(k, v):
 
 
 def typed_column(name, sql_key):
-    if len(sql_key) > 1:
+    if len(sql_key) != 2 or sql_key[0] != SQL_KEY_PREFIX:
         Log.error("not expected")
-    return concat_field(name, "$" + sql_key)
+    return concat_field(name, sql_key)
 
 
 def untyped_column(column_name):
@@ -83,14 +61,18 @@ def untyped_column(column_name):
     """
     if "$" in column_name:
         path = split_field(column_name)
-        return join_field([p for p in path[:-1] if p != "$a"]), path[-1][1:]
+        if path[-1] in SQL_KEYS:
+            return join_field([p for p in path[:-1] if p != SQL_ARRAY_KEY]), path[-1][1:]
+        else:
+            return join_field([p for p in path if p != SQL_ARRAY_KEY]), None
     elif column_name in [GUID]:
-        return column_name, "n"
+        return column_name, SQL_NUMBER_KEY
     else:
         return column_name, None
 
 
 untype_field = untyped_column
+
 
 sql_aggs = {
     "avg": "AVG",
@@ -120,14 +102,28 @@ STATS = {
 }
 
 
-SQL_IS_NULL_KEY = "0"
-SQL_BOOLEAN_KEY = "B"
-SQL_NUMBER_KEY = "N"
-SQL_TIME_KEY = "T"
-SQL_INTERVAL_KEY = "N"
-SQL_STRING_KEY = "S"
-SQL_OBJECT_KEY = "J"
-SQL_ARRAY_KEY = "A"
+SQL_KEY_PREFIX = "$"
+
+SQL_IS_NULL_KEY = SQL_KEY_PREFIX + "0"
+SQL_BOOLEAN_KEY = SQL_KEY_PREFIX + "B"
+SQL_NUMBER_KEY = SQL_KEY_PREFIX + "N"
+SQL_TIME_KEY = SQL_KEY_PREFIX + "T"
+SQL_INTERVAL_KEY = SQL_KEY_PREFIX + "N"
+SQL_STRING_KEY = SQL_KEY_PREFIX + "S"
+SQL_OBJECT_KEY = SQL_KEY_PREFIX + "J"
+SQL_ARRAY_KEY = SQL_KEY_PREFIX + "A"
+
+
+SQL_KEYS = [
+    SQL_IS_NULL_KEY,
+    SQL_BOOLEAN_KEY,
+    SQL_NUMBER_KEY,
+    SQL_TIME_KEY,
+    SQL_INTERVAL_KEY,
+    SQL_STRING_KEY,
+    SQL_OBJECT_KEY,
+    SQL_ARRAY_KEY
+]
 
 json_type_to_sql_type_key = {
     IS_NULL: SQL_IS_NULL_KEY,
@@ -138,23 +134,26 @@ json_type_to_sql_type_key = {
     STRING: SQL_STRING_KEY,
     OBJECT: SQL_OBJECT_KEY,
     ARRAY: SQL_ARRAY_KEY,
-    T_IS_NULL: SQL_IS_NULL_KEY,
-    T_BOOLEAN: SQL_BOOLEAN_KEY,
-    T_NUMBER: SQL_NUMBER_KEY,
-    T_TIME: SQL_TIME_KEY,
-    T_INTERVAL: SQL_INTERVAL_KEY,
-    T_TEXT: SQL_STRING_KEY,
 }
 
 sql_type_key_to_json_type = {
     None: None,
-    "0": IS_NULL,
-    "b": BOOLEAN,
-    "n": NUMBER,
-    "s": STRING,
-    "j": OBJECT,
+    SQL_IS_NULL_KEY: IS_NULL,
+    SQL_BOOLEAN_KEY: BOOLEAN,
+    SQL_NUMBER_KEY: NUMBER,
+    SQL_STRING_KEY: STRING,
+    SQL_OBJECT_KEY: OBJECT,
+    SQL_ARRAY_KEY: ARRAY,
 }
 
+jx_type_to_sql_type_key = {
+    JX_IS_NULL: SQL_IS_NULL_KEY,
+    JX_BOOLEAN: SQL_BOOLEAN_KEY,
+    JX_NUMBER: SQL_NUMBER_KEY,
+    JX_TIME: SQL_TIME_KEY,
+    JX_INTERVAL: SQL_INTERVAL_KEY,
+    JX_TEXT: SQL_STRING_KEY,
+}
 
 ColumnMapping = DataClass(
     "ColumnMapping",

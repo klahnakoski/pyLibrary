@@ -7,11 +7,22 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from jx_base.expressions import InOp as InOp_
+from jx_base.expressions.python_script import PythonScript
+from jx_python.utils import merge_locals
+from mo_json import JX_BOOLEAN
 
 
 class InOp(InOp_):
-    def to_python(self):
-        return self.value.to_python() + " in " + self.superset.to_python()
+    def to_python(self, loop_depth=0):
+        value = self.value.to_python(loop_depth)
+        superset = self.superset.to_python(loop_depth)
+        return PythonScript(
+            merge_locals(value.locals, superset.locals),
+            loop_depth,
+            JX_BOOLEAN,
+            f"{value.source} in {superset.source}",
+            self,
+        )

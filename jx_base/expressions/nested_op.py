@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.eq_op import EqOp
@@ -23,16 +22,16 @@ from jx_base.expressions.variable import IDENTITY
 from jx_base.language import is_op
 from mo_dots import Null, startswith_field, coalesce, listwrap
 from mo_imports import export, expect
-from mo_json.types import T_BOOLEAN
+from mo_json.types import JX_BOOLEAN
 
 
 class NestedOp(Expression):
-    _data_type = T_BOOLEAN
+    _data_type = JX_BOOLEAN
     has_simple_form = False
 
     __slots__ = ["nested_path", "select", "where", "sort", "limit"]
 
-    def __init__(self, *frum,  nested_path, select=None, where=TRUE, sort=Null, limit=NULL):
+    def __init__(self, *frum, nested_path, select=None, where=TRUE, sort=Null, limit=NULL):
         select = select or SelectOp(frum, {"name": ".", "value": IDENTITY})
         Expression.__init__(self, [select, where])
         self.nested_path = nested_path
@@ -63,7 +62,7 @@ class NestedOp(Expression):
         elif self.nested_path == other.frum:
             return NestedOp(
                 self.nested_path,
-                listwrap(self.select) + listwrap(other.select),
+                enlist(self.select) + enlist(other.select),
                 AndOp(self.where, other.where),
                 coalesce(self.sort, other.sort),
                 coalesce(self.limit, other.limit),
@@ -91,22 +90,16 @@ class NestedOp(Expression):
 
     def __eq__(self, other):
         return (
-                is_op(other, NestedOp)
-                and self.nested_path == other.nested_path
-                and self.select == other.select
-                and self.where == other.where
-                and self.sort == other.sort
-                and self.limit == other.limit
+            is_op(other, NestedOp)
+            and self.nested_path == other.nested_path
+            and self.select == other.select
+            and self.where == other.where
+            and self.sort == other.sort
+            and self.limit == other.limit
         )
 
     def vars(self):
-        return (
-            self.nested_path.vars()
-            | self.select.vars()
-            | self.where.vars()
-            | self.sort.vars()
-            | self.limit.vars()
-        )
+        return self.nested_path.vars() | self.select.vars() | self.where.vars() | self.sort.vars() | self.limit.vars()
 
     def map(self, mapping):
         return NestedOp(

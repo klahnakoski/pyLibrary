@@ -16,9 +16,15 @@ from jx_base.expressions import (
     SqlSelectOp,
     AggregateOp,
 )
+from jx_base.expressions.sql_select_op import SqlAlias
+from mo_dots import relative_field as mo_dots_relative_field
 from jx_base.expressions.sql_left_joins_op import Source, Join
 from jx_sqlite.expressions import SqlLeftJoinsOp
-from mo_json import to_jx_type
+from jx_sqlite.expressions.sql_group_by_op import SqlGroupByOp
+from jx_sqlite.expressions.sql_origins_op import SqlOriginsOp
+from mo_json import to_jx_type, concat_field
+from mo_sql.utils import untyped_column
+from jx_sqlite.sqlite import ConcatSQL, SQL_SELECT, SQL_FROM, SQL_STAR, quote_column
 
 
 class SqlSelectAllFromOp(_SqlSelectAllFrom):
@@ -27,53 +33,47 @@ class SqlSelectAllFromOp(_SqlSelectAllFrom):
     SELECT * FROM table
     """
 
-    def __init__(self, table, group_by):
-        _SqlSelectAllFrom.__init__(self, table)
-        self.group_by = group_by
-
     @property
     def type(self):
         return self.table.schema.get_type()
 
-    def query(self, expr, group_by):
+    def query(self, expr):
         if isinstance(expr, Variable):
             # SIMPLE VARIABLE IN TABLE
             name = expr.var
-
             # ANY LEAVES WILL SHADOW TABLES
             cols = self.table.schema.get_columns(name)
             if cols:
                 return SqlSelectOp(
                     self,
                     tuple(
-                        {
-                            "name": col.es_column,
-                            "value": Variable(col.es_column, to_jx_type(col.json_type)),
-                        }
+                        SqlAlias(name, Variable(col.es_column, to_jx_type(col.json_type)))
                         for col in cols
-                    )
+                    ),
                 )
+
+            alt_origin = mo_dots_relative_field(self.table.name, self.table.schema.snowflake.fact_name)
+            if alt_origin != ".":
+                full_name, _ = untyped_column(concat_field(alt_origin, name))
+                cols = self.table.schema.get_columns(full_name)
+                if cols:
+                    return SqlSelectOp(
+                        self,
+                        tuple(SqlAlias( name,Variable(col.es_column, to_jx_type(col.json_type)))
+                            for col in cols
+                        )
+                    )
 
             relative_field, many_relations = self.table.schema.get_many_relations(name)
             if relative_field == ".":
-                # ATTACH SNOWFLAKE
-                # FIND SPANNING TREE
-                # RETURN WHOLE QUERY? - NO, RETURN OPEN QUERY FOR LAZY EVALUATION
-                many_group_by = tuple(
-                    m
-                    for c in self.group_by
-                    for m, o in zip(
-                        many_relations.many_columns, many_relations.ones_columns
-                    )
-                    if c == o
-                )
                 child_table = self.table.schema.get_table(many_relations.many_table)
-                child_expr = SqlSelectAllFromOp(
-                    child_table,
-                    many_group_by,
-                ).query(Variable("."), many_group_by+child_table.schema.get_primary_keys())
-                child = Source("t1", child_expr, [])
-                parent = Source("t2", self, [])
+                group = SqlSelectOp(
+                    SqlSelectAllFromOp(child_table),
+                    tuple(SqlAlias(c, Variable(c)) for c in many_relations.many_columns),
+                )
+                child_expr = SqlGroupByOp(SqlSelectAllFromOp(child_table), group)
+                child = Source("t2", child_expr, [])
+                parent = Source("t1", self, [])
                 join = Join(
                     parent,
                     many_relations.ones_columns,
@@ -81,38 +81,16 @@ class SqlSelectAllFromOp(_SqlSelectAllFrom):
                     many_relations.many_columns,
                 )
                 parent.joins.append(join)
-
-                """
-                SELECT 
-                    t1.__id__,
-                    t2.__id__,
-                    t2.__parent__,
-                    t2.__order__,
-                    t2.`a._b.a.$n`,
-                    t2.`a._b.b.$n`,
-                FROM
-                    testing t1
-                LEFT JOIN (
-                    SELECT
-                        __id__,
-                        __parent__,
-                        __order__,
-                        `a._b.a.$n`,
-                        `a._b.b.$n`,
-                    FROM                                           
-                        `testing.a._b.$a`
-                    GROUP BY
-                        __parent__,
-                        __id__
-                    ) t2 ON t2.__parent__ = t1.__id__
-                GROUP BY
-                    t1.__id__
-                """
-
                 # CALC THE SELECTION (ASSUME SINGLE TABLE FIRST)
-                return SqlLeftJoinsOp(parent, tuple())
+                return SqlOriginsOp(SqlLeftJoinsOp(parent, tuple()), child)
         elif isinstance(expr, AggregateOp):
             result = expr.frum.apply(self)
             return expr.op(result)
 
         raise NotImplementedError()
+
+    def __str__(self):
+        return str(self.to_sql(None))
+
+    def to_sql(self, schema):
+        return ConcatSQL(SQL_SELECT, SQL_STAR, SQL_FROM, quote_column(self.table.name))

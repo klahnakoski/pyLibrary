@@ -13,8 +13,6 @@ from typing import Set, Tuple
 from jx_base import Column
 from jx_base.models.nested_path import NestedPath
 from jx_base.queries import get_property_name
-from jx_sqlite.expressions._utils import SQL_ARRAY_KEY
-from jx_sqlite.utils import GUID, untyped_column, untype_field, typed_column
 from mo_dots import (
     concat_field,
     relative_field,
@@ -24,6 +22,7 @@ from mo_dots import (
 )
 from mo_json import EXISTS, OBJECT, STRUCT, to_jx_type, JxType
 from mo_logs import Log
+from mo_sql.utils import typed_column, SQL_ARRAY_KEY, untyped_column, untype_field, GUID
 
 
 class Schema(object):
@@ -194,3 +193,6 @@ class Schema(object):
                         fact_dict.setdefault(concat_field(var, c.name), []).append(c)
 
         return set_default(origin_dict, fact_dict)
+
+
+NO_SCHEMA = Schema([None], None)

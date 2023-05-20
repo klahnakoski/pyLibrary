@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import (
     operators,
@@ -20,24 +19,16 @@ from jx_base.models.container import Container
 from mo_dots import is_data, is_container
 from mo_future import items as items_
 from mo_imports import expect
-from mo_json import BOOLEAN, value2json, T_IS_NULL, JxType
+from mo_json import BOOLEAN, value2json, JX_IS_NULL, JxType
 from mo_logs import Log
 
 TRUE, FALSE, Literal, is_literal, MissingOp, NotOp, NULL, Variable, AndOp = expect(
-    "TRUE",
-    "FALSE",
-    "Literal",
-    "is_literal",
-    "MissingOp",
-    "NotOp",
-    "NULL",
-    "Variable",
-    "AndOp",
+    "TRUE", "FALSE", "Literal", "is_literal", "MissingOp", "NotOp", "NULL", "Variable", "AndOp",
 )
 
 
 class Expression(BaseExpression):
-    _data_type:JxType = T_IS_NULL
+    _data_type: JxType = JX_IS_NULL
     has_simple_form = False
 
     def __init__(self, *args):
@@ -73,9 +64,7 @@ class Expression(BaseExpression):
             else:
                 if not items:
                     return NULL
-                raise Log.error(
-                    "{{operator|quote}} is not a known operator", operator=expr
-                )
+                raise Log.error("{{operator|quote}} is not a known operator", operator=expr)
 
             if term == None:
                 return class_(**clauses)
@@ -98,12 +87,8 @@ class Expression(BaseExpression):
                 else:
                     return class_(_jx_expression(term, lang), **clauses)
         except Exception as cause:
-            Log.warning(
-                "programmer error expr = {{value|quote}}", value=expr, cause=cause
-            )
-            Log.error(
-                "programmer error expr = {{value|quote}}", value=expr, cause=cause
-            )
+            Log.warning("programmer error expr = {{value|quote}}", value=expr, cause=cause)
+            Log.error("programmer error expr = {{value|quote}}", value=expr, cause=cause)
 
     @property
     def name(self):
@@ -162,7 +147,7 @@ class Expression(BaseExpression):
         """
         return self
 
-    def apply(self, container: Container, group_by):
+    def apply(self, container: Container):
         """
         Apply this expression over the container of data
 
@@ -170,7 +155,7 @@ class Expression(BaseExpression):
 
         :return: data, depending on the expression
         """
-        return container.query(self, group_by)
+        return container.query(self)
 
     @property
     def type(self) -> JxType:
@@ -203,8 +188,7 @@ class Expression(BaseExpression):
 
     def __getattr__(self, item):
         Log.error(
-            "{{type}} object has no attribute {{item}}, did you .register_ops() for"
-            " {{type}}?",
+            """{{type}} object has no attribute {{item}}, did you .register_ops() for {{type}}?""",
             type=self.__class__.__name__,
             item=item,
         )

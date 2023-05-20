@@ -7,12 +7,11 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 import itertools
 from numbers import Number
 
-from jx_base.expressions import jx_expression, NULL, Expression
 from mo_collections.unique_index import UniqueIndex
 from mo_dots import (
     Data,
@@ -21,19 +20,28 @@ from mo_dots import (
     coalesce,
     is_container,
     is_data,
-    listwrap,
     to_data,
     dict_to_data,
     list_to_data,
     from_data,
 )
-from mo_json.types import JxType, T_NUMBER, T_INTEGER, T_TEXT, T_TIME, T_INTERVAL, python_type_to_jx_type
-from mo_future import text
 from mo_kwargs import override
 from mo_logs import Log
 from mo_math import MAX, MIN
 from mo_times.dates import Date
 from mo_times.durations import Duration
+
+from jx_base.expressions import jx_expression, NULL, Expression
+from jx_base.utils import enlist
+from mo_json.types import (
+    JxType,
+    JX_NUMBER,
+    JX_INTEGER,
+    JX_TEXT,
+    JX_TIME,
+    JX_INTERVAL,
+    python_type_to_jx_type,
+)
 
 # DOMAINS THAT HAVE ALGEBRAIC OPERATIONS DEFINED
 ALGEBRAIC = {
@@ -68,7 +76,7 @@ class Domain(object):
         "where",
         "dimension",
         "primitive",
-        "limit"
+        "limit",
     ]
 
     @override(kwargs="desc")
@@ -78,9 +86,7 @@ class Domain(object):
                 return object.__new__(name_to_type[type])
             except Exception as e:
                 Log.error(
-                    'Problem with {"domain":{"type":{{type|quote}}}}',
-                    type=type,
-                    cause=e,
+                    'Problem with {"domain":{"type":{{type|quote}}}}', type=type, cause=e,
                 )
         else:
             return object.__new__(cls)
@@ -149,9 +155,7 @@ class Domain(object):
         for name in attribute_names:
             if getattr(self, name) == None:
                 Log.error(
-                    "{{type}} domain expects a {{name|quote}} parameter",
-                    type=self.type,
-                    name=name,
+                    "{{type}} domain expects a {{name|quote}} parameter", type=self.type, name=name,
                 )
 
 
@@ -310,22 +314,20 @@ class SimpleSetDomain(Domain):
         if isinstance(self.key, set):
             Log.error("problem")
 
-        if not key and (
-            len(partitions) == 0 or isinstance(partitions[0], (text, Number, tuple))
-        ):
+        if not key and (len(partitions) == 0 or isinstance(partitions[0], (str, Number, tuple))):
             # ASSUME PARTS ARE STRINGS, CONVERT TO REAL PART OBJECTS
             self.key = "value"
             self.map = {}
             self.order[None] = len(partitions)
             for i, p in enumerate(partitions):
                 part = {"value": p, "dataIndex": i}
-                if isinstance(p, text):
-                    part['name'] = p
+                if isinstance(p, str):
+                    part["name"] = p
                 self.partitions.append(part)
                 self.map[p] = part
                 self.order[p] = i
                 if isinstance(p, (int, float)):
-                    text_part = text(float(p))  # ES CAN NOT HANDLE NUMERIC PARTS
+                    text_part = str(float(p))  # ES CAN NOT HANDLE NUMERIC PARTS
                     self.map[text_part] = part
                     self.order[text_part] = i
             self.label = coalesce(self.label, "name")
@@ -477,11 +479,11 @@ class SetDomain(Domain):
         self.type = "set"
         self.order = {}
         self.partitions = FlatList()
-        self.element_type = JxType(name=T_TEXT, value=python_type_to_jx_type(partitions[0]), dataIndex=T_INTEGER)
+        self.element_type = JxType(name=JX_TEXT, value=python_type_to_jx_type(partitions[0]), dataIndex=JX_INTEGER,)
         if isinstance(self.key, set):
             Log.error("problem")
 
-        if isinstance(partitions[0], (int, float, text)):
+        if isinstance(partitions[0], (int, float, str)):
             # ASSMUE PARTS ARE STRINGS, CONVERT TO REAL PART OBJECTS
             self.key = "value"
             self.order[None] = len(partitions)
@@ -595,7 +597,7 @@ class TimeDomain(Domain):
         self.max = Date(self.max)
         self.interval = Duration(self.interval)
         self.sort = Null
-        self.element_type = JxType(min=T_TIME, max=T_TIME, dataIndex=T_INTEGER)
+        self.element_type = JxType(min=JX_TIME, max=JX_TIME, dataIndex=JX_INTEGER)
 
         if self.partitions:
             # IGNORE THE min, max, interval
@@ -670,7 +672,7 @@ class DurationDomain(Domain):
         partitions=None,
         desc=None,
     ):
-        self.element_type = JxType(min=T_INTERVAL, max=T_INTERVAL, dataIndex=T_INTEGER)
+        self.element_type = JxType(min=JX_INTERVAL, max=JX_INTERVAL, dataIndex=JX_INTEGER)
         if partitions:
             # IGNORE THE min, max, interval
             if not key:
@@ -832,14 +834,14 @@ class RangeDomain(Domain):
     ):
         Domain.__init__(self, desc)
         self.type = "range"
-        self.element_type = JxType(min=T_NUMBER, max=T_NUMBER, dataIndex=T_INTEGER)
+        self.element_type = JxType(min=JX_NUMBER, max=JX_NUMBER, dataIndex=JX_INTEGER)
 
         if partitions:
             # IGNORE THE min, max, interval
             if not key:
                 Log.error("Must have a key value")
 
-            parts = listwrap(partitions)
+            parts = enlist(partitions)
             for i, p in enumerate(parts):
                 self.min = MIN([min, p.min])
                 self.max = MAX([max, p.max])
@@ -863,8 +865,7 @@ class RangeDomain(Domain):
 
         self.key = "min"
         self.partitions = list_to_data([
-            {"min": v, "max": v + interval, "dataIndex": i}
-            for i, v in enumerate(frange(min, max, interval))
+            {"min": v, "max": v + interval, "dataIndex": i} for i, v in enumerate(frange(min, max, interval))
         ])
 
     def compare(self, a, b):

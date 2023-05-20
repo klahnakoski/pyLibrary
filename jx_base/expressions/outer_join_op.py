@@ -8,21 +8,21 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
+
+from mo_dots import startswith_field
+from mo_logs import Log
+from mo_math import UNION
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.null_op import NULL
 from jx_base.expressions.or_op import OrOp
 from jx_base.language import is_op
-from mo_dots import startswith_field
-from mo_json.types import T_BOOLEAN
-from mo_logs import Log
-from mo_math import UNION
+from mo_json.types import JX_BOOLEAN
 
 
 class OuterJoinOp(Expression):
-    _data_type = T_BOOLEAN
+    _data_type = JX_BOOLEAN
     has_simple_form = False
 
     __slots__ = ["frum", "nests"]
@@ -44,17 +44,10 @@ class OuterJoinOp(Expression):
             last = path
 
     def __data__(self):
-        return {"outerjoin": {
-            "from": self.frum.__data__(),
-            "nests": [n.__data__() for n in self.nests],
-        }}
+        return {"outerjoin": {"from": self.frum.__data__(), "nests": [n.__data__() for n in self.nests]}}
 
     def __eq__(self, other):
-        return (
-            is_op(other, OuterJoinOp)
-            and self.frum == other.frum
-            and self.nests == other.nests
-        )
+        return is_op(other, OuterJoinOp) and self.frum == other.frum and self.nests == other.nests
 
     def vars(self):
         return UNION(
@@ -72,9 +65,7 @@ class OuterJoinOp(Expression):
         if not self.nests:
             return TRUE
 
-        return OrOp(
-            [self.frum.missing(lang)] + [n.missing(lang) for n in self.nests]
-        ).partial_eval(lang)
+        return OrOp([self.frum.missing(lang)] + [n.missing(lang) for n in self.nests]).partial_eval(lang)
 
     def partial_eval(self, lang):
         nests = []

@@ -8,17 +8,16 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.coalesce_op import CoalesceOp
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.first_op import FirstOp
 from jx_base.language import is_op
-from mo_json import T_INTEGER
+from mo_json import JX_INTEGER
 
 
 class ToIntegerOp(Expression):
-    _data_type = T_INTEGER
+    _data_type = JX_INTEGER
 
     def __init__(self, term):
         Expression.__init__(self, term)
@@ -40,6 +39,6 @@ class ToIntegerOp(Expression):
         term = FirstOp(self.term).partial_eval(lang)
         if is_op(term, CoalesceOp):
             return CoalesceOp(ToIntegerOp(t) for t in term.terms)
-        if term.type in T_INTEGER:
+        if term.type in JX_INTEGER:
             return term
         return ToIntegerOp(term)

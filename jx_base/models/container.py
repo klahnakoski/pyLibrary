@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from copy import copy
 
@@ -57,8 +57,7 @@ class Container(object):
                 )
 
             settings = set_default(
-                {"index": join_field(split_field(frum)[:1:]), "name": frum,},
-                config.default.settings,
+                {"index": join_field(split_field(frum)[:1:]), "name": frum}, config.default.settings,
             )
             settings.type = None  # WE DO NOT WANT TO INFLUENCE THE TYPE BECAUSE NONE IS IN THE frum STRING ANYWAY
             return type2container["elasticsearch"](settings)
@@ -73,9 +72,7 @@ class Container(object):
             else:
                 Log.error("Do not know how to handle {{frum|json}}", frum=frum)
         else:
-            Log.error(
-                "Do not know how to handle {{type}}", type=frum.__class__.__name__
-            )
+            Log.error("Do not know how to handle {{type}}", type=frum.__class__.__name__)
 
     @property
     def language(self):
@@ -84,7 +81,7 @@ class Container(object):
     def get_table(self, name):
         raise NotImplementedError()
 
-    def query(self, query, group_by):
+    def query(self, query):
         if query.frum != self:
             Log.error("not expected")
         raise NotImplementedError()

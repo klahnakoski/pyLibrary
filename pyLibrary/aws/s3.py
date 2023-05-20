@@ -384,8 +384,8 @@ class Bucket(object):
             lines = list(lines)
 
         with mo_files.TempFile() as tempfile:
-            with open(tempfile.abspath, "wb") as buff:
-                DEBUG and Log.note("Temp file {{filename}}", filename=tempfile.abspath)
+            with open(tempfile.abs_path, "wb") as buff:
+                DEBUG and Log.note("Temp file {{filename}}", filename=tempfile.abs_path)
                 archive = gzip.GzipFile(filename=str(key + ".json"), fileobj=buff, mode="w")
                 count = 0
                 for l in lines:
@@ -429,7 +429,7 @@ class Bucket(object):
 
             if VERIFY_UPLOAD:
                 try:
-                    with open(tempfile.abspath, mode="rb") as source:
+                    with open(tempfile.abs_path, mode="rb") as source:
                         result = list(ibytes2ilines(scompressed2ibytes(source)))
                         assertAlmostEqual(result, lines, msg="file is different")
 

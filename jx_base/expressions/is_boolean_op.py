@@ -8,15 +8,14 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
-from mo_json.types import T_BOOLEAN
+from mo_json.types import JX_BOOLEAN
 
 
 class IsBooleanOp(Expression):
-    _data_type = T_BOOLEAN
+    _data_type = JX_BOOLEAN
 
     def __init__(self, *term):
         Expression.__init__(self, [term])
@@ -24,7 +23,7 @@ class IsBooleanOp(Expression):
 
     def partial_eval(self, lang):
         term = self.term.partial_eval(lang)
-        if term.type is T_BOOLEAN:
+        if term.type is JX_BOOLEAN:
             return term
         elif term is self.term:
             return self

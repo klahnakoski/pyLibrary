@@ -5,13 +5,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 import re
 
 from mo_dots import is_list, is_many
 from mo_future import is_text
 from mo_logs import Log
+
+from mo_json import ARRAY_KEY
 
 keyword_pattern = re.compile(r"(\w|[\\.])(\w|[\\.$-])*(?:\.(\w|[\\.$-])+)*")
 
@@ -66,12 +68,27 @@ def coalesce(*args):
     return None
 
 
-def listwrap(value):
+def enlist(value):
     if value == None:
         return []
     elif is_list(value):
         return value
     elif is_many(value):
         return list(value)
+    elif isinstance(value, dict) and len(value)==1 and ARRAY_KEY in value:
+        raise Exception("not allowed to run enlist on typed data")
     else:
         return [value]
+
+
+def delist(values):
+    if not is_many(values):
+        return values
+    elif len(values) == 0:
+        return None
+    elif len(values) == 1:
+        return values[0]
+    elif isinstance(values, dict) and ARRAY_KEY in values:
+        return delist(values[ARRAY_KEY])
+    else:
+        return values

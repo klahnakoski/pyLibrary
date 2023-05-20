@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions import BasicInOp
 from jx_base.expressions.and_op import AndOp
@@ -26,12 +25,12 @@ from jx_base.expressions.variable import Variable
 from jx_base.language import is_op
 from mo_dots import is_many
 from mo_imports import export
-from mo_json.types import T_BOOLEAN
+from mo_json.types import JX_BOOLEAN
 
 
 class InOp(Expression):
     has_simple_form = True
-    _data_type = T_BOOLEAN
+    _data_type = JX_BOOLEAN
 
     def __init__(self, value, superset):
         Expression.__init__(self, value, superset)
@@ -68,18 +67,14 @@ class InOp(Expression):
             return FALSE
         elif is_literal(superset):
             if is_literal(value):
-                return Literal(value() in listwrap(superset.value))
+                return Literal(value() in enlist(superset.value))
             elif is_many(superset.value):
                 return InOp(value, superset)
             else:
                 return EqOp(value, superset)
         elif is_op(value, NestedOp):
             return (
-                NestedOp(
-                    value.nested_path,
-                    None,
-                    AndOp(InOp(value.select, superset), value.where),
-                )
+                NestedOp(value.nested_path, None, AndOp(InOp(value.select, superset), value.where),)
                 .exists()
                 .partial_eval(lang)
             )

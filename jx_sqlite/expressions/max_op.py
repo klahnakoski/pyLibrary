@@ -13,7 +13,7 @@ from jx_base.expressions import MaxOp as MaxOp_, MissingOp
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import sql_call
-from mo_json import T_NUMBER
+from mo_json import JX_NUMBER
 
 
 class MaxOp(MaxOp_):
@@ -22,5 +22,5 @@ class MaxOp(MaxOp_):
         miss = MissingOp(self).partial_eval(SQLang)
         expr = sql_call("MAX", *(t.to_sql(schema) for t in self.terms))
         return SqlScript(
-            data_type=T_NUMBER, miss=miss, expr=expr, frum=self, schema=schema
+            data_type=JX_NUMBER, miss=miss, expr=expr, frum=self, schema=schema
         )

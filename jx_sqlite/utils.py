@@ -12,16 +12,72 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from copy import copy
+from math import isnan
 
+from jx_base import DataClass
 from jx_sqlite.sqlite import quote_column, SQL_DESC, SQL_ASC
-from mo_dots import Data, is_missing
-from mo_future import text
-from mo_json import json2value, INTEGER
+from mo_dots import (
+    Data,
+    is_data,
+    is_list,
+    split_field,
+    is_sequence,
+    is_missing, )
+from mo_future import is_text, text, POS_INF
+from mo_json import BOOLEAN, ARRAY, NUMBER, OBJECT, STRING, json2value, JX_BOOLEAN
 from mo_json.typed_encoder import untype_path
-from mo_json.types import _B, _I, _N, _S, _A, T_ARRAY, T_INTEGER
-from mo_sql.utils import *
+from mo_math import randoms
+from mo_sql.utils import GUID, UID, ORDER, PARENT
 from mo_times import Date
 
+DIGITS_TABLE = "__digits__"
+ABOUT_TABLE = "meta.about"
+
+
+COLUMN = "__column"
+
+ALL_TYPES = "bns"
+
+
+def unique_name():
+    return randoms.string(20)
+
+
+def column_key(k, v):
+    if v == None:
+        return None
+    elif isinstance(v, bool):
+        return k, "boolean"
+    elif is_text(v):
+        return k, "string"
+    elif is_list(v):
+        return k, None
+    elif is_data(v):
+        return k, "object"
+    elif isinstance(v, Date):
+        return k, "number"
+    else:
+        return k, "number"
+
+
+def value_to_json_type(v):
+    if v == None:
+        return None
+    elif isinstance(v, bool):
+        return BOOLEAN
+    elif is_text(v):
+        return STRING
+    elif is_data(v):
+        return OBJECT
+    elif isinstance(v, float):
+        if isnan(v) or abs(v) == POS_INF:
+            return None
+        return NUMBER
+    elif isinstance(v, (int, Date)):
+        return NUMBER
+    elif is_sequence(v):
+        return ARRAY
+    return None
 
 
 def table_alias(i):
@@ -71,6 +127,34 @@ def is_type(value, type):
 def _make_column_name(number):
     return COLUMN + text(number)
 
+
+sql_aggs = {
+    "avg": "AVG",
+    "average": "AVG",
+    "count": "COUNT",
+    "first": "FIRST_VALUE",
+    "last": "LAST_VALUE",
+    "max": "MAX",
+    "maximum": "MAX",
+    "median": "MEDIAN",
+    "min": "MIN",
+    "minimum": "MIN",
+    "sum": "SUM",
+    "add": "SUM",
+}
+
+STATS = {
+    "count": "COUNT({{value}})",
+    "std": "SQRT((1-1.0/COUNT({{value}}))*VARIANCE({{value}}))",
+    "min": "MIN({{value}})",
+    "max": "MAX({{value}})",
+    "sum": "SUM({{value}})",
+    "median": "MEDIAN({{value}})",
+    "sos": "SUM({{value}}*{{value}})",
+    "var": "(1-1.0/COUNT({{value}}))*VARIANCE({{value}})",
+    "avg": "AVG({{value}})",
+}
+
 quoted_GUID = quote_column(GUID)
 quoted_UID = quote_column(UID)
 quoted_ORDER = quote_column(ORDER)
@@ -95,7 +179,7 @@ def get_column(column, json_type=None, default=None):
     :return: a function that can pull the given column out of sql resultset
     """
 
-    to_type = json_type_to_python_type.get(json_type)
+    to_type = jx_type_to_python_type.get(json_type)
 
     if to_type is None:
         def _get(row):
@@ -115,7 +199,7 @@ def get_column(column, json_type=None, default=None):
     return _get_type
 
 
-json_type_to_python_type = {T_BOOLEAN: bool}
+jx_type_to_python_type = {JX_BOOLEAN: bool}
 
 
 def set_column(row, col, child, value):
@@ -152,31 +236,47 @@ def copy_cols(cols, nest_to_alias):
     return output
 
 
-sqlite_type_to_simple_type = {
-    "TEXT": STRING,
-    "REAL": NUMBER,
-    "INT": INTEGER,
-    "INTEGER": INTEGER,
-    "TINYINT": BOOLEAN,
-}
-
-sqlite_type_to_type_key = {
-    "ARRAY": _A,
-    "TEXT": _S,
-    "REAL": _N,
-    "INTEGER": _I,
-    "TINYINT": _B,
-    "TRUE": _B,
-    "FALSE": _B,
-}
-
-type_key_json_type = {
-    _A: T_ARRAY,
-    _S: T_TEXT,
-    _N: T_NUMBER,
-    _I: T_INTEGER,
-    _B: T_BOOLEAN,
-}
+ColumnMapping = DataClass(
+    "ColumnMapping",
+    [
+        {  # EDGES ARE AUTOMATICALLY INCLUDED IN THE OUTPUT, USE THIS TO INDICATE EDGES SO WE DO NOT DOUBLE-PRINT
+            "name": "is_edge",
+            "default": False,
+        },
+        {  # TRACK NUMBER OF TABLE COLUMNS THIS column REPRESENTS
+            "name": "num_push_columns",
+            "nulls": True,
+        },
+        {  # NAME OF THE PROPERTY (USED BY LIST FORMAT ONLY)
+            "name": "push_list_name",
+            "nulls": True,
+        },
+        {  # PATH INTO COLUMN WHERE VALUE IS STORED ("." MEANS COLUMN HOLDS PRIMITIVE VALUE)
+            "name": "push_column_child",
+            "nulls": True,
+        },
+        {"name": "push_column_index", "nulls": True},  # THE COLUMN NUMBER
+        {  # THE COLUMN NAME FOR TABLES AND CUBES (WITH NO ESCAPING DOTS, NOT IN LEAF FORM)
+            "name": "push_column_name",
+            "nulls": True,
+        },
+        {"name": "pull", "nulls": True},  # A FUNCTION THAT WILL RETURN A VALUE
+        {  # A LIST OF MULTI-SQL REQUIRED TO GET THE VALUE FROM THE DATABASE
+            "name": "sql",
+        },
+        "type",  # THE NAME OF THE JSON DATA TYPE EXPECTED
+        {  # A LIST OF PATHS EACH INDICATING AN ARRAY
+            "name": "nested_path",
+            "type": list,
+            "default": ["."],
+        },
+        "column_alias",
+    ],
+    constraint={"and": [
+        {"in": {"type": ["0", "boolean", "number", "string", "object"]}},
+        {"gte": [{"length": "nested_path"}, 1]},
+    ]},
+)
 
 sort_to_sqlite_order = {
     -1: SQL_DESC,

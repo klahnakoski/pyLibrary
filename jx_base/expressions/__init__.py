@@ -1,5 +1,6 @@
+from mo_dots import set_default
+
 from jx_base.expressions._utils import (
-    extend,
     jx_expression,
     merge_types,
     operators,
@@ -24,6 +25,7 @@ from jx_base.expressions.basic_not_op import BasicNotOp
 from jx_base.expressions.basic_starts_with_op import BasicStartsWithOp
 from jx_base.expressions.basic_substring_op import BasicSubstringOp
 from jx_base.expressions.between_op import BetweenOp
+from jx_base.expressions.call_op import CallOp
 from jx_base.expressions.cardinality_op import CardinalityOp
 from jx_base.expressions.case_op import CaseOp
 from jx_base.expressions.coalesce_op import CoalesceOp
@@ -62,6 +64,7 @@ from jx_base.expressions.last_op import LastOp
 from jx_base.expressions.leaves_op import LeavesOp
 from jx_base.expressions.left_op import LeftOp
 from jx_base.expressions.length_op import LengthOp
+from jx_base.expressions.limit_op import LimitOp
 from jx_base.expressions.literal import Literal, ONE, ZERO, register_literal, is_literal
 from jx_base.expressions.lt_op import LtOp
 from jx_base.expressions.lte_op import LteOp
@@ -70,6 +73,7 @@ from jx_base.expressions.min_op import MinOp
 from jx_base.expressions.missing_op import MissingOp
 from jx_base.expressions.mod_op import ModOp
 from jx_base.expressions.mul_op import MulOp
+from jx_base.expressions.name_op import NameOp
 from jx_base.expressions.ne_op import NeOp
 from jx_base.expressions.nested_op import NestedOp
 from jx_base.expressions.not_left_op import NotLeftOp
@@ -81,6 +85,7 @@ from jx_base.expressions.or_op import OrOp
 from jx_base.expressions.outer_join_op import OuterJoinOp
 from jx_base.expressions.percentile_op import PercentileOp
 from jx_base.expressions.prefix_op import PrefixOp
+from jx_base.expressions.python_function import PythonFunction
 from jx_base.expressions.python_script import PythonScript
 from jx_base.expressions.query_op import QueryOp
 from jx_base.expressions.range_op import RangeOp
@@ -91,13 +96,16 @@ from jx_base.expressions.script_op import ScriptOp
 from jx_base.expressions.select_op import SelectOp
 from jx_base.expressions.split_op import SplitOp
 from jx_base.expressions.sql_eq_op import SqlEqOp
+from jx_base.expressions.sql_group_by_op import SqlGroupByOp
 from jx_base.expressions.sql_instr_op import SqlInstrOp
 from jx_base.expressions.sql_left_joins_op import SqlLeftJoinsOp
+from jx_base.expressions.sql_origins_op import SqlOriginsOp
 from jx_base.expressions.sql_script import SqlScript
 from jx_base.expressions.sql_select_all_from_op import SqlSelectAllFromOp
 from jx_base.expressions.sql_select_op import SqlSelectOp
 from jx_base.expressions.sql_substr_op import SqlSubstrOp
 from jx_base.expressions.sub_op import SubOp
+from jx_base.expressions.sum_op import SumOp
 from jx_base.expressions.suffix_op import SuffixOp
 from jx_base.expressions.to_array_op import ToArrayOp
 from jx_base.expressions.to_boolean_op import ToBooleanOp
@@ -109,7 +117,6 @@ from jx_base.expressions.union_op import UnionOp
 from jx_base.expressions.unix_op import UnixOp
 from jx_base.expressions.variable import Variable, IDENTITY
 from jx_base.expressions.when_op import WhenOp
-from mo_dots import set_default
 
 set_default(
     operators,
@@ -170,6 +177,7 @@ set_default(
         "mul": MulOp,
         "mult": MulOp,
         "multiply": MulOp,
+        "name": NameOp,
         "ne": NeOp,
         "neq": NeOp,
         "not": NotOp,
@@ -195,7 +203,7 @@ set_default(
         "suffix": SuffixOp,
         "sub": SubOp,
         "subtract": SubOp,
-        "sum": AddOp,
+        "sum": SumOp,
         "term": EqOp,
         "terms": InOp,
         "tuple": TupleOp,

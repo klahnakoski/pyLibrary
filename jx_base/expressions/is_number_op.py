@@ -8,16 +8,15 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.null_op import NULL
 from jx_base.expressions.literal import is_literal
-from mo_json.types import T_NUMBER_TYPES, T_NUMBER, python_type_to_jx_type
+from mo_json.types import JX_NUMBER_TYPES, JX_NUMBER, python_type_to_jx_type
 
 
 class IsNumberOp(Expression):
-    _data_type = T_NUMBER
+    _data_type = JX_NUMBER
 
     def __init__(self, *term):
         Expression.__init__(self, [term])
@@ -41,11 +40,11 @@ class IsNumberOp(Expression):
         if term is NULL:
             return NULL
         elif is_literal(term):
-            if python_type_to_jx_type(term.value.__class__) in T_NUMBER_TYPES:
+            if python_type_to_jx_type(term.value.__class__) in JX_NUMBER_TYPES:
                 return term
             else:
                 return NULL
-        elif term.type in T_NUMBER_TYPES:
+        elif term.type in JX_NUMBER_TYPES:
             return term
         else:
             return IsNumberOp(term)

@@ -13,7 +13,7 @@ from jx_base.expressions import CountOp as CountOp_, FALSE
 from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import JoinSQL, SQL_SUM, sql_iso
-from mo_json import T_INTEGER
+from mo_json import JX_INTEGER
 
 
 class CountOp(CountOp_):
@@ -24,7 +24,7 @@ class CountOp(CountOp_):
             m = term.missing(SQLang).invert(SQLang).partial_eval(SQLang)
             acc.append(sql_iso(m.to_sql(schema).frum))
         return SqlScript(
-            data_type=T_INTEGER,
+            data_type=JX_INTEGER,
             expr=JoinSQL(SQL_SUM, acc),
             frum=self,
             miss=FALSE,

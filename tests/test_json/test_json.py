@@ -19,7 +19,8 @@ from mo_json import json2value, value2json
 from mo_json.encoder import pretty_json, cPythonJSONEncoder, pypy_json_encode
 from mo_logs import Log
 from mo_times.dates import Date
-from pyLibrary import convert
+
+from tests.utils import hex2bytes
 
 
 class TestJSON(unittest.TestCase):
@@ -173,7 +174,7 @@ class TestJSON(unittest.TestCase):
             " 74 61 72 74 69 6E 67 20 68 74 74 70 20 73 65 72 76 65 72 20 6F 6E 20 31"
             " 32 37 2E 30 2E 30 2E 31 3A 38 34 34 33 22 7D 0A"
         )
-        json = (convert.hex2bytes("".join(hex.split(" ")))).decode("utf8")
+        json = hex2bytes("".join(hex.split(" "))).decode("utf8")
         self.assertRaises(Exception, json2value, *[json])
 
     def test_default_python(self):

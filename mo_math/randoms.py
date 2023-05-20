@@ -24,7 +24,7 @@ def string(length, alphabet=SIMPLE_ALPHABET):
 
 
 def hex(length):
-    return string(length, string.digits + "ABCDEF")
+    return string(length, "0123456789ABCDEF")
 
 
 def base64(length, extra="+/"):

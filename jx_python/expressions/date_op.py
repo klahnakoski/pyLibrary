@@ -7,14 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
 
-from mo_future import text
+
 from mo_times.dates import Date
 
 from jx_base.expressions import DateOp as DateOp_
+from jx_base.expressions.python_script import PythonScript
 
 
 class DateOp(DateOp_):
-    def to_python(self):
-        return text(Date(self.value).unix)
+    def to_python(self, loop_depth=0):
+        return PythonScript({}, loop_depth, str(Date(self.value).unix))

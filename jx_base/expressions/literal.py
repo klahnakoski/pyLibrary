@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import value2json
 from jx_base.expressions.expression import Expression
@@ -24,6 +23,7 @@ class Literal(Expression):
     """
     A literal JSON document
     """
+
     op = "literal"
 
     def __new__(cls, term):
@@ -33,6 +33,10 @@ class Literal(Expression):
             return TRUE
         if term is False:
             return FALSE
+        if term == 0:
+            return ZERO
+        if term == 1:
+            return ONE
         if is_text(term) and not term:
             return NULL
         if is_data(term) and term.get("date"):
@@ -41,8 +45,7 @@ class Literal(Expression):
         return object.__new__(cls)
 
     def __init__(self, value):
-
-        Expression.__init__(self, None)
+        Expression.__init__(self)
         self.simplified = True
         self._value = value
 
@@ -114,8 +117,10 @@ class Literal(Expression):
         return str(self.value)
 
 
-ZERO = Literal(0)
-ONE = Literal(1)
+ZERO = object.__new__(Literal)
+Literal.__init__(ZERO, 0)
+ONE = object.__new__(Literal)
+Literal.__init__(ONE, 1)
 
 literal_op_ids = tuple()
 

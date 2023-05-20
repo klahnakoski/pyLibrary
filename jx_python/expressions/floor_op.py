@@ -7,17 +7,16 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from jx_base.expressions import FloorOp as FloorOp_
+from jx_base.expressions.python_script import PythonScript
 
 
 class FloorOp(FloorOp_):
-    def to_python(self):
-        return (
-            "mo_math.floor("
-            + (self.lhs).to_python()
-            + ", "
-            + (self.rhs).to_python()
-            + ")"
+    def to_python(self, loop_depth=0):
+        return PythonScript(
+            {},
+            loop_depth,
+            ("mo_math.floor(" + (self.lhs).to_python(loop_depth) + ", " + (self.rhs).to_python(loop_depth) + ")"),
         )

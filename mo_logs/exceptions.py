@@ -7,17 +7,11 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
-from __future__ import absolute_import, division, unicode_literals
-
 import sys
 from datetime import datetime
 
 from mo_dots import Null, is_data, listwrap, unwraplist, to_data, dict_to_data
-from mo_dots.lists import is_many
-from mo_future import is_text, PY2
-from mo_future import text
+from mo_future import is_text
 from mo_logs.strings import CR, expand_template, indent
 
 FATAL = "FATAL"
@@ -27,10 +21,9 @@ ALARM = "ALARM"
 UNEXPECTED = "UNEXPECTED"
 INFO = "INFO"
 NOTE = "NOTE"
-
+TOO_DEEP = 50  # MAXIMUM DEPTH OF CAUSAL CHAIN
 
 class LogItem(object):
-
     def __init__(self, severity, template, params, timestamp):
         self.severity = severity
         self.template = template
@@ -42,10 +35,7 @@ class LogItem(object):
 
 
 class Except(Exception):
-
-    def __init__(
-        self, severity=ERROR, template=Null, params=Null, cause=Null, trace=Null, **_
-    ):
+    def __init__(self, severity=ERROR, template=Null, params=Null, cause=Null, trace=Null, **_):
         self.timestamp = datetime.utcnow()
         if severity == None:
             raise ValueError("expecting severity to not be None")
@@ -85,22 +75,14 @@ class Except(Exception):
             message = getattr(e, "message", None)
             if message:
                 output = Except(
-                    severity=ERROR,
-                    template=e.__class__.__name__ + ": " + text(message),
-                    trace=trace,
-                    cause=cause,
+                    severity=ERROR, template=f"{e.__class__.__name__}: {message}", trace=trace, cause=cause,
                 )
             else:
                 output = Except(
-                    severity=ERROR,
-                    template=e.__class__.__name__ + ": " + text(e),
-                    trace=trace,
-                    cause=cause,
+                    severity=ERROR, template=f"{e.__class__.__name__}: {e}", trace=trace, cause=cause,
                 )
 
-            trace = get_stacktrace(
-                stack_depth + 2
-            )  # +2 = to remove the caller, and it's call to this' Except.wrap()
+            trace = get_stacktrace(stack_depth + 2)  # +2 = to remove the caller, and it's call to this' Except.wrap()
             output.trace.extend(trace)
             return output
 
@@ -121,6 +103,9 @@ class Except(Exception):
         return False
 
     def __str__(self):
+        return self._desc_text(0)
+
+    def _desc_text(self, depth):
         output = self.severity + ": " + self.template + CR
         if self.params:
             try:
@@ -131,8 +116,10 @@ class Except(Exception):
         if self.trace:
             output += indent(format_trace(self.trace))
 
-        output += self.cause_text
+        output += self._cause_text(depth)
         return output
+
+    __repr__ = __str__
 
     @property
     def trace_text(self):
@@ -140,14 +127,23 @@ class Except(Exception):
 
     @property
     def cause_text(self):
+        return self._cause_text(0)
+
+    def _cause_text(self, depth):
         if not self.cause:
             return ""
+        if depth >= TOO_DEEP:
+            return "and caused by\n\t...\n"
+
         cause_strings = []
         for c in listwrap(self.cause):
             try:
-                cause_strings.append(text(c))
-            except Exception as e:
-                sys.stderr("Problem serializing cause" + text(c))
+                if isinstance(c, Except):
+                    cause_strings.append(c._desc_text(depth+1))
+                else:
+                    cause_strings.append(str(c))
+            except Exception as cause:
+                sys.stderr(f"Problem serializing cause {cause}")
 
         return "caused by\n\t" + "and caused by\n\t".join(cause_strings)
 
@@ -215,10 +211,7 @@ def _parse_traceback(tb):
 
 
 def format_trace(tbs, start=0):
-    return "".join(
-        expand_template('File "{{file}}", line {{line}}, in {{method}}\n', d)
-        for d in tbs[start::]
-    )
+    return "".join(expand_template('File "{{file}}", line {{line}}, in {{method}}\n', d) for d in tbs[start::])
 
 
 class Suppress(object):
@@ -263,10 +256,7 @@ class Explanation(object):
             from mo_logs import logger
 
             logger.error(
-                template="Failure in " + self.template,
-                default_params=self.more_params,
-                cause=exc_val,
-                stack_depth=1,
+                template="Failure in " + self.template, default_params=self.more_params, cause=exc_val, stack_depth=1,
             )
 
             return True

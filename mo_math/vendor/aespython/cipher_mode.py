@@ -9,9 +9,15 @@ Algorithm per NIST SP 800-38A http://csrc.nist.gov/publications/nistpubs/800-38a
 Copyright (c) 2010, Adam Newman http://www.caller9.com/
 Licensed under the MIT license http://www.opensource.org/licenses/mit-license.php
 """
-from mo_logs import Log
 
 __author__ = "Adam Newman"
+
+from mo_imports import delay_import
+
+logger = delay_import("mo_logs.Log")
+
+
+
 
 class CipherMode:
     """Perform Cipher operation on a block and retain IV information for next operation"""
@@ -25,7 +31,7 @@ class CipherMode:
 
     def set_iv(self, iv):
         if len(iv) != self._block_size:
-            Log.error("iv is wrong size")
+            logger.error("iv is wrong size")
         self._iv = iv
 
     def encrypt_block(self, plaintext):

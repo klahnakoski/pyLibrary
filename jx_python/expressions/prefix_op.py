@@ -7,17 +7,16 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from jx_base.expressions import PrefixOp as PrefixOp_
+from jx_base.expressions.python_script import PythonScript
 
 
 class PrefixOp(PrefixOp_):
-    def to_python(self):
-        return (
-            "("
-            + self.expr.to_python()
-            + ").startswith("
-            + (self.prefix).to_python()
-            + ")"
+    def to_python(self, loop_depth=0):
+        return PythonScript(
+            {},
+            loop_depth,
+            ("(" + self.expr.to_python(loop_depth) + ").startswith(" + (self.prefix).to_python(loop_depth) + ")"),
         )

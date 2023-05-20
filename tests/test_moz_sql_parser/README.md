@@ -10,17 +10,15 @@ For __Linux__:
 	cd mo-sql-parsing
 	pip install -r requirements.txt
 	pip install -r tests/requirements.txt
-	export PYTHONPATH=.	
+    export PYTHONPATH=.	
 	python -m unittest discover tests
 
  For __Windows__:
 
-	git clone https://github.com/klahnakoski/mo-sql-parsing.git
-	cd mo-sql-parsing
 	pip install -r requirements.txt
-	pip install -r tests\requirements.txt
-	set PYTHONPATH=.	
-	python.exe -m unittest discover tests
+    pip install -r tests\requirements.txt
+    set PYTHONPATH=.    
+    python.exe -m unittest discover tests
 
 ### Debugging Suggestions
 

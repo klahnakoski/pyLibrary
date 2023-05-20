@@ -8,47 +8,26 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 import operator
 
-from jx_base.language import is_expression, Language
-from jx_base.utils import listwrap
 from mo_dots import is_sequence, is_missing, is_data
-from mo_future import (
-    get_function_name,
-    is_text,
-    text,
-    utf8_json_encoder,
-)
+from mo_future import get_function_name, is_text, text, utf8_json_encoder
 from mo_imports import expect
-from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, STRING, scrub
-from mo_json.types import union_type
 from mo_logs import Except, Log
 from mo_math import is_number
 from mo_times import Date
+
+from jx_base.language import is_expression, Language
+from jx_base.utils import enlist
+from mo_json import BOOLEAN, INTEGER, IS_NULL, NUMBER, STRING, scrub
+from mo_json.types import union_type
 
 TYPE_CHECK = True  # A LITTLE FASTER IF False
 ALLOW_SCRIPTING = False
 EMPTY_DICT = {}
 
-Literal, TRUE, FALSE, NULL, TupleOp, Variable = expect(
-    "Literal", "TRUE", "FALSE", "NULL", "TupleOp", "Variable"
-)
-
-
-def extend(cls):
-    """
-    DECORATOR TO ADD METHODS TO CLASSES
-    :param cls: THE CLASS TO ADD THE METHOD TO
-    :return:
-    """
-
-    def extender(func):
-        setattr(cls, get_function_name(func), func)
-        return func
-
-    return extender
+Literal, TRUE, FALSE, NULL, TupleOp, Variable = expect("Literal", "TRUE", "FALSE", "NULL", "TupleOp", "Variable")
 
 
 def simplified(func):
@@ -66,9 +45,6 @@ def simplified(func):
 
 
 def jx_expression(expr, schema=None):
-    if expr == None:
-        return None
-
     # UPDATE THE VARIABLE WITH THEIR KNOWN TYPES
     output = _jx_expression(expr, language)
     if not schema:
@@ -119,9 +95,8 @@ def _jx_expression(json, lang):
                         # THIS LANGUAGE DOES NOT SUPPORT THIS OPERATOR, GOTO BASE LANGUAGE AND GET THE MACRO
                         class_ = language[full_op.get_id()]
 
-                    return class_.define({op: [sub_json] + listwrap(rhs)})
+                    return class_.define({op: [sub_json] + enlist(rhs)})
 
-        items = list(json.items())
         for op, term in items:
             # ONE OF THESE IS THE OPERATOR
             full_op = operators.get(op)
@@ -196,5 +171,5 @@ precedence = [
     "filter",
     "where",
     "edges",
-    "from"
+    "from",
 ]

@@ -34,7 +34,7 @@ from jx_sqlite.sqlite import (
     SQL_SUB,
 )
 from jx_sqlite.sqlite import sql_call, quote_column
-from mo_json import T_INTEGER
+from mo_json import JX_INTEGER
 
 
 class FindOp(FindOp_):
@@ -78,7 +78,7 @@ class FindOp(FindOp_):
                 SQL_END,
             ),
         )
-        return SqlScript(data_type=T_INTEGER, expr=sql, frum=self, schema=schema)
+        return SqlScript(data_type=JX_INTEGER, expr=sql, frum=self, schema=schema)
 
     def missing(self, lang):
         not_found = BasicEqOp([

@@ -47,7 +47,7 @@ from jx_sqlite.utils import (
     table_alias,
 )
 from mo_dots import split_field, startswith_field, relative_field, concat_field, join_field, unliteral_field
-from mo_json import jx_type_to_json_type, T_INTEGER
+from mo_json import jx_type_to_json_type, JX_INTEGER
 
 
 class GroupbyTable(EdgesTable):
@@ -162,7 +162,7 @@ class GroupbyTable(EdgesTable):
                 and is_op(select["aggregate"], CountOp)
             ):
                 sql = sql_count(SQL_ONE)
-                data_type = T_INTEGER
+                data_type = JX_INTEGER
             else:
                 sql = select["value"].partial_eval(SQLang).to_sql(schema)
                 data_type = sql.frum.type

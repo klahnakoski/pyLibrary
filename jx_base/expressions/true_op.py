@@ -8,16 +8,15 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.literal import Literal
 from mo_imports import export
-from mo_json.types import T_BOOLEAN
+from mo_json.types import JX_BOOLEAN
 
 
 class TrueOp(Literal):
-    _data_type = T_BOOLEAN
+    _data_type = JX_BOOLEAN
 
     def __new__(cls, *args, **kwargs):
         return object.__new__(cls)
@@ -52,7 +51,7 @@ class TrueOp(Literal):
 
     @property
     def type(self):
-        return T_BOOLEAN
+        return JX_BOOLEAN
 
     def __call__(self, row=None, rownum=None, rows=None):
         return True

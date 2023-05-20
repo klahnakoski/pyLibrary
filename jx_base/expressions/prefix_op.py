@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import jx_expression
 from jx_base.expressions.basic_starts_with_op import BasicStartsWithOp
@@ -23,12 +22,12 @@ from jx_base.expressions.when_op import WhenOp
 from jx_base.language import is_op
 from mo_dots import is_data, is_missing
 from mo_future import first
-from mo_json.types import T_BOOLEAN
+from mo_json.types import JX_BOOLEAN
 
 
 class PrefixOp(Expression):
     has_simple_form = True
-    _data_type = T_BOOLEAN
+    _data_type = JX_BOOLEAN
 
     def __init__(self, expr, prefix):
         Expression.__init__(self, expr, prefix)
@@ -65,7 +64,7 @@ class PrefixOp(Expression):
         expr = self.expr(row, rownum, rows)
         if is_missing(expr):
             return None
-        prefix=self.prefix(row, rownum, rows)
+        prefix = self.prefix(row, rownum, rows)
         if is_missing(prefix):
             return None
         return expr.startswith(prefix)

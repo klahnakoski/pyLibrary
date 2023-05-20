@@ -8,30 +8,32 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
-
-from jx_base.expressions.expression import Expression
+from jx_base.expressions.expression import Expression, MissingOp
+from jx_base.expressions.to_array_op import ToArrayOp
+from mo_json import array_of
 
 
 class GroupOp(Expression):
-    def __init__(self, *terms):
-        Expression.__init__(self, *terms)
-        self.frum, self.select = terms
-        if self.frum.type != T_ARRAY:
-            Log.error("expecting an array")
+    """
+    return a series of {"group": group, "part": list_of_rows_for_group}
+    """
+
+    def __init__(self, frum, group):
+        Expression.__init__(self, frum, group)
+        self.frum, self.group = ToArrayOp(frum), group
 
     def __data__(self):
-        return {"group": [self.frum.__data(), self.select.__data__()]}
+        return {"group": [self.frum.__data(), self.group.__data__()]}
 
     def vars(self):
-        return self.frum.vars() | self.select.vars()
+        return self.frum.vars() | self.group.vars()
 
     def map(self, map_):
-        return GroupOp(self.frum.map(map_), self.select.map(map_))
+        return GroupOp(self.frum.map(map_), self.group.map(map_))
 
     @property
     def type(self):
-        return self.frum.type
+        return array_of(self.frum.type)
 
     def missing(self, lang):
         return MissingOp(self)

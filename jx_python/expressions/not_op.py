@@ -7,12 +7,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import NotOp as NotOp_
-from jx_python.expressions.to_boolean_op import ToBooleanOp
+
+from jx_base.expressions import NotOp as NotOp_, PythonScript, ToBooleanOp, FALSE
+from jx_python.expressions import Python
+from mo_json import JX_BOOLEAN
 
 
 class NotOp(NotOp_):
-    def to_python(self):
-        return "not (" + ToBooleanOp(self.term).to_python() + ")"
+    def to_python(self, loop_depth=0):
+        term = ToBooleanOp(self.term).partial_eval(Python).to_python(loop_depth)
+        return PythonScript(term.locals, loop_depth, JX_BOOLEAN, "not (" + term.source + ")", self, FALSE)

@@ -7,16 +7,26 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from mo_imports import export
 
-from jx_base.expressions import OrOp as OrOp_
-from jx_python.expressions import _utils
-from jx_python.expressions.to_boolean_op import ToBooleanOp
+from jx_base.expressions import OrOp as OrOp_, FALSE, PythonScript, ToBooleanOp
+from jx_python.utils import merge_locals
+from mo_json import JX_BOOLEAN
 
 
 class OrOp(OrOp_):
-    def to_python(self):
-        return " or ".join("(" + ToBooleanOp(t).to_python() + ")" for t in self.terms)
+    def to_python(self, loop_depth=0):
+        locals, sources = zip(
+            *((p.locals, p.source) for t in self.terms for p in [ToBooleanOp(t).to_python(loop_depth)])
+        )
+        return PythonScript(
+            merge_locals(*locals),
+            loop_depth,
+            JX_BOOLEAN,
+            " or ".join(f"({source})" for source in sources),
+            self,
+            FALSE,
+        )
 
 
-_utils.OrOp = OrOp
+export("jx_python.expressions._utils", OrOp)

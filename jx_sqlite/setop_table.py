@@ -34,7 +34,7 @@ from jx_sqlite.utils import (
     UID,
     PARENT,
     table_alias,
-    untype_field, sort_to_sqlite_order,
+    sort_to_sqlite_order,
 )
 from mo_dots import (
     Data,
@@ -51,6 +51,7 @@ from mo_future import text
 from mo_json.types import jx_type_to_json_type, OBJECT
 from mo_logs import Log
 from mo_math import UNION
+from mo_sql.utils import untype_field
 from mo_times import Date
 
 

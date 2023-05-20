@@ -14,50 +14,50 @@ import platform
 import time
 from decimal import Decimal
 
+from tests.utils import list2tab
 
 try:
     import ujson
 except Exception:
     pass
 
-from pyLibrary import convert
 from mo_json import scrub, typed_encoder
 from mo_json.encoder import cPythonJSONEncoder, json_encoder
 from mo_logs import Log
-from mo_dots import wrap, unwrap
+from mo_dots import unwrap
 
 TARGET_RUNTIME = 10
 
 EMPTY = ({}, 200000)
 UNICODE = (json._default_decoder.decode('{"key1": "\u0105\u0107\u017c", "key2": "\u0105\u0107\u017c"}'), 200000)
-SIMPLE = ({
-    'key1': 0,
-    'key2': True,
-    'key3': 'value',
-    'key4': 3.141592654,
-    'key5': 'string',
-    "key6": Decimal("0.33"),
-    "key7": [[], []]
-}, 100000)
-NESTED = ({
-    'key1': 0,
-    'key2': SIMPLE[0].copy(),
-    'key3': 'value',
-    'key4': None,
-    'key5': SIMPLE[0].copy(),
-    'key6': ["test", u"test2", 99],
-    'key7': {1, 2.5, 3, 4},
-    u'key': u'\u0105\u0107\u017c'
-}, 25000)
+SIMPLE = (
+    {
+        "key1": 0,
+        "key2": True,
+        "key3": "value",
+        "key4": 3.141592654,
+        "key5": "string",
+        "key6": Decimal("0.33"),
+        "key7": [[], []],
+    },
+    100000,
+)
+NESTED = (
+    {
+        "key1": 0,
+        "key2": SIMPLE[0].copy(),
+        "key3": "value",
+        "key4": None,
+        "key5": SIMPLE[0].copy(),
+        "key6": ["test", u"test2", 99],
+        "key7": {1, 2.5, 3, 4},
+        u"key": u"\u0105\u0107\u017c",
+    },
+    25000,
+)
 HUGE = ([NESTED[0]] * 1000, 100)
 
-cases = [
-    'EMPTY',
-    'UNICODE',
-    'SIMPLE',
-    'NESTED',
-    'HUGE'
-]
+cases = ["EMPTY", "UNICODE", "SIMPLE", "NESTED", "HUGE"]
 
 
 def test_json(results, description, method, n):
@@ -69,7 +69,6 @@ def test_json(results, description, method, n):
             if "scrub" in description:
                 # SCRUB BEFORE SENDING TO C ROUTINE (NOT FAIR, BUT WE GET TO SEE HOW FAST ENCODING GOES)
                 data = unwrap(scrub(data))
-
 
             try:
                 example = method(data)
@@ -96,9 +95,12 @@ def test_json(results, description, method, n):
                 "num": n,
                 "count": count,
                 "length": len(output),
-                "result": example
+                "result": example,
             }
-            Log.note(u"using {{interpreter}}: {{description}} {{type}} x {{num}} x {{count}} = {{time}} result={{result}}", **summary)
+            Log.note(
+                u"using {{interpreter}}: {{description}} {{type}} x {{num}} x {{count}} = {{time}} result={{result}}",
+                **summary
+            )
             results.append(summary)
         except Exception as e:
             Log.warning(u"problem with encoding: {{message}}", {"message": e.message}, e)
@@ -137,7 +139,7 @@ def main(num):
 
         # test_json(results, "scrubbed ujson", ujson.dumps, num)  # THIS PLAIN CRASHES
 
-        Log.note(u"\n{{summary}}", summary=convert.list2tab(results))
+        Log.note(u"\n{{summary}}", summary=list2tab(results))
     finally:
         Log.stop()
 

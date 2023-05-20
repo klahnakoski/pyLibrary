@@ -7,11 +7,16 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from mo_future import extend
 
-from jx_base.expressions import FalseOp as FalseOp_
+from jx_base.expressions import FalseOp as FalseOp_, FALSE
+from jx_base.expressions.python_script import PythonScript
+from mo_json import JX_BOOLEAN
 
 
 class FalseOp(FalseOp_):
-    def to_python(self):
-        return "False"
+    def to_python(self, loop_depth=0):
+        return PythonScript({}, loop_depth, JX_BOOLEAN, "False", self, FALSE)
+
+
+extend(FalseOp_)(FalseOp.to_python)

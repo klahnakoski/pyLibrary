@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from mo_imports import export
 from mo_logs import Log
@@ -56,22 +55,16 @@ class WhenOp(Expression):
         return self.when.vars() | self.then.vars() | self.els_.vars()
 
     def map(self, map_):
-        return WhenOp(
-            self.when.map(map_),
-            then=self.then.map(map_),
-            **{"else": self.els_.map(map_)}
-        )
+        return WhenOp(self.when.map(map_), then=self.then.map(map_), **{"else": self.els_.map(map_)})
 
     def missing(self, lang):
         return OrOp(
-            AndOp(self.when, self.then.missing(lang)),
-            AndOp(NotOp(self.when), self.els_.missing(lang)),
+            AndOp(self.when, self.then.missing(lang)), AndOp(NotOp(self.when), self.els_.missing(lang)),
         ).partial_eval(lang)
 
     def invert(self, lang):
         return OrOp(
-            AndOp(self.when, self.then.invert(lang)),
-            AndOp(NotOp(self.when), self.els_.invert(lang)),
+            AndOp(self.when, self.then.invert(lang)), AndOp(NotOp(self.when), self.els_.invert(lang)),
         ).partial_eval(lang)
 
     def partial_eval(self, lang):

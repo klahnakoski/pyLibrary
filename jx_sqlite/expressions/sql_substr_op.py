@@ -14,7 +14,7 @@ from jx_sqlite.expressions._utils import check, SQLang, OrOp
 from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import sql_call
-from mo_json import T_TEXT
+from mo_json import JX_TEXT
 
 
 class SqlSubstrOp(SqlSubstrOp_):
@@ -28,7 +28,7 @@ class SqlSubstrOp(SqlSubstrOp_):
             length = self.length.partial_eval(SQLang).to_sql(schema)
             sql = sql_call("SUBSTR", value, start, length)
         return SqlScript(
-            data_type=T_TEXT,
+            data_type=JX_TEXT,
             expr=sql,
             frum=self,
             miss=OrOp([value.miss, start.miss]),

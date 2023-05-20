@@ -12,7 +12,7 @@ from __future__ import absolute_import, division, unicode_literals
 from jx_base.expressions import SqlInstrOp as SqlInstrOp_, OrOp
 from jx_sqlite.expressions._utils import check, SQLang, SqlScript
 from jx_sqlite.sqlite import sql_call
-from mo_json import T_INTEGER
+from mo_json import JX_INTEGER
 
 
 class SqlInstrOp(SqlInstrOp_):
@@ -22,7 +22,7 @@ class SqlInstrOp(SqlInstrOp_):
         find = self.find.to_sql(schema)
 
         return SqlScript(
-            data_type=T_INTEGER,
+            data_type=JX_INTEGER,
             expr=sql_call("INSTR", value.frum, find.frum),
             frum=self,
             miss=OrOp([self.value.missing(SQLang), self.find.missing(SQLang)]),

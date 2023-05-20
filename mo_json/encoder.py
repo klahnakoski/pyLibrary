@@ -7,8 +7,6 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
 import json
 import math
 import time
@@ -283,11 +281,7 @@ def pretty_json(value):
             try:
                 value = from_data(value)
                 items = sort_using_key(value.items(), lambda r: r[0])
-                values = [
-                    quote(k) + PRETTY_COLON + pretty_json(v)
-                    for k, v in items
-                    if v != None
-                ]
+                values = [quote(k) + PRETTY_COLON + pretty_json(v) for k, v in items if v != None]
                 if not values:
                     return "{}"
                 elif len(values) == 1:
@@ -301,25 +295,18 @@ def pretty_json(value):
 
                 if OR(not is_text(k) for k in value.keys()):
                     Log.error(
-                        "JSON must have string keys: {{keys}}:",
-                        keys=[k for k in value.keys()],
-                        cause=cause,
+                        "JSON must have string keys: {{keys}}:", keys=[k for k in value.keys()], cause=cause,
                     )
 
                 Log.error(
-                    "problem making dict pretty: keys={{keys}}:",
-                    keys=list(value.keys()),
-                    cause=cause,
+                    "problem making dict pretty: keys={{keys}}:", keys=list(value.keys()), cause=cause,
                 )
         elif value.__class__ in (binary_type, text):
             if is_binary(value):
                 value = value.decode("utf8")
             try:
                 if "\n" in value and value.strip():
-                    return pretty_json({
-                        "$concat": value.split("\n"),
-                        "separator": "\n",
-                    })
+                    return pretty_json({"$concat": value.split("\n"), "separator": "\n"})
                 else:
                     return quote(value)
             except Exception as cause:
@@ -327,8 +314,7 @@ def pretty_json(value):
 
                 try:
                     Log.note(
-                        "try explicit convert of string with length {{length}}",
-                        length=len(value),
+                        "try explicit convert of string with length {{length}}", length=len(value),
                     )
                     acc = [QUOTE]
                     for c in value:
@@ -348,9 +334,7 @@ def pretty_json(value):
                     return output
                 except BaseException as f:
                     Log.warning(
-                        "can not convert {{type}} to json",
-                        type=f.__class__.__name__,
-                        cause=f,
+                        "can not convert {{type}} to json", type=f.__class__.__name__, cause=f,
                     )
                     return "null"
         elif is_list(value):
@@ -358,9 +342,7 @@ def pretty_json(value):
                 return "[]"
 
             if ARRAY_MAX_COLUMNS == 1:
-                return (
-                    "[\n" + ",\n".join([indent(pretty_json(v)) for v in value]) + "\n]"
-                )
+                return "[\n" + ",\n".join([indent(pretty_json(v)) for v in value]) + "\n]"
 
             if len(value) == 1:
                 j = pretty_json(value[0])
@@ -368,27 +350,15 @@ def pretty_json(value):
 
             js = [pretty_json(v) for v in value]
             max_len = max(*[len(j) for j in js])
-            if (
-                len(js) < ARRAY_MIN_ITEMS
-                and max_len <= ARRAY_ITEM_MAX_LENGTH
-                and not any("\n" in j for j in js)
-            ):
+            if len(js) < ARRAY_MIN_ITEMS and max_len <= ARRAY_ITEM_MAX_LENGTH and not any("\n" in j for j in js):
                 # ALL TINY VALUES
                 num_columns = max(
-                    1,
-                    min(
-                        ARRAY_MAX_COLUMNS,
-                        int(floor((ARRAY_ROW_LENGTH + 2.0) / float(max_len + 2))),
-                    ),
+                    1, min(ARRAY_MAX_COLUMNS, int(floor((ARRAY_ROW_LENGTH + 2.0) / float(max_len + 2))),),
                 )  # +2 TO COMPENSATE FOR COMMAS
                 if len(js) <= num_columns:  # DO NOT ADD \n IF ONLY ONE ROW
                     return "[" + PRETTY_COMMA.join(js) + "]"
                 if num_columns == 1:  # DO NOT rjust IF THERE IS ONLY ONE COLUMN
-                    return (
-                        "[\n"
-                        + ",\n".join([indent(pretty_json(v)) for v in value])
-                        + "\n]"
-                    )
+                    return "[\n" + ",\n".join([indent(pretty_json(v)) for v in value]) + "\n]"
 
                 content = ",\n".join(
                     PRETTY_COMMA.join(j.rjust(max_len) for j in js[r : r + num_columns])
@@ -469,15 +439,10 @@ def problem_serializing(value, e=None):
         rep = None
 
     if rep == None:
-        Log.error(
-            "Problem turning value of type {{type}} to json", type=typename, cause=e
-        )
+        Log.error("Problem turning value of type {{type}} to json", type=typename, cause=e)
     else:
         Log.error(
-            "Problem turning value ({{value}}) of type {{type}} to json",
-            value=rep,
-            type=typename,
-            cause=e,
+            "Problem turning value ({{value}}) of type {{type}} to json", value=rep, type=typename, cause=e,
         )
 
 

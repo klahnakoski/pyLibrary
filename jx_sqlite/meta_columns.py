@@ -22,8 +22,6 @@ from jx_base.meta_columns import (
 from jx_base.models.nested_path import NestedPath
 from jx_base.models.schema import Schema
 from jx_python import jx
-from jx_sqlite.expressions._utils import sql_type_key_to_json_type
-from jx_sqlite.utils import untyped_column
 from mo_dots import (
     Data,
     Null,
@@ -39,8 +37,10 @@ from mo_future import sort_using_key
 from mo_json import STRUCT, IS_NULL
 from mo_json.typed_encoder import unnest_path, untyped
 from mo_logs import Log
+from mo_sql.utils import untyped_column, sql_type_key_to_json_type
 from mo_threads import Queue
 from mo_times.dates import Date
+from pyLibrary.meta import _FakeLock
 
 DEBUG = False
 singlton = None
@@ -120,13 +120,13 @@ class ColumnList(Table, Container):
                     name=cname,
                     json_type=coalesce(
                         sql_type_key_to_json_type.get(ctype),
-                        sqlite_type_to_json_type.get(dtype),
+                        sql_type_key_to_json_type.get(dtype),
                         IS_NULL,
                     ),
                     nested_path=full_nested_path,
                     es_type=dtype,
                     es_column=name,
-                    es_index=table_name,
+                    es_index=table.name,
                     multi=1,
                     last_updated=Date.now(),
                 ))

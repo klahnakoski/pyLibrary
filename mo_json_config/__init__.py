@@ -8,9 +8,8 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
-
 import os
+import re
 
 from mo_dots import (
     is_data,
@@ -24,21 +23,25 @@ from mo_dots import (
     listwrap,
     unwraplist,
     dict_to_data,
+    Data,
+    join_field,
 )
 from mo_files import File
 from mo_files.url import URL
 from mo_future import is_text
 from mo_future import text
 from mo_json import json2value
+from mo_logs import Except, logger
+
+from mo_json_config.configuration import Configuration
 from mo_json_config.convert import ini2value
-from mo_logs import Except, Log
 
 DEBUG = False
 
 
 def get_file(file):
     file = File(file)
-    return get("file://" + file.abspath)
+    return get("file://" + file.abs_path)
 
 
 def get(url):
@@ -47,7 +50,7 @@ def get(url):
     """
     url = text(url)
     if "://" not in url:
-        Log.error("{{url}} must have a prototcol (eg http://) declared", url=url)
+        logger.error("{{url}} must have a prototcol (eg http://) declared", url=url)
 
     base = URL("")
     if url.startswith("file://") and url[7] != "/":
@@ -56,14 +59,12 @@ def get(url):
         else:
             base = URL("file://" + os.getcwd().rstrip("/") + "/.")
 
-    phase1 = _replace_ref(
-        dict_to_data({"$ref": url}), base
-    )  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
+    phase1 = _replace_ref(dict_to_data({"$ref": url}), base)  # BLANK URL ONLY WORKS IF url IS ABSOLUTE
     try:
         phase2 = _replace_locals(phase1, [phase1])
         return to_data(phase2)
-    except Exception as e:
-        Log.error("problem replacing locals in\n{{phase1}}", phase1=phase1, cause=e)
+    except Exception as cause:
+        logger.error("problem replacing locals in\n{{phase1}}", phase1=phase1, cause=cause)
 
 
 def expand(doc, doc_url="param://", params=None):
@@ -79,7 +80,7 @@ def expand(doc, doc_url="param://", params=None):
     :return: EXPANDED JSON-SERIALIZABLE STRUCTURE
     """
     if "://" not in doc_url:
-        Log.error("{{url}} must have a prototcol (eg http://) declared", url=doc_url)
+        logger.error("{{url}} must have a prototcol (eg http://) declared", url=doc_url)
 
     url = URL(doc_url)
     url.query = set_default(url.query, params)
@@ -121,7 +122,7 @@ def _replace_ref(node, url):
 
             # FIND THE SCHEME AND LOAD IT
             if ref.scheme not in scheme_loaders:
-                raise Log.error("unknown protocol {{scheme}}", scheme=ref.scheme)
+                raise logger.error("unknown protocol {{scheme}}", scheme=ref.scheme)
             try:
                 new_value = scheme_loaders[ref.scheme](ref, url)
                 ref_found = True
@@ -133,9 +134,7 @@ def _replace_ref(node, url):
             if ref.fragment:
                 new_value = get_attr(new_value, ref.fragment)
 
-            DEBUG and Log.note(
-                "Replace {{ref}} with {{new_value}}", ref=ref, new_value=new_value
-            )
+            DEBUG and logger.note("Replace {{ref}} with {{new_value}}", ref=ref, new_value=new_value)
 
             if not output:
                 output = new_value
@@ -148,7 +147,7 @@ def _replace_ref(node, url):
             raise ref_error
         if ref_remain:
             output["$ref"] = unwraplist(ref_remain)
-        DEBUG and Log.note("Return {{output}}", output=output)
+        DEBUG and logger.note("Return {{output}}", output=output)
         return output
     elif is_list(node):
         output = [_replace_ref(n, url) for n in node]
@@ -169,7 +168,7 @@ def _replace_locals(node, doc_path):
                 ref = v
             elif k == "$concat":
                 if not is_sequence(v):
-                    Log.error("$concat expects an array of strings")
+                    logger.error("$concat expects an array of strings")
                 return coalesce(node.get("separator"), "").join(v)
             elif v == None:
                 continue
@@ -186,9 +185,8 @@ def _replace_locals(node, doc_path):
             for i, p in enumerate(frag):
                 if p != ".":
                     if i > len(doc_path):
-                        Log.error(
-                            "{{frag|quote}} reaches up past the root document",
-                            frag=frag,
+                        logger.error(
+                            "{{frag|quote}} reaches up past the root document", frag=frag,
                         )
                     new_value = get_attr(doc_path[i - 1], frag[i::])
                     break
@@ -245,11 +243,11 @@ def _get_file(ref, url):
     path = ref.path if os.sep != "\\" else ref.path[1::].replace("/", "\\")
 
     try:
-        DEBUG and Log.note("reading file {{path}}", path=path)
+        DEBUG and logger.note("reading file {{path}}", path=path)
         content = File(path).read()
     except Exception as e:
         content = None
-        Log.error("Could not read file {{filename}}", filename=path, cause=e)
+        logger.error("Could not read file {{filename}}", filename=path, cause=e)
 
     try:
         new_value = json2value(content, params=ref.query, flexible=True, leaves=True)
@@ -258,7 +256,7 @@ def _get_file(ref, url):
         try:
             new_value = ini2value(content)
         except Exception:
-            raise Log.error("Can not read {{file}}", file=path, cause=e)
+            raise logger.error("Can not read {{file}}", file=path, cause=e)
     new_value = _replace_ref(new_value, ref)
     return new_value
 
@@ -276,7 +274,7 @@ def _get_env(ref, url):
     ref = ref.host
     raw_value = os.environ.get(ref)
     if not raw_value:
-        Log.error("expecting environment variable with name {{env_var}}", env_var=ref)
+        logger.error("expecting environment variable with name {{env_var}}", env_var=ref)
 
     try:
         new_value = json2value(raw_value)
@@ -289,7 +287,7 @@ def _get_keyring(ref, url):
     try:
         import keyring
     except Exception:
-        Log.error("Missing keyring: `pip install keyring` to use this feature")
+        logger.error("Missing keyring: `pip install keyring` to use this feature")
 
     # GET PASSWORD FROM KEYRING
     service_name = ref.host
@@ -300,9 +298,8 @@ def _get_keyring(ref, url):
 
     raw_value = keyring.get_password(service_name, username)
     if not raw_value:
-        Log.error(
-            "expecting password in the keyring for service_name={{service_name}} and"
-            " username={{username}}",
+        logger.error(
+            "expecting password in the keyring for service_name={{service_name}} and username={{username}}",
             service_name=service_name,
             username=username,
         )
@@ -312,6 +309,48 @@ def _get_keyring(ref, url):
     except Exception as e:
         new_value = raw_value
     return new_value
+
+
+ssm_has_failed = False
+
+
+def _get_ssm(ref, url):
+    global ssm_has_failed
+
+    output = Data()
+
+    if ssm_has_failed:
+        return output
+    try:
+        import boto3
+    except Exception:
+        logger.error("Missing boto3: `pip install boto3` to use ssm://")
+    try:
+        ssm = boto3.client("ssm")
+        result = ssm.describe_parameters(MaxResults=10)
+        prefix = re.compile("^" + re.escape(ref.path.rstrip("/")) + "/|$")
+        while True:
+            for param in result["Parameters"]:
+                name = param["Name"]
+                found = prefix.match(name)
+                if not found:
+                    continue
+                tail = join_field(name[found.regs[0][1] :].split("/"))
+                detail = ssm.get_parameter(Name=name, WithDecryption=True)
+                output[tail] = detail["Parameter"]["Value"]
+
+            next_token = result.get("NextToken")
+            if not next_token:
+                break
+            result = ssm.describe_parameters(NextToken=next_token, MaxResults=10)
+    except Exception as cause:
+        ssm_has_failed = True
+        logger.warning("Could not get ssm parameters", cause=cause)
+        return output
+
+    if len(output) == 0:
+        logger.error("No ssm parameters found at {{path}}", path=ref.path)
+    return output
 
 
 def _get_param(ref, url):
@@ -328,4 +367,8 @@ scheme_loaders = {
     "env": _get_env,
     "param": _get_param,
     "keyring": _get_keyring,
+    "ssm": _get_ssm,
 }
+
+
+configuration = Configuration({})

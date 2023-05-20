@@ -13,7 +13,7 @@ from jx_base.expressions import BasicIndexOfOp as BasicIndexOfOp_, FALSE
 from jx_sqlite.expressions._utils import check, SqlScript
 from jx_sqlite.expressions.literal import Literal
 from jx_sqlite.sqlite import sql_call
-from mo_json.types import T_NUMBER
+from mo_json.types import JX_NUMBER
 from mo_sql import (
     SQL_CASE,
     SQL_ELSE,
@@ -27,7 +27,7 @@ from mo_sql import (
 
 
 class BasicIndexOfOp(BasicIndexOfOp_):
-    _data_type = T_NUMBER
+    _data_type = JX_NUMBER
 
     @check
     def to_sql(self, schema):

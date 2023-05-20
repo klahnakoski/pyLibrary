@@ -23,7 +23,7 @@ from jx_sqlite.sqlite import (
     ConcatSQL, sql_cast,
 )
 from jx_sqlite.sqlite import quote_value, sql_call
-from mo_json import T_TEXT, T_BOOLEAN, T_NUMBER_TYPES, split_field, base_type
+from mo_json import JX_TEXT, JX_BOOLEAN, JX_NUMBER_TYPES, split_field, base_type
 
 
 class ToTextOp(ToTextOp_):
@@ -31,11 +31,11 @@ class ToTextOp(ToTextOp_):
     def to_sql(self, schema):
         expr = self.term.to_sql(schema)
         type = base_type(expr.type)
-        if type == T_TEXT:
+        if type == JX_TEXT:
             return expr
-        elif type == T_BOOLEAN:
+        elif type == JX_BOOLEAN:
             return SqlScript(
-                data_type=T_TEXT,
+                data_type=JX_TEXT,
                 expr=ConcatSQL(
                     SQL_CASE,
                     SQL_WHEN,
@@ -49,9 +49,9 @@ class ToTextOp(ToTextOp_):
                 frum=self,
                 schema=schema,
             )
-        elif type in T_NUMBER_TYPES:
+        elif type in JX_NUMBER_TYPES:
             return SqlScript(
-                data_type=T_TEXT,
+                data_type=JX_TEXT,
                 expr=sql_call(
                     "RTRIM",
                     sql_call(
@@ -72,7 +72,7 @@ class ToTextOp(ToTextOp_):
             ]).partial_eval(SQLang).to_sql(schema)
         else:
             return SqlScript(
-                data_type=T_TEXT,
+                data_type=JX_TEXT,
                 expr=sql_cast(expr.frum, "TEXT"),
                 frum=self,
                 schema=schema,

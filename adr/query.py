@@ -18,7 +18,7 @@ from adr.errors import MissingDataError
 from adr.formatter import all_formatters
 from adr.util.req import requests_retry_session
 
-here = os.path.abspath(os.path.dirname(__file__))
+here = os.path.abs_path(os.path.dirname(__file__))
 
 
 def format_date(timestamp, interval="day"):

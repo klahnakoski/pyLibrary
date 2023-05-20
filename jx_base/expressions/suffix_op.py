@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 import re
 
@@ -25,13 +24,13 @@ from jx_base.language import is_op
 from mo_dots import coalesce
 from mo_dots import is_data, is_missing
 from mo_future import first
-from mo_json.types import T_BOOLEAN, STRING
+from mo_json.types import JX_BOOLEAN, STRING
 from mo_logs import Log
 
 
 class SuffixOp(Expression):
     has_simple_form = True
-    _data_type = T_BOOLEAN
+    _data_type = JX_BOOLEAN
 
     def __init__(self, expr, suffix):
         Expression.__init__(self, expr, suffix)
@@ -102,8 +101,5 @@ class SuffixOp(Expression):
         return CaseOp(
             WhenOp(self.expr.missing(lang), then=FALSE),
             WhenOp(self.suffix.missing(lang), then=TRUE),
-            RegExpOp(
-                self.expr,
-                Literal(".*" + re.escape(coalesce(self.suffix.value, ""))),
-            ),
+            RegExpOp(self.expr, Literal(".*" + re.escape(coalesce(self.suffix.value, ""))),),
         ).partial_eval(lang)

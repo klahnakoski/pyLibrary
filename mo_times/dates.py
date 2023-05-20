@@ -417,7 +417,7 @@ def unicode2Date(value, format=None):
 
     if format != None:
         try:
-            if format.endswith("%S.%f") and "." not in value:
+            if format.endswith(".%f") and "." not in value:
                 value += ".000"
             return _unix2Date(datetime2unix(datetime.strptime(value, format)))
         except Exception as e:
@@ -468,7 +468,6 @@ def unicode2Date(value, format=None):
         "%b%d%Y",
         "%B%d%",
         "%b%d%y",
-        "%Y%m%d%H%M%S%f",
         "%Y%m%d%H%M%S",
         "%Y%m%dT%H%M%S",
         "%d%m%Y%H%M%S",
@@ -477,6 +476,7 @@ def unicode2Date(value, format=None):
         "%d%b%y%H%M%S",
         "%d%B%Y%H%M%S",
         "%d%B%y%H%M%S"
+        "%Y%m%d%H%M%S%f",
     ]
     value = deformat(value)
     for f in deformats:

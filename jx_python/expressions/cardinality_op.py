@@ -7,14 +7,15 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from jx_base.expressions import CardinalityOp as CardinalityOp_
+from jx_base.expressions.python_script import PythonScript
 
 
 class CardinalityOp(CardinalityOp_):
-    def to_python(self):
+    def to_python(self, loop_depth=0):
         if not self.terms:
-            return "0"
+            return PythonScript({}, loop_depth, "0")
         else:
-            return "len(set(" + self.terms.to_python() + "))"
+            return PythonScript({}, loop_depth, "len(set(" + self.terms.to_python(loop_depth) + "))")

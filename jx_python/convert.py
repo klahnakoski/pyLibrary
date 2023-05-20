@@ -8,12 +8,12 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
-from mo_dots import unwraplist, dict_to_data
-from mo_future import text
-from mo_json import value2json
+from mo_dots import dict_to_data
 from mo_logs.strings import expand_template
+
+from jx_base.utils import delist
+from mo_json import value2json
 
 
 def list2cube(rows, column_names=None):
@@ -28,16 +28,13 @@ def list2cube(rows, column_names=None):
     data = {k: [] for k in keys}
     output = dict_to_data({
         "meta": {"format": "cube"},
-        "edges": [{
-            "name": "rownum",
-            "domain": {"type": "rownum", "min": 0, "max": len(rows), "interval": 1},
-        }],
+        "edges": [{"name": "rownum", "domain": {"type": "rownum", "min": 0, "max": len(rows), "interval": 1}}],
         "data": data,
     })
 
     for r in rows:
         for k in keys:
-            data[k].append(unwraplist(r[k]))
+            data[k].append(delist(r[k]))
 
     return output
 
@@ -51,7 +48,7 @@ def list2table(rows, column_names=None):
             columns |= set(r.keys())
         keys = list(columns)
 
-    output = [[unwraplist(r.get(k)) for k in keys] for r in rows]
+    output = [[delist(r.get(k)) for k in keys] for r in rows]
 
     return dict_to_data({"meta": {"format": "table"}, "header": keys, "data": output})
 
@@ -61,14 +58,9 @@ def table2csv(table_data):
     :param table_data: expecting a list of tuples
     :return: text in nice formatted csv
     """
-    text_data = [
-        tuple(value2json(vals, pretty=True) for vals in rows) for rows in table_data
-    ]
+    text_data = [tuple(value2json(vals, pretty=True) for vals in rows) for rows in table_data]
 
     col_widths = [max(len(t) for t in cols) for cols in zip(*text_data)]
-    template = ", ".join(
-        "{{" + text(i) + "|left_align(" + text(w) + ")}}"
-        for i, w in enumerate(col_widths)
-    )
+    template = ", ".join(f"{{{{{i}|left_align({w}))}}}}" for i, w in enumerate(col_widths))
     output = "\n".join(expand_template(template, d) for d in text_data)
     return output

@@ -30,12 +30,10 @@ class SqlLeftJoinsOp(_SqlLeftJoinsOp):
     def __init__(self, frum : Source, selects: Tuple[Dict[str, Expression]]):
         _SqlLeftJoinsOp.__init__(self, frum, selects)
 
+    def query(self, query):
+        print(container)
+
     def to_sql(self, schema):
-
-
-
-
-
         return SqlScript(
             data_type=self.type,
             expr=ConcatSQL(

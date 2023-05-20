@@ -13,7 +13,7 @@ from jx_base.expressions import BasicNotOp as BasicNotOp_, FALSE
 from jx_sqlite.expressions._utils import check, SQLang
 from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import sql_iso, SQL_NOT, ConcatSQL
-from mo_json.types import T_BOOLEAN
+from mo_json.types import JX_BOOLEAN
 
 
 class BasicNotOp(BasicNotOp_):
@@ -21,7 +21,7 @@ class BasicNotOp(BasicNotOp_):
     def to_sql(self, schema):
         term = self.term.partial_eval(SQLang).to_sql(schema)
         return SqlScript(
-            data_type=T_BOOLEAN,
+            data_type=JX_BOOLEAN,
             miss=FALSE,
             expr=ConcatSQL(SQL_NOT, sql_iso(term.frum)),
             frum=self,

@@ -69,23 +69,15 @@ RANGE = keyword("range")
 
 def window(expr, var_name, sort_column):
     bound_row = (
-        CURRENT_ROW("zero")
-        | (UNBOUNDED | int_num)("limit") + (PRECEDING | FOLLOWING)("direction")
+        CURRENT_ROW("zero") | (UNBOUNDED | int_num)("limit") + (PRECEDING | FOLLOWING)("direction")
     ) / _to_bound_call
     bound_expr = (
-        CURRENT_ROW("zero")
-        | (UNBOUNDED | expr)("limit") + (PRECEDING | FOLLOWING)("direction")
+        CURRENT_ROW("zero") | (UNBOUNDED | expr)("limit") + (PRECEDING | FOLLOWING)("direction")
     ) / _to_bound_call
-    between_row = (
-        BETWEEN + bound_row("min") + AND + bound_row("max")
-    ) / _to_between_call
-    between_expr = (
-        BETWEEN + bound_expr("min") + AND + bound_expr("max")
-    ) / _to_between_call
+    between_row = (BETWEEN + bound_row("min") + AND + bound_row("max")) / _to_between_call
+    between_expr = (BETWEEN + bound_expr("min") + AND + bound_expr("max")) / _to_between_call
 
-    row_clause = (ROWS.suppress() + (between_row | bound_row)) | (
-        RANGE.suppress() + (between_expr | bound_expr)
-    )
+    row_clause = (ROWS.suppress() + (between_row | bound_row)) | (RANGE.suppress() + (between_expr | bound_expr))
 
     over_clause = (
         LB
@@ -95,12 +87,7 @@ def window(expr, var_name, sort_column):
         + RB
     )
 
-    within = (
-        WITHIN_GROUP
-        + LB
-        + Optional(ORDER_BY + delimited_list(Group(sort_column))("orderby"))
-        + RB
-    )("within")
+    within = (WITHIN_GROUP + LB + Optional(ORDER_BY + delimited_list(Group(sort_column))("orderby")) + RB)("within")
     over = OVER + (over_clause | var_name)("over") / to_over
 
     window_clause = within + Optional(over) | over

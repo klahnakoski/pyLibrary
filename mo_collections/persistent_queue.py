@@ -62,14 +62,14 @@ class PersistentQueue(object):
             if lost:
                 Log.warning("queue file had {{num}} items lost",  num= lost)
 
-            DEBUG and Log.note("Persistent queue {{name}} found with {{num}} items", name=self.file.abspath, num=len(self))
+            DEBUG and Log.note("Persistent queue {{name}} found with {{num}} items", name=self.file.abs_path, num=len(self))
         else:
             self.db.status = Data(
                 start=0,
                 end=0
             )
             self.start = self.db.status.start
-            DEBUG and Log.note("New persistent queue {{name}}", name=self.file.abspath)
+            DEBUG and Log.note("New persistent queue {{name}}", name=self.file.abs_path)
 
     def _add_pending(self, delta):
         delta = to_data(delta)

@@ -8,9 +8,10 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
-from mo_imports import export
+from mo_logs import Log
+from mo_times import Date
+
 from jx_base.expressions.case_op import CaseOp
 from jx_base.expressions.coalesce_op import CoalesceOp
 from jx_base.expressions.expression import Expression
@@ -23,14 +24,12 @@ from jx_base.expressions.select_op import SelectOp
 from jx_base.expressions.true_op import TRUE
 from jx_base.expressions.when_op import WhenOp
 from jx_base.language import is_op
-from mo_future import text
-from mo_json.types import T_NUMBER, base_type, T_PRIMITIVE
-from mo_logs import Log
-from mo_times import Date
+from mo_imports import export
+from mo_json.types import JX_NUMBER, base_type
 
 
 class ToNumberOp(Expression):
-    _data_type = T_NUMBER
+    _data_type = JX_NUMBER
 
     def __init__(self, term):
         Expression.__init__(self, term)
@@ -60,29 +59,24 @@ class ToNumberOp(Expression):
                 return ONE
 
             v = term.value
-            if isinstance(v, (text, Date)):
+            if isinstance(v, (str, Date)):
                 return Literal(float(v))
             elif isinstance(v, (int, float)):
                 return term
             else:
                 Log.error("can not convert {{value|json}} to number", value=term.value)
-        elif base_type(term.type) == T_NUMBER:
+        elif base_type(term.type) == JX_NUMBER:
             return term
         elif is_op(term, CaseOp):  # REWRITING
             return CaseOp(
-                [WhenOp(t.when, then=ToNumberOp(t.then)) for t in term.whens[:-1]]
-                + [ToNumberOp(term.whens[-1])]
+                [WhenOp(t.when, then=ToNumberOp(t.then)) for t in term.whens[:-1]] + [ToNumberOp(term.whens[-1])]
             ).partial_eval(lang)
         elif is_op(term, WhenOp):  # REWRITING
-            return WhenOp(
-                term.when, then=ToNumberOp(term.then), **{"else": ToNumberOp(term.els_)}
-            ).partial_eval(lang)
+            return WhenOp(term.when, then=ToNumberOp(term.then), **{"else": ToNumberOp(term.els_)}).partial_eval(lang)
         elif is_op(term, CoalesceOp):
             return CoalesceOp(*(ToNumberOp(t) for t in term.terms))
         elif is_op(term, SelectOp):
-            return CoalesceOp([
-                ToNumberOp(s["value"]).partial_eval(lang) for s in term.terms
-            ])
+            return CoalesceOp([ToNumberOp(s["value"]).partial_eval(lang) for s in term.terms])
         return ToNumberOp(term)
 
 

@@ -35,17 +35,18 @@ from jx_sqlite.sqlite import (
     SQL_COMMA,
 )
 from jx_sqlite.sqlite import quote_column, sql_alias
-from jx_sqlite.utils import GUID, sql_aggs, untyped_column
+from jx_sqlite.utils import GUID, sql_aggs
 from mo_dots import (
     Data,
     coalesce,
     concat_field,
     relative_field,
     unwraplist,
-    list_to_data)
+    list_to_data, )
 from mo_future import text
 from mo_json import STRING, STRUCT, to_jx_type
 from mo_logs import Log
+from mo_sql.utils import untyped_column
 from mo_threads import register_thread
 
 
@@ -113,7 +114,7 @@ class QueryTable(GroupbyTable):
             {c: v for c, v in zip(column_names, r)} for r in result.data
         ])
 
-    def query(self, query: Expression, group_by):
+    def query(self, query: Expression):
         if isinstance(query, Variable):
             column = self.schema.column(query.var)
             return SelectOp(self, *[{"name": query.var, "value": Variable(c.es_column, to_jx_type(c.json_type))} for c in column])

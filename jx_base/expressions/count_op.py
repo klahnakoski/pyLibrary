@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.literal import ZERO
@@ -16,12 +15,12 @@ from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.true_op import TrueOp
 from jx_base.expressions.tuple_op import TupleOp
 from mo_dots import is_many
-from mo_json.types import T_INTEGER
+from mo_json.types import JX_INTEGER
 
 
 class CountOp(Expression):
     has_simple_form = False
-    _data_type = T_INTEGER
+    _data_type = JX_INTEGER
 
     def __init__(self, terms, default=ZERO, **clauses):
         Expression.__init__(self, terms)

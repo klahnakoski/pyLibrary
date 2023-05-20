@@ -15,7 +15,7 @@ from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import ConcatSQL, SQL_IS_NULL, SQL_NOT, sql_call, SQL_OR, sql_iso, SQL_EQ, TextSQL, \
     SQL_EMPTY_STRING
-from mo_json.types import T_BOOLEAN, T_TEXT
+from mo_json.types import JX_BOOLEAN, JX_TEXT
 
 
 class MissingOp(MissingOp_):
@@ -24,9 +24,9 @@ class MissingOp(MissingOp_):
         sql = self.expr.partial_eval(SQLang).to_sql(schema)
 
         if is_op(sql.miss, MissingOp):
-            if sql.type == T_TEXT:
+            if sql.type == JX_TEXT:
                 return SqlScript(
-                    data_type=T_BOOLEAN,
+                    data_type=JX_BOOLEAN,
                     miss=FALSE,
                     expr=sql_iso(
                         sql.frum,
@@ -41,7 +41,7 @@ class MissingOp(MissingOp_):
                 )
 
             return SqlScript(
-                data_type=T_BOOLEAN,
+                data_type=JX_BOOLEAN,
                 miss=FALSE,
                 expr=ConcatSQL(sql.frum, SQL_IS_NULL),
                 frum=self,
@@ -49,4 +49,4 @@ class MissingOp(MissingOp_):
             )
 
         expr = sql.miss.to_sql(schema)
-        return SqlScript(data_type=T_BOOLEAN, miss=FALSE, expr=expr, frum=sql.miss, schema=schema)
+        return SqlScript(data_type=JX_BOOLEAN, miss=FALSE, expr=expr, frum=sql.miss, schema=schema)

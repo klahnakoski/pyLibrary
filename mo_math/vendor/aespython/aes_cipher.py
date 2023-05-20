@@ -16,9 +16,14 @@ Copyright (c) 2010, Adam Newman http://www.caller9.com/
                     Demur Rumed https://github.com/serprex
 Licensed under the MIT license http://www.opensource.org/licenses/mit-license.php
 """
-from mo_logs import Log
+
 
 __author__ = "Adam Newman"
+
+from mo_imports import delay_import
+
+logger = delay_import("mo_logs.Log")
+
 
 # Normally use relative import. In test mode use local import.
 try:
@@ -110,7 +115,7 @@ class AESCipher:
     def decipher_block (self, state):
         """Perform AES block decipher on input"""
         if len(state) != 16:
-            Log.error(u"Expecting block of 16")
+            logger.error(u"Expecting block of 16")
 
         self._add_round_key(state, self._Nr)
 

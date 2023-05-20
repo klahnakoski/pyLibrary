@@ -7,9 +7,6 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
-
-import re
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
@@ -26,6 +23,10 @@ from mo_dots import (
     split_field,
     concat_field,
 )
+from mo_logs import Log
+from mo_logs.strings import quote
+from mo_times import Date, Duration
+
 from mo_future import (
     binary_type,
     generator_types,
@@ -56,9 +57,8 @@ from mo_json.encoder import (
     json_encoder,
     problem_serializing,
 )
-from mo_logs import Log
-from mo_logs.strings import quote
-from mo_times import Date, Duration
+from mo_json.typed_object import TypedObject
+from mo_json.types import BOOLEAN_KEY, NUMBER_KEY, INTEGER_KEY, STRING_KEY, ARRAY_KEY, EXISTS_KEY, IS_TYPE_KEY
 
 
 def encode_property(name):
@@ -74,16 +74,10 @@ def untype_path(encoded):
         remainder = encoded.lstrip(".")
         back = len(encoded) - len(remainder) - 1
         return ("." * back) + join_field(
-            decode_property(c)
-            for c in split_field(remainder)
-            if not IS_TYPE_KEY.match(c)
+            decode_property(c) for c in split_field(remainder) if not IS_TYPE_KEY.match(c)
         )
     else:
-        return join_field(
-            decode_property(c)
-            for c in split_field(encoded)
-            if not IS_TYPE_KEY.match(c)
-        )
+        return join_field(decode_property(c) for c in split_field(encoded) if not IS_TYPE_KEY.match(c))
 
 
 def unnest_path(encoded):
@@ -101,8 +95,7 @@ def unnest_path(encoded):
             return "."
 
     return join_field(
-        [decode_property(c) for c in path[:-1] if not IS_TYPE_KEY.match(c)]
-        + [decode_property(path[-1])]
+        [decode_property(c) for c in path[:-1] if not IS_TYPE_KEY.match(c)] + [decode_property(path[-1])]
     )
 
 
@@ -113,32 +106,25 @@ def get_nested_path(typed_path):
     nested_path = (parent,)
     for i, p in enumerate(path[:-1]):
         if p == ARRAY_KEY:
-            step = concat_field(parent, join_field(path[0 : i + 1]))
+            step = concat_field(parent, join_field(path[0: i + 1]))
             nested_path = (step,) + nested_path
     return nested_path
 
 
-def untyped(value):
-    return _untype_value(value)
+def detype(value):
+    return _detype_value(value)
 
 
-def _untype_list(value):
+def _detype_list(value):
     if any(is_data(v) for v in value):
         # MAY BE MORE TYPED OBJECTS IN THIS LIST
-        output = [_untype_value(v) for v in value]
+        return [_detype_value(v) for v in value]
     else:
         # LIST OF PRIMITIVE VALUES
-        output = value
-
-    if len(output) == 0:
-        return None
-    elif len(output) == 1:
-        return output[0]
-    else:
-        return output
+        return value
 
 
-def _untype_dict(value):
+def _detype_dict(value):
     output = {}
 
     for k, v in value.items():
@@ -146,32 +132,34 @@ def _untype_dict(value):
             if k == EXISTS_KEY:
                 continue
             elif k == ARRAY_KEY:
-                return _untype_list(v)
+                return _detype_list(v)
             else:
                 return v
         else:
-            new_v = _untype_value(v)
+            new_v = _detype_value(v)
             if new_v is not None:
                 output[decode_property(k)] = new_v
     return output
 
 
-def _untype_value(value):
+def _detype_value(value):
     _type = _get(value, CLASS)
-    if _type is Data:
-        return _untype_dict(_get(value, SLOT))
+    if _type is TypedObject:
+        return value._boxed_value
+    elif _type is Data:
+        return _detype_dict(_get(value, SLOT))
     elif _type is dict:
-        return _untype_dict(value)
+        return _detype_dict(value)
     elif _type is FlatList:
-        return _untype_list(value.list)
+        return _detype_list(value.list)
     elif _type is list:
-        return _untype_list(value)
+        return _detype_list(value)
     elif _type is NullType:
         return None
     elif _type is DataObject:
-        return _untype_value(_get(value, SLOT))
+        return _detype_value(_get(value, SLOT))
     elif _type in generator_types:
-        return _untype_list(value)
+        return _detype_list(value)
     else:
         return value
 
@@ -200,18 +188,14 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
             if value_json_type == column_json_type:
                 pass  # ok
             elif value_json_type == ARRAY and all(
-                    python_type_to_jx_type[v.__class__] == column_json_type
-                    for v in value
-                    if v != None
+                    python_type_to_jx_type[v.__class__] == column_json_type for v in value if v != None
             ):
                 pass  # empty arrays can be anything
             else:
                 from mo_logs import Log
 
                 Log.error(
-                    "Can not store {{value}} in {{column|quote}}",
-                    value=value,
-                    column=sub_schema.name,
+                    "Can not store {{value}} in {{column|quote}}", value=value, column=sub_schema.name,
                 )
 
             sub_schema = {json_type_to_inserter_type[value_json_type]: sub_schema}
@@ -251,11 +235,7 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
                     append(buffer, QUOTED_ARRAY_KEY)
                     append(buffer, "[")
                     _dict2json(
-                        value,
-                        sub_schema[ARRAY_KEY],
-                        path + [ARRAY_KEY],
-                        net_new_properties,
-                        buffer,
+                        value, sub_schema[ARRAY_KEY], path + [ARRAY_KEY], net_new_properties, buffer,
                     )
                     append(buffer, "]" + COMMA)
                     append(buffer, QUOTED_EXISTS_KEY)
@@ -329,26 +309,18 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
                 append(buffer, "{")
                 append(buffer, QUOTED_EXISTS_KEY)
                 append(buffer, "0}")
-            elif any(
-                v.__class__ in (Data, dict, set, list, tuple, FlatList) for v in value
-            ):
+            elif any(v.__class__ in (Data, dict, set, list, tuple, FlatList) for v in value):
                 if len(value) == 1:
                     if ARRAY_KEY in sub_schema:
                         append(buffer, "{")
                         append(buffer, QUOTED_ARRAY_KEY)
                         _list2json(
-                            value,
-                            sub_schema[ARRAY_KEY],
-                            path + [ARRAY_KEY],
-                            net_new_properties,
-                            buffer,
+                            value, sub_schema[ARRAY_KEY], path + [ARRAY_KEY], net_new_properties, buffer,
                         )
                         append(buffer, "}")
                     else:
                         # NO NEED TO NEST, SO DO NOT DO IT
-                        typed_encode(
-                            value[0], sub_schema, path, net_new_properties, buffer
-                        )
+                        typed_encode(value[0], sub_schema, path, net_new_properties, buffer)
                 else:
                     if ARRAY_KEY not in sub_schema:
                         sub_schema[ARRAY_KEY] = {}
@@ -356,30 +328,20 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
                     append(buffer, "{")
                     append(buffer, QUOTED_ARRAY_KEY)
                     _list2json(
-                        value,
-                        sub_schema[ARRAY_KEY],
-                        path + [ARRAY_KEY],
-                        net_new_properties,
-                        buffer,
+                        value, sub_schema[ARRAY_KEY], path + [ARRAY_KEY], net_new_properties, buffer,
                     )
                     append(buffer, "}")
             else:
                 # ALLOW PRIMITIVE MULTIVALUES
                 value = [v for v in value if v != None]
-                types = list(set(
-                    python_type_to_jx_type_key[v.__class__] for v in value
-                ))
+                types = list(set(python_type_to_jx_type_key[v.__class__] for v in value))
                 if len(types) == 0:  # HANDLE LISTS WITH Nones IN THEM
                     append(buffer, "{")
                     append(buffer, QUOTED_ARRAY_KEY)
                     append(buffer, "[]}")
                 elif len(types) > 1:
                     _list2json(
-                        value,
-                        sub_schema,
-                        path + [ARRAY_KEY],
-                        net_new_properties,
-                        buffer,
+                        value, sub_schema, path + [ARRAY_KEY], net_new_properties, buffer,
                     )
                 else:
                     element_type = types[0]
@@ -390,11 +352,7 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
                     append(buffer, quote(element_type))
                     append(buffer, COLON)
                     _multivalue2json(
-                        value,
-                        sub_schema[element_type],
-                        path + [element_type],
-                        net_new_properties,
-                        buffer,
+                        value, sub_schema[element_type], path + [element_type], net_new_properties, buffer,
                     )
                     append(buffer, "}")
         elif _type is date:
@@ -449,11 +407,7 @@ def typed_encode(value, sub_schema, path, net_new_properties, buffer):
             append(buffer, "{")
             append(buffer, QUOTED_ARRAY_KEY)
             _iter2json(
-                value,
-                sub_schema[ARRAY_KEY],
-                path + [ARRAY_KEY],
-                net_new_properties,
-                buffer,
+                value, sub_schema[ARRAY_KEY], path + [ARRAY_KEY], net_new_properties, buffer,
             )
             append(buffer, "}")
         else:
@@ -536,14 +490,6 @@ def _dict2json(value, sub_schema, path, net_new_properties, buffer):
         append(buffer, QUOTED_EXISTS_KEY)
         append(buffer, "1}")
 
-
-IS_TYPE_KEY = re.compile(r"^~[bintdsaje]~$")
-BOOLEAN_KEY = "~b~"
-NUMBER_KEY = "~n~"
-INTEGER_KEY = "~i~"
-STRING_KEY = "~s~"
-ARRAY_KEY = "~N~"
-EXISTS_KEY = "~e~"
 
 append = UnicodeBuilder.append
 

@@ -7,12 +7,16 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import ToBooleanOp as ToBooleanOp_
+
+from jx_base.expressions import ToBooleanOp as ToBooleanOp_, FALSE, PythonScript
 from jx_python.expressions._utils import with_var
+from mo_json import JX_BOOLEAN
 
 
 class ToBooleanOp(ToBooleanOp_):
-    def to_python(self):
-        return with_var("f", self.term.to_python(), "bool(f)",)
+    def to_python(self, loop_depth=0):
+        term = self.term.to_python(loop_depth)
+        if term.type == JX_BOOLEAN:
+            return term
+        return PythonScript(term.locals, loop_depth, JX_BOOLEAN, with_var("f", term.source, "bool(f)"), self, FALSE)

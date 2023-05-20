@@ -7,15 +7,18 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from jx_base.expressions import CountOp as CountOp_
+from jx_base.expressions.python_script import PythonScript
+from jx_python.expressions import Python
+from mo_json import JX_INTEGER
 
 
 class CountOp(CountOp_):
-    def to_python(self):
-        return (
-            "sum(((0 if v==None else 1) for v in "
-            + self.terms.to_python()
-            + "), 0)"
+    def to_python(self, loop_depth=0):
+        terms = self.terms.partial_eval(Python).to_python(loop_depth + 1)
+
+        return PythonScript(
+            terms.locals, loop_depth, JX_INTEGER, f"sum(((0 if v==None else 1) for v in {terms.source}), 0)", self
         )

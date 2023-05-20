@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import jx_expression
 from jx_base.expressions.add_op import AddOp
@@ -26,12 +25,12 @@ from jx_base.expressions.variable import Variable
 from jx_base.expressions.when_op import WhenOp
 from jx_base.language import is_op
 from mo_dots import is_data, is_sequence, to_data, coalesce
-from mo_json.types import T_TEXT
+from mo_json.types import JX_TEXT
 from mo_logs import Log
 
 
 class BetweenOp(Expression):
-    _data_type = T_TEXT
+    _data_type = JX_TEXT
 
     def __init__(self, *value, prefix, suffix, default=NULL, start=NULL):
         Expression.__init__(self, [])
@@ -68,24 +67,12 @@ class BetweenOp(Expression):
                     start=jx_expression(expr.start),
                 )
             else:
-                Log.error(
-                    "`between` parameters are expected to be in {var: [prefix, suffix]}"
-                    " form"
-                )
+                Log.error("`between` parameters are expected to be in {var: [prefix, suffix]} form")
         else:
-            Log.error(
-                "`between` parameters are expected to be in {var: [prefix, suffix]}"
-                " form"
-            )
+            Log.error("`between` parameters are expected to be in {var: [prefix, suffix]} form")
 
     def vars(self):
-        return (
-            self.value.vars()
-            | self.prefix.vars()
-            | self.suffix.vars()
-            | self.default.vars()
-            | self.start.vars()
-        )
+        return self.value.vars() | self.prefix.vars() | self.suffix.vars() | self.default.vars() | self.start.vars()
 
     def map(self, map_):
         return BetweenOp(
@@ -97,21 +84,10 @@ class BetweenOp(Expression):
         )
 
     def __data__(self):
-        if (
-            is_op(self.value, Variable)
-            and is_literal(self.prefix)
-            and is_literal(self.suffix)
-        ):
-            output = to_data({"between": {self.value.var: [
-                self.prefix.value,
-                self.suffix.value,
-            ]}})
+        if is_op(self.value, Variable) and is_literal(self.prefix) and is_literal(self.suffix):
+            output = to_data({"between": {self.value.var: [self.prefix.value, self.suffix.value]}})
         else:
-            output = to_data({"between": [
-                self.value.__data__(),
-                self.prefix.__data__(),
-                self.suffix.__data__(),
-            ]})
+            output = to_data({"between": [self.value.__data__(), self.prefix.__data__(), self.suffix.__data__()]})
         if self.start is not NULL:
             output.start = self.start.__data__()
         if self.default is not NULL:
@@ -143,8 +119,6 @@ class BetweenOp(Expression):
         start_index = AddOp(start_index, len_prefix).partial_eval(lang)
         substring = BasicSubstringOp(value, start_index, end_index).partial_eval(lang)
 
-        between = WhenOp(
-            end_index.missing(lang), then=self.default, **{"else": substring}
-        ).partial_eval(lang)
+        between = WhenOp(end_index.missing(lang), then=self.default, **{"else": substring}).partial_eval(lang)
 
         return between

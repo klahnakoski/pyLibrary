@@ -7,9 +7,11 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from mo_dots import split_field
+
+from jx_base.expressions.python_script import PythonScript
 from mo_json import json2value
 from mo_logs import strings
 
@@ -18,12 +20,12 @@ from jx_python.expressions.to_integer_op import ToIntegerOp
 
 
 class RowsOp(RowsOp_):
-    def to_python(self):
-        agg = "rows[rownum+" + (ToIntegerOp(self.offset)).to_python() + "]"
+    def to_python(self, loop_depth=0):
+        agg = "rows[rownum+" + (ToIntegerOp(self.offset)).to_python(loop_depth) + "]"
         path = split_field(json2value(self.var.json))
         if not path:
-            return agg
+            return PythonScript({}, loop_depth, agg)
 
         for p in path[:-1]:
             agg = agg + ".get(" + strings.quote(p) + ", EMPTY_DICT)"
-        return agg + ".get(" + strings.quote(path[-1]) + ")"
+        return PythonScript({"EMPTY_DICT": {}}, loop_depth, agg + ".get(" + strings.quote(path[-1]) + ")",)

@@ -108,3 +108,18 @@ class TestDate(FuzzyTestCase):
     def test_duration_hashable(self):
         a = {Duration("hour"): "hour"}
         self.assertEqual(a[Duration("60minute")], "hour")
+
+    def test_int(self):
+        now = Date.now()
+        self.assertEqual(int(now), int(now.unix))
+
+        dur = Duration(12.45)
+        self.assertEqual(int(dur), 12)
+
+        dur = Duration(seconds=12.45)
+        self.assertEqual(int(dur), 12)
+
+    def test_date(self):
+        example = "2023-03-25 17:04:01"
+        result = Date(example)
+        self.assertEqual(result.format(), example)

@@ -28,12 +28,12 @@ from mo_json import (
     NUMBER,
     OBJECT,
     STRING,
-    T_NUMBER,
-    T_BOOLEAN,
-    T_INTEGER,
-    T_TEXT,
-    T_TIME,
-    T_INTERVAL,
+    JX_NUMBER,
+    JX_BOOLEAN,
+    JX_INTEGER,
+    JX_TEXT,
+    JX_TIME,
+    JX_INTERVAL,
 )
 from mo_kwargs import override
 from mo_logs.exceptions import ERROR, Except, get_stacktrace, format_trace
@@ -125,7 +125,7 @@ class Sqlite(DB):
         else:
             file = File(filename)
             file.parent.create()
-            self.filename = file.abspath
+            self.filename = file.abs_path
             if known_databases.get(self.filename):
                 Log.error(
                     "Not allowed to create more than one Sqlite instance for {{file}}",
@@ -311,7 +311,7 @@ class Sqlite(DB):
         full_path = (
             File
             .new_instance(library_loc, "vendor/sqlite/libsqlitefunctions.so")
-            .abspath
+            .abs_path
         )
         try:
             trace = get_stacktrace(0)[0]
@@ -325,7 +325,7 @@ class Sqlite(DB):
                         trace["file"], "../../vendor/sqlite/libsqlitefunctions"
                     )
 
-                full_path = file.abspath
+                full_path = file.abs_path
                 self.db.enable_load_extension(True)
                 self.db.execute(text(
                     SQL_SELECT + "load_extension" + sql_iso(quote_value(full_path))
@@ -833,10 +833,10 @@ json_type_to_sqlite_type = {
     STRING: "TEXT",
     OBJECT: "TEXT",
     ARRAY: "TEXT",
-    T_BOOLEAN: "TINYINT",
-    T_INTEGER: "INTEGER",
-    T_NUMBER: "REAL",
-    T_TIME: "REAL",
-    T_INTERVAL: "REAL",
-    T_TEXT: "TEXT",
+    JX_BOOLEAN: "TINYINT",
+    JX_INTEGER: "INTEGER",
+    JX_NUMBER: "REAL",
+    JX_TIME: "REAL",
+    JX_INTERVAL: "REAL",
+    JX_TEXT: "TEXT",
 }

@@ -19,7 +19,7 @@ from jx_sqlite.expressions.sql_eq_op import SqlEqOp
 from jx_sqlite.expressions.sql_instr_op import SqlInstrOp
 from jx_sqlite.sqlite import SQL, ConcatSQL, SQL_LIKE, SQL_ESCAPE, SQL_ONE
 from jx_sqlite.sqlite import quote_value
-from mo_json.types import T_BOOLEAN
+from mo_json.types import JX_BOOLEAN
 
 
 class BasicStartsWithOp(BasicStartsWithOp_):
@@ -38,7 +38,7 @@ class BasicStartsWithOp(BasicStartsWithOp_):
             else:
                 sql = ConcatSQL(value, SQL_LIKE, quote_value(prefix + "%"))
             return SqlScript(
-                data_type=T_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
+                data_type=JX_BOOLEAN, expr=sql, frum=self, miss=FALSE, schema=schema
             )
         else:
             return (

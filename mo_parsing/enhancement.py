@@ -275,7 +275,7 @@ class Many(ParseEnhancement):
                             )
                 result = self.expr._parse(string, index, do_actions)
                 end = result.end
-                if result:
+                if result.end - result.start:
                     acc.append(result)
                     failures.extend(result.failures)
                     count += 1
@@ -498,7 +498,7 @@ class SkipTo(ParseEnhancement):
         if self.parser_config.include:
             return "*", f"(.*?{pattern})"
         else:
-            return "+", f"(.*?){pattern}"
+            return "+", f"(.*?)(?={pattern})"
 
     def parse_impl(self, string, start, do_actions=True):
         instrlen = len(string)

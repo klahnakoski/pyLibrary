@@ -7,23 +7,25 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from mo_imports import export
 
 from jx_base.expressions import WhenOp as WhenOp_
-from jx_python.expressions import _utils
+from jx_base.expressions.python_script import PythonScript
+from jx_python.utils import merge_locals
 
 
 class WhenOp(WhenOp_):
-    def to_python(self):
-        return (
-            "("
-            + self.then.to_python()
-            + ") if ("
-            + self.when.to_python()
-            + ") else ("
-            + self.els_.to_python()
-            + ")"
+    def to_python(self, loop_depth=0):
+        when = self.when.to_python(loop_depth)
+        then = self.then.to_python(loop_depth)
+        els_ = self.els_.to_python(loop_depth)
+        return PythonScript(
+            merge_locals(when.locals, then.locals, els_.locals),
+            loop_depth,
+            then.type | els_.type,
+            f"({then.source}) if ({when.source}) else ({els_.source})",
+            self,
         )
 
 
-_utils.WhenOp = WhenOp
+export("jx_python.expressions._utils", WhenOp)

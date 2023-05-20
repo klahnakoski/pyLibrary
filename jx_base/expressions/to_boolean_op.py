@@ -8,18 +8,17 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from mo_imports import export
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.false_op import FALSE
 from jx_base.expressions.null_op import NULL
 from jx_base.expressions.not_op import NotOp
-from mo_json.types import T_BOOLEAN, T_INTEGER
+from mo_json.types import JX_BOOLEAN, JX_INTEGER
 
 
 class ToBooleanOp(Expression):
-    _data_type = T_BOOLEAN
+    _data_type = JX_BOOLEAN
 
     def __init__(self, term):
         Expression.__init__(self, term)
@@ -41,7 +40,7 @@ class ToBooleanOp(Expression):
         term = self.term.partial_eval(lang)
         if term is NULL:
             return FALSE
-        elif term.type is T_BOOLEAN:
+        elif term.type is JX_BOOLEAN:
             return term
         elif term is self.term:
             return self

@@ -8,14 +8,13 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
-from mo_json import T_INTEGER
+from mo_json import JX_INTEGER
 
 
 class IsIntegerOp(Expression):
-    _data_type = T_INTEGER
+    _data_type = JX_INTEGER
 
     def __init__(self, *term):
         Expression.__init__(self, [term])
@@ -36,7 +35,7 @@ class IsIntegerOp(Expression):
     def partial_eval(self, lang):
         term = self.term.partial_eval(lang)
 
-        if term.type in T_INTEGER:
+        if term.type in JX_INTEGER:
             return term
         else:
             return NULL

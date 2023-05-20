@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.and_op import AndOp
 from jx_base.expressions.eq_op import EqOp
@@ -37,18 +36,11 @@ class SplitOp(Expression):
             return {"split": [self.value.__data__(), self.find.__data__()]}
 
     def vars(self):
-        return (
-            self.value.vars()
-            | self.find.vars()
-            | self.default.vars()
-            | self.start.vars()
-        )
+        return self.value.vars() | self.find.vars() | self.default.vars() | self.start.vars()
 
     def map(self, map_):
         return FindOp(
-            [self.value.map(map_), self.find.map(map_)],
-            start=self.start.map(map_),
-            default=self.default.map(map_),
+            [self.value.map(map_), self.find.map(map_)], start=self.start.map(map_), default=self.default.map(map_),
         )
 
     def missing(self, lang):
@@ -58,11 +50,7 @@ class SplitOp(Expression):
 
         return AndOp(
             self.default.missing(lang),
-            OrOp(
-                self.value.missing(lang),
-                self.find.missing(lang),
-                EqOp(ScriptOp(index), Literal(-1)),
-            ),
+            OrOp(self.value.missing(lang), self.find.missing(lang), EqOp(ScriptOp(index), Literal(-1)),),
         )
 
     def exists(self):

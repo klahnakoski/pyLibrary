@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import _jx_expression
 from jx_base.expressions.and_op import AndOp
@@ -24,14 +23,14 @@ from jx_base.language import is_op, value_compare
 from mo_dots import is_many, is_data
 from mo_imports import expect
 from mo_imports import export
-from mo_json.types import T_BOOLEAN
+from mo_json.types import JX_BOOLEAN
 
 InOp, WhenOp = expect("InOp", "WhenOp")
 
 
 class EqOp(Expression):
     has_simple_form = True
-    _data_type = T_BOOLEAN
+    _data_type = JX_BOOLEAN
 
     def __new__(cls, *terms):
         if is_many(terms):
@@ -68,10 +67,7 @@ class EqOp(Expression):
                 lhs, rhs = items[0]
                 return EqOp(Variable(lhs), Literal(rhs))
             else:
-                return AndOp(*(
-                    EqOp(Variable(lhs), Literal(rhs))
-                    for lhs, rhs in items
-                ))
+                return AndOp(*(EqOp(Variable(lhs), Literal(rhs)) for lhs, rhs in items))
         else:
             Log.error("do not not know what to do")
 

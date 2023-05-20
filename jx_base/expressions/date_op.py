@@ -8,17 +8,16 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.literal import Literal
 from mo_dots import coalesce, is_data
 from mo_imports import export
-from mo_json.types import T_TIME
+from mo_json.types import JX_TIME
 from mo_times.dates import Date
 
 
 class DateOp(Literal):
-    date_type = T_TIME
+    date_type = JX_TIME
 
     def __new__(cls, *args, **kwargs):
         return object.__new__(cls)

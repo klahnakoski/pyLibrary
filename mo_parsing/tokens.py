@@ -10,6 +10,8 @@ from mo_parsing.results import ParseResults
 from mo_parsing.utils import *
 from mo_parsing.whitespaces import Whitespace
 
+Regex = expect("Regex")
+
 
 class Token(ParserElement):
     """
@@ -146,6 +148,8 @@ class Literal(Token):
         return "+", self.parser_config.regex.pattern
 
     def __str__(self):
+        if self.parser_name:
+            return self.parser_name
         return self.parser_config.match
 
 
@@ -177,14 +181,19 @@ class Keyword(Token):
     def __init__(
         self,
         match,
-        ident_chars=None,  # required to identify word boundary
+        ident_chars = None,  # required to identify word boundary
         caseless=None,
     ):
         Token.__init__(self)
         if ident_chars is None:
             ident_chars = whitespaces.CURRENT.keyword_chars
-        else:
-            ident_chars = "".join(sorted(set(ident_chars)))
+        elif isinstance(ident_chars, Regex):
+            ident_chars = ident_chars.expr.parser_config.include
+
+        if caseless:
+            ident_chars = ident_chars.lower() + ident_chars.upper()
+
+        ident_chars = "".join(sorted(set(ident_chars)))
 
         if caseless:
             pattern = regex_caseless(match)
@@ -247,11 +256,15 @@ class CaselessLiteral(Literal):
     __slots__ = []
 
     def __init__(self, match):
-        Literal.__init__(self, match.upper())
+        if not is_text(match):
+            Log.error("Expecting string for literal")
+        if len(match) == 0:
+            Log.error("Literal must be at least one character")
+        Token.__init__(self)
         self.set_config(
             match=match, regex=regex_compile(regex_caseless(re.escape(match))),
         )
-        self.parser_name = repr(self.parser_config.regex.pattern)
+        self.parser_name = match
 
     def parse_impl(self, string, start, do_actions=True):
         found = self.parser_config.regex.match(string, start)

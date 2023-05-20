@@ -7,17 +7,17 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from jx_base.expressions import RightOp as RightOp_
-from jx_python.expressions._utils import with_var
+from jx_python.expressions._utils import with_var, PythonScript
 
 
 class RightOp(RightOp_):
-    def to_python(self):
-        v = (self.value).to_python()
-        l = (self.length).to_python()
+    def to_python(self, loop_depth=0):
+        v = (self.value).to_python(loop_depth)
+        l = (self.length).to_python(loop_depth)
 
-        return with_var(
-            "v", v, "None if v == None else v[max(0, len(v)-int(" + l + ")):]"
+        return PythonScript(
+            {}, loop_depth, with_var("v", v, "None if v == None else v[max(0, len(v)-int(" + l + ")):]"),
         )

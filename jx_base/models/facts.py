@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from mo_future import is_text
 from mo_logs import Log
@@ -36,4 +36,3 @@ class Facts(object):
     @property
     def schema(self):
         return self.container.namespace.get_schema(self.name)
-

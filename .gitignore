@@ -16,3 +16,7 @@ pyLibrary.egg-info
 /*.sqlite-journal
 /*.sqlite
 /tests/test_mysql/resources
+
+/setup.py
+
+

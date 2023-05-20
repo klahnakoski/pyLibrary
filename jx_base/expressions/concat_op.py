@@ -6,7 +6,6 @@
 # You can obtain one at http:# mozilla.org/MPL/2.0/.
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions._utils import jx_expression
 from jx_base.expressions.and_op import AndOp
@@ -19,13 +18,13 @@ from jx_base.language import is_op
 from jx_base.utils import is_variable_name
 from mo_dots import is_data, is_many
 from mo_future import first, is_text
-from mo_json.types import T_TEXT
+from mo_json.types import JX_TEXT
 from mo_logs import Log
 
 
 class ConcatOp(Expression):
     has_simple_form = True
-    _data_type = T_TEXT
+    _data_type = JX_TEXT
 
     def __init__(self, *terms, separator=Literal(""), default=NULL):
         if not is_many(terms):
@@ -49,9 +48,7 @@ class ConcatOp(Expression):
         return ConcatOp(
             terms,
             **{
-                k: Literal(v)
-                if is_text(v) and not is_variable_name(v)
-                else jx_expression(v)
+                k: Literal(v) if is_text(v) and not is_variable_name(v) else jx_expression(v)
                 for k, v in expr.items()
                 if k in ["default", "separator"]
             }
@@ -92,13 +89,7 @@ class ConcatOp(Expression):
         return set.union(*(t.vars() for t in self.terms))
 
     def map(self, map_):
-        return ConcatOp(
-            [t.map(map_) for t in self.terms],
-            self.separator.map(map_),
-            self.default.map(map_),
-        )
+        return ConcatOp([t.map(map_) for t in self.terms], self.separator.map(map_), self.default.map(map_),)
 
     def missing(self, lang):
-        return AndOp(
-            [t.missing(lang) for t in self.terms] + [self.default.missing(lang)]
-        ).partial_eval(lang)
+        return AndOp([t.missing(lang) for t in self.terms] + [self.default.missing(lang)]).partial_eval(lang)

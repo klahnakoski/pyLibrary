@@ -1,4 +1,3 @@
-
 # encoding: utf-8
 #
 #
@@ -8,23 +7,23 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from dataclasses import dataclass
+from typing import Any, Dict
 
 from mo_dots import is_data, is_list, Null
-from mo_future import is_text
-from mo_json.types import T_BOOLEAN
+from mo_future import is_text, extend
+from mo_imports import expect
+from mo_logs import strings
 
-from jx_base.expressions import (
-    FALSE,
-    NULL,
-    NullOp,
-    extend,
-    jx_expression,
-)
+from jx_python.utils import merge_locals
+from mo_json.types import JX_BOOLEAN, JX_IS_NULL, JX_NUMBER
+
+from jx_base.expressions import FALSE, NULL, NullOp, jx_expression, PythonScript, TRUE
 from jx_base.language import Language, is_expression, is_op
-from jx_python.expression_compiler import compile_expression
 
-ToNumberOp, OrOp, PythonScript, ScriptOp, WhenOp = [None] * 5
+ToNumberOp, OrOp, ScriptOp, WhenOp, compile_expression = expect(
+    "ToNumberOp", "OrOp", "ScriptOp", "WhenOp", "compile_expression"
+)
 
 
 def jx_expression_to_function(expr):
@@ -69,60 +68,51 @@ class JXExpression(object):
 
 
 @extend(NullOp)
-def to_python(self):
-    return "None"
+def to_python(self, loop_depth=0):
+    return PythonScript({}, loop_depth, JX_IS_NULL, "None", NullOp, TRUE)
 
 
-def _inequality_to_python(self):
+def _inequality_to_python(self, loop_depth=0):
     op, identity = _python_operators[self.op]
-    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python()
-    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python()
-    script = "(" + lhs + ") " + op + " (" + rhs + ")"
+    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python(loop_depth)
+    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python(loop_depth)
+    script = f"({lhs.source}) {op} ({rhs.source})"
 
-    output = (
+    return (
         WhenOp(
             OrOp(self.lhs.missing(Python), self.rhs.missing(Python)),
             **{
                 "then": FALSE,
-                "else": PythonScript(type=T_BOOLEAN, expr=script, frum=self),
-            }
+                "else": PythonScript({**lhs.locals, **rhs.locals}, loop_depth, JX_BOOLEAN, script, self),
+            },
         )
         .partial_eval(Python)
-        .to_python()
+        .to_python(loop_depth)
     )
-    return output
 
 
-def _binaryop_to_python(self, not_null=False, boolean=False):
+def _binaryop_to_python(self, loop_depth, not_null=False, boolean=False):
     op, identity = _python_operators[self.op]
 
-    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python()
-    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python()
-    script = "(" + lhs + ") " + op + " (" + rhs + ")"
-    missing = OrOp(
-        self.lhs.missing(Python),
-        self.rhs.missing(Python),
-    ).partial_eval(Python)
-    if missing is FALSE:
-        return script
-    else:
-        return "(None) if (" + missing.to_python() + ") else (" + script + ")"
+    lhs = ToNumberOp(self.lhs).partial_eval(Python).to_python(loop_depth)
+    rhs = ToNumberOp(self.rhs).partial_eval(Python).to_python(loop_depth)
+    script = f"({lhs.source}){op}({rhs.source})"
+    missing = OrOp(lhs.missing(Python), rhs.missing(Python)).partial_eval(Python)
+    return PythonScript(merge_locals(lhs.locals, rhs.locals), loop_depth, JX_NUMBER, script, self, missing)
 
 
-def multiop_to_python(self):
+def multiop_to_python(self, loop_depth):
     sign, zero = _python_operators[self.op]
     if len(self.terms) == 0:
-        return (self.default).to_python()
+        return (self.default).to_python(loop_depth)
     elif self.default is NULL:
-        return sign.join(
-            "coalesce(" + t.to_python() + ", " + zero + ")" for t in self.terms
-        )
+        return sign.join("coalesce(" + t.to_python(loop_depth) + ", " + zero + ")" for t in self.terms)
     else:
         return (
             "coalesce("
-            + sign.join("(" + t.to_python() + ")" for t in self.terms)
+            + sign.join("(" + t.to_python(loop_depth) + ")" for t in self.terms)
             + ", "
-            + self.default.to_python()
+            + self.default.to_python(loop_depth)
             + ")"
         )
 
@@ -138,6 +128,18 @@ def with_var(var, expression, eval):
 
 
 Python = Language("Python")
+
+
+@dataclass
+class PythonSource:
+    locals: Dict[str, Any]
+    source: str
+
+    def __str__(self):
+        return self.source
+
+    def __data__(self):
+        return strings.quote(self.source)
 
 
 _python_operators = {

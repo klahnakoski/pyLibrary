@@ -55,7 +55,7 @@ def override(kwargs=None):
             packed = k.copy()
             packed.update(dict(zip(params, a)))
             err = text(e)
-            if err.startswith(func_name) and (
+            if func_name in err and (
                 "takes at least" in err
                 or "takes exactly " in err
                 or "required positional argument" in err

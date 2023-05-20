@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from jx_base.domains import ALGEBRAIC, Domain, KNOWN
 from jx_base.expressions import NullOp
@@ -58,16 +58,14 @@ class Dimension(object):
         self.where = dim.where
         self.type = coalesce(dim.type, "set")
         self.limit = coalesce(dim.limit, DEFAULT_QUERY_LIMIT)
-        self.index = coalesce(
-            dim.index, coalesce(parent, Null).index, jx.settings.index
-        )
+        self.index = coalesce(dim.index, coalesce(parent, Null).index, jx.settings.index)
 
         if not self.index:
             Log.error("Expecting an index name")
 
         # ALLOW ACCESS TO SUB-PART BY NAME (IF ONLY THERE IS NO NAME COLLISION)
         self.edges = Data()
-        for e in listwrap(dim.edges):
+        for e in enlist(dim.edges):
             new_e = Dimension(e, self, jx)
             self.edges[new_e.full_name] = new_e
 
@@ -79,15 +77,11 @@ class Dimension(object):
             return  # NO FIELDS TO SEARCH
         elif is_data(fields):
             self.fields = to_data(fields)
-            edges = list_to_data([
-                {"name": k, "value": v, "allowNulls": False}
-                for k, v in self.fields.items()
-            ])
+            edges = list_to_data([{"name": k, "value": v, "allowNulls": False} for k, v in self.fields.items()])
         else:
-            self.fields = listwrap(fields)
+            self.fields = enlist(fields)
             edges = list_to_data([
-                {"name": f, "value": f, "index": i, "allowNulls": False}
-                for i, f in enumerate(self.fields)
+                {"name": f, "value": f, "index": i, "allowNulls": False} for i, f in enumerate(self.fields)
             ])
 
         if dim.partitions:
@@ -116,11 +110,7 @@ class Dimension(object):
             for i, count in enumerate(parts):
                 a = dim.nested_path(d.getEnd(d.partitions[i]))
                 if not is_list(a):
-                    Log.error(
-                        "The path function on "
-                        + dim.name
-                        + " must return an ARRAY of parts"
-                    )
+                    Log.error("The path function on " + dim.name + " must return an ARRAY of parts")
                 addParts(temp, dim.nested_path(d.getEnd(d.partitions[i])), count, 0)
             self.value = coalesce(dim.value, "name")
             self.partitions = temp.partitions
@@ -132,9 +122,7 @@ class Dimension(object):
                 if p:
                     partitions.append({
                         "value": g,
-                        "where": {"and": [
-                            {"term": {e.value: g[e.name]}} for e in edges
-                        ]},
+                        "where": {"and": [{"term": {e.value: g[e.name]}} for e in edges]},
                         "count": int(p),
                     })
             self.partitions = partitions
@@ -177,9 +165,7 @@ class Dimension(object):
                     "partitions": [
                         {
                             "name": str(d2.partitions[j].name),  # CONVERT TO STRING
-                            "value": edges2value(
-                                d.getEnd(d.partitions[i]), d2.getEnd(d2.partitions[j])
-                            ),
+                            "value": edges2value(d.getEnd(d.partitions[i]), d2.getEnd(d2.partitions[j])),
                             "where": {"and": [
                                 {"term": {edges[0].value: d.partitions[i].value}},
                                 {"term": {edges[1].value: d2.partitions[j].value}},
@@ -219,9 +205,7 @@ class Dimension(object):
     def getDomain(self, **kwargs):
         # kwargs.depth IS MEANT TO REACH INTO SUB-PARTITIONS
         kwargs = to_data(kwargs)
-        kwargs.depth = coalesce(
-            kwargs.depth, len(self.fields) - 1 if is_list(self.fields) else None
-        )
+        kwargs.depth = coalesce(kwargs.depth, len(self.fields) - 1 if is_list(self.fields) else None)
 
         if not self.partitions and self.edges:
             # USE EACH EDGE AS A PARTITION, BUT is_facet==True SO IT ALLOWS THE OVERLAP
@@ -271,9 +255,7 @@ class Dimension(object):
                 try:
                     for j, subpart in enumerate(part.partitions):
                         partitions.append({
-                            "name": join_field(
-                                split_field(subpart.parent.name) + [subpart.name]
-                            ),
+                            "name": join_field(split_field(subpart.parent.name) + [subpart.name]),
                             "value": subpart.value,
                             "where": subpart.where,
                             "style": coalesce(subpart.style, subpart.parent.style),
@@ -358,8 +340,7 @@ def parse_partition(part):
     if not part.where:
         if len(part.partitions) > 100:
             Log.error(
-                "Must define an where on {{name}} there are too many partitions"
-                " ({{num_parts}})",
+                "Must define an where on {{name}} there are too many partitions ({{num_parts}})",
                 name=part.name,
                 num_parts=len(part.partitions),
             )

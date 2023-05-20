@@ -29,9 +29,7 @@ class Schema(object):
         self._columns = copy(columns)
         self.table = table_name
         self.query_path = "."
-        self.lookup, self.lookup_leaves, self.lookup_variables = _indexer(
-            columns, self.query_path
-        )
+        self.lookup, self.lookup_leaves, self.lookup_variables = _indexer(columns, self.query_path)
 
     def __getitem__(self, column_name):
         cs = self.lookup.get(column_name)

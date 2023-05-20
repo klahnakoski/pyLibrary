@@ -44,7 +44,7 @@ class Connection(object):
         connect_kwargs = set_default(
             {},
             connect_kwargs,
-            {"key_filename": [File(f).abspath for f in listwrap(key_filename)]}
+            {"key_filename": [File(f).abs_path for f in listwrap(key_filename)]}
         )
 
         key_filenames = connect_kwargs.key_filename
@@ -65,7 +65,7 @@ class Connection(object):
         cause = Except("expecting some private key to connect")
         for key_file in key_filenames:
             try:
-                connect_kwargs.key_filename=File(key_file).abspath
+                connect_kwargs.key_filename=File(key_file).abs_path
                 self.conn = _Connection(
                     host,
                     user,
@@ -108,10 +108,10 @@ class Connection(object):
             filename = "/tmp/" + randoms.filename()
             self.sudo("cp " + remote + " " + filename)
             self.sudo("chmod a+r " + filename)
-            self.conn.get(filename, File(local).abspath)
+            self.conn.get(filename, File(local).abs_path)
             self.sudo("rm " + filename)
         else:
-            self.conn.get(remote, File(local).abspath)
+            self.conn.get(remote, File(local).abs_path)
 
     def put(self, local, remote, use_sudo=False):
         if self.conn.command_cwds and not remote.startswith(("/", "~")):
@@ -119,11 +119,11 @@ class Connection(object):
 
         if use_sudo:
             filename = "/tmp/" + randoms.filename()
-            self.conn.put(File(local).abspath, filename)
+            self.conn.put(File(local).abs_path, filename)
             self.sudo("cp " + filename + " " + remote)
             self.sudo("rm " + filename)
         else:
-            self.conn.put(File(local).abspath, remote)
+            self.conn.put(File(local).abs_path, remote)
 
     def __enter__(self):
         return self

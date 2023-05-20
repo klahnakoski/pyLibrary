@@ -63,8 +63,7 @@ class TestErrors(FuzzyTestCase):
     def test_issue_50_dashes_in_name(self):
         sql = """select col-cpu-usage from test-information"""
         with self.assertRaises("Use backticks (``) around identifiers"):
-            with Debugger():
-                parse_mysql(sql)
+            parse_mysql(sql)
 
     def test_issue_50_subtraction1(self):
         sql = """select col-0pu-usage from test-information"""
@@ -78,17 +77,17 @@ class TestErrors(FuzzyTestCase):
 
     def test_issue_88_parse_error(self):
         sql = """select c1, c as 't' from T"""
-        with self.assertRaises('Expecting identifier, found "\'t\''):
+        with self.assertRaises("Expecting identifier, found \"'t'"):
             parse(sql)
 
     def test_issue_90_tablesample_error1(self):
         sql = "SELECT * FROM foo TABLESAMPLE(bernoulli) WHERE a < 42"
-        with self.assertRaises("Expecting {bytes_constraint} | {bucket} | {int}, found \"bernoulli"):
+        with self.assertRaises('Expecting {bytes_constraint} | {bucket} | {int}, found "bernoulli'):
             parse(sql)
 
     def test_issue_90_tablesample_error2(self):
         sql = "SELECT * FROM foo f TABLESAMPLE(bernoulli) WHERE f.a < 42"
-        with self.assertRaises("Expecting {bytes_constraint} | {bucket} | {int}, found \"bernoulli"):
+        with self.assertRaises('Expecting {bytes_constraint} | {bucket} | {int}, found "bernoulli'):
             parse(sql)
 
     def test_issue_143(self):
@@ -102,5 +101,5 @@ class TestErrors(FuzzyTestCase):
                     IF(brand_description = 'MasterCard', 50,
         ...
         )"""
-        with self.assertRaises("found \"...\\n"):
+        with self.assertRaises('found "...\\n'):
             result = parse(sql)

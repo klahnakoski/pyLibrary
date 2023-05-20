@@ -25,8 +25,8 @@ def extract_tar_zst(path, dest):
             with tarfile.open(mode="r|", fileobj=reader) as tar:
                 def is_within_directory(directory, target):
                     
-                    abs_directory = os.path.abspath(directory)
-                    abs_target = os.path.abspath(target)
+                    abs_directory = os.path.abs_path(directory)
+                    abs_target = os.path.abs_path(target)
                 
                     prefix = os.path.commonprefix([abs_directory, abs_target])
                     

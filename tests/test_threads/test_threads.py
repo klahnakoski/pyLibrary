@@ -8,9 +8,6 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
 
 from mo_future import text
 from mo_logs import Log
@@ -18,7 +15,8 @@ from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
 from mo_times.durations import SECOND
 
-from mo_threads import Lock, Thread, Signal, Till, till, threads, start_main_thread
+from mo_threads import Lock, Thread, Signal, Till, till, threads, start_main_thread, DONE
+from mo_threads.signals import NEVER
 from mo_threads.threads import wait_for_shutdown_signal, stop_main_thread
 from tests import StructuredLogger_usingList
 
@@ -122,11 +120,7 @@ class TestThreads(FuzzyTestCase):
         # We expect 10, but 9 is good enough
         num = len(acc)
         self.assertGreater(
-            num,
-            9,
-            "Expecting some reasonable number of entries to prove there was looping,"
-            " not "
-            + text(num),
+            num, 9, "Expecting some reasonable number of entries to prove there was looping, not " + text(num),
         )
 
     def test_or_signal_timeout(self):
@@ -217,6 +211,16 @@ class TestThreads(FuzzyTestCase):
         self.assertIn("logger stopped", list_log.lines)
         self.assertIn("ERROR", list_log.lines[-2])
         self.assertEqual(bool(threads.MAIN_THREAD.timers.stopped), True)
+
+    def test_signal_or(self):
+        a = Signal()
+        self.assertIs(a, a | False)
+        self.assertIs(DONE, a | True)
+
+    def test_signal_and(self):
+        a = Signal()
+        self.assertIs(NEVER, a & False)
+        self.assertIs(a, a & True)
 
 
 def bad_worker(please_stop):

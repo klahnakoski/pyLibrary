@@ -7,14 +7,15 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+from jx_base.expressions.python_script import PythonScript
 
 from jx_base.expressions import ToTextOp as ToTextOp_
 from jx_python.expressions._utils import Python
+from mo_json import JX_TEXT
 
 
 class ToTextOp(ToTextOp_):
-    def to_python(self):
-        missing = self.term.missing(Python).to_python()
-        value = self.term.to_python()
-        return "null if (" + missing + ") else text(" + value + ")"
+    def to_python(self, loop_depth=0):
+        missing = self.term.missing(Python).to_python(loop_depth)
+        value = self.term.to_python(loop_depth)
+        return PythonScript(value.locals, loop_depth, JX_TEXT, value.source, self, missing)

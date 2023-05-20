@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 import functools
 
@@ -64,8 +63,7 @@ class PartFlatList(list):
             else:
                 keys = split_field(fields)
                 depth = coalesce(
-                    MIN([i for i, (k, p) in enumerate(zip(keys, self.path)) if k != p]),
-                    len(self.path),
+                    MIN([i for i, (k, p) in enumerate(zip(keys, self.path)) if k != p]), len(self.path),
                 )  # LENGTH OF COMMON PREFIX
                 short_key = keys[depth:]
 

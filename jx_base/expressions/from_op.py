@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from mo_imports import expect
 from jx_base.expressions.expression import Expression, _jx_expression
@@ -30,8 +29,8 @@ class FromOp(Expression):
     def define(cls, expr):
         return FromOp(_jx_expression(to_data(expr)["from"], cls.lang))
 
-    def apply(self, container: Container, group_by):
-        return container.query(self.frum, group_by)
+    def apply(self, container: Container):
+        return container.query(self.frum)
 
     def __data__(self):
         return {"from": self.frum.__data__()}

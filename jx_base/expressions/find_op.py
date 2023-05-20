@@ -8,7 +8,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 from jx_base.expressions.expression import Expression
 from jx_base.expressions.literal import ZERO
@@ -16,7 +15,7 @@ from jx_base.expressions.literal import is_literal
 from jx_base.expressions.null_op import NULL
 from jx_base.expressions.variable import Variable
 from jx_base.language import is_op, JX
-from mo_json import T_INTEGER
+from mo_json import JX_INTEGER
 from mo_dots import is_missing
 
 
@@ -26,7 +25,7 @@ class FindOp(Expression):
     """
 
     has_simple_form = True
-    _data_type = T_INTEGER
+    _data_type = JX_INTEGER
 
     def __init__(self, value, find, **kwargs):
         Expression.__init__(self, value, find)
@@ -66,18 +65,11 @@ class FindOp(Expression):
         return i
 
     def vars(self):
-        return (
-            self.value.vars()
-            | self.find.vars()
-            | self.default.vars()
-            | self.start.vars()
-        )
+        return self.value.vars() | self.find.vars() | self.default.vars() | self.start.vars()
 
     def map(self, map_):
         return FindOp(
-            [self.value.map(map_), self.find.map(map_)],
-            start=self.start.map(map_),
-            default=self.default.map(map_),
+            [self.value.map(map_), self.find.map(map_)], start=self.start.map(map_), default=self.default.map(map_),
         )
 
     def invert(self, lang):

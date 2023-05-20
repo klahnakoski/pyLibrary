@@ -16,7 +16,7 @@ from jx_sqlite.expressions._utils import SQLang, check
 from jx_sqlite.expressions.sql_script import SqlScript
 from jx_sqlite.sqlite import SQL_NULL
 from jx_sqlite.sqlite import sql_call
-from mo_json import T_IS_NULL, T_NUMBER
+from mo_json import JX_IS_NULL, JX_NUMBER
 
 
 class AbsOp(AbsOp_):
@@ -25,9 +25,9 @@ class AbsOp(AbsOp_):
         expr = IsNumberOp(self.term).partial_eval(SQLang).to_sql(schema)
         if not expr:
             return SqlScript(
-                expr=SQL_NULL, data_type=T_IS_NULL, frum=self, miss=TRUE, schema=schema,
+                expr=SQL_NULL, data_type=JX_IS_NULL, frum=self, miss=TRUE, schema=schema,
             )
 
         return SqlScript(
-            expr=sql_call("ABS", expr), data_type=T_NUMBER, frum=self, schema=schema,
+            expr=sql_call("ABS", expr), data_type=JX_NUMBER, frum=self, schema=schema,
         )

@@ -20,7 +20,7 @@ from jx_base.expressions import (
 )
 from jx_sqlite.expressions._utils import check, SQLang, SqlScript, OrOp
 from jx_sqlite.sqlite import sql_call, SQL_ZERO, ConcatSQL, SQL_ONE, SQL_PLUS
-from mo_json import T_TEXT
+from mo_json import JX_TEXT
 
 
 class NotLeftOp(NotLeftOp_):
@@ -33,7 +33,7 @@ class NotLeftOp(NotLeftOp_):
 
         expr = sql_call("SUBSTR", v, start)
         return SqlScript(
-            data_type=T_TEXT,
+            data_type=JX_TEXT,
             expr=expr,
             frum=self,
             miss=OrOp([

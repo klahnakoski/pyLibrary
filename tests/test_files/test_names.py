@@ -7,12 +7,6 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 import os
 
 from mo_files import File, join_path
@@ -25,35 +19,35 @@ par = "/.."
 class TestNames(FuzzyTestCase):
     def test_relative_self(self):
         f = File(".")
-        self.assertEqual(f.parent.filename, "..")
-        self.assertEqual(f.parent.parent.filename, ".." + par)
-        self.assertEqual(f.parent.parent.parent.filename, ".." + par + par)
+        self.assertEqual(f.parent.rel_path, "..")
+        self.assertEqual(f.parent.parent.rel_path, ".." + par)
+        self.assertEqual(f.parent.parent.parent.rel_path, ".." + par + par)
 
     def test_relative_self2(self):
         f = File("")
-        self.assertEqual(f.parent.filename, "..")
-        self.assertEqual(f.parent.parent.filename, ".." + par)
-        self.assertEqual(f.parent.parent.parent.filename, ".." + par + par)
+        self.assertEqual(f.parent.rel_path, "..")
+        self.assertEqual(f.parent.parent.rel_path, ".." + par)
+        self.assertEqual(f.parent.parent.parent.rel_path, ".." + par + par)
 
     def test_relative_name(self):
         f = File("test.txt")
-        self.assertEqual(f.parent.filename, "")
-        self.assertEqual(f.parent.parent.filename, "..")
-        self.assertEqual(f.parent.parent.parent.filename, ".." + par)
+        self.assertEqual(f.parent.rel_path, "")
+        self.assertEqual(f.parent.parent.rel_path, "..")
+        self.assertEqual(f.parent.parent.parent.rel_path, ".." + par)
 
     def test_relative_path(self):
         f = File("a/test.txt")
-        self.assertEqual(f.parent.filename, "a")
-        self.assertEqual(f.parent.parent.filename, "")
-        self.assertEqual(f.parent.parent.parent.filename, "..")
+        self.assertEqual(f.parent.rel_path, "a")
+        self.assertEqual(f.parent.parent.rel_path, "")
+        self.assertEqual(f.parent.parent.parent.rel_path, "..")
 
     def test_grandparent(self):
         f = File.new_instance("tests/temp", "../..")
-        self.assertEqual(f.filename, ".")
+        self.assertEqual(f.rel_path, ".")
 
     def test_concat(self):
         f = File.new_instance("tests/temp") / "something" / "or" / "other"
-        self.assertTrue(f.abspath.endswith("/tests/temp/something/or/other"))
+        self.assertTrue(f.abs_path.endswith("/tests/temp/something/or/other"))
 
     def test_empty(self):
         test = join_path("test", "")
@@ -103,20 +97,20 @@ class TestNames(FuzzyTestCase):
         test4 = File("~test.json")
         test5 = File("~") / "test.json"
 
-        self.assertEqual(test1.filename, home_path + "/")
-        self.assertEqual(test2.filename, home_path + "/")
-        self.assertEqual(test3.filename, home_path + "/test.json")
-        self.assertEqual(test4.filename, home_path + "/test.json")
-        self.assertEqual(test5.filename, home_path + "/test.json")
+        self.assertEqual(test1.rel_path, home_path + "/")
+        self.assertEqual(test2.rel_path, home_path + "/")
+        self.assertEqual(test3.rel_path, home_path + "/test.json")
+        self.assertEqual(test4.rel_path, home_path + "/test.json")
+        self.assertEqual(test5.rel_path, home_path + "/test.json")
 
     def test_extension(self):
         test1 = File("test.json")
         test2 = test1.add_extension("gz")
         test3 = test1.set_extension("gz")
 
-        self.assertEqual(test1.filename, "test.json")
-        self.assertEqual(test2.filename, "test.json.gz")
-        self.assertEqual(test3.filename, "test.gz")
+        self.assertEqual(test1.rel_path, "test.json")
+        self.assertEqual(test2.rel_path, "test.json.gz")
+        self.assertEqual(test3.rel_path, "test.gz")
 
     def test_suffix(self):
         test1 = File("tools/test.json")
@@ -124,11 +118,11 @@ class TestNames(FuzzyTestCase):
         test3 = test1.add_suffix("-backup")
         test4 = test1.set_name("other")
 
-        self.assertEqual(test1.filename, "tools/test.json")
-        self.assertEqual(test2.filename, "tools/test.backup.json")
-        self.assertEqual(test3.filename, "tools/test.-backup.json")
-        self.assertEqual(test4.filename, "tools/other.json")
+        self.assertEqual(test1.rel_path, "tools/test.json")
+        self.assertEqual(test2.rel_path, "tools/test.backup.json")
+        self.assertEqual(test3.rel_path, "tools/test.-backup.json")
+        self.assertEqual(test4.rel_path, "tools/other.json")
 
     def test_file_file(self):
         test1 = File(File("test"))
-        self.assertEqual(test1.filename, "test")
+        self.assertEqual(test1.rel_path, "test")

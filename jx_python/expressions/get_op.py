@@ -7,14 +7,52 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
 
-from jx_base.expressions import GetOp as GetOp_
+from jx_base.expressions import GetOp as GetOp_, ToArrayOp
+from jx_base.expressions.python_script import PythonScript
+from jx_base.utils import enlist
+from jx_python.expressions import Python
+from jx_python.utils import merge_locals, to_python_list
+from mo_json import JX_ANY, array_of, ARRAY_KEY
 
 
 class GetOp(GetOp_):
-    def to_python(self):
-        output = ["(" + (self.var).to_python() + ")"]
-        for o in self.offsets:
-            output.append("[" + (o).to_python() + "]")
-        return "".join(output)
+    def to_python(self, loop_depth=0):
+        offsets, locals = zip(*((c.source, c.locals) for o in self.offsets for c in [o.to_python(loop_depth)]))
+        offsets = ", ".join(offsets)
+        frum = ToArrayOp(self.frum).partial_eval(Python).to_python(loop_depth)
+        # TODO: should be able to reach into frum.type to get actual type
+        var_type = array_of(JX_ANY)
+
+        return PythonScript(
+            merge_locals(locals, frum.locals, get_attr=get_attr, ARRAY_KEY=ARRAY_KEY),
+            loop_depth,
+            var_type,
+            f"{{ARRAY_KEY: get_attr({to_python_list(frum.source)}, {offsets})}}",
+            self,
+        )
+
+
+def unit(x):
+    return x
+
+
+def get_attr(values, *items):
+    for item in items:
+        result = []
+        for v in values:
+            try:
+                child = getattr(v, item)
+            except:
+                try:
+                    child = v[item]
+                except:
+                    continue
+
+            if isinstance(child, dict) and ARRAY_KEY in child:
+                result.extend(child[ARRAY_KEY])
+            else:
+                result.extend(enlist(child))
+
+        values = result
+    return values
