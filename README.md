@@ -1,4 +1,4 @@
-# pyLibrary
+# pyLibrary (deprecated)
 
 A library of wonderful Python things!
 
